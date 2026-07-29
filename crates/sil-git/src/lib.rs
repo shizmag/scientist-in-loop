@@ -2,6 +2,7 @@
 
 #![deny(missing_docs)]
 
+mod action_infer;
 mod cmd;
 mod error;
 mod log;
@@ -9,6 +10,9 @@ mod propose;
 mod status;
 mod trailers;
 
+pub use action_infer::{
+    dirty_paths, infer_action_from_paths, proposal_for_action, propose_from_status,
+};
 pub use error::GitError;
 pub use log::{LogEntry, log_entries};
 pub use propose::CommitProposal;

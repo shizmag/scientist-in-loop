@@ -10,7 +10,7 @@ mod init;
 mod templates;
 mod util;
 
-use cli::{Cli, Commands, SourceCmd};
+use cli::{Cli, Commands, SourceCmd, StructureCmd};
 use util::make_ui;
 
 fn main() {
@@ -61,5 +61,18 @@ fn run() -> Result<()> {
             ui.as_ref(),
         ),
         Commands::Split => commands::split(ui.as_ref()),
+        Commands::Propose {
+            action,
+            message,
+            body,
+        } => commands::propose(action.as_deref(), message.as_deref(), body.as_deref(), ui.as_ref()),
+        Commands::Promote { force } => commands::promote(force, ui.as_ref()),
+        Commands::Structure { action } => match action {
+            StructureCmd::List => commands::structure_list(ui.as_ref()),
+            StructureCmd::Set {
+                section_id,
+                completion,
+            } => commands::structure_set(&section_id, &completion, ui.as_ref()),
+        },
     }
 }

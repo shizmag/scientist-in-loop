@@ -96,6 +96,29 @@ pub enum Commands {
     /// Does not modify paper_draft.tex. Re-run after editing the draft to refresh
     /// the section tree (source of truth stays the draft).
     Split,
+    /// Print a Sci-Action commit proposal (never auto-commits)
+    Propose {
+        /// Explicit Sci-Action (e.g. edit-draft, update-structure, promote-to-final)
+        #[arg(long, short = 'a')]
+        action: Option<String>,
+        /// Commit subject override
+        #[arg(long, short = 'm')]
+        message: Option<String>,
+        /// Optional body paragraph
+        #[arg(long)]
+        body: Option<String>,
+    },
+    /// Copy paper_draft.tex → paper.tex and propose promote-to-final
+    Promote {
+        /// Skip structure completion guardrail (sections should be draft/polished)
+        #[arg(long)]
+        force: bool,
+    },
+    /// Inspect or update `.sil/structure.yaml`
+    Structure {
+        #[command(subcommand)]
+        action: StructureCmd,
+    },
 }
 
 /// `sil source` subcommands.
@@ -108,5 +131,19 @@ pub enum SourceCmd {
         /// Skip interactive parse offer after download
         #[arg(long)]
         no_parse: bool,
+    },
+}
+
+/// `sil structure` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum StructureCmd {
+    /// List sections and completion levels
+    List,
+    /// Set a section's completion (`empty`|`outline`|`draft`|`polished`)
+    Set {
+        /// Section id from structure.yaml
+        section_id: String,
+        /// New completion level
+        completion: String,
     },
 }

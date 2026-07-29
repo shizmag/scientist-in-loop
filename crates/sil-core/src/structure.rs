@@ -139,6 +139,43 @@ impl Structure {
         })
     }
 
+    /// Validate and write this structure to `path`.
+    pub fn save(&self, path: &Utf8Path) -> Result<(), StructureError> {
+        self.validate()?;
+        let yaml = self.to_yaml()?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent.as_str()).map_err(|source| StructureError::Io {
+                path: parent.to_string(),
+                source,
+            })?;
+        }
+        std::fs::write(path.as_str(), yaml).map_err(|source| StructureError::Io {
+            path: path.to_string(),
+            source,
+        })?;
+        Ok(())
+    }
+
+    /// Set completion for a section by id. Returns previous completion if found.
+    pub fn set_section_completion(
+        &mut self,
+        id: &str,
+        completion: SectionCompletion,
+    ) -> Result<SectionCompletion, StructureError> {
+        let sec = self
+            .sections
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or_else(|| {
+                StructureError::Validation(ValidationError::Message(format!(
+                    "unknown section id '{id}'"
+                )))
+            })?;
+        let prev = sec.completion;
+        sec.completion = completion;
+        Ok(prev)
+    }
+
     /// Validate invariants.
     pub fn validate(&self) -> Result<(), StructureError> {
         let mut ids = std::collections::HashSet::new();
@@ -325,6 +362,23 @@ sections:
         let yaml = s.to_yaml().unwrap();
         let again = Structure::from_yaml(&yaml).unwrap();
         assert_eq!(s, again);
+    }
+
+    #[test]
+    fn set_section_completion_and_save() {
+        let mut s = Structure::from_yaml(SAMPLE).unwrap();
+        let prev = s
+            .set_section_completion("intro", SectionCompletion::Draft)
+            .unwrap();
+        assert_eq!(prev, SectionCompletion::Outline);
+        assert_eq!(s.sections[0].completion, SectionCompletion::Draft);
+        assert!(s.set_section_completion("missing", SectionCompletion::Empty).is_err());
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = camino::Utf8PathBuf::from_path_buf(dir.path().join("s.yaml")).unwrap();
+        s.save(&path).unwrap();
+        let loaded = Structure::load(&path).unwrap();
+        assert_eq!(loaded.sections[0].completion, SectionCompletion::Draft);
     }
 
     #[test]
