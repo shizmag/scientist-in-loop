@@ -37,7 +37,11 @@ pub enum Commands {
         update: bool,
     },
     /// Show project stage, git status, sources, and structure summary
-    Status,
+    Status {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
     /// Parse PDF source(s) into SQLite + FTS5 via Marker
     Parse {
         /// Path to a specific PDF (omit for interactive selection of unparsed sources/)
@@ -131,6 +135,20 @@ pub enum SourceCmd {
         /// Skip interactive parse offer after download
         #[arg(long)]
         no_parse: bool,
+    },
+    /// List sources with parsed vs unparsed visibility
+    List {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove a source from the database (enables reparse); optional file delete
+    Remove {
+        /// Source id or filename (e.g. paper.pdf)
+        id: String,
+        /// Also delete the PDF under sources/
+        #[arg(long)]
+        delete_file: bool,
     },
 }
 

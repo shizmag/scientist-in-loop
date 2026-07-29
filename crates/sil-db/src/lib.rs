@@ -71,6 +71,11 @@ impl SilDb {
         sources::list_sources(&self.conn)
     }
 
+    /// Remove a source by id. Returns true if a row was deleted.
+    pub fn remove_source(&self, id: &SourceId) -> Result<bool, DbError> {
+        sources::remove_source(&self.conn, id)
+    }
+
     /// Full-text search over parsed sources.
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchHit>, DbError> {
         search::search(&self.conn, query, limit)
@@ -301,5 +306,19 @@ mod tests {
         }
         let hits = db.search("sharededge", 10).unwrap();
         assert_eq!(hits.len(), 3);
+    }
+
+    #[test]
+    fn remove_source_deletes_row_and_fts() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut doc = SourceDocument::new("gone.pdf".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "remove_token_xyz content").unwrap();
+        assert_eq!(db.source_count().unwrap(), 1);
+        assert!(!db.search("remove_token_xyz", 5).unwrap().is_empty());
+        assert!(db.remove_source(&doc.id).unwrap());
+        assert_eq!(db.source_count().unwrap(), 0);
+        assert!(db.search("remove_token_xyz", 5).unwrap().is_empty());
+        assert!(!db.remove_source(&doc.id).unwrap());
     }
 }

@@ -14,6 +14,8 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 camino = { workspace = true }
 clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 sil-agent = { workspace = true }
 sil-core = { workspace = true }
 sil-db = { workspace = true }
@@ -25,4 +27,5 @@ sil-parse = { workspace = true }
 tempfile = { workspace = true }
 assert_cmd = { workspace = true }
 predicates = { workspace = true }
+serde_json = { workspace = true }
 sil-parse = { workspace = true }

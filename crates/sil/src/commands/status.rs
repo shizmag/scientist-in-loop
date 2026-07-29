@@ -1,13 +1,58 @@
 //! `sil status`
 
 use anyhow::Result;
+use serde::Serialize;
 use sil_core::{SilUi, Structure, paths::rel};
 use sil_db::SilDb;
 use sil_git::{path_has_changes, status as git_status};
 
 use crate::util::load_project;
 
-pub fn run(ui: &dyn SilUi) -> Result<()> {
+#[derive(Debug, Serialize)]
+struct StatusJson {
+    project: String,
+    title: String,
+    stage: String,
+    latex_engine: String,
+    latex_main: String,
+    sources: SourcesJson,
+    structure: StructureJson,
+    git: GitJson,
+    draft_dirty: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct SourcesJson {
+    total: usize,
+    parsed: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct StructureJson {
+    summary: String,
+    total: usize,
+    empty: usize,
+    outline: usize,
+    draft: usize,
+    polished: usize,
+    sections: Vec<SectionJson>,
+}
+
+#[derive(Debug, Serialize)]
+struct SectionJson {
+    id: String,
+    title: String,
+    completion: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GitJson {
+    is_repo: bool,
+    clean: bool,
+    uncommitted: usize,
+}
+
+pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, config, paths) = load_project()?;
     let structure = Structure::load(&paths.structure()).map_err(|e| anyhow::anyhow!("{e}"))?;
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -16,6 +61,45 @@ pub fn run(ui: &dyn SilUi) -> Result<()> {
     let git = git_status(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
     let draft_dirty = path_has_changes(&root, rel::PAPER_DRAFT).unwrap_or(false);
     let summary = structure.completion_summary();
+
+    if json {
+        let payload = StatusJson {
+            project: root.to_string(),
+            title: config.project.title.clone(),
+            stage: config.project.stage.to_string(),
+            latex_engine: config.latex.engine.to_string(),
+            latex_main: config.latex.main.to_string(),
+            sources: SourcesJson {
+                total: source_count,
+                parsed: parsed_count,
+            },
+            structure: StructureJson {
+                summary: summary.to_string(),
+                total: summary.total,
+                empty: summary.empty,
+                outline: summary.outline,
+                draft: summary.draft,
+                polished: summary.polished,
+                sections: structure
+                    .sections
+                    .iter()
+                    .map(|s| SectionJson {
+                        id: s.id.clone(),
+                        title: s.title.clone(),
+                        completion: s.completion.to_string(),
+                    })
+                    .collect(),
+            },
+            git: GitJson {
+                is_repo: git.is_repo,
+                clean: git.clean,
+                uncommitted: git.entries.len(),
+            },
+            draft_dirty,
+        };
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
 
     ui.println("");
     ui.info(&format!("Project: {root}"));

@@ -1,4 +1,4 @@
-//! `sil source fetch`
+//! `sil source` — fetch / list / remove sources.
 
 use std::fs;
 use std::path::PathBuf;
@@ -6,12 +6,31 @@ use std::process::Command;
 
 use anyhow::{Context, Result, bail};
 use camino::{Utf8Path, Utf8PathBuf};
-use sil_core::{SciAction, SilUi};
+use serde::Serialize;
+use sil_core::{SciAction, SilUi, SourceId};
 use sil_db::SilDb;
 use sil_git::CommitProposal;
 use sil_parse::parse_one;
 
 use crate::util::{load_project, marker_runner, print_proposal};
+
+/// One row in `sil source list` (parsed DB + on-disk PDFs).
+#[derive(Debug, Clone, Serialize)]
+pub struct SourceListEntry {
+    /// Stable source id (usually filename).
+    pub id: String,
+    /// Filename.
+    pub filename: String,
+    /// Path relative to project or absolute.
+    pub path: String,
+    /// Whether content is in the FTS database.
+    pub parsed: bool,
+    /// Whether a PDF file exists on disk under sources/.
+    pub on_disk: bool,
+    /// Optional title from parse metadata.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+}
 
 pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, config, paths) = load_project()?;
@@ -79,6 +98,144 @@ pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// List sources with parsed vs unparsed (and on-disk) visibility.
+pub fn list(json: bool, ui: &dyn SilUi) -> Result<()> {
+    let entries = collect_source_entries()?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&entries)?);
+        return Ok(());
+    }
+    if entries.is_empty() {
+        ui.warn("No sources in database or sources/ directory");
+        ui.muted("  tip: sil source fetch <doi|arxiv|url>");
+        return Ok(());
+    }
+    let parsed = entries.iter().filter(|e| e.parsed).count();
+    let unparsed = entries.len() - parsed;
+    ui.info(&format!(
+        "{} source(s): {parsed} parsed, {unparsed} unparsed",
+        entries.len()
+    ));
+    ui.println("");
+    for e in &entries {
+        let flag = if e.parsed { "parsed" } else { "unparsed" };
+        let disk = if e.on_disk { "on-disk" } else { "missing-file" };
+        let title = e.title.as_deref().unwrap_or("");
+        ui.println(&format!(
+            "  [{flag}/{disk}] {} {}",
+            e.filename,
+            if title.is_empty() {
+                String::new()
+            } else {
+                format!("— {title}")
+            }
+        ));
+    }
+    ui.println("");
+    Ok(())
+}
+
+/// Remove a source from the database (optionally delete the PDF file).
+pub fn remove(id_or_filename: &str, delete_file: bool, ui: &dyn SilUi) -> Result<()> {
+    let (_root, config, paths) = load_project()?;
+    let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let id = SourceId::new(id_or_filename);
+    let removed = db
+        .remove_source(&id)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    // Also try by matching filename among listed sources
+    let mut did_remove = removed;
+    if !did_remove {
+        for doc in db.list_sources().map_err(|e| anyhow::anyhow!("{e}"))? {
+            if doc.filename == id_or_filename || doc.id.as_str() == id_or_filename {
+                did_remove = db
+                    .remove_source(&doc.id)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                break;
+            }
+        }
+    }
+
+    if !did_remove {
+        // Allow clearing unparsed on-disk only? still report
+        ui.warn(&format!(
+            "no database row for '{id_or_filename}' (may already be unparsed)"
+        ));
+    } else {
+        ui.success(&format!("Removed '{id_or_filename}' from database (reparse with sil parse)"));
+    }
+
+    if delete_file {
+        let sources_dir = paths.sources(&config);
+        let candidate = sources_dir.join(id_or_filename);
+        let candidate = if candidate.extension().is_none() {
+            sources_dir.join(format!("{id_or_filename}.pdf"))
+        } else {
+            candidate
+        };
+        if candidate.is_file() {
+            fs::remove_file(candidate.as_str())
+                .with_context(|| format!("delete {candidate}"))?;
+            ui.success(&format!("Deleted file {candidate}"));
+        } else {
+            ui.warn(&format!("no file at {candidate}"));
+        }
+    }
+    Ok(())
+}
+
+/// Collect merged view of DB rows + on-disk PDFs under sources/.
+pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
+    let (_root, config, paths) = load_project()?;
+    let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let sources_dir = paths.sources(&config);
+    let docs = db.list_sources().map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let mut by_name: std::collections::BTreeMap<String, SourceListEntry> =
+        std::collections::BTreeMap::new();
+
+    for doc in docs {
+        let on_disk = sources_dir.join(&doc.filename).is_file()
+            || Utf8Path::new(doc.path.as_str()).is_file();
+        by_name.insert(
+            doc.filename.clone(),
+            SourceListEntry {
+                id: doc.id.as_str().to_string(),
+                filename: doc.filename.clone(),
+                path: doc.path.to_string(),
+                parsed: doc.parsed,
+                on_disk,
+                title: doc.title.clone(),
+            },
+        );
+    }
+
+    // Scan sources/ for PDFs not yet in DB
+    if sources_dir.is_dir() {
+        for entry in fs::read_dir(sources_dir.as_str())
+            .with_context(|| format!("read {sources_dir}"))?
+        {
+            let entry = entry?;
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !name.to_ascii_lowercase().ends_with(".pdf") {
+                continue;
+            }
+            by_name.entry(name.clone()).or_insert(SourceListEntry {
+                id: name.clone(),
+                filename: name.clone(),
+                path: format!("sources/{name}"),
+                parsed: false,
+                on_disk: path.is_file(),
+                title: None,
+            });
+        }
+    }
+
+    Ok(by_name.into_values().collect())
 }
 
 fn discover_download_script() -> Result<Utf8PathBuf> {

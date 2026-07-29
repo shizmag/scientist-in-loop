@@ -100,3 +100,9 @@ fn parse_status_debug(s: &str) -> Option<DocumentStatus> {
         _ => None,
     }
 }
+
+/// Remove a source by id from the sources table (FTS updated via delete trigger).
+pub fn remove_source(conn: &Connection, id: &SourceId) -> Result<bool, DbError> {
+    let n = conn.execute("DELETE FROM sources WHERE id = ?1", params![id.as_str()])?;
+    Ok(n > 0)
+}

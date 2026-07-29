@@ -30,11 +30,17 @@ fn run() -> Result<()> {
     let ui = make_ui(cli.plain);
     match cli.command {
         Commands::Init { name, update } => commands::init(name, update, ui.as_ref()),
-        Commands::Status => commands::status(ui.as_ref()),
+        Commands::Status { json } => commands::status(json, ui.as_ref()),
         Commands::Parse { path } => commands::parse(path, ui.as_ref()),
-        Commands::Source {
-            action: SourceCmd::Fetch { target, no_parse },
-        } => commands::source_fetch(&target, no_parse, ui.as_ref()),
+        Commands::Source { action } => match action {
+            SourceCmd::Fetch { target, no_parse } => {
+                commands::source_fetch(&target, no_parse, ui.as_ref())
+            }
+            SourceCmd::List { json } => commands::source_list(json, ui.as_ref()),
+            SourceCmd::Remove { id, delete_file } => {
+                commands::source_remove(&id, delete_file, ui.as_ref())
+            }
+        },
         Commands::Search { query, limit } => commands::search(&query, limit, ui.as_ref()),
         Commands::Build => commands::build(ui.as_ref()),
         Commands::Log {
