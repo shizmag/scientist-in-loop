@@ -181,6 +181,8 @@ fn ensure_layout(target: &Utf8Path) -> Result<()> {
     let dirs = [
         paths.sil_dir(),
         paths.skills_dir(),
+        paths.improvement_dir(),
+        paths.draft_sections_dir(),
         paths.join(rel::SOURCES),
         paths.join(rel::DATA),
         paths.join(rel::FIGURES),
@@ -209,6 +211,10 @@ fn write_scaffold_readmes(target: &Utf8Path, overwrite: bool) -> Result<Vec<Stri
         ("figures/plots/README.md", templates::FIGURES_PLOTS_README),
         ("figures/images/README.md", templates::FIGURES_IMAGES_README),
         ("agent/README.md", templates::AGENT_README),
+        (
+            ".sil/improvement/README.md",
+            templates::IMPROVEMENT_README,
+        ),
     ];
     let mut created = Vec::new();
     for (rel_path, content) in files {
@@ -374,5 +380,16 @@ mod tests {
         assert!(block.contains(".sil/db.sqlite"));
         assert!(block.contains("figures/images/**"));
         assert!(block.contains("data/**"));
+        // Must not ignore improvement proposals or draft section cache
+        assert!(!block.lines().any(|l| {
+            let t = l.trim();
+            t == ".sil/"
+                || t == ".sil/**"
+                || t == ".sil/improvement"
+                || t == ".sil/improvement/"
+                || t == ".sil/draft_sections"
+                || t == ".sil/draft_sections/"
+        }));
+        assert!(block.contains("improvement/") || block.contains("draft_sections/"));
     }
 }

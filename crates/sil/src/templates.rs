@@ -26,6 +26,8 @@ pub const FIGURES_IMAGES_README: &str = include_str!("../../../templates/figures
 pub const AGENT_README: &str = include_str!("../../../templates/agent.README.md");
 /// Project README.md
 pub const PROJECT_README: &str = include_str!("../../../templates/README.md");
+/// `.sil/improvement/README.md`
+pub const IMPROVEMENT_README: &str = include_str!("../../../templates/improvement.README.md");
 
 /// Minimal draft manuscript.
 pub const PAPER_DRAFT_TEX: &str = r#"\documentclass{article}
@@ -107,6 +109,8 @@ pub const GITIGNORE: &str = r#"# >>> sil-managed
 .sil/db.sqlite-*
 .sil/*.sqlite
 .sil/*.sqlite-*
+# Tracked under .sil/: skills/, structure*.yaml, config.yaml,
+# improvement/ (suggestion_n proposals), draft_sections/ (agent section cache).
 
 # --- LaTeX build artifacts ---
 *.aux

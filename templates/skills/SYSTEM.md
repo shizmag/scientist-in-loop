@@ -8,9 +8,11 @@ You are working inside a `sil`-managed scientific project.
 - `figures/plots/`    – code-generated plots
 - `figures/images/`   – external images
 - `agent/`            – code that you (the agent) write
-- `paper_draft.tex`   – the working manuscript
+- `paper_draft.tex`   – the working manuscript (source of truth for prose)
 - `paper.tex`         – the cleaned version (created later)
-- `.sil/`             – configuration, database, skills (do not put paper content here)
+- `.sil/`             – configuration, database, skills
+- `.sil/draft_sections/` – deterministic per-section split of `paper_draft.tex` (agent cache; regenerate with `sil split`; do not edit as source of truth)
+- `.sil/improvement/` – improvement proposals as `suggestion_n` (versioned; not gitignored)
 
 ## Mandatory workflow
 1. Always read this SYSTEM.md first.

@@ -17,3 +17,5 @@
 - Prefer small, reviewable edits over large rewrites.
 - Keep section titles in the `.tex` aligned with `.sil/structure.yaml` when practical.
 - Do not invent new top-level project folders for paper content.
+- For focused edits, open a single file under `.sil/draft_sections/` (from `sil split`) instead of scanning all of `paper_draft.tex`; always write final prose back into `paper_draft.tex`.
+- File improvement ideas under `.sil/improvement/suggestion_n` (see that directory’s README).

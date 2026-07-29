@@ -23,6 +23,12 @@ pub mod rel {
     pub const SKILL_PAPER: &str = ".sil/skills/paper.md";
     /// Agent-code skill.
     pub const SKILL_AGENT_CODE: &str = ".sil/skills/agent-code.md";
+    /// Improvement proposals directory (suggestion_1, suggestion_2, …).
+    /// Not gitignored — proposals are versioned with the project.
+    pub const IMPROVEMENT: &str = ".sil/improvement";
+    /// Agent-readable draft section split (regenerated from paper_draft.tex).
+    /// Source of truth remains paper_draft.tex; this tree is a cache for agents.
+    pub const DRAFT_SECTIONS: &str = ".sil/draft_sections";
     /// Draft manuscript.
     pub const PAPER_DRAFT: &str = "paper_draft.tex";
     /// Final manuscript.
@@ -86,6 +92,21 @@ impl ProjectPaths {
     /// Skills directory.
     pub fn skills_dir(&self) -> Utf8PathBuf {
         self.join(rel::SKILLS)
+    }
+
+    /// Improvement proposals directory (`.sil/improvement/`).
+    pub fn improvement_dir(&self) -> Utf8PathBuf {
+        self.join(rel::IMPROVEMENT)
+    }
+
+    /// Path for a numbered improvement suggestion (`suggestion_n`).
+    pub fn improvement_suggestion(&self, n: u32) -> Utf8PathBuf {
+        self.improvement_dir().join(format!("suggestion_{n}"))
+    }
+
+    /// On-disk draft section split directory (`.sil/draft_sections/`).
+    pub fn draft_sections_dir(&self) -> Utf8PathBuf {
+        self.join(rel::DRAFT_SECTIONS)
     }
 
     /// Draft tex path.
@@ -216,5 +237,28 @@ mod tests {
         assert_eq!(rel::DB, ".sil/db.sqlite");
         assert_eq!(rel::SOURCES, "sources");
         assert_eq!(rel::PAPER_DRAFT, "paper_draft.tex");
+        assert_eq!(rel::IMPROVEMENT, ".sil/improvement");
+        assert_eq!(rel::DRAFT_SECTIONS, ".sil/draft_sections");
+    }
+
+    #[test]
+    fn improvement_and_draft_section_paths() {
+        let paths = ProjectPaths::new("/proj");
+        assert_eq!(
+            paths.improvement_dir().as_str(),
+            "/proj/.sil/improvement"
+        );
+        assert_eq!(
+            paths.improvement_suggestion(1).as_str(),
+            "/proj/.sil/improvement/suggestion_1"
+        );
+        assert_eq!(
+            paths.improvement_suggestion(42).as_str(),
+            "/proj/.sil/improvement/suggestion_42"
+        );
+        assert_eq!(
+            paths.draft_sections_dir().as_str(),
+            "/proj/.sil/draft_sections"
+        );
     }
 }

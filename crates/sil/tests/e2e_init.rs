@@ -27,6 +27,9 @@ fn init_creates_exact_layout_and_readmes() {
         ".sil/skills/SYSTEM.md",
         ".sil/skills/paper.md",
         ".sil/skills/agent-code.md",
+        ".sil/improvement",
+        ".sil/improvement/README.md",
+        ".sil/draft_sections",
         "paper_draft.tex",
         "paper.tex",
         "references.bib",
@@ -40,6 +43,11 @@ fn init_creates_exact_layout_and_readmes() {
     ] {
         assert!(project.join(rel).exists(), "missing {rel}");
     }
+
+    assert_file_contains(
+        &project.join(".sil/improvement/README.md"),
+        "suggestion_n",
+    );
 
     assert_file_contains(
         &project.join(".sil/skills/SYSTEM.md"),
@@ -151,6 +159,31 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
     assert!(check("paper_draft.pdf"), "root build PDF ignored");
     assert!(check(".sil/db.sqlite"), "sqlite db ignored");
 
+    // Improvement proposals and draft section cache must stay trackable
+    fs::write(
+        project.join(".sil/improvement/suggestion_1"),
+        "proposal: tighten abstract\n",
+    )
+    .unwrap();
+    fs::create_dir_all(project.join(".sil/draft_sections")).unwrap();
+    fs::write(
+        project.join(".sil/draft_sections/01-introduction.tex"),
+        "% section body\n",
+    )
+    .unwrap();
+    assert!(
+        !check(".sil/improvement/suggestion_1"),
+        "improvement proposals must not be gitignored"
+    );
+    assert!(
+        !check(".sil/improvement/README.md"),
+        "improvement README must not be gitignored"
+    );
+    assert!(
+        !check(".sil/draft_sections/01-introduction.tex"),
+        "draft_sections must not be gitignored"
+    );
+
     Command::new("git")
         .args(["-C", project.to_str().unwrap(), "add", "-A"])
         .status()
@@ -168,6 +201,14 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
     let staged = String::from_utf8_lossy(&staged.stdout);
     assert!(staged.contains("sources/paper.pdf"), "{staged}");
     assert!(staged.contains("figures/plots/README.md"), "{staged}");
+    assert!(
+        staged.contains("suggestion_1") || staged.contains("improvement"),
+        "improvement proposals should be stageable:\n{staged}"
+    );
+    assert!(
+        staged.contains("01-introduction.tex") || staged.contains("draft_sections"),
+        "draft_sections should be stageable:\n{staged}"
+    );
     assert!(!staged.contains("fig1.pdf"), "{staged}");
     assert!(!staged.contains("results.csv"), "{staged}");
     assert!(!staged.contains("paper_draft.pdf"), "{staged}");
