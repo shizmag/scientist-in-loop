@@ -60,5 +60,6 @@ fn run() -> Result<()> {
             task.as_deref(),
             ui.as_ref(),
         ),
+        Commands::Split => commands::split(ui.as_ref()),
     }
 }

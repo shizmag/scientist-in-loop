@@ -91,6 +91,11 @@ pub enum Commands {
         #[arg(long)]
         task: Option<String>,
     },
+    /// Split paper_draft.tex into agent-readable files under .sil/draft_sections/
+    ///
+    /// Does not modify paper_draft.tex. Re-run after editing the draft to refresh
+    /// the section tree (source of truth stays the draft).
+    Split,
 }
 
 /// `sil source` subcommands.

@@ -25,6 +25,15 @@ pub enum LatexError {
     /// Main file missing.
     #[error("main LaTeX file not found: {0}")]
     MainNotFound(String),
+    /// Filesystem I/O error for a path.
+    #[error("I/O error at {path}: {source}")]
+    Io {
+        /// Path involved in the error.
+        path: String,
+        /// Underlying I/O error.
+        #[source]
+        source: std::io::Error,
+    },
     /// Other.
     #[error("{0}")]
     Message(String),

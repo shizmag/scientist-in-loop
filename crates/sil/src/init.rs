@@ -8,6 +8,7 @@ use camino::Utf8Path;
 use sil_core::{ProjectPaths, SciAction, SilUi, paths::rel};
 use sil_db::SilDb;
 use sil_git::{CommitProposal, init_repo};
+use sil_latex::write_draft_sections_from_file;
 
 use crate::templates;
 
@@ -54,6 +55,9 @@ pub fn init_project(target: &Utf8Path, ui: &dyn SilUi) -> Result<()> {
 
     // .gitignore
     write(target, ".gitignore", templates::GITIGNORE)?;
+
+    spinner.set_message("Writing draft section cache…");
+    let _ = write_initial_draft_sections(target);
 
     spinner.set_message("Creating SQLite database…");
     SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("database: {e}"))?;
@@ -139,6 +143,14 @@ pub fn update_project(target: &Utf8Path, ui: &dyn SilUi) -> Result<()> {
         }
     }
 
+    if paths.paper_draft().is_file() {
+        spinner.set_message("Refreshing draft section cache…");
+        match write_initial_draft_sections(target) {
+            Ok(n) => changes.push(format!("refreshed .sil/draft_sections/ ({n} sections)")),
+            Err(e) => ui.warn(&format!("draft section split skipped: {e}")),
+        }
+    }
+
     spinner.set_message("Ensuring SQLite database…");
     SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("database: {e}"))?;
 
@@ -201,6 +213,19 @@ fn write_skills(target: &Utf8Path) -> Result<()> {
     write(target, rel::SKILL_PAPER, templates::SKILL_PAPER)?;
     write(target, rel::SKILL_AGENT_CODE, templates::SKILL_AGENT_CODE)?;
     Ok(())
+}
+
+/// Split paper_draft.tex into `.sil/draft_sections/`. Returns section count.
+fn write_initial_draft_sections(target: &Utf8Path) -> Result<usize> {
+    let paths = ProjectPaths::new(target);
+    let draft = paths.paper_draft();
+    if !draft.is_file() {
+        return Ok(0);
+    }
+    let out = paths.draft_sections_dir();
+    let (_src, written) = write_draft_sections_from_file(&draft, &out)
+        .map_err(|e| anyhow::anyhow!("draft section split: {e}"))?;
+    Ok(written.len())
 }
 
 /// Write folder README templates. When `overwrite` is false, only create missing files.
