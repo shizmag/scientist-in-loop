@@ -717,6 +717,7 @@ name = "sil-parse"
 version = "0.1.0"
 dependencies = [
  "camino",
+ "console",
  "sil-core",
  "sil-db",
  "tempfile",

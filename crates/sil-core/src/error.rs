@@ -127,3 +127,41 @@ pub enum SilError {
     #[error("{0}")]
     Message(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_messages_are_actionable() {
+        let s = ValidationError::InvalidStage("x".into()).to_string();
+        assert!(s.contains("draft"));
+        let e = ValidationError::InvalidLatexEngine("z".into()).to_string();
+        assert!(e.contains("tectonic"));
+        let c = ValidationError::InvalidCompletion("done".into()).to_string();
+        assert!(c.contains("outline") || c.contains("polished"));
+    }
+
+    #[test]
+    fn sil_error_not_a_project_mentions_init() {
+        let msg = SilError::NotAProject.to_string();
+        assert!(msg.contains("sil init") || msg.contains("init"));
+        assert!(msg.contains(".sil") || msg.contains("project"));
+    }
+
+    #[test]
+    fn sil_error_wrappers_display() {
+        assert!(SilError::Database("locked".into()).to_string().contains("database"));
+        assert!(SilError::Git("boom".into()).to_string().contains("git"));
+        assert!(SilError::Parse("x".into()).to_string().contains("parse"));
+        assert!(SilError::Build("y".into()).to_string().contains("build"));
+        assert!(SilError::Fetch("z".into()).to_string().contains("fetch"));
+    }
+
+    #[test]
+    fn config_not_found_display() {
+        let e = ConfigError::NotFound("/tmp/x".into());
+        assert!(e.to_string().contains("not found"));
+    }
+}
+

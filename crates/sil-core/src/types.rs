@@ -143,5 +143,30 @@ mod tests {
     fn paper_kind_filenames() {
         assert_eq!(PaperKind::Draft.default_filename(), "paper_draft.tex");
         assert_eq!(PaperKind::Final.default_filename(), "paper.tex");
+        assert_eq!(PaperKind::Draft.as_str(), "draft");
+        assert_eq!(PaperKind::Final.to_string(), "final");
+    }
+
+    #[test]
+    fn latex_engine_commands() {
+        assert_eq!(LatexEngine::Tectonic.command(), "tectonic");
+        assert_eq!(LatexEngine::Latexmk.command(), "latexmk");
+        assert_eq!(LatexEngine::Pdflatex.command(), "pdflatex");
+        assert_eq!(LatexEngine::Xelatex.command(), "xelatex");
+        assert_eq!(LatexEngine::Lualatex.command(), "lualatex");
+    }
+
+    #[test]
+    fn latex_engine_invalid() {
+        assert!(LatexEngine::from_str("context").is_err());
+    }
+
+    #[test]
+    fn sil_project_mirrors_stage() {
+        let mut cfg = Config::default();
+        cfg.project.stage = Stage::Review;
+        let proj = SilProject::new(Utf8PathBuf::from("/tmp/p"), cfg);
+        assert_eq!(proj.stage, Stage::Review);
+        assert_eq!(proj.root.as_str(), "/tmp/p");
     }
 }

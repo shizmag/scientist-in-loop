@@ -180,4 +180,41 @@ mod tests {
         fs::create_dir_all(&nested).unwrap();
         assert_eq!(find_project_root(&nested).unwrap(), root);
     }
+
+    #[test]
+    fn find_root_none_without_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        assert!(find_project_root(&p).is_none());
+    }
+
+    #[test]
+    fn project_paths_helpers() {
+        let paths = ProjectPaths::new("/tmp/paper");
+        assert_eq!(paths.sil_dir().as_str(), "/tmp/paper/.sil");
+        assert_eq!(paths.structure().as_str(), "/tmp/paper/.sil/structure.yaml");
+        assert_eq!(paths.skills_dir().as_str(), "/tmp/paper/.sil/skills");
+        assert_eq!(paths.paper_draft().as_str(), "/tmp/paper/paper_draft.tex");
+        assert_eq!(paths.paper_final().as_str(), "/tmp/paper/paper.tex");
+        assert!(!paths.is_project());
+    }
+
+    #[test]
+    fn resolve_config_paths() {
+        use crate::Config;
+        let paths = ProjectPaths::new("/proj");
+        let cfg = Config::default();
+        assert_eq!(paths.sources(&cfg).as_str(), "/proj/sources");
+        assert_eq!(paths.data(&cfg).as_str(), "/proj/data");
+        assert_eq!(paths.figures(&cfg).as_str(), "/proj/figures");
+        assert_eq!(paths.agent(&cfg).as_str(), "/proj/agent");
+    }
+
+    #[test]
+    fn rel_constants() {
+        assert_eq!(rel::SIL_DIR, ".sil");
+        assert_eq!(rel::DB, ".sil/db.sqlite");
+        assert_eq!(rel::SOURCES, "sources");
+        assert_eq!(rel::PAPER_DRAFT, "paper_draft.tex");
+    }
 }

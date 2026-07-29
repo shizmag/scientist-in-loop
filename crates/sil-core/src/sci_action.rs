@@ -126,4 +126,44 @@ mod tests {
         assert_eq!(extract_from_message(msg), Some(SciAction::Init));
         assert_eq!(extract_from_message("no trailer"), None);
     }
+
+    #[test]
+    fn all_actions_roundtrip() {
+        let actions = [
+            SciAction::Init,
+            SciAction::ParsePdf,
+            SciAction::UpdateStructure,
+            SciAction::AddFigure,
+            SciAction::AddData,
+            SciAction::EditDraft,
+            SciAction::PromoteToFinal,
+            SciAction::FetchSource,
+        ];
+        for a in actions {
+            assert_eq!(SciAction::from_str(a.as_str()).unwrap(), a);
+            assert_eq!(
+                SciAction::from_str(&a.trailer_line()).unwrap(),
+                a
+            );
+            assert!(a.trailer_line().starts_with("Sci-Action: "));
+            assert_eq!(a.to_string(), a.as_str());
+        }
+    }
+
+    #[test]
+    fn trailer_key_constant() {
+        assert_eq!(SciAction::TRAILER_KEY, "Sci-Action");
+    }
+
+    #[test]
+    fn invalid_action() {
+        assert!(SciAction::from_str("deploy").is_err());
+        assert!(SciAction::from_str("Sci-Action: bogus").is_err());
+    }
+
+    #[test]
+    fn extract_case_insensitive_key() {
+        let msg = "subject\n\nsci-action: parse-pdf\n";
+        assert_eq!(extract_from_message(msg), Some(SciAction::ParsePdf));
+    }
 }

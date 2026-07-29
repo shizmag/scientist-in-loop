@@ -1,0 +1,100 @@
+//! Clap CLI definitions for `sil`.
+
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+
+/// scientist-in-loop — turn a paper folder into an agent-friendly workspace.
+#[derive(Debug, Parser)]
+#[command(name = "sil")]
+#[command(
+    version,
+    about = "scientist-in-loop: agent-friendly scientific paper workspace",
+    long_about = None
+)]
+pub struct Cli {
+    /// Disable colors and progress (also set by NO_COLOR / SIL_NO_COLOR / non-TTY).
+    #[arg(long, global = true)]
+    pub plain: bool,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+/// Top-level subcommands.
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Create a new sil-managed paper project
+    Init {
+        /// Project directory name (default: current directory)
+        name: Option<String>,
+    },
+    /// Show project stage, git status, sources, and structure summary
+    Status,
+    /// Parse PDF source(s) into SQLite + FTS5 via Marker
+    Parse {
+        /// Path to a specific PDF (omit for interactive selection of unparsed sources/)
+        path: Option<PathBuf>,
+    },
+    /// Manage source PDFs
+    Source {
+        #[command(subcommand)]
+        action: SourceCmd,
+    },
+    /// Full-text search over parsed sources
+    Search {
+        /// FTS5 query string
+        query: String,
+        /// Max results
+        #[arg(short, long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Compile the LaTeX main file from config
+    Build,
+    /// Show git log annotated by Sci-Action trailers
+    Log {
+        /// Max commits to show
+        #[arg(short = 'n', long, default_value_t = 30)]
+        limit: usize,
+        /// Only show commits that have a Sci-Action trailer
+        #[arg(long, default_value_t = true)]
+        sci_only: bool,
+        /// Include commits without Sci-Action
+        #[arg(long)]
+        all: bool,
+    },
+    /// Generate structured context for a human or agent
+    Context {
+        /// Include paper_draft.tex split into subsections
+        #[arg(long)]
+        paper: bool,
+        /// Include agent/ listing and README
+        #[arg(long)]
+        agent: bool,
+        /// Include paper.md skill
+        #[arg(long)]
+        skill_paper: bool,
+        /// Include agent-code.md skill
+        #[arg(long)]
+        skill_agent_code: bool,
+        /// Additional skill basenames to load (e.g. paper.md)
+        #[arg(long = "skill")]
+        skills: Vec<String>,
+        /// Free-text task hint for dynamic skill loading
+        #[arg(long)]
+        task: Option<String>,
+    },
+}
+
+/// `sil source` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum SourceCmd {
+    /// Download a PDF by DOI, arXiv id, or URL into sources/
+    Fetch {
+        /// DOI, arXiv identifier, or direct URL
+        target: String,
+        /// Skip interactive parse offer after download
+        #[arg(long)]
+        no_parse: bool,
+    },
+}

@@ -20,5 +20,10 @@ You are working inside a `sil`-managed scientific project.
 5. Never auto-commit. Never create new top-level directories.
 6. When you add data or figures, update the corresponding README.md.
 
+## Skill loading rules
+- **SYSTEM.md** is always loaded when any context is generated or any agent starts working.
+- **paper.md** is loaded when the task touches `structure.yaml`, `paper_draft.tex`, `paper.tex`, or section completion.
+- **agent-code.md** is loaded when the task creates, modifies, or references anything inside `agent/`.
+
 ## Context
 Use `sil context` to obtain a fresh, structured view of the project state.

@@ -216,4 +216,98 @@ parsing:
         let again = Config::from_yaml(&yaml).unwrap();
         assert_eq!(cfg, again);
     }
+
+    #[test]
+    fn all_stages_parse() {
+        for (raw, stage) in [
+            ("draft", Stage::Draft),
+            ("prep", Stage::Prep),
+            ("review", Stage::Review),
+            ("final", Stage::Final),
+        ] {
+            let yaml = SAMPLE.replace("stage: draft", &format!("stage: {raw}"));
+            let cfg = Config::from_yaml(&yaml).unwrap();
+            assert_eq!(cfg.project.stage, stage);
+        }
+    }
+
+    #[test]
+    fn all_latex_engines_parse() {
+        for eng in ["tectonic", "latexmk", "pdflatex", "xelatex", "lualatex"] {
+            let yaml = SAMPLE.replace("engine: tectonic", &format!("engine: {eng}"));
+            let cfg = Config::from_yaml(&yaml).unwrap();
+            assert_eq!(cfg.latex.engine.as_str(), eng);
+        }
+    }
+
+    #[test]
+    fn reject_empty_main() {
+        let yaml = SAMPLE.replace("main: paper_draft.tex", "main: \"\"");
+        assert!(Config::from_yaml(&yaml).is_err());
+    }
+
+    #[test]
+    fn load_from_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = camino::Utf8PathBuf::from_path_buf(dir.path().join("config.yaml")).unwrap();
+        std::fs::write(path.as_str(), SAMPLE).unwrap();
+        let cfg = Config::load(&path).unwrap();
+        assert_eq!(cfg.project.title, "Test Paper");
+    }
+
+    #[test]
+    fn load_missing_file() {
+        let err = Config::load(camino::Utf8Path::new("/no/such/config.yaml")).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn default_paths() {
+        let cfg = Config::default();
+        assert_eq!(cfg.paths.sources.as_str(), "./sources");
+        assert_eq!(cfg.paths.data.as_str(), "./data");
+        assert_eq!(cfg.paths.figures.as_str(), "./figures");
+        assert_eq!(cfg.paths.agent.as_str(), "./agent");
+        assert_eq!(cfg.latex.main.as_str(), "paper_draft.tex");
+    }
+
+    #[test]
+    fn invalid_yaml_syntax() {
+        let err = Config::from_yaml("project: [\n  broken").unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("invalid") || msg.contains("YAML") || msg.contains("yaml"),
+            "{msg}"
+        );
+    }
+
+    #[test]
+    fn invalid_stage_in_yaml() {
+        let yaml = SAMPLE.replace("stage: draft", "stage: shipped");
+        let err = Config::from_yaml(&yaml).unwrap_err();
+        assert!(
+            err.to_string().contains("stage") || err.to_string().contains("invalid"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn invalid_latex_engine_in_yaml() {
+        let yaml = SAMPLE.replace("engine: tectonic", "engine: context");
+        assert!(Config::from_yaml(&yaml).is_err());
+    }
+
+    #[test]
+    fn completely_empty_yaml() {
+        // empty document — serde may produce defaults or error
+        let r = Config::from_yaml("");
+        // either valid defaults or clear error — must not panic
+        let _ = r;
+    }
+
+    #[test]
+    fn whitespace_only_yaml() {
+        let r = Config::from_yaml("   \n\t\n");
+        let _ = r;
+    }
 }

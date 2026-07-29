@@ -190,5 +190,100 @@ mod tests {
     fn document_status_parseable() {
         assert!(DocumentStatus::ValidPdf.is_parseable());
         assert!(!DocumentStatus::AlreadyParsed.is_parseable());
+        assert!(!DocumentStatus::NotFound.is_parseable());
+        assert!(!DocumentStatus::NotPdf.is_parseable());
+        assert!(!DocumentStatus::Corrupted.is_parseable());
+    }
+
+    #[test]
+    fn document_status_messages() {
+        for s in [
+            DocumentStatus::ValidPdf,
+            DocumentStatus::NotFound,
+            DocumentStatus::NotPdf,
+            DocumentStatus::AlreadyParsed,
+            DocumentStatus::Corrupted,
+        ] {
+            assert!(!s.message().is_empty());
+            assert_eq!(s.to_string(), s.message());
+        }
+    }
+
+    #[test]
+    fn source_document_new_sets_filename() {
+        let doc = SourceDocument::new("sources/foo.pdf".into());
+        assert_eq!(doc.filename, "foo.pdf");
+        assert!(!doc.parsed);
+        assert!(doc.status.is_none());
+    }
+
+    #[test]
+    fn source_id_from_str_and_string() {
+        let a: SourceId = "a.pdf".into();
+        let b = SourceId::from("b.pdf".to_string());
+        assert_eq!(a.as_str(), "a.pdf");
+        assert_eq!(b.as_str(), "b.pdf");
+    }
+
+    #[test]
+    fn validate_corrupted_short_file() {
+        let mut f = NamedTempFile::new().unwrap();
+        f.write_all(b"x").unwrap();
+        let path = Utf8PathBuf::from_path_buf(f.path().to_path_buf()).unwrap();
+        // not PDF magic → NotPdf (or Corrupted if .pdf extension)
+        let status = validate_pdf_path(&path).unwrap();
+        assert!(matches!(
+            status,
+            DocumentStatus::NotPdf | DocumentStatus::Corrupted
+        ));
+    }
+
+    #[test]
+    fn validate_corrupted_pdf_extension() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("broken.pdf");
+        std::fs::write(&path, b"%PD").unwrap(); // too short / wrong
+        let path = Utf8PathBuf::from_path_buf(path).unwrap();
+        let status = validate_pdf_path(&path).unwrap();
+        assert!(matches!(
+            status,
+            DocumentStatus::Corrupted | DocumentStatus::NotPdf
+        ));
+    }
+
+    #[test]
+    fn validate_directory_is_not_pdf() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let status = validate_pdf_path(&path).unwrap();
+        assert_eq!(status, DocumentStatus::NotPdf);
+    }
+
+    #[test]
+    fn validate_empty_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("empty.pdf");
+        std::fs::write(&path, b"").unwrap();
+        let path = Utf8PathBuf::from_path_buf(path).unwrap();
+        let status = validate_pdf_path(&path).unwrap();
+        assert!(matches!(
+            status,
+            DocumentStatus::Corrupted | DocumentStatus::NotPdf
+        ));
+    }
+
+    #[test]
+    fn source_id_normalizes_backslashes() {
+        let id = SourceId::from_sources_relative(Utf8Path::new("sub\\file.pdf"));
+        assert!(!id.as_str().contains('\\'));
+        assert!(id.as_str().contains("file.pdf") || id.as_str().contains('/'));
+    }
+
+    #[test]
+    fn source_document_equality_on_id_path() {
+        let a = SourceDocument::new("a.pdf".into());
+        let b = SourceDocument::new("a.pdf".into());
+        assert_eq!(a.id, b.id);
+        assert_eq!(a.filename, b.filename);
     }
 }

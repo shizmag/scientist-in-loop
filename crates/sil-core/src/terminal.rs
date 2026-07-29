@@ -357,6 +357,48 @@ mod tests {
         sp.finish_success("done");
         let mut pb = ui.progress(10, "parse");
         pb.inc(1);
+        pb.set_position(5);
         pb.finish_success("done");
+        let mut sp2 = ui.spinner("x");
+        sp2.finish_error("fail");
+        sp2.abandon();
+        let mut pb2 = ui.progress(2, "y");
+        pb2.finish_error("fail");
+    }
+
+    #[test]
+    fn null_ui_not_interactive_no_colors() {
+        let ui = NullUi::new();
+        assert!(!ui.colors_enabled());
+        assert!(!ui.interactive());
+        ui.warn("w");
+        ui.info("i");
+        ui.muted("m");
+        ui.println("p");
+        ui.print("x");
+        assert!(ui.lines().is_empty()); // not recording
+    }
+
+    #[test]
+    fn recording_captures_all_kinds() {
+        let ui = NullUi::recording();
+        ui.success("s");
+        ui.warn("w");
+        ui.error("e");
+        ui.info("i");
+        ui.muted("m");
+        ui.println("n");
+        let lines = ui.lines();
+        assert_eq!(lines.len(), 6);
+        assert!(lines.iter().any(|l| l.starts_with("success:")));
+        assert!(lines.iter().any(|l| l.starts_with("warn:")));
+        assert!(lines.iter().any(|l| l.starts_with("error:")));
+    }
+
+    #[test]
+    fn plain_std_ui_flags() {
+        let ui = StdUi::plain();
+        assert!(!ui.colors_enabled());
+        assert!(!ui.interactive());
     }
 }

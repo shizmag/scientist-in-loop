@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 camino = { workspace = true }
+console = { workspace = true }
 sil-core = { workspace = true }
 sil-db = { workspace = true }
 thiserror = { workspace = true }

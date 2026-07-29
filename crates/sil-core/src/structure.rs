@@ -254,4 +254,99 @@ sections:
         );
         assert!(SectionCompletion::from_str("done").is_err());
     }
+
+    #[test]
+    fn all_completions_roundtrip() {
+        for c in [
+            SectionCompletion::Empty,
+            SectionCompletion::Outline,
+            SectionCompletion::Draft,
+            SectionCompletion::Polished,
+        ] {
+            assert_eq!(SectionCompletion::from_str(c.as_str()).unwrap(), c);
+            assert_eq!(c.to_string(), c.as_str());
+        }
+    }
+
+    #[test]
+    fn reject_empty_section_id() {
+        let yaml = r#"
+title: T
+status: draft
+sections:
+  - id: ""
+    title: X
+    level: 1
+"#;
+        assert!(Structure::from_yaml(yaml).is_err());
+    }
+
+    #[test]
+    fn reject_zero_level() {
+        let yaml = r#"
+title: T
+status: draft
+sections:
+  - id: intro
+    title: Introduction
+    level: 0
+"#;
+        assert!(Structure::from_yaml(yaml).is_err());
+    }
+
+    #[test]
+    fn completion_summary_display() {
+        let s = Structure::from_yaml(SAMPLE).unwrap();
+        let text = s.completion_summary().to_string();
+        assert!(text.contains("2 sections"));
+        assert!(text.contains("outline=1"));
+        assert!(text.contains("empty=1"));
+    }
+
+    #[test]
+    fn load_structure_from_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = camino::Utf8PathBuf::from_path_buf(dir.path().join("structure.yaml")).unwrap();
+        std::fs::write(path.as_str(), SAMPLE).unwrap();
+        let s = Structure::load(&path).unwrap();
+        assert_eq!(s.sections.len(), 2);
+    }
+
+    #[test]
+    fn default_structure_empty() {
+        let s = Structure::default();
+        assert!(s.sections.is_empty());
+        assert_eq!(s.completion_summary().total, 0);
+    }
+
+    #[test]
+    fn structure_yaml_roundtrip() {
+        let s = Structure::from_yaml(SAMPLE).unwrap();
+        let yaml = s.to_yaml().unwrap();
+        let again = Structure::from_yaml(&yaml).unwrap();
+        assert_eq!(s, again);
+    }
+
+    #[test]
+    fn invalid_completion_value() {
+        let yaml = SAMPLE.replace("completion: outline", "completion: done");
+        let err = Structure::from_yaml(&yaml).unwrap_err();
+        let msg = err.to_string().to_lowercase();
+        assert!(
+            msg.contains("completion") || msg.contains("invalid") || msg.contains("yaml"),
+            "{msg}"
+        );
+    }
+
+    #[test]
+    fn missing_structure_file() {
+        let err = Structure::load(camino::Utf8Path::new("/no/such/structure.yaml")).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn invalid_yaml_syntax_structure() {
+        let err = Structure::from_yaml("sections: [").unwrap_err();
+        assert!(err.to_string().to_lowercase().contains("invalid") || err.to_string().contains("YAML") || err.to_string().contains("yaml"));
+    }
 }
