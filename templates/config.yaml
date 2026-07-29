@@ -1,0 +1,16 @@
+project:
+  title: ""
+  stage: draft                 # draft | prep | review | final
+
+paths:
+  sources: ./sources
+  data: ./data
+  figures: ./figures
+  agent: ./agent
+
+latex:
+  engine: tectonic             # tectonic | latexmk | pdflatex | xelatex | lualatex
+  main: paper_draft.tex
+
+parsing:
+  engine: marker

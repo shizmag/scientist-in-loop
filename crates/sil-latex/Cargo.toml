@@ -1,0 +1,15 @@
+[package]
+name = "sil-latex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LaTeX engine abstraction for scientist-in-loop"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+sil-core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

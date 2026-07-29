@@ -1,0 +1,15 @@
+[package]
+name = "sil-git"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Git status, commit proposals, and Sci-Action trailers"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+sil-core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

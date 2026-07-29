@@ -1,0 +1,19 @@
+[package]
+name = "sil-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Domain types, config, errors, paths, and validation for scientist-in-loop"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+console = { workspace = true }
+indicatif = { workspace = true }
+owo-colors = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

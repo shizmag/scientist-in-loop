@@ -1,1 +1,11 @@
 /target
+**/*.rs.bk
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.venv/
+__pycache__/
+*.pyc
+.ctx-codegraph/
+.ctx_*/

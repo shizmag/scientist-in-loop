@@ -1,0 +1,4 @@
+# Optional runtime deps for sil Python helpers.
+# Marker is preferred for high-quality PDF parsing.
+# marker-pdf>=1.0.0
+pypdf>=4.0.0

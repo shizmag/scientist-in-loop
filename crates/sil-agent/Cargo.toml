@@ -1,0 +1,18 @@
+[package]
+name = "sil-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dynamic skills loading and agent context generation"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+sil-core = { workspace = true }
+sil-db = { workspace = true }
+sil-git = { workspace = true }
+sil-latex = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

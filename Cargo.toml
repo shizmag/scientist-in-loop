@@ -1,6 +1,41 @@
-[package]
-name = "scientist-in-loop"
+[workspace]
+resolver = "2"
+members = [
+    "crates/sil",
+    "crates/sil-core",
+    "crates/sil-db",
+    "crates/sil-git",
+    "crates/sil-parse",
+    "crates/sil-latex",
+    "crates/sil-agent",
+]
+default-members = ["crates/sil"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/scientist-in-loop/scientist-in-loop"
 
-[dependencies]
+[workspace.dependencies]
+sil-core = { path = "crates/sil-core" }
+sil-db = { path = "crates/sil-db" }
+sil-git = { path = "crates/sil-git" }
+sil-parse = { path = "crates/sil-parse" }
+sil-latex = { path = "crates/sil-latex" }
+sil-agent = { path = "crates/sil-agent" }
+
+anyhow = "1"
+camino = { version = "1", features = ["serde1"] }
+clap = { version = "4", features = ["derive"] }
+console = "0.15"
+indicatif = "0.17"
+owo-colors = "4"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+thiserror = "2"
+tempfile = "3"
+which = "7"
+assert_cmd = "2"
+predicates = "3"

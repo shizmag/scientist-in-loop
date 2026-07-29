@@ -1,0 +1,16 @@
+[package]
+name = "sil-db"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SQLite + FTS5 storage for scientist-in-loop"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+rusqlite = { workspace = true }
+sil-core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

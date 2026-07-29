@@ -1,0 +1,46 @@
+title: ""
+status: draft                  # draft | prep | review | final
+
+sections:
+  - id: intro
+    title: Introduction
+    level: 1
+    completion: empty          # empty | outline | draft | polished
+    main_claim: ""
+    secondary_points: []
+    required_content:
+      - "Clear problem statement"
+      - "Contribution list"
+      - "Paper outline"
+
+  - id: related
+    title: Related Work
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content: []
+
+  - id: methods
+    title: Methods
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content: []
+
+  - id: experiments
+    title: Experiments
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content: []
+
+  - id: conclusion
+    title: Conclusion
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content: []

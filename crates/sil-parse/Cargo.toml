@@ -1,0 +1,16 @@
+[package]
+name = "sil-parse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PDF parsing orchestration (Marker via Python)"
+publish = false
+
+[dependencies]
+camino = { workspace = true }
+sil-core = { workspace = true }
+sil-db = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,53 @@
+title: "Attention Is All You Need – Replication Study"
+status: draft                  # draft | prep | review | final
+
+sections:
+  - id: intro
+    title: Introduction
+    level: 1
+    completion: outline        # empty | outline | draft | polished
+    main_claim: "The Transformer architecture outperforms RNN-based models on translation while being more parallelizable."
+    secondary_points:
+      - "Self-attention reduces sequential computation."
+      - "Multi-head attention allows the model to jointly attend to information from different representation subspaces."
+    required_content:
+      - "Clear problem statement"
+      - "Contribution list"
+      - "Paper outline"
+
+  - id: related
+    title: Related Work
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content:
+      - "RNN / LSTM sequence models"
+      - "Previous attention mechanisms"
+      - "Parallelizable architectures"
+
+  - id: model
+    title: Model Architecture
+    level: 1
+    completion: draft
+    main_claim: "The Transformer is based solely on attention mechanisms."
+    secondary_points:
+      - "Encoder and decoder stacks"
+      - "Scaled dot-product attention"
+      - "Positional encodings"
+    required_content:
+      - "Formal definition of attention"
+      - "Multi-head attention equations"
+      - "Diagram of the architecture"
+
+  - id: experiments
+    title: Experiments
+    level: 1
+    completion: outline
+    main_claim: ""
+    secondary_points: []
+    required_content:
+      - "Datasets"
+      - "Training details"
+      - "Main results table"
+      - "Ablation studies"

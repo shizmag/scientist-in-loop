@@ -1,0 +1,26 @@
+//! Core domain types, configuration, errors, paths, and validation for `sil`.
+//!
+//! Stage 0: domain types and path helpers. Later stages add config/structure loaders.
+
+#![deny(missing_docs)]
+
+mod config;
+mod error;
+/// Project path constants and helpers.
+pub mod paths;
+mod sci_action;
+mod source;
+mod stage;
+mod structure;
+mod terminal;
+mod types;
+
+pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
+pub use error::{ConfigError, SilError, StructureError, ValidationError};
+pub use paths::{ProjectPaths, project_root_from_cwd};
+pub use sci_action::{SciAction, extract_from_message};
+pub use source::{DocumentStatus, SourceDocument, SourceId, validate_pdf_path};
+pub use stage::Stage;
+pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};
+pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
+pub use types::{LatexEngine, PaperKind, SilProject};
