@@ -84,8 +84,31 @@ pub const REFERENCES_BIB: &str = r#"% Bibliography for the paper.
 % }
 "#;
 
-/// Project .gitignore
-pub const GITIGNORE: &str = r#"# LaTeX build artifacts
+/// Markers for the sil-managed block inside `.gitignore`.
+/// `sil init --update` refreshes only this block so local rules survive.
+pub const GITIGNORE_MANAGED_START: &str = "# >>> sil-managed";
+/// End marker for the sil-managed `.gitignore` block.
+pub const GITIGNORE_MANAGED_END: &str = "# <<< sil-managed";
+
+/// Default project `.gitignore` (sil-managed block + room for local rules).
+///
+/// Large / rebuildable artifacts are ignored by default:
+/// - SQLite FTS database (rebuild with `sil parse`)
+/// - figure binaries under `figures/plots/` and `figures/images/`
+/// - experiment data under `data/` (except README)
+/// - common result / cache / checkpoint trees
+///
+/// Literature PDFs in `sources/` stay trackable. Folder README.md files stay tracked.
+pub const GITIGNORE: &str = r#"# >>> sil-managed
+# Refreshed by `sil init --update`. Put custom rules below the end marker.
+
+# --- sil local state (rebuildable) ---
+.sil/db.sqlite
+.sil/db.sqlite-*
+.sil/*.sqlite
+.sil/*.sqlite-*
+
+# --- LaTeX build artifacts ---
 *.aux
 *.bbl
 *.blg
@@ -94,29 +117,79 @@ pub const GITIGNORE: &str = r#"# LaTeX build artifacts
 *.log
 *.out
 *.synctex.gz
+*.synctex(busy)
 *.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+*-blx.bib
+_minted*/
 
-# Ignore LaTeX/build PDFs at the project root only (e.g. paper_draft.pdf).
-# Source literature and figure PDFs must remain trackable in git.
+# Root-only build PDFs (paper_draft.pdf, paper.pdf, …).
+# Literature under sources/ remains trackable.
 /*.pdf
 
-# Track PDFs under sources/ and figures/ (literature + plots/images).
-!sources/
-!sources/**
-!figures/
-!figures/**
+# --- large binaries: figures (keep README.md tracked) ---
+figures/plots/**
+!figures/plots/
+!figures/plots/README.md
+figures/images/**
+!figures/images/
+!figures/images/README.md
 
-# OS / editor
+# --- experiment data (keep README.md tracked) ---
+data/**
+!data/
+!data/README.md
+
+# --- common experiment / ML outputs ---
+results/
+outputs/
+output/
+runs/
+checkpoints/
+wandb/
+mlruns/
+lightning_logs/
+.cache/
+tmp/
+temp/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.h5
+*.hdf5
+*.parquet
+*.feather
+*.npz
+*.pkl
+*.pickle
+*.npy
+
+# --- OS / editor ---
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.swp
+*~
 
-# Python
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
+venv/
+.env
+.ipynb_checkpoints/
 
-# sil local overrides (keep db tracked optionally — default ignore large db)
-# .sil/db.sqlite
+# --- Rust (if agent builds crates under agent/) ---
+**/target/
+# <<< sil-managed
+
+# Custom rules below this line are preserved by `sil init --update`.
 "#;

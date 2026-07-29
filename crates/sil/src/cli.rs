@@ -26,8 +26,15 @@ pub struct Cli {
 pub enum Commands {
     /// Create a new sil-managed paper project
     Init {
-        /// Project directory name (default: current directory)
+        /// Project directory name (default: current directory; with --update: project root)
         name: Option<String>,
+        /// Upgrade an existing project to the current sil template version
+        ///
+        /// Refreshes skills, structure.example.yaml, and the sil-managed `.gitignore`
+        /// block. Creates any missing scaffold files. Never overwrites config.yaml,
+        /// structure.yaml, manuscripts, or custom gitignore rules outside the managed block.
+        #[arg(long)]
+        update: bool,
     },
     /// Show project stage, git status, sources, and structure summary
     Status,

@@ -12,6 +12,8 @@ use crate::error::ValidationError;
 pub enum SciAction {
     /// Project initialization.
     Init,
+    /// Project templates / managed files upgraded (`sil init --update`).
+    Update,
     /// PDF parsed into SQLite/FTS5.
     ParsePdf,
     /// structure.yaml updated.
@@ -33,6 +35,7 @@ impl SciAction {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Init => "init",
+            Self::Update => "update",
             Self::ParsePdf => "parse-pdf",
             Self::UpdateStructure => "update-structure",
             Self::AddFigure => "add-figure",
@@ -71,6 +74,7 @@ impl FromStr for SciAction {
             .unwrap_or(s);
         match value.to_ascii_lowercase().as_str() {
             "init" => Ok(Self::Init),
+            "update" | "init-update" => Ok(Self::Update),
             "parse-pdf" => Ok(Self::ParsePdf),
             "update-structure" => Ok(Self::UpdateStructure),
             "add-figure" => Ok(Self::AddFigure),
@@ -131,6 +135,7 @@ mod tests {
     fn all_actions_roundtrip() {
         let actions = [
             SciAction::Init,
+            SciAction::Update,
             SciAction::ParsePdf,
             SciAction::UpdateStructure,
             SciAction::AddFigure,

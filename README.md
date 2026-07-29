@@ -32,15 +32,88 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 
 ---
 
+## External dependencies
+
+`sil` is a Rust binary, but several features shell out to system tools. Install these before (or with) the project.
+
+| Dependency | Required for | Notes |
+|------------|--------------|--------|
+| **Rust** (stable `cargo` / `rustc`) | Compile / install `sil` | Edition **2024** — use a recent stable toolchain via [rustup](https://rustup.rs) |
+| **Git** | `init`, `status`, `log`, commit proposals | Must be on `PATH` as `git` |
+| **Python 3** | `sil parse`, `sil source fetch` | Helpers under `python/`; override with `SIL_PYTHON` |
+| **pip packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `pypdf` is the light fallback; **Marker** is preferred quality. See `python/requirements.txt` |
+| **C toolchain** | Building `sil` (bundled SQLite) | Xcode CLT (macOS), `build-essential` (Debian/Ubuntu), MinGW or MSVC (Windows) |
+| **LaTeX engine** | `sil build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
+
+| Feature | Works without extra install? |
+|---------|------------------------------|
+| `sil init` / structure / SQLite | Needs **git** + built `sil` |
+| `sil parse` | Needs **Python 3**; quality improves with **marker-pdf** |
+| `sil source fetch` | Needs **Python 3** (stdlib networking) |
+| `sil build` | Needs a **LaTeX engine** on `PATH` |
+
+### Install script (macOS / Linux / Windows)
+
+A single shell installer lives in `install/`. It detects the OS, installs missing tools via the local package manager when possible, then compiles and installs `sil`.
+
+```bash
+# From the repository root
+chmod +x install/install.sh
+
+# Core: git, Rust, Python, pypdf, C tools → cargo install sil
+./install/install.sh
+
+# Also install Marker (large) and a LaTeX engine for sil build
+./install/install.sh --with-marker --with-latex
+
+# Report what is present / missing (no changes)
+./install/install.sh --check-only
+
+# Dependencies only (skip cargo install)
+./install/install.sh --skip-build
+```
+
+| Platform | How the script runs | Package managers used |
+|----------|---------------------|------------------------|
+| **macOS** | Terminal / zsh / bash | Homebrew; Xcode CLT; rustup |
+| **Linux** | bash | apt, dnf/yum, pacman, zypper, or apk; rustup |
+| **Windows** | **Git Bash**, **MSYS2**, or **Cygwin**; **WSL** follows the Linux path | choco / scoop / winget / MSYS2 pacman when available; rustup |
+
+On Windows without a Unix shell, install [Git for Windows](https://git-scm.com/download/win) (includes Git Bash), then run `./install/install.sh` from the repo root inside Git Bash. WSL is recommended for the closest experience to Linux.
+
+After install, ensure Cargo’s bin directory is on your `PATH`:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"   # macOS / Linux / Git Bash
+```
+
+Manual alternative (if you already have the toolchain):
+
+```bash
+# System packages (examples)
+# macOS:  brew install git python tectonic
+# Debian: sudo apt install git python3 python3-pip build-essential
+# Then:
+pip install -r python/requirements.txt   # pypdf
+# pip install marker-pdf                 # optional, heavy
+cargo install --path crates/sil
+```
+
+---
+
 ## Quick start
 
 ```bash
-# From this repository
-cargo install --path crates/sil
+# Install deps + sil (or: cargo install --path crates/sil)
+./install/install.sh
 
 # Create a project
 sil init my-paper
 cd my-paper
+
+# After upgrading the sil binary, refresh templates / .gitignore
+# (preserves config, structure, manuscripts, and custom gitignore rules)
+sil init --update
 
 # Drop PDFs into sources/, then parse
 cp ~/Downloads/attention.pdf sources/
@@ -73,7 +146,7 @@ Optional environment:
 | `SIL_DOWNLOAD_SCRIPT` | Path to `download_pdf.py` |
 | `SIL_MARKER_STUB` | Test-only: skip Marker, use this text |
 
-Python helpers (`python/`) need a working `python3`. Marker is preferred for parse quality; a fallback exists when Marker is not installed. See `python/requirements.txt`.
+Python helpers (`python/`) need a working `python3`. Marker is preferred for parse quality; a fallback exists when Marker is not installed. See `python/requirements.txt` and [External dependencies](#external-dependencies).
 
 ---
 
@@ -81,7 +154,8 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 
 | Command | Description |
 |---------|-------------|
-| `sil init [name]` | Create full project tree, templates, git repo, SQLite DB; **propose** first commit |
+| `sil init [name]` | Create full project tree, templates, auto `.gitignore`, git repo, SQLite DB; **propose** first commit |
+| `sil init --update` | Upgrade an existing project to the current sil templates (skills, managed `.gitignore`, missing scaffold) |
 | `sil status` | Stage, git status, source counts, structure completion, draft dirty flag |
 | `sil parse [pdf]` | Parse one PDF, or interactively multi-select unparsed files in `sources/` |
 | `sil source fetch <doi\|arxiv\|url>` | Download PDF into `sources/`, offer parse |
@@ -138,6 +212,38 @@ my-paper/
 - **`figures/plots/`** — plots from code; list script + figure ref in the README.  
 - **`figures/images/`** — external images; document origin and license.  
 - **`agent/`** — helper scripts the agent writes; document purpose and how to run.  
+
+### Default `.gitignore`
+
+`sil init` writes a **sil-managed** `.gitignore` (block between `# >>> sil-managed` and `# <<< sil-managed`) that ignores large or rebuildable artifacts by default:
+
+| Ignored | Still tracked |
+|---------|----------------|
+| `.sil/db.sqlite` (and other SQLite files under `.sil/`) | `.sil/config.yaml`, `structure.yaml`, skills |
+| Binaries under `figures/plots/**` and `figures/images/**` | `figures/**/README.md` |
+| Contents of `data/**` (experiment outputs) | `data/README.md` |
+| Root build PDFs (`/*.pdf`), LaTeX aux files | Literature PDFs in `sources/` |
+| Common result/cache trees (`results/`, `wandb/`, checkpoints, …) | Manuscripts, `references.bib`, project README |
+
+Put local rules **below** the managed end marker. `sil init --update` refreshes only the managed block.
+
+### Upgrading a project (`sil init --update`)
+
+When you install a newer `sil`, run this inside an existing project:
+
+```bash
+sil init --update
+# or: sil init --update path/to/project
+```
+
+| Always refreshed | Created only if missing | Never overwritten if present |
+|------------------|-------------------------|------------------------------|
+| `.sil/skills/*` | Folder READMEs, layout dirs | `.sil/config.yaml` |
+| `.sil/structure.example.yaml` | Paper stubs, `references.bib` | `.sil/structure.yaml` |
+| sil-managed `.gitignore` block | Project `README.md` | `paper_draft.tex`, `paper.tex` |
+| | SQLite DB / git repo (ensured) | Custom gitignore rules outside the managed block |
+
+Proposes a commit with `Sci-Action: update` (never auto-committed).
 
 ---
 
@@ -198,7 +304,8 @@ cargo run -p sil -- --help
 | Area | Status |
 |------|--------|
 | Multi-crate workspace + domain types | Done |
-| `sil init` exact layout + templates + git + SQLite | Done |
+| `sil init` exact layout + templates + managed `.gitignore` + git + SQLite | Done |
+| `sil init --update` template upgrade for existing projects | Done |
 | Typed `config.yaml` / `structure.yaml` + `sil status` | Done |
 | `sil parse` (path + noninteractive multi-select) + FTS5 `sil search` | Done |
 | Marker via Python helper (stubbable for tests) | Done |

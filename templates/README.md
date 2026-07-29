@@ -25,7 +25,12 @@ sil search "query"      # full-text search over parsed sources
 sil context             # agent/human context dump
 sil build               # compile LaTeX
 sil log                 # Sci-Action annotated git history
+sil init --update       # refresh skills / managed .gitignore after upgrading sil
 ```
+
+Large artifacts (SQLite DB, figure binaries, experiment data under `data/`) are
+gitignored by default. Document them in the folder READMEs. Literature PDFs in
+`sources/` stay trackable.
 
 ## For agents
 

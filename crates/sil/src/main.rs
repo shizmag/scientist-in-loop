@@ -29,7 +29,7 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
     let ui = make_ui(cli.plain);
     match cli.command {
-        Commands::Init { name } => commands::init(name, ui.as_ref()),
+        Commands::Init { name, update } => commands::init(name, update, ui.as_ref()),
         Commands::Status => commands::status(ui.as_ref()),
         Commands::Parse { path } => commands::parse(path, ui.as_ref()),
         Commands::Source {
