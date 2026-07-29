@@ -4,6 +4,7 @@
 
 #![deny(missing_docs)]
 
+mod bib;
 mod config;
 mod error;
 /// Project path constants and helpers.
@@ -15,6 +16,10 @@ mod structure;
 mod terminal;
 mod types;
 
+pub use bib::{
+    BibSuggestion, format_bibtex_article, format_cite_command, slug_cite_key, suggest_from_query,
+    suggest_from_source,
+};
 pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
 pub use error::{ConfigError, SilError, StructureError, ValidationError};
 pub use paths::{ProjectPaths, project_root_from_cwd};

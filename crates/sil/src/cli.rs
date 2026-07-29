@@ -123,6 +123,17 @@ pub enum Commands {
         #[command(subcommand)]
         action: StructureCmd,
     },
+    /// Suggest BibTeX and `\cite{...}` from a source filename or query
+    Cite {
+        /// Source filename/id or free-text query
+        target: String,
+        /// Append the stub entry to references.bib
+        #[arg(long)]
+        append: bool,
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 /// `sil source` subcommands.

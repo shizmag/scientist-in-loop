@@ -1,6 +1,7 @@
 //! Command handlers — one module per `sil` subcommand.
 
 mod build;
+mod cite;
 mod context;
 mod init;
 mod log;
@@ -14,6 +15,7 @@ mod status;
 mod structure_cmd;
 
 pub use build::run as build;
+pub use cite::run as cite;
 pub use context::run as context;
 pub use init::run as init;
 pub use log::run as log;

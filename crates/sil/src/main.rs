@@ -80,5 +80,10 @@ fn run() -> Result<()> {
                 completion,
             } => commands::structure_set(&section_id, &completion, ui.as_ref()),
         },
+        Commands::Cite {
+            target,
+            append,
+            json,
+        } => commands::cite(&target, append, json, ui.as_ref()),
     }
 }
