@@ -2,13 +2,20 @@
 
 #![deny(missing_docs)]
 
-mod error;
-mod schema;
-mod search;
-mod sources;
+pub mod chunks;
+pub mod error;
+pub mod onnx;
+pub mod schema;
+pub mod search;
+pub mod sources;
 
+pub use chunks::{
+    ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,
+    embedding_to_blob,
+};
 pub use error::DbError;
-pub use search::SearchHit;
+pub use onnx::{DEFAULT_EMBEDDING_DIM, OnnxEmbedder, OnnxReranker};
+pub use search::{SearchHit, search_hyde};
 
 use camino::Utf8Path;
 use rusqlite::Connection;
@@ -79,6 +86,77 @@ impl SilDb {
     /// Full-text search over parsed sources.
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchHit>, DbError> {
         search::search(&self.conn, query, limit)
+    }
+
+    /// Insert source chunks into the database.
+    pub fn insert_source_chunks(&self, chunks: &[SourceChunk]) -> Result<(), DbError> {
+        chunks::insert_chunks(&self.conn, chunks)
+    }
+
+    /// Get all chunks for a source ID.
+    pub fn get_chunks_for_source(&self, source_id: &SourceId) -> Result<Vec<SourceChunk>, DbError> {
+        chunks::get_chunks_for_source(&self.conn, source_id)
+    }
+
+    /// Get a specific chunk by ID.
+    pub fn get_chunk_by_id(&self, chunk_id: &str) -> Result<Option<SourceChunk>, DbError> {
+        chunks::get_chunk_by_id(&self.conn, chunk_id)
+    }
+
+    /// Delete all chunks for a source ID.
+    pub fn delete_chunks_for_source(&self, source_id: &SourceId) -> Result<(), DbError> {
+        chunks::delete_chunks_for_source(&self.conn, source_id)
+    }
+
+    /// Perform hybrid BM25 + Dense ONNX Reciprocal Rank Fusion (RRF) search over source chunks.
+    pub fn search_hybrid(
+        &self,
+        embedder: &OnnxEmbedder,
+        query: &str,
+        limit: usize,
+        expand_to_parent: bool,
+    ) -> Result<Vec<ChunkSearchHit>, DbError> {
+        chunks::search_hybrid(&self.conn, embedder, query, limit, expand_to_parent)
+    }
+
+    /// Perform HyDE (Hypothetical Document Expansion) search over source chunks.
+    pub fn search_hyde(
+        &self,
+        embedder: &OnnxEmbedder,
+        hypothetical_passage: &str,
+        keyword_query: &str,
+        limit: usize,
+        expand_to_parent: bool,
+    ) -> Result<Vec<ChunkSearchHit>, DbError> {
+        search::search_hyde(
+            &self.conn,
+            embedder,
+            hypothetical_passage,
+            keyword_query,
+            limit,
+            expand_to_parent,
+        )
+    }
+
+    /// Parse markdown into chunks, compute embeddings with optional embedder, and insert into DB.
+    pub fn parse_and_index_chunks(
+        &self,
+        doc: &SourceDocument,
+        markdown: &str,
+        embedder: Option<&OnnxEmbedder>,
+    ) -> Result<Vec<SourceChunk>, DbError> {
+        let mut chunks = chunks::chunk_markdown(&doc.id, markdown);
+
+        if let Some(emb) = embedder {
+            for chunk in &mut chunks {
+                if let Ok(vec) = emb.embed(&chunk.content) {
+                    chunk.embedding_blob = Some(chunks::embedding_to_blob(&vec));
+                }
+            }
+        }
+
+        self.insert_source_chunks(&chunks)?;
+        Ok(chunks)
     }
 
     /// Replace all idea/TODO blocks in database with fresh set from parser.
@@ -289,8 +367,6 @@ mod tests {
 
     #[test]
     fn search_unicode_content_stored_and_ascii_queryable() {
-        // Store mixed unicode; query with an ASCII token the default FTS5
-        // tokenizer reliably indexes (CJK segmentation is not guaranteed).
         let db = SilDb::open_in_memory().unwrap();
         let mut doc = SourceDocument::new("zh.pdf".into());
         doc.status = Some(DocumentStatus::ValidPdf);
@@ -302,7 +378,6 @@ mod tests {
         let hits = db.search("uniquetokenxyz", 5).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].filename, "zh.pdf");
-        // Must not panic on unicode query even if zero hits
         let _ = db.search("注意力", 5);
     }
 
@@ -312,7 +387,6 @@ mod tests {
         let mut doc = SourceDocument::new("s.pdf".into());
         doc.status = Some(DocumentStatus::ValidPdf);
         db.upsert_parsed(&doc, "a short token xy").unwrap();
-        // single-character may or may not match depending on tokenizer; must not panic
         let _ = db.search("a", 5);
         let hits = db.search("xy", 5).unwrap();
         assert_eq!(hits.len(), 1);
@@ -325,7 +399,6 @@ mod tests {
         doc.status = Some(DocumentStatus::ValidPdf);
         db.upsert_parsed(&doc, "needle in haystack").unwrap();
         let long = "needle ".repeat(2000);
-        // FTS may error on some pathological queries; never panic
         let _ = db.search(&long, 5);
         let hits = db.search("needle", 5).unwrap();
         assert_eq!(hits.len(), 1);
@@ -337,7 +410,6 @@ mod tests {
         let mut doc = SourceDocument::new("sp.pdf".into());
         doc.status = Some(DocumentStatus::ValidPdf);
         db.upsert_parsed(&doc, "foo bar baz").unwrap();
-        // FTS5 special chars: must not panic (may return error or empty)
         for q in ["foo*", "\"bar\"", "foo AND bar", "!!!", "@@@"] {
             let _ = db.search(q, 5);
         }
@@ -447,5 +519,181 @@ mod tests {
         assert_eq!(list[0].title, "Quantum Advantage in Scientific Discovery");
         assert_eq!(list[0].journal, "Nature");
     }
-}
 
+    #[test]
+    fn schema_migration_new_tables_and_columns() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut stmt = db.conn.prepare("PRAGMA table_info(todo_ideas)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |row| row.get(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(cols.contains(&"status".to_string()));
+        assert!(cols.contains(&"priority".to_string()));
+        assert!(cols.contains(&"author_type".to_string()));
+        assert!(cols.contains(&"tags".to_string()));
+
+        let mut stmt_chunks = db.conn.prepare("PRAGMA table_info(source_chunks)").unwrap();
+        let chunk_cols: Vec<String> = stmt_chunks
+            .query_map([], |row| row.get(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(chunk_cols.contains(&"parent_chunk_id".to_string()));
+        assert!(chunk_cols.contains(&"chunk_type".to_string()));
+        assert!(chunk_cols.contains(&"embedding_blob".to_string()));
+    }
+
+    #[test]
+    fn schema_migration_pre_existing_db() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE todo_ideas (
+                id TEXT PRIMARY KEY NOT NULL,
+                content TEXT NOT NULL,
+                section_id TEXT,
+                line_start INTEGER NOT NULL,
+                line_end INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );",
+        )
+        .unwrap();
+
+        schema::migrate(&conn).unwrap();
+
+        let mut stmt = conn.prepare("PRAGMA table_info(todo_ideas)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |row| row.get(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(cols.contains(&"status".to_string()));
+        assert!(cols.contains(&"priority".to_string()));
+        assert!(cols.contains(&"author_type".to_string()));
+        assert!(cols.contains(&"tags".to_string()));
+    }
+
+    #[test]
+    fn parent_child_chunk_splitting_and_insertion() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut doc = SourceDocument::new("paper.md".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "Full text").unwrap();
+
+        let md = r#"
+# Introduction
+Deep learning models have transformed NLP.
+
+Transformers use self-attention.
+
+## Methodology
+We propose a new architecture with cross-encoder reranking.
+
+The cross-encoder scores candidate pairs.
+"#;
+        let chunks = db.parse_and_index_chunks(&doc, md, None).unwrap();
+        assert!(chunks.len() >= 4);
+
+        let parent_chunks: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Parent)
+            .collect();
+        let child_chunks: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Child)
+            .collect();
+
+        assert_eq!(parent_chunks.len(), 2);
+        assert_eq!(
+            parent_chunks[0].heading_title.as_deref(),
+            Some("Introduction")
+        );
+        assert_eq!(
+            parent_chunks[1].heading_title.as_deref(),
+            Some("Methodology")
+        );
+
+        for child in &child_chunks {
+            assert!(child.parent_chunk_id.is_some());
+        }
+
+        let retrieved = db.get_chunks_for_source(&doc.id).unwrap();
+        assert_eq!(retrieved.len(), chunks.len());
+    }
+
+    #[test]
+    fn bm25_dense_rrf_hybrid_search_and_parent_expansion() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut doc = SourceDocument::new("transformer.md".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "Full text").unwrap();
+
+        let embedder = OnnxEmbedder::new(None::<&std::path::Path>);
+
+        let md = r#"
+# Transformer Architecture
+The Transformer model relies entirely on self-attention mechanisms without recurrent layers.
+
+Self-attention allows parallel sequence computation across GPU clusters.
+
+# Cross-Encoder Reranker
+Cross-encoder models process query and document pairs simultaneously to calculate fine-grained relevance scores.
+"#;
+        db.parse_and_index_chunks(&doc, md, Some(&embedder))
+            .unwrap();
+
+        let hits = db
+            .search_hybrid(
+                &embedder,
+                "self-attention sequence computation",
+                5,
+                false,
+            )
+            .unwrap();
+        assert!(!hits.is_empty());
+        assert!(
+            hits.iter().any(|h| h
+                .chunk
+                .content
+                .contains("parallel sequence computation")
+                || h.chunk.content.contains("self-attention"))
+        );
+
+        let expanded_hits = db
+            .search_hybrid(&embedder, "parallel sequence computation", 5, true)
+            .unwrap();
+        assert!(!expanded_hits.is_empty());
+        assert_eq!(expanded_hits[0].chunk.chunk_type, ChunkType::Parent);
+        assert_eq!(
+            expanded_hits[0].chunk.heading_title.as_deref(),
+            Some("Transformer Architecture")
+        );
+    }
+
+    #[test]
+    fn hyde_search_execution() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut doc = SourceDocument::new("rag_paper.md".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "Full text").unwrap();
+
+        let embedder = OnnxEmbedder::new(None::<&std::path::Path>);
+
+        let md = r#"
+# Dense Retrieval Methods
+Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddings to achieve state of the art search accuracy.
+"#;
+        db.parse_and_index_chunks(&doc, md, Some(&embedder))
+            .unwrap();
+
+        let hypothetical = "Dense retrieval uses vector representations and rank fusion algorithms like RRF to improve search accuracy.";
+        let keyword_q = "Reciprocal Rank Fusion BM25";
+
+        let hyde_hits = db
+            .search_hyde(&embedder, hypothetical, keyword_q, 5, false)
+            .unwrap();
+        assert!(!hyde_hits.is_empty());
+        assert!(hyde_hits[0].score > 0.0);
+    }
+}

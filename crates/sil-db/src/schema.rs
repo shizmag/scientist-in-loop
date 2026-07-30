@@ -4,7 +4,7 @@ use rusqlite::Connection;
 
 use crate::error::DbError;
 
-/// Apply schema migrations (sources table + FTS5 + triggers).
+/// Apply schema migrations (sources, source_chunks, todo_ideas, journal_digest, FTS5 + triggers).
 pub fn migrate(conn: &Connection) -> Result<(), DbError> {
     conn.execute_batch(
         r#"
@@ -48,12 +48,54 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             VALUES (new.rowid, new.id, new.filename, new.title, new.content);
         END;
 
+        CREATE TABLE IF NOT EXISTS source_chunks (
+            id              TEXT PRIMARY KEY NOT NULL,
+            source_id       TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+            parent_chunk_id TEXT REFERENCES source_chunks(id) ON DELETE CASCADE,
+            chunk_type      TEXT NOT NULL,
+            heading_title   TEXT,
+            content         TEXT NOT NULL,
+            start_offset    INTEGER NOT NULL DEFAULT 0,
+            end_offset      INTEGER NOT NULL DEFAULT 0,
+            embedding_blob  BLOB,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+            id UNINDEXED,
+            source_id UNINDEXED,
+            content,
+            content='source_chunks',
+            content_rowid='rowid'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS source_chunks_ai AFTER INSERT ON source_chunks BEGIN
+            INSERT INTO chunks_fts(rowid, id, source_id, content)
+            VALUES (new.rowid, new.id, new.source_id, new.content);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS source_chunks_ad AFTER DELETE ON source_chunks BEGIN
+            INSERT INTO chunks_fts(chunks_fts, rowid, id, source_id, content)
+            VALUES ('delete', old.rowid, old.id, old.source_id, old.content);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS source_chunks_au AFTER UPDATE ON source_chunks BEGIN
+            INSERT INTO chunks_fts(chunks_fts, rowid, id, source_id, content)
+            VALUES ('delete', old.rowid, old.id, old.source_id, old.content);
+            INSERT INTO chunks_fts(rowid, id, source_id, content)
+            VALUES (new.rowid, new.id, new.source_id, new.content);
+        END;
+
         CREATE TABLE IF NOT EXISTS todo_ideas (
             id          TEXT PRIMARY KEY NOT NULL,
             content     TEXT NOT NULL,
             section_id  TEXT,
             line_start  INTEGER NOT NULL,
             line_end    INTEGER NOT NULL,
+            status      TEXT DEFAULT 'open',
+            priority    TEXT DEFAULT 'medium',
+            author_type TEXT DEFAULT 'human',
+            tags        TEXT DEFAULT '',
             created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
@@ -70,6 +112,44 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
         );
         "#,
     )?;
+
+    migrate_todo_ideas_columns(conn)?;
+
     Ok(())
 }
+
+fn migrate_todo_ideas_columns(conn: &Connection) -> Result<(), DbError> {
+    let mut stmt = conn.prepare("PRAGMA table_info(todo_ideas)")?;
+    let columns: Vec<String> = stmt
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<_, _>>()?;
+
+    if !columns.iter().any(|c| c == "status") {
+        conn.execute(
+            "ALTER TABLE todo_ideas ADD COLUMN status TEXT DEFAULT 'open'",
+            [],
+        )?;
+    }
+    if !columns.iter().any(|c| c == "priority") {
+        conn.execute(
+            "ALTER TABLE todo_ideas ADD COLUMN priority TEXT DEFAULT 'medium'",
+            [],
+        )?;
+    }
+    if !columns.iter().any(|c| c == "author_type") {
+        conn.execute(
+            "ALTER TABLE todo_ideas ADD COLUMN author_type TEXT DEFAULT 'human'",
+            [],
+        )?;
+    }
+    if !columns.iter().any(|c| c == "tags") {
+        conn.execute(
+            "ALTER TABLE todo_ideas ADD COLUMN tags TEXT DEFAULT ''",
+            [],
+        )?;
+    }
+
+    Ok(())
+}
+
 

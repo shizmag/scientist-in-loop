@@ -1,9 +1,11 @@
-//! FTS5 full-text search.
+//! FTS5 full-text search and HyDE search helper.
 
 use rusqlite::{Connection, params};
 use sil_core::SourceId;
 
+use crate::chunks::{ChunkSearchHit, search_hybrid_dual};
 use crate::error::DbError;
+use crate::onnx::OnnxEmbedder;
 
 /// One full-text search result.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,4 +46,26 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<Search
         out.push(r?);
     }
     Ok(out)
+}
+
+/// Hypothetical Document Expansion (HyDE) search helper.
+///
+/// Accepts a hypothetical document/passage (embedded via `OnnxEmbedder` for dense search)
+/// and a keyword query (used for BM25 FTS5 search), fusing results using Reciprocal Rank Fusion (RRF).
+pub fn search_hyde(
+    conn: &Connection,
+    embedder: &OnnxEmbedder,
+    hypothetical_passage: &str,
+    keyword_query: &str,
+    limit: usize,
+    expand_to_parent: bool,
+) -> Result<Vec<ChunkSearchHit>, DbError> {
+    search_hybrid_dual(
+        conn,
+        embedder,
+        keyword_query,
+        hypothetical_passage,
+        limit,
+        expand_to_parent,
+    )
 }
