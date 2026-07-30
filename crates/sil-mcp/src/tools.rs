@@ -195,7 +195,14 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
         Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
     };
 
-    let embedder = Some(sil_db::OnnxEmbedder::new(None::<&std::path::Path>));
+    let global_settings = sil_core::GlobalSettings::load_or_default(None);
+    let rag = get_project_paths()
+        .ok()
+        .and_then(|(_r, p)| sil_core::Config::load(&p.config()).ok())
+        .and_then(|cfg| cfg.rag)
+        .unwrap_or(global_settings.rag);
+
+    let embedder = Some(sil_db::OnnxEmbedder::from_rag_settings(&rag));
 
     if hyde {
         if let Some(ref emb) = embedder {
@@ -330,20 +337,20 @@ fn handle_suggest_citations(args: serde_json::Value) -> CallToolResult {
     let source_id = args.get("source_id").and_then(|v| v.as_str());
 
     if let Some(sid) = source_id {
-        if let Ok((_root, paths)) = get_project_paths() {
-            if let Ok(db) = SilDb::open(&paths.db()) {
-                if let Ok(sources) = db.list_sources() {
-                    if let Some(doc) = sources.into_iter().find(|s| s.id.as_str() == sid) {
-                        let suggestion = suggest_from_source(&doc.filename, doc.title.as_deref());
-                        return CallToolResult::text(serde_json::to_string_pretty(&json!({
-                            "bibtex": suggestion.bibtex,
-                            "cite_command": suggestion.cite_command,
-                            "key": suggestion.cite_key,
-                            "note": suggestion.note
-                        })).unwrap_or_default());
-                    }
-                }
-            }
+        let doc_opt = get_project_paths()
+            .ok()
+            .and_then(|(_root, paths)| SilDb::open(&paths.db()).ok())
+            .and_then(|db| db.list_sources().ok())
+            .and_then(|sources| sources.into_iter().find(|s| s.id.as_str() == sid));
+
+        if let Some(doc) = doc_opt {
+            let suggestion = suggest_from_source(&doc.filename, doc.title.as_deref());
+            return CallToolResult::text(serde_json::to_string_pretty(&json!({
+                "bibtex": suggestion.bibtex,
+                "cite_command": suggestion.cite_command,
+                "key": suggestion.cite_key,
+                "note": suggestion.note
+            })).unwrap_or_default());
         }
     }
 
@@ -369,12 +376,10 @@ fn handle_list_todos(args: serde_json::Value) -> CallToolResult {
     };
 
     let draft_path = paths.paper_draft();
-    if draft_path.exists() {
-        if let Ok(tex) = fs::read_to_string(draft_path.as_str()) {
-            let ideas = parse_idea_blocks(&tex);
-            if let Ok(db) = SilDb::open(&paths.db()) {
-                let _ = db.replace_todo_ideas(&ideas);
-            }
+    if let Ok(tex) = fs::read_to_string(draft_path.as_str()) {
+        let ideas = parse_idea_blocks(&tex);
+        if let Ok(db) = SilDb::open(&paths.db()) {
+            let _ = db.replace_todo_ideas(&ideas);
         }
     }
 
@@ -450,19 +455,17 @@ fn handle_list_skills(args: serde_json::Value) -> CallToolResult {
         json!({ "name": "agent-code.md", "type": "built-in", "description": "Code generation and architecture rules" }),
     ];
 
-    if skills_dir.exists() {
-        if let Ok(entries) = fs::read_dir(skills_dir.as_str()) {
-            for entry in entries.flatten() {
-                let p = entry.path();
-                if p.is_file() {
-                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if name.ends_with(".md") && !skills.iter().any(|s| s["name"] == name) {
-                        skills.push(json!({
-                            "name": name,
-                            "type": "custom",
-                            "path": p.to_string_lossy()
-                        }));
-                    }
+    if let Ok(entries) = fs::read_dir(skills_dir.as_str()) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() {
+                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if name.ends_with(".md") && !skills.iter().any(|s| s["name"] == name) {
+                    skills.push(json!({
+                        "name": name,
+                        "type": "custom",
+                        "path": p.to_string_lossy()
+                    }));
                 }
             }
         }

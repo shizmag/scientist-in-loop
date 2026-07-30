@@ -36,13 +36,11 @@ impl McpServer {
 
         while buf_reader.read_line(&mut line).await? > 0 {
             let trimmed = line.trim();
-            if !trimmed.is_empty() {
-                if let Some(resp) = self.handle_request_line(trimmed).await {
-                    let mut json_bytes = serde_json::to_vec(&resp)?;
-                    json_bytes.push(b'\n');
-                    writer.write_all(&json_bytes).await?;
-                    writer.flush().await?;
-                }
+            if let Some(resp) = if trimmed.is_empty() { None } else { self.handle_request_line(trimmed).await } {
+                let mut json_bytes = serde_json::to_vec(&resp)?;
+                json_bytes.push(b'\n');
+                writer.write_all(&json_bytes).await?;
+                writer.flush().await?;
             }
             line.clear();
         }

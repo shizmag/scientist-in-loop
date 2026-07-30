@@ -175,10 +175,17 @@ fn draw_rag_settings(frame: &mut Frame, app: &App, area: Rect) {
     let parent_chunk_str = rag.parent_chunk_size.to_string();
     let child_chunk_str = rag.child_chunk_size.to_string();
 
+    let models_dir_str = rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default();
+    let embedder_path_str = rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default();
+    let reranker_path_str = rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default();
+
     let fields = [
         ("ONNX Embedder Model", rag.onnx_embedder_model.as_str(), RagField::EmbedderModel),
         ("ONNX Reranker Model", rag.onnx_reranker_model.as_str(), RagField::RerankerModel),
         ("Model Cache Dir", rag.model_cache_dir.as_str(), RagField::CacheDir),
+        ("Custom ONNX Models Dir", models_dir_str.as_str(), RagField::ModelsDir),
+        ("ONNX Embedder File Path", embedder_path_str.as_str(), RagField::EmbedderPath),
+        ("ONNX Reranker File Path", reranker_path_str.as_str(), RagField::RerankerPath),
         ("Execution Provider", rag.execution_provider.as_str(), RagField::ExecutionProvider),
         ("Num Threads", num_threads_str.as_str(), RagField::NumThreads),
         ("Parent Chunk Size", parent_chunk_str.as_str(), RagField::ParentChunkSize),

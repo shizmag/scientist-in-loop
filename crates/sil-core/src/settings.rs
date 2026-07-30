@@ -108,6 +108,15 @@ pub struct RagSettings {
     /// Cache directory for storing model artifacts.
     #[serde(default = "default_model_cache_dir")]
     pub model_cache_dir: Utf8PathBuf,
+    /// Custom directory path containing *.onnx models
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onnx_models_dir: Option<Utf8PathBuf>,
+    /// Explicit file path to specific embedder *.onnx model file
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onnx_embedder_path: Option<Utf8PathBuf>,
+    /// Explicit file path to specific reranker *.onnx model file
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onnx_reranker_path: Option<Utf8PathBuf>,
     /// Execution provider for ONNX runtime (e.g. cpu, cuda).
     #[serde(default = "default_execution_provider")]
     pub execution_provider: String,
@@ -128,11 +137,64 @@ impl Default for RagSettings {
             onnx_embedder_model: default_onnx_embedder_model(),
             onnx_reranker_model: default_onnx_reranker_model(),
             model_cache_dir: default_model_cache_dir(),
+            onnx_models_dir: None,
+            onnx_embedder_path: None,
+            onnx_reranker_path: None,
             execution_provider: default_execution_provider(),
             num_threads: default_num_threads(),
             parent_chunk_size: default_parent_chunk_size(),
             child_chunk_size: default_child_chunk_size(),
         }
+    }
+}
+
+impl RagSettings {
+    /// Resolve exact embedder *.onnx model file path based on config precedence.
+    pub fn resolve_embedder_path(&self) -> Option<Utf8PathBuf> {
+        if let Some(ref path) = self.onnx_embedder_path
+            && path.exists()
+        {
+            return Some(path.clone());
+        }
+        if let Some(ref dir) = self.onnx_models_dir {
+            let candidate1 = dir.join(format!("{}.onnx", self.onnx_embedder_model));
+            if candidate1.exists() {
+                return Some(candidate1);
+            }
+            let candidate2 = dir.join("embedder.onnx");
+            if candidate2.exists() {
+                return Some(candidate2);
+            }
+        }
+        let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_embedder_model));
+        if cache_candidate.exists() {
+            return Some(cache_candidate);
+        }
+        None
+    }
+
+    /// Resolve exact reranker *.onnx model file path based on config precedence.
+    pub fn resolve_reranker_path(&self) -> Option<Utf8PathBuf> {
+        if let Some(ref path) = self.onnx_reranker_path
+            && path.exists()
+        {
+            return Some(path.clone());
+        }
+        if let Some(ref dir) = self.onnx_models_dir {
+            let candidate1 = dir.join(format!("{}.onnx", self.onnx_reranker_model));
+            if candidate1.exists() {
+                return Some(candidate1);
+            }
+            let candidate2 = dir.join("reranker.onnx");
+            if candidate2.exists() {
+                return Some(candidate2);
+            }
+        }
+        let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_reranker_model));
+        if cache_candidate.exists() {
+            return Some(cache_candidate);
+        }
+        None
     }
 }
 
@@ -367,5 +429,22 @@ mod tests {
         let yaml = "default_latex_engine: tectonic\n";
         let gs: GlobalSettings = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(gs.rag, RagSettings::default());
+    }
+
+    #[test]
+    fn test_custom_onnx_path_resolution() {
+        let dir = tempdir().unwrap();
+        let dir_path = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let model_file = dir_path.join("custom-embedder.onnx");
+        std::fs::write(model_file.as_std_path(), b"fake onnx").unwrap();
+
+        let rag = RagSettings {
+            onnx_models_dir: Some(dir_path),
+            onnx_embedder_model: "custom-embedder".to_string(),
+            ..Default::default()
+        };
+
+        let resolved = rag.resolve_embedder_path();
+        assert_eq!(resolved, Some(model_file));
     }
 }

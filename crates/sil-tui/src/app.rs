@@ -106,17 +106,23 @@ pub enum RagField {
     EmbedderModel = 0,
     RerankerModel = 1,
     CacheDir = 2,
-    ExecutionProvider = 3,
-    NumThreads = 4,
-    ParentChunkSize = 5,
-    ChildChunkSize = 6,
+    ModelsDir = 3,
+    EmbedderPath = 4,
+    RerankerPath = 5,
+    ExecutionProvider = 6,
+    NumThreads = 7,
+    ParentChunkSize = 8,
+    ChildChunkSize = 9,
 }
 
 impl RagField {
-    pub const ALL: [RagField; 7] = [
+    pub const ALL: [RagField; 10] = [
         RagField::EmbedderModel,
         RagField::RerankerModel,
         RagField::CacheDir,
+        RagField::ModelsDir,
+        RagField::EmbedderPath,
+        RagField::RerankerPath,
         RagField::ExecutionProvider,
         RagField::NumThreads,
         RagField::ParentChunkSize,
@@ -519,6 +525,9 @@ impl App {
                     RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model.clone(),
                     RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model.clone(),
                     RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
+                    RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                    RagField::EmbedderPath => self.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                    RagField::RerankerPath => self.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
                     RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
                     RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
                     RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
@@ -628,6 +637,15 @@ impl App {
                     RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model = val,
                     RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model = val,
                     RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
+                    RagField::ModelsDir => {
+                        self.global_settings.rag.onnx_models_dir = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
+                    }
+                    RagField::EmbedderPath => {
+                        self.global_settings.rag.onnx_embedder_path = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
+                    }
+                    RagField::RerankerPath => {
+                        self.global_settings.rag.onnx_reranker_path = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
+                    }
                     RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
                     RagField::NumThreads => {
                         if let Ok(n) = val.parse::<usize>() {
@@ -976,12 +994,11 @@ mod tests {
         assert_eq!(app.global_settings.rag.onnx_embedder_model, "bge-large-en-v1.5");
         assert!(app.dirty);
 
-        // Move to num_threads (field 4)
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        assert_eq!(app.selected_rag_field, 4);
+        // Move to num_threads (field 7)
+        for _ in 0..7 {
+            app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        }
+        assert_eq!(app.selected_rag_field, RagField::NumThreads as usize);
 
         app.handle_key(KeyEvent::from(KeyCode::Enter));
         app.input_buffer = "12".to_string();

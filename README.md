@@ -236,6 +236,7 @@ Sci-Action: fetch-source
 1. **100% Local ONNX Hybrid RAG (`sil_search_sources`)**:
    - **Parent-Child Chunking**: Splits parsed Markdown literature by section headings (parent chunks) and paragraphs (child chunks).
    - **Dense ONNX Embeddings + BM25 FTS5**: Uses local ONNX models (`bge-small-en-v1.5` / `ms-marco-MiniLM-L-6-v2`) with Reciprocal Rank Fusion (RRF) and HyDE query expansion.
+   - **Custom ONNX Paths**: Configure custom model directories (`onnx_models_dir`) or explicit file paths (`onnx_embedder_path`, `onnx_reranker_path`) in `.sil/config.yaml` or `~/.config/sil/settings.yaml`.
    - **Parent Context Expansion**: Matches on child paragraphs automatically expand to full parent section context.
 2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
    - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.

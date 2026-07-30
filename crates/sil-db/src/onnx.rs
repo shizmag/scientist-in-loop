@@ -23,6 +23,12 @@ impl OnnxEmbedder {
         }
     }
 
+    /// Create an ONNX embedder automatically resolving model path from RagSettings.
+    pub fn from_rag_settings(settings: &sil_core::RagSettings) -> Self {
+        let resolved = settings.resolve_embedder_path().map(|p| p.into_std_path_buf());
+        Self::new(resolved)
+    }
+
     /// Create an embedder with custom dimension in fallback mode.
     pub fn with_dimension(dim: usize) -> Self {
         Self {
@@ -122,6 +128,12 @@ impl OnnxReranker {
         Self {
             model_path: model_path.map(|p| p.as_ref().to_path_buf()),
         }
+    }
+
+    /// Create an ONNX reranker automatically resolving model path from RagSettings.
+    pub fn from_rag_settings(settings: &sil_core::RagSettings) -> Self {
+        let resolved = settings.resolve_reranker_path().map(|p| p.into_std_path_buf());
+        Self::new(resolved)
     }
 
     /// Score query against document passage (returns float relevance score).
