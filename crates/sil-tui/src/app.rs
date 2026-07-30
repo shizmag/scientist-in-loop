@@ -11,15 +11,17 @@ use sil_core::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
     Dashboard = 0,
-    GlobalSettings = 1,
-    LocalSettings = 2,
-    CoAuthorCache = 3,
-    GrantCache = 4,
+    PaperDraft = 1,
+    GlobalSettings = 2,
+    LocalSettings = 3,
+    CoAuthorCache = 4,
+    GrantCache = 5,
 }
 
 impl ActiveTab {
-    pub const ALL: [ActiveTab; 5] = [
+    pub const ALL: [ActiveTab; 6] = [
         ActiveTab::Dashboard,
+        ActiveTab::PaperDraft,
         ActiveTab::GlobalSettings,
         ActiveTab::LocalSettings,
         ActiveTab::CoAuthorCache,
@@ -29,10 +31,11 @@ impl ActiveTab {
     pub fn title(&self) -> &'static str {
         match self {
             ActiveTab::Dashboard => "1. Dashboard",
-            ActiveTab::GlobalSettings => "2. Global Settings",
-            ActiveTab::LocalSettings => "3. Local Settings",
-            ActiveTab::CoAuthorCache => "4. Co-Authors Cache",
-            ActiveTab::GrantCache => "5. Grants Cache",
+            ActiveTab::PaperDraft => "2. Paper Draft",
+            ActiveTab::GlobalSettings => "3. Global Settings",
+            ActiveTab::LocalSettings => "4. Local Settings",
+            ActiveTab::CoAuthorCache => "5. Co-Authors Cache",
+            ActiveTab::GrantCache => "6. Grants Cache",
         }
     }
 }
@@ -43,6 +46,7 @@ impl ActiveTab {
 pub enum InputMode {
     Normal,
     Editing,
+    EditingPaper,
     ModalPicker,
     ModalAddAuthor,
     ModalAddGrant,
@@ -121,6 +125,12 @@ pub struct App {
     pub new_author: AuthorDetails,
     pub new_grant: GrantDetails,
     pub modal_field_index: usize,
+
+    // Paper draft state & LaTeX sections
+    pub paper_draft_content: String,
+    pub paper_sections: Vec<sil_latex::TexSection>,
+    pub paper_section_index: usize,
+    pub paper_edit_buffer: String,
 }
 
 impl App {
@@ -139,7 +149,7 @@ impl App {
             (LocalSettings::default(), None)
         };
 
-        Self {
+        let mut app = Self {
             active_tab: ActiveTab::Dashboard,
 
             input_mode: InputMode::Normal,
@@ -161,6 +171,25 @@ impl App {
             new_author: AuthorDetails::default(),
             new_grant: GrantDetails::default(),
             modal_field_index: 0,
+
+            paper_draft_content: String::new(),
+            paper_sections: Vec::new(),
+            paper_section_index: 0,
+            paper_edit_buffer: String::new(),
+        };
+        app.reload_paper_draft();
+        app
+    }
+
+    pub fn reload_paper_draft(&mut self) {
+        if let Some(ref root) = self.project_root {
+            let draft_path = root.join("paper_draft.tex");
+            if draft_path.is_file() {
+                if let Ok(content) = std::fs::read_to_string(draft_path.as_std_path()) {
+                    self.paper_draft_content = content;
+                    self.paper_sections = sil_latex::split_tex_sections(&self.paper_draft_content);
+                }
+            }
         }
     }
 
@@ -168,6 +197,7 @@ impl App {
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
             InputMode::Editing => self.handle_editing_mode(key),
+            InputMode::EditingPaper => self.handle_editing_paper_mode(key),
             InputMode::ModalPicker => self.handle_modal_picker_mode(key),
             InputMode::ModalAddAuthor => self.handle_modal_add_author_mode(key),
             InputMode::ModalAddGrant => self.handle_modal_add_grant_mode(key),
@@ -200,15 +230,21 @@ impl App {
                 self.active_tab = ActiveTab::ALL[next];
             }
             KeyCode::Char('1') => self.active_tab = ActiveTab::Dashboard,
-            KeyCode::Char('2') => self.active_tab = ActiveTab::GlobalSettings,
-            KeyCode::Char('3') => self.active_tab = ActiveTab::LocalSettings,
-            KeyCode::Char('4') => self.active_tab = ActiveTab::CoAuthorCache,
-            KeyCode::Char('5') => self.active_tab = ActiveTab::GrantCache,
+            KeyCode::Char('2') => self.active_tab = ActiveTab::PaperDraft,
+            KeyCode::Char('3') => self.active_tab = ActiveTab::GlobalSettings,
+            KeyCode::Char('4') => self.active_tab = ActiveTab::LocalSettings,
+            KeyCode::Char('5') => self.active_tab = ActiveTab::CoAuthorCache,
+            KeyCode::Char('6') => self.active_tab = ActiveTab::GrantCache,
 
             KeyCode::Char('s') => self.save_all(),
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
                 ActiveTab::Dashboard => {}
+                ActiveTab::PaperDraft => {
+                    if self.paper_section_index > 0 {
+                        self.paper_section_index -= 1;
+                    }
+                }
                 ActiveTab::GlobalSettings => {
                     if self.selected_global_field > 0 {
                         self.selected_global_field -= 1;
@@ -232,6 +268,13 @@ impl App {
             },
             KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
                 ActiveTab::Dashboard => {}
+                ActiveTab::PaperDraft => {
+                    if !self.paper_sections.is_empty()
+                        && self.paper_section_index + 1 < self.paper_sections.len()
+                    {
+                        self.paper_section_index += 1;
+                    }
+                }
                 ActiveTab::GlobalSettings => {
                     if self.selected_global_field + 1 < GlobalField::ALL.len() {
                         self.selected_global_field += 1;
@@ -369,6 +412,19 @@ impl App {
 
     fn start_editing_selected_field(&mut self) {
         match self.active_tab {
+            ActiveTab::PaperDraft => {
+                if !self.paper_sections.is_empty()
+                    && self.paper_section_index < self.paper_sections.len()
+                {
+                    self.paper_edit_buffer =
+                        self.paper_sections[self.paper_section_index].body.clone();
+                } else {
+                    self.paper_edit_buffer = self.paper_draft_content.clone();
+                }
+                self.input_mode = InputMode::EditingPaper;
+                self.status_message =
+                    "Editing section body. Press Enter to confirm, Esc to cancel.".to_string();
+            }
             ActiveTab::GlobalSettings => {
                 self.input_buffer = match GlobalField::ALL[self.selected_global_field] {
                     GlobalField::AuthorName => self.global_settings.author.name.clone(),
@@ -396,6 +452,51 @@ impl App {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn handle_editing_paper_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Enter => {
+                self.commit_edited_paper();
+                self.input_mode = InputMode::Normal;
+                self.dirty = true;
+                self.status_message =
+                    "Section body updated (unsaved changes). Press 's' to save.".to_string();
+            }
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Section edit cancelled.".to_string();
+            }
+            KeyCode::Backspace => {
+                self.paper_edit_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.paper_edit_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn commit_edited_paper(&mut self) {
+        if !self.paper_sections.is_empty()
+            && self.paper_section_index < self.paper_sections.len()
+        {
+            self.paper_sections[self.paper_section_index].body = self.paper_edit_buffer.clone();
+            let mut out = String::new();
+            for sec in &self.paper_sections {
+                if sec.kind != "document" {
+                    out.push_str(&format!("\\{}{{{}}}\n", sec.kind, sec.title));
+                }
+                out.push_str(&sec.body);
+                if !sec.body.ends_with('\n') {
+                    out.push('\n');
+                }
+            }
+            self.paper_draft_content = out;
+        } else {
+            self.paper_draft_content = self.paper_edit_buffer.clone();
+            self.paper_sections = sil_latex::split_tex_sections(&self.paper_draft_content);
         }
     }
 
@@ -652,6 +753,22 @@ impl App {
                     }
                 }
             }
+
+            // 4. Save paper_draft.tex if present
+            if !self.paper_draft_content.is_empty() {
+                let draft_path = root.join("paper_draft.tex");
+                if std::fs::write(draft_path.as_std_path(), &self.paper_draft_content).is_ok() {
+                    let _ = sil_latex::write_draft_sections_from_file(
+                        &draft_path,
+                        &paths.draft_sections_dir(),
+                    );
+                    if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                        let ideas = sil_latex::parse_idea_blocks(&self.paper_draft_content);
+                        let _ = db.replace_todo_ideas(&ideas);
+                    }
+                    messages.push("paper_draft.tex saved & re-indexed".to_string());
+                }
+            }
         }
 
         self.dirty = false;
@@ -676,6 +793,8 @@ mod tests {
         let mut app = App::new(None);
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
+        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
+        app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::LocalSettings);
@@ -686,7 +805,6 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
     }
-
 
     #[test]
     fn add_and_use_coauthor_flow() {
@@ -716,12 +834,14 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Char('1')));
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
         app.handle_key(KeyEvent::from(KeyCode::Char('2')));
-        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
         app.handle_key(KeyEvent::from(KeyCode::Char('3')));
-        assert_eq!(app.active_tab, ActiveTab::LocalSettings);
+        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
         app.handle_key(KeyEvent::from(KeyCode::Char('4')));
-        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+        assert_eq!(app.active_tab, ActiveTab::LocalSettings);
         app.handle_key(KeyEvent::from(KeyCode::Char('5')));
+        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+        app.handle_key(KeyEvent::from(KeyCode::Char('6')));
         assert_eq!(app.active_tab, ActiveTab::GrantCache);
     }
 
@@ -741,6 +861,60 @@ mod tests {
         app.active_tab = ActiveTab::Dashboard;
         app.handle_key(KeyEvent::from(KeyCode::Char('q')));
         assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_paper_draft_reading_and_editing() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let draft_path = root.join("paper_draft.tex");
+
+        let initial_tex = r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Intro text here.
+
+% # -- X -- #
+% TODO: add ablation table
+% # -- X -- #
+
+\section{Methods}
+Original methods text.
+\end{document}
+"#;
+        std::fs::write(draft_path.as_std_path(), initial_tex).unwrap();
+
+        let mut app = App::new(Some(root.clone()));
+        assert_eq!(app.paper_sections.len(), 2);
+        assert_eq!(app.paper_sections[0].title, "Introduction");
+        assert_eq!(app.paper_sections[1].title, "Methods");
+
+        // Switch to paper draft tab
+        app.handle_key(KeyEvent::from(KeyCode::Char('2')));
+        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
+
+        // Move to Methods section
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        assert_eq!(app.paper_section_index, 1);
+
+        // Enter edit mode
+        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
+        assert_eq!(app.input_mode, InputMode::EditingPaper);
+        assert!(app.paper_edit_buffer.contains("Original methods text."));
+
+        // Modify section text
+        app.paper_edit_buffer = "Updated methods text with new algorithm.\n".to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(app.paper_draft_content.contains("Updated methods text with new algorithm."));
+
+        // Save app state
+        app.save_all();
+        assert!(!app.dirty);
+
+        let saved = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
+        assert!(saved.contains("Updated methods text with new algorithm."));
     }
 }
 

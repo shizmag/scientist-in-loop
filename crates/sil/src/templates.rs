@@ -44,23 +44,35 @@ pub const PAPER_DRAFT_TEX: &str = r#"\documentclass{article}
 \maketitle
 
 \begin{abstract}
-% TODO: abstract
+% # -- X -- #
+% TODO: write abstract summarizing main research contributions.
+% # -- X -- #
 \end{abstract}
 
 \section{Introduction}
+% # -- X -- #
 % TODO: write introduction — see .sil/structure.yaml
+% # -- X -- #
 
 \section{Related Work}
-% TODO
+% # -- X -- #
+% TODO: survey related work and baseline methods.
+% # -- X -- #
 
 \section{Methods}
-% TODO
+% # -- X -- #
+% TODO: describe methodological framework and formulation.
+% # -- X -- #
 
 \section{Experiments}
-% TODO
+% # -- X -- #
+% TODO: design experiments, benchmarks, and ablation studies.
+% # -- X -- #
 
 \section{Conclusion}
-% TODO
+% # -- X -- #
+% TODO: summarize findings and future directions.
+% # -- X -- #
 
 \bibliographystyle{plain}
 \bibliography{references}

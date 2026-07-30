@@ -8,6 +8,8 @@ publish = false
 
 [dependencies]
 sil-core = { workspace = true }
+sil-latex = { workspace = true }
+sil-db = { workspace = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 camino = { workspace = true }

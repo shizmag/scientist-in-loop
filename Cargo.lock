@@ -1130,6 +1130,8 @@ dependencies = [
  "serde",
  "serde_yaml",
  "sil-core",
+ "sil-db",
+ "sil-latex",
  "tempfile",
 ]
 

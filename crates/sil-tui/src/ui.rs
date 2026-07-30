@@ -28,6 +28,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     match app.active_tab {
         ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
+        ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
         ActiveTab::GlobalSettings => draw_global_settings(frame, app, chunks[1]),
         ActiveTab::LocalSettings => draw_local_settings(frame, app, chunks[1]),
         ActiveTab::CoAuthorCache => draw_coauthor_cache(frame, app, chunks[1]),
@@ -40,6 +41,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     // Modals overlay
     match app.input_mode {
         InputMode::Editing => draw_editing_popup(frame, app),
+        InputMode::EditingPaper => draw_editing_paper_popup(frame, app),
         InputMode::ModalPicker => draw_modal_picker(frame, app),
         InputMode::ModalAddAuthor => draw_modal_add_author(frame, app),
         InputMode::ModalAddGrant => draw_modal_add_grant(frame, app),
@@ -716,5 +718,92 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Green));
     frame.render_widget(Paragraph::new(guide_lines).block(guide_block), bottom_chunks[1]);
+}
+
+fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
+        .split(area);
+
+    // Left Column: LaTeX Section Outline / Parser Tree
+    let mut items = Vec::new();
+    if app.paper_sections.is_empty() {
+        items.push(ListItem::new(Line::from(Span::styled(
+            " (no sections / empty paper_draft.tex)",
+            Style::default().fg(Color::DarkGray),
+        ))));
+    } else {
+        for (idx, sec) in app.paper_sections.iter().enumerate() {
+            let is_selected = app.paper_section_index == idx;
+            let prefix = if is_selected { "► " } else { "  " };
+            let style = if is_selected {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Reset)
+            };
+            items.push(ListItem::new(Line::from(vec![
+                Span::styled(prefix, style),
+                Span::styled(format!("[{}] ", sec.kind), Style::default().fg(Color::Magenta)),
+                Span::styled(&sec.title, style),
+                Span::styled(format!(" (L{})", sec.line_start), Style::default().fg(Color::DarkGray)),
+            ])));
+        }
+    }
+
+    let left_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Cyan))
+        .title(" 📄 Manuscript Sections ");
+
+    let left_list = List::new(items).block(left_block);
+    frame.render_widget(left_list, chunks[0]);
+
+    // Right Column: Section Content Viewer
+    let (sec_title, body_text) = if !app.paper_sections.is_empty()
+        && app.paper_section_index < app.paper_sections.len()
+    {
+        let sec = &app.paper_sections[app.paper_section_index];
+        (format!(" Section: {} ", sec.title), sec.body.clone())
+    } else if !app.paper_draft_content.is_empty() {
+        (" paper_draft.tex (Full View) ".to_string(), app.paper_draft_content.clone())
+    } else {
+        (" Section Content ".to_string(), "No paper_draft.tex found or empty file.\nPress 'e' to create/edit draft.".to_string())
+    };
+
+    let right_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Green))
+        .title(sec_title);
+
+    let paragraph = Paragraph::new(body_text).block(right_block);
+    frame.render_widget(paragraph, chunks[1]);
+}
+
+fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
+    let area = centered_rect(80, 60, frame.area());
+    frame.render_widget(Clear, area);
+
+    let sec_title = if !app.paper_sections.is_empty()
+        && app.paper_section_index < app.paper_sections.len()
+    {
+        format!(" Editing Section: {} ", app.paper_sections[app.paper_section_index].title)
+    } else {
+        " Editing paper_draft.tex ".to_string()
+    };
+
+    let popup_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Yellow))
+        .title(Span::styled(
+            sec_title,
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        ));
+
+    let paragraph = Paragraph::new(app.paper_edit_buffer.as_str()).block(popup_block);
+    frame.render_widget(paragraph, area);
 }
 
