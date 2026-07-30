@@ -158,6 +158,9 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Launch interactive TUI to manage global/local settings and co-authors cache
+    #[command(alias = "tui")]
+    Settings,
 }
 
 /// `sil template` subcommands.

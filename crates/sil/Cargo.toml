@@ -23,6 +23,7 @@ sil-git = { workspace = true }
 sil-latex = { workspace = true }
 sil-parse = { workspace = true }
 sil-template = { workspace = true }
+sil-tui = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -15,6 +15,7 @@ mod split;
 mod status;
 mod structure_cmd;
 mod template_cmd;
+mod settings_cmd;
 
 pub use build::run as build;
 pub use cite::run as cite;
@@ -31,3 +32,4 @@ pub use split::run as split;
 pub use status::run as status;
 pub use structure_cmd::{list as structure_list, set_completion as structure_set};
 pub use template_cmd::run as template;
+pub use settings_cmd::run as settings;

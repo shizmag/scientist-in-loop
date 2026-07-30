@@ -4,6 +4,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::ConfigError;
+use crate::settings::LocalSettings;
 use crate::stage::Stage;
 use crate::types::LatexEngine;
 
@@ -18,6 +19,9 @@ pub struct Config {
     pub latex: LatexConfig,
     /// PDF parsing settings.
     pub parsing: ParsingConfig,
+    /// Local settings (co-authors, grants, notes).
+    #[serde(default)]
+    pub settings: LocalSettings,
 }
 
 /// `project:` section.
@@ -116,6 +120,7 @@ impl Default for Config {
             parsing: ParsingConfig {
                 engine: default_parse_engine(),
             },
+            settings: LocalSettings::default(),
         }
     }
 }
