@@ -134,6 +134,12 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Check project layout and host dependencies
+    Doctor {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 /// `sil source` subcommands.

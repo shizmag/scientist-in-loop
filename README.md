@@ -156,13 +156,21 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 |---------|-------------|
 | `sil init [name]` | Create full project tree, templates, auto `.gitignore`, git repo, SQLite DB; **propose** first commit |
 | `sil init --update` | Upgrade an existing project to the current sil templates (skills, managed `.gitignore`, missing scaffold) |
-| `sil status` | Stage, git status, source counts, structure completion, draft dirty flag |
+| `sil status [--json]` | Stage, git status, source counts, structure completion, draft dirty flag |
 | `sil parse [pdf]` | Parse one PDF, or interactively multi-select unparsed files in `sources/` |
 | `sil source fetch <doi\|arxiv\|url>` | Download PDF into `sources/`, offer parse |
+| `sil source list [--json]` | List sources with parsed vs unparsed (and on-disk) visibility |
+| `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil search <query>` | FTS5 full-text search over parsed sources |
 | `sil build` | Compile `config.latex.main` with `config.latex.engine` |
 | `sil log` | Git log filtered/annotated by `Sci-Action` trailers |
 | `sil context [flags]` | Structured context dump for humans/agents |
+| `sil split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |
+| `sil propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
+| `sil promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
+| `sil structure list\|set` | Inspect or update section completion in `structure.yaml` |
+| `sil cite <source\|query>` | Suggest deterministic BibTeX + `\cite{…}` (optional `--append` to `references.bib`) |
+| `sil doctor [--json]` | Project layout and host dependency checks |
 
 Commit proposals always include a trailer such as:
 
@@ -185,11 +193,13 @@ my-paper/
 │   ├── structure.yaml
 │   ├── structure.example.yaml
 │   ├── db.sqlite
+│   ├── draft_sections/      # agent section cache from `sil split`
+│   ├── improvement/         # suggestion_n improvement proposals (tracked)
 │   └── skills/
 │       ├── SYSTEM.md
 │       ├── paper.md
 │       └── agent-code.md
-├── paper_draft.tex
+├── paper_draft.tex          # source of truth for prose
 ├── paper.tex
 ├── references.bib
 ├── sources/                 # original PDFs only
@@ -212,6 +222,8 @@ my-paper/
 - **`figures/plots/`** — plots from code; list script + figure ref in the README.  
 - **`figures/images/`** — external images; document origin and license.  
 - **`agent/`** — helper scripts the agent writes; document purpose and how to run.  
+- **`.sil/draft_sections/`** — deterministic per-section split of `paper_draft.tex` for agents (`sil split`); do not edit as source of truth.  
+- **`.sil/improvement/`** — versioned improvement proposals as `suggestion_n` (not gitignored).  
 
 ### Default `.gitignore`
 
@@ -219,7 +231,7 @@ my-paper/
 
 | Ignored | Still tracked |
 |---------|----------------|
-| `.sil/db.sqlite` (and other SQLite files under `.sil/`) | `.sil/config.yaml`, `structure.yaml`, skills |
+| `.sil/db.sqlite` (and other SQLite files under `.sil/`) | `.sil/config.yaml`, `structure.yaml`, skills, **improvement/**, **draft_sections/** |
 | Binaries under `figures/plots/**` and `figures/images/**` | `figures/**/README.md` |
 | Contents of `data/**` (experiment outputs) | `data/README.md` |
 | Root build PDFs (`/*.pdf`), LaTeX aux files | Literature PDFs in `sources/` |

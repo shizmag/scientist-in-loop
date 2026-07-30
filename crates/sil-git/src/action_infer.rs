@@ -89,10 +89,10 @@ pub fn proposal_for_action(
         SciAction::FetchSource => "Fetch source PDF",
     };
     let mut p = CommitProposal::new(subject.unwrap_or(default_subject), action);
-    if let Some(b) = body {
-        if !b.trim().is_empty() {
-            p = p.with_body(b);
-        }
+    if let Some(b) = body
+        && !b.trim().is_empty()
+    {
+        p = p.with_body(b);
     }
     p
 }

@@ -3,6 +3,7 @@
 mod build;
 mod cite;
 mod context;
+mod doctor;
 mod init;
 mod log;
 mod parse;
@@ -17,6 +18,7 @@ mod structure_cmd;
 pub use build::run as build;
 pub use cite::run as cite;
 pub use context::run as context;
+pub use doctor::run as doctor;
 pub use init::run as init;
 pub use log::run as log;
 pub use parse::run as parse;
