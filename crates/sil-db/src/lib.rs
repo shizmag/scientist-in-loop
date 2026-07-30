@@ -8,6 +8,7 @@ pub mod onnx;
 pub mod schema;
 pub mod search;
 pub mod sources;
+pub mod todo;
 
 pub use chunks::{
     ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,
@@ -159,49 +160,50 @@ impl SilDb {
         Ok(chunks)
     }
 
+    /// Insert a single TodoIdea.
+    pub fn insert_todo_idea(&self, idea: &sil_core::IdeaBlock) -> Result<(), DbError> {
+        todo::insert_todo_idea(&self.conn, idea)
+    }
+
+    /// Update an existing TodoIdea.
+    pub fn update_todo_idea(&self, idea: &sil_core::IdeaBlock) -> Result<(), DbError> {
+        todo::update_todo_idea(&self.conn, idea)
+    }
+
+    /// Upsert a TodoIdea (insert or update on conflict).
+    pub fn upsert_todo_idea(&self, idea: &sil_core::IdeaBlock) -> Result<(), DbError> {
+        todo::upsert_todo_idea(&self.conn, idea)
+    }
+
+    /// Delete a TodoIdea by id.
+    pub fn delete_todo_idea(&self, id: &str) -> Result<bool, DbError> {
+        todo::delete_todo_idea(&self.conn, id)
+    }
+
+    /// Get a TodoIdea by id.
+    pub fn get_todo_idea_by_id(&self, id: &str) -> Result<Option<sil_core::IdeaBlock>, DbError> {
+        todo::get_todo_idea_by_id(&self.conn, id)
+    }
+
     /// Replace all idea/TODO blocks in database with fresh set from parser.
     pub fn replace_todo_ideas(&self, ideas: &[sil_core::IdeaBlock]) -> Result<(), DbError> {
-        let tx = self.conn.unchecked_transaction()?;
-        tx.execute("DELETE FROM todo_ideas", [])?;
-        let mut stmt = tx.prepare(
-            "INSERT INTO todo_ideas (id, content, section_id, line_start, line_end, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        )?;
-        for idea in ideas {
-            stmt.execute(rusqlite::params![
-                idea.id,
-                idea.content,
-                idea.section_id,
-                idea.line_start,
-                idea.line_end,
-                idea.created_at
-            ])?;
-        }
-        drop(stmt);
-        tx.commit()?;
-        Ok(())
+        todo::replace_todo_ideas(&self.conn, ideas)
     }
 
     /// List all parsed idea/TODO blocks.
     pub fn list_todo_ideas(&self) -> Result<Vec<sil_core::IdeaBlock>, DbError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, content, section_id, line_start, line_end, created_at FROM todo_ideas ORDER BY line_start ASC",
-        )?;
-        let rows = stmt.query_map([], |row| {
-            Ok(sil_core::IdeaBlock {
-                id: row.get(0)?,
-                content: row.get(1)?,
-                section_id: row.get(2)?,
-                line_start: row.get(3)?,
-                line_end: row.get(4)?,
-                created_at: row.get(5)?,
-            })
-        })?;
-        let mut result = Vec::new();
-        for r in rows {
-            result.push(r?);
-        }
-        Ok(result)
+        todo::list_todo_ideas_filtered(&self.conn, None, None, None, None)
+    }
+
+    /// List todo_ideas with optional filters for status, priority, section_id, and sorting.
+    pub fn list_todo_ideas_filtered(
+        &self,
+        status: Option<&str>,
+        priority: Option<&str>,
+        section_id: Option<&str>,
+        sort_by: Option<&str>,
+    ) -> Result<Vec<sil_core::IdeaBlock>, DbError> {
+        todo::list_todo_ideas_filtered(&self.conn, status, priority, section_id, sort_by)
     }
 
     /// Upsert a journal publication entry into the database.
@@ -489,13 +491,85 @@ mod tests {
     fn todo_ideas_crud() {
         let db = SilDb::open_in_memory().unwrap();
         assert!(db.list_todo_ideas().unwrap().is_empty());
-        let idea1 = sil_core::IdeaBlock::new("id1", "Check ablation study", Some("Section 3".into()), 10, 15);
-        let idea2 = sil_core::IdeaBlock::new("id2", "Add baseline comparison graph", Some("Section 4".into()), 40, 45);
+
+        let mut idea1 = sil_core::IdeaBlock::new("id1", "Check ablation study", Some("Section 3".into()), 10, 15);
+        idea1.status = "open".into();
+        idea1.priority = "high".into();
+        idea1.author_type = "human".into();
+        idea1.tags = vec!["ablation".into()];
+
+        let mut idea2 = sil_core::IdeaBlock::new("id2", "Add baseline comparison graph", Some("Section 4".into()), 40, 45);
+        idea2.status = "in_progress".into();
+        idea2.priority = "critical".into();
+        idea2.author_type = "agent".into();
+        idea2.tags = vec!["baseline".into(), "figure".into()];
+
+        // 1. insert & replace
         db.replace_todo_ideas(&[idea1.clone(), idea2.clone()]).unwrap();
         let list = db.list_todo_ideas().unwrap();
         assert_eq!(list.len(), 2);
-        assert_eq!(list[0].content, "Check ablation study");
-        assert_eq!(list[1].content, "Add baseline comparison graph");
+        assert_eq!(list[0].id, "id1");
+        assert_eq!(list[0].priority, "high");
+        assert_eq!(list[1].id, "id2");
+        assert_eq!(list[1].author_type, "agent");
+        assert_eq!(list[1].tags, vec!["baseline", "figure"]);
+
+        // 2. update & get_by_id
+        let mut idea1_updated = idea1.clone();
+        idea1_updated.status = "resolved".into();
+        db.update_todo_idea(&idea1_updated).unwrap();
+        let fetched = db.get_todo_idea_by_id("id1").unwrap().unwrap();
+        assert_eq!(fetched.status, "resolved");
+
+        // 3. upsert
+        let mut idea3 = sil_core::IdeaBlock::new("id3", "New upserted idea", Some("Section 1".into()), 5, 8);
+        idea3.priority = "low".into();
+        db.upsert_todo_idea(&idea3).unwrap();
+        assert_eq!(db.list_todo_ideas().unwrap().len(), 3);
+
+        // 4. delete
+        assert!(db.delete_todo_idea("id1").unwrap());
+        assert_eq!(db.list_todo_ideas().unwrap().len(), 2);
+        assert!(db.get_todo_idea_by_id("id1").unwrap().is_none());
+    }
+
+    #[test]
+    fn todo_ideas_filtering_and_sorting() {
+        let db = SilDb::open_in_memory().unwrap();
+
+        let mut t1 = sil_core::IdeaBlock::new("t1", "Task 1", Some("Intro".into()), 10, 15);
+        t1.status = "open".into();
+        t1.priority = "medium".into();
+
+        let mut t2 = sil_core::IdeaBlock::new("t2", "Task 2", Some("Intro".into()), 20, 25);
+        t2.status = "in_progress".into();
+        t2.priority = "critical".into();
+
+        let mut t3 = sil_core::IdeaBlock::new("t3", "Task 3", Some("Methods".into()), 30, 35);
+        t3.status = "open".into();
+        t3.priority = "high".into();
+
+        db.replace_todo_ideas(&[t1, t2, t3]).unwrap();
+
+        // Filter status=open
+        let open_tasks = db.list_todo_ideas_filtered(Some("open"), None, None, None).unwrap();
+        assert_eq!(open_tasks.len(), 2);
+
+        // Filter priority=critical
+        let crit_tasks = db.list_todo_ideas_filtered(None, Some("critical"), None, None).unwrap();
+        assert_eq!(crit_tasks.len(), 1);
+        assert_eq!(crit_tasks[0].id, "t2");
+
+        // Filter section_id=Intro
+        let intro_tasks = db.list_todo_ideas_filtered(None, None, Some("Intro"), None).unwrap();
+        assert_eq!(intro_tasks.len(), 2);
+
+        // Sort by priority (critical > high > medium)
+        let sorted_prio = db.list_todo_ideas_filtered(None, None, None, Some("priority")).unwrap();
+        assert_eq!(sorted_prio.len(), 3);
+        assert_eq!(sorted_prio[0].id, "t2"); // critical
+        assert_eq!(sorted_prio[1].id, "t3"); // high
+        assert_eq!(sorted_prio[2].id, "t1"); // medium
     }
 
     #[test]

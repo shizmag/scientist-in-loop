@@ -16,12 +16,23 @@ pub struct IdeaBlock {
     pub line_start: usize,
     /// Ending line number in the source file.
     pub line_end: usize,
+    /// Status: "open" | "in_progress" | "resolved" | "deferred" (default "open").
+    pub status: String,
+    /// Priority: "low" | "medium" | "high" | "critical" (default "medium").
+    pub priority: String,
+    /// Author type: "human" | "agent" (default "human").
+    pub author_type: String,
+    /// Categorization tags.
+    pub tags: Vec<String>,
     /// ISO-8601 creation timestamp.
     pub created_at: String,
 }
 
+/// Type alias for `IdeaBlock`.
+pub type TodoIdea = IdeaBlock;
+
 impl IdeaBlock {
-    /// Create a new `IdeaBlock`.
+    /// Create a new `IdeaBlock` with default metadata.
     pub fn new(
         id: impl Into<String>,
         content: impl Into<String>,
@@ -35,7 +46,12 @@ impl IdeaBlock {
             section_id,
             line_start,
             line_end,
+            status: "open".to_string(),
+            priority: "medium".to_string(),
+            author_type: "human".to_string(),
+            tags: Vec::new(),
             created_at: String::new(),
         }
     }
 }
+

@@ -40,6 +40,6 @@ pub use source::{DocumentStatus, SourceDocument, SourceId, validate_pdf_path};
 pub use stage::Stage;
 pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};
 pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
-pub use todo::IdeaBlock;
+pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
 
