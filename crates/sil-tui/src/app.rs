@@ -10,14 +10,16 @@ use sil_core::{
 /// Navigation tabs in the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
-    GlobalSettings = 0,
-    LocalSettings = 1,
-    CoAuthorCache = 2,
-    GrantCache = 3,
+    Dashboard = 0,
+    GlobalSettings = 1,
+    LocalSettings = 2,
+    CoAuthorCache = 3,
+    GrantCache = 4,
 }
 
 impl ActiveTab {
-    pub const ALL: [ActiveTab; 4] = [
+    pub const ALL: [ActiveTab; 5] = [
+        ActiveTab::Dashboard,
         ActiveTab::GlobalSettings,
         ActiveTab::LocalSettings,
         ActiveTab::CoAuthorCache,
@@ -26,13 +28,15 @@ impl ActiveTab {
 
     pub fn title(&self) -> &'static str {
         match self {
-            ActiveTab::GlobalSettings => "1. Global Settings",
-            ActiveTab::LocalSettings => "2. Local Settings",
-            ActiveTab::CoAuthorCache => "3. Co-Authors Cache",
-            ActiveTab::GrantCache => "4. Grants Cache",
+            ActiveTab::Dashboard => "1. Dashboard",
+            ActiveTab::GlobalSettings => "2. Global Settings",
+            ActiveTab::LocalSettings => "3. Local Settings",
+            ActiveTab::CoAuthorCache => "4. Co-Authors Cache",
+            ActiveTab::GrantCache => "5. Grants Cache",
         }
     }
 }
+
 
 /// Mode of user interaction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,7 +140,8 @@ impl App {
         };
 
         Self {
-            active_tab: ActiveTab::GlobalSettings,
+            active_tab: ActiveTab::Dashboard,
+
             input_mode: InputMode::Normal,
             global_settings,
             local_settings,
@@ -182,12 +187,8 @@ impl App {
             }
             KeyCode::Tab => {
                 let current = self.active_tab as usize;
-                self.active_tab = match (current + 1) % ActiveTab::ALL.len() {
-                    0 => ActiveTab::GlobalSettings,
-                    1 => ActiveTab::LocalSettings,
-                    2 => ActiveTab::CoAuthorCache,
-                    _ => ActiveTab::GrantCache,
-                };
+                let next = (current + 1) % ActiveTab::ALL.len();
+                self.active_tab = ActiveTab::ALL[next];
             }
             KeyCode::BackTab => {
                 let current = self.active_tab as usize;
@@ -196,20 +197,18 @@ impl App {
                 } else {
                     current - 1
                 };
-                self.active_tab = match next {
-                    0 => ActiveTab::GlobalSettings,
-                    1 => ActiveTab::LocalSettings,
-                    2 => ActiveTab::CoAuthorCache,
-                    _ => ActiveTab::GrantCache,
-                };
+                self.active_tab = ActiveTab::ALL[next];
             }
-            KeyCode::Char('1') => self.active_tab = ActiveTab::GlobalSettings,
-            KeyCode::Char('2') => self.active_tab = ActiveTab::LocalSettings,
-            KeyCode::Char('3') => self.active_tab = ActiveTab::CoAuthorCache,
-            KeyCode::Char('4') => self.active_tab = ActiveTab::GrantCache,
+            KeyCode::Char('1') => self.active_tab = ActiveTab::Dashboard,
+            KeyCode::Char('2') => self.active_tab = ActiveTab::GlobalSettings,
+            KeyCode::Char('3') => self.active_tab = ActiveTab::LocalSettings,
+            KeyCode::Char('4') => self.active_tab = ActiveTab::CoAuthorCache,
+            KeyCode::Char('5') => self.active_tab = ActiveTab::GrantCache,
+
             KeyCode::Char('s') => self.save_all(),
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
+                ActiveTab::Dashboard => {}
                 ActiveTab::GlobalSettings => {
                     if self.selected_global_field > 0 {
                         self.selected_global_field -= 1;
@@ -232,6 +231,7 @@ impl App {
                 }
             },
             KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
+                ActiveTab::Dashboard => {}
                 ActiveTab::GlobalSettings => {
                     if self.selected_global_field + 1 < GlobalField::ALL.len() {
                         self.selected_global_field += 1;
@@ -242,6 +242,7 @@ impl App {
                         self.selected_local_field += 1;
                     }
                 }
+
                 ActiveTab::CoAuthorCache => {
                     if !self.cache.co_authors.is_empty()
                         && self.cache_coauthor_index + 1 < self.cache.co_authors.len()
@@ -523,12 +524,11 @@ impl App {
                 if !self.new_author.name.trim().is_empty() {
                     let author = self.new_author.clone();
                     self.cache.remember_co_author(author.clone());
-                    if self.active_tab == ActiveTab::LocalSettings
-                        || self.selected_local_field == LocalField::CoAuthorsList as usize
+                    if (self.active_tab == ActiveTab::LocalSettings
+                        || self.selected_local_field == LocalField::CoAuthorsList as usize)
+                        && !self.local_settings.co_authors.contains(&author)
                     {
-                        if !self.local_settings.co_authors.contains(&author) {
-                            self.local_settings.co_authors.push(author);
-                        }
+                        self.local_settings.co_authors.push(author);
                     }
                     self.dirty = true;
                     self.input_mode = InputMode::Normal;
@@ -585,12 +585,11 @@ impl App {
                 if !self.new_grant.funder.trim().is_empty() || !self.new_grant.grant_number.trim().is_empty() {
                     let grant = self.new_grant.clone();
                     self.cache.remember_grant(grant.clone());
-                    if self.active_tab == ActiveTab::LocalSettings
-                        || self.selected_local_field == LocalField::GrantsList as usize
+                    if (self.active_tab == ActiveTab::LocalSettings
+                        || self.selected_local_field == LocalField::GrantsList as usize)
+                        && !self.local_settings.grants.contains(&grant)
                     {
-                        if !self.local_settings.grants.contains(&grant) {
-                            self.local_settings.grants.push(grant);
-                        }
+                        self.local_settings.grants.push(grant);
                     }
                     self.dirty = true;
                     self.input_mode = InputMode::Normal;
@@ -667,7 +666,7 @@ mod tests {
     #[test]
     fn app_initialization() {
         let app = App::new(None);
-        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
         assert_eq!(app.input_mode, InputMode::Normal);
         assert!(!app.should_quit);
     }
@@ -675,6 +674,9 @@ mod tests {
     #[test]
     fn tab_navigation() {
         let mut app = App::new(None);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
+        app.handle_key(KeyEvent::from(KeyCode::Tab));
+        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::LocalSettings);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
@@ -682,8 +684,9 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::GrantCache);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
     }
+
 
     #[test]
     fn add_and_use_coauthor_flow() {

@@ -1,7 +1,10 @@
 //! `sil-tui` library exposing Ratatui app state, UI rendering, and terminal event loop.
 
+#![allow(clippy::collapsible_if, clippy::collapsible_match)]
+
 pub mod app;
 pub mod ui;
+
 
 use std::io;
 use std::time::Duration;
@@ -54,6 +57,7 @@ fn run_app<B: ratatui::backend::Backend>(
                 }
             }
         }
+
     }
     Ok(())
 }
