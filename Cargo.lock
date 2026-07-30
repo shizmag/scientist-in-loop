@@ -1338,6 +1338,7 @@ dependencies = [
  "sil-db",
  "sil-git",
  "sil-latex",
+ "sil-mcp",
  "sil-parse",
  "sil-template",
  "sil-tui",

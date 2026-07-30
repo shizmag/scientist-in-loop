@@ -38,11 +38,7 @@ impl OnnxEmbedder {
 
     /// Generate normalized embedding vector for text input.
     pub fn embed(&self, text: &str) -> Result<Vec<f32>, DbError> {
-        if let Some(ref path) = self.model_path {
-            if path.exists() {
-                return self.embed_fallback(text);
-            }
-        }
+        let _ = self.model_path.as_ref().is_some_and(|p| p.exists());
         self.embed_fallback(text)
     }
 
@@ -130,11 +126,7 @@ impl OnnxReranker {
 
     /// Score query against document passage (returns float relevance score).
     pub fn score(&self, query: &str, document: &str) -> Result<f32, DbError> {
-        if let Some(ref path) = self.model_path {
-            if path.exists() {
-                return self.score_fallback(query, document);
-            }
-        }
+        let _ = self.model_path.as_ref().is_some_and(|p| p.exists());
         self.score_fallback(query, document)
     }
 

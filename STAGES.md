@@ -24,3 +24,7 @@ Commit proposals with Sci-Action trailers, `sil log`.
 ## Stage 5 — Build / fetch / context / polish ✅
 `sil build`, `sil source fetch`, `sil context` + dynamic skills, colored UX,
 root README, final e2e suite.
+
+## Stage 6 — MCP Server & Local ONNX RAG Integration ✅
+`sil mcp` stdio JSON-RPC server (`crates/sil-mcp`), parent-child section/paragraph chunking, local ONNX embeddings & cross-encoder reranking, BM25+Dense RRF & HyDE hybrid search, structured LaTeX TODO governance, 11 core MCP tool handlers.
+

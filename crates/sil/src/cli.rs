@@ -181,6 +181,12 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Start Model Context Protocol (MCP) stdio server
+    Mcp {
+        /// Quiet mode (suppress log output on stderr)
+        #[arg(short, long)]
+        quiet: bool,
+    },
 }
 
 

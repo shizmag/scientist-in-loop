@@ -24,6 +24,7 @@ sil-latex = { workspace = true }
 sil-parse = { workspace = true }
 sil-template = { workspace = true }
 sil-tui = { workspace = true }
+sil-mcp = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

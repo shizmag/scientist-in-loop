@@ -169,7 +169,7 @@ mod tests {
 
         let zip_out = root.join("submission_neurips.zip");
         let result =
-            create_submission_archive(&root, &main_tex, Some(&pdf_file), &zip_out).unwrap();
+            create_submission_archive(root, &main_tex, Some(&pdf_file), &zip_out).unwrap();
 
         assert!(result.is_file());
 

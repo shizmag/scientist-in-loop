@@ -96,6 +96,7 @@ fn run() -> Result<()> {
         Commands::Settings => commands::settings(),
         Commands::Digest { query, limit } => commands::digest(&query, limit, ui.as_ref()),
         Commands::Todo { json } => commands::todo(json, ui.as_ref()),
+        Commands::Mcp { quiet } => commands::mcp(quiet),
     }
 }
 

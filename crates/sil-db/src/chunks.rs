@@ -29,6 +29,7 @@ impl ChunkType {
     }
 
     /// Parse enum from database string representation.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "parent" => Some(ChunkType::Parent),
@@ -404,7 +405,7 @@ pub fn search_hybrid_dual(
     let clean_q = sanitized_query.split_whitespace().collect::<Vec<_>>().join(" ");
 
     if !clean_q.is_empty() {
-        let stmt = conn.prepare(
+        let mut stmt = conn.prepare(
             r#"
             SELECT c.id, c.source_id, c.parent_chunk_id, c.chunk_type, c.heading_title,
                    c.content, c.start_offset, c.end_offset, c.embedding_blob, c.created_at,
@@ -415,44 +416,39 @@ pub fn search_hybrid_dual(
             ORDER BY rank
             LIMIT ?2
             "#
-        );
+        )?;
 
-        if let Ok(mut stmt) = stmt {
-            let fetch_limit = (limit * 3).max(50) as i64;
-            if let Ok(rows) = stmt.query_map(params![clean_q, fetch_limit], |row| {
-                let chunk_type_str: String = row.get(3)?;
-                let chunk_type = ChunkType::from_str(&chunk_type_str).unwrap_or(ChunkType::Child);
-                let chunk = SourceChunk {
-                    id: row.get(0)?,
-                    source_id: SourceId::new(row.get::<_, String>(1)?),
-                    parent_chunk_id: row.get(2)?,
-                    chunk_type,
-                    heading_title: row.get(4)?,
-                    content: row.get(5)?,
-                    start_offset: row.get::<_, i64>(6)? as usize,
-                    end_offset: row.get::<_, i64>(7)? as usize,
-                    embedding_blob: row.get(8)?,
-                    created_at: row.get(9)?,
-                };
-                let snippet: String = row.get(10)?;
-                Ok((chunk, snippet))
-            }) {
-                let mut rank = 1;
-                for r in rows {
-                    if let Ok((chunk, snip)) = r {
-                        bm25_ranks.insert(chunk.id.clone(), (rank, chunk, snip));
-                        rank += 1;
-                    }
-                }
+        let fetch_limit = (limit * 3).max(50) as i64;
+        if let Ok(rows) = stmt.query_map(params![clean_q, fetch_limit], |row| {
+            let chunk_type_str: String = row.get(3)?;
+            let chunk_type = ChunkType::from_str(&chunk_type_str).unwrap_or(ChunkType::Child);
+            let chunk = SourceChunk {
+                id: row.get(0)?,
+                source_id: SourceId::new(row.get::<_, String>(1)?),
+                parent_chunk_id: row.get(2)?,
+                chunk_type,
+                heading_title: row.get(4)?,
+                content: row.get(5)?,
+                start_offset: row.get::<_, i64>(6)? as usize,
+                end_offset: row.get::<_, i64>(7)? as usize,
+                embedding_blob: row.get(8)?,
+                created_at: row.get(9)?,
+            };
+            let snippet: String = row.get(10)?;
+            Ok((chunk, snippet))
+        }) {
+            for (rank, (chunk, snip)) in (1..).zip(rows.flatten()) {
+                bm25_ranks.insert(chunk.id.clone(), (rank, chunk, snip));
             }
         }
     }
 
     // 2. Dense ONNX Search
     let mut dense_ranks: HashMap<String, (usize, SourceChunk)> = HashMap::new();
-    if !dense_text.trim().is_empty() {
-        if let Ok(q_emb) = embedder.embed(dense_text) {
-            let mut dense_candidates: Vec<(String, f32, SourceChunk)> = Vec::new();
+    if !dense_text.trim().is_empty()
+        && let Ok(q_emb) = embedder.embed(dense_text)
+    {
+        let mut dense_candidates: Vec<(String, f32, SourceChunk)> = Vec::new();
 
             let mut stmt = conn.prepare(
                 "SELECT id, source_id, parent_chunk_id, chunk_type, heading_title, content, start_offset, end_offset, embedding_blob, created_at
@@ -476,13 +472,11 @@ pub fn search_hybrid_dual(
                     created_at: row.get(9)?,
                 })
             }) {
-                for r in rows {
-                    if let Ok(chunk) = r {
-                        if let Some(ref blob) = chunk.embedding_blob {
-                            let chunk_emb = blob_to_embedding(blob);
-                            let sim = cosine_similarity(&q_emb, &chunk_emb);
-                            dense_candidates.push((chunk.id.clone(), sim, chunk));
-                        }
+                for chunk in rows.flatten() {
+                    if let Some(ref blob) = chunk.embedding_blob {
+                        let chunk_emb = blob_to_embedding(blob);
+                        let sim = cosine_similarity(&q_emb, &chunk_emb);
+                        dense_candidates.push((chunk.id.clone(), sim, chunk));
                     }
                 }
             }
@@ -493,7 +487,6 @@ pub fn search_hybrid_dual(
                 dense_ranks.insert(id, (rank_0 + 1, chunk));
             }
         }
-    }
 
     // 3. Reciprocal Rank Fusion (RRF)
     let k = 60.0f32;

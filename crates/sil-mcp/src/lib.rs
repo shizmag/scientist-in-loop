@@ -11,3 +11,18 @@ pub use protocol::{
 };
 pub use server::McpServer;
 pub use tools::{call_tool, list_tools};
+
+/// Convenience helper to start the stdio server using tokio runtime.
+pub fn run_stdio_server(quiet: bool) -> anyhow::Result<()> {
+    if !quiet {
+        eprintln!("⚙ scientist-in-loop MCP server starting over stdio...");
+    }
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+        let stdin = tokio::io::stdin();
+        let stdout = tokio::io::stdout();
+        let server = McpServer::new();
+        server.run(stdin, stdout).await
+    })
+}
+

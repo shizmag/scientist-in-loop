@@ -199,15 +199,13 @@ fn parse_header_kv(
                     *out_author = raw_val.to_string();
                 }
             }
-            "tags" | "tag" => {
-                if !raw_val.is_empty() {
-                    *out_tags = raw_val
-                        .split(',')
-                        .map(|s| s.trim())
-                        .filter(|s| !s.is_empty())
-                        .map(String::from)
-                        .collect();
-                }
+            "tags" | "tag" if !raw_val.is_empty() => {
+                *out_tags = raw_val
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string())
+                    .collect();
             }
             _ => {}
         }

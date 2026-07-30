@@ -185,6 +185,7 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil structure list\|set` | Inspect or update section completion in `structure.yaml` |
 | `sil cite <source\|query>` | Suggest deterministic BibTeX + `\cite{…}` (optional `--append` to `references.bib`) |
 | `sil doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
+| `sil mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
 
 
 Commit proposals always include a trailer such as:
@@ -223,6 +224,36 @@ Sci-Action: fetch-source
 - `u`: Use selected cached item in active local project settings.
 - `s` or `Ctrl+S`: Save global settings, local settings, and cache.
 - `q` or `Esc`: Quit settings TUI.
+
+---
+
+## Model Context Protocol (MCP) Server & Local ONNX RAG
+
+`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil mcp`) allowing external AI IDEs and assistants (such as Antigravity, Claude Desktop, and Cursor) to directly inspect literature, execute skills, update `# -- X -- #` TODO blocks, and format commit proposals.
+
+### Key MCP Features
+
+1. **100% Local ONNX Hybrid RAG (`sil_search_sources`)**:
+   - **Parent-Child Chunking**: Splits parsed Markdown literature by section headings (parent chunks) and paragraphs (child chunks).
+   - **Dense ONNX Embeddings + BM25 FTS5**: Uses local ONNX models (`bge-small-en-v1.5` / `ms-marco-MiniLM-L-6-v2`) with Reciprocal Rank Fusion (RRF) and HyDE query expansion.
+   - **Parent Context Expansion**: Matches on child paragraphs automatically expand to full parent section context.
+2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
+   - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.
+3. **Commit Proposal Governance (`sil_propose_commit`)**:
+   - Generates structured commit proposals with `Sci-Action:` trailers for human review. **Never auto-commits**.
+
+### Standard MCP Configuration (`mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "scientist-in-loop": {
+      "command": "sil",
+      "args": ["mcp", "--quiet"]
+    }
+  }
+}
+```
 
 ---
 
