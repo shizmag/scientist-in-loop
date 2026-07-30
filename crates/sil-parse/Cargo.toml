@@ -11,7 +11,9 @@ camino = { workspace = true }
 console = { workspace = true }
 sil-core = { workspace = true }
 sil-db = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
+
 
 [dev-dependencies]
 tempfile = { workspace = true }

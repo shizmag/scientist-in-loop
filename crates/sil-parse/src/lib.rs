@@ -5,6 +5,7 @@
 mod batch;
 mod error;
 mod interactive;
+pub mod journal_digest;
 mod marker;
 mod validate;
 
@@ -13,8 +14,10 @@ pub use error::ParseError;
 pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
+pub use journal_digest::fetch_journal_publications;
 pub use marker::{MarkerRunner, PythonMarkerRunner, StubMarkerRunner};
 pub use validate::{list_unparsed_pdfs, minimal_pdf_bytes, validate_for_parse, write_fixture_pdf};
+
 
 #[cfg(test)]
 mod tests {
