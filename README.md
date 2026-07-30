@@ -8,6 +8,7 @@ Humans and LLM agents work under the same strict conventions:
 - **SQLite + FTS5** is the memory for parsed sources  
 - **`structure.yaml`** is the formal syntactic map of the paper  
 - **`paper_draft.tex`** is the working document (later promoted to `paper.tex`)  
+- **Settings & Co-Author Cache** (Global in `~/.config/sil/`, Local in `.sil/config.yaml`) managed via Ratatui TUI (`sil settings`)
 - **Skills** in `.sil/skills/` are loaded dynamically according to clear rules  
 
 After `sil init`, you can hand a goal to an agent and it will understand the layout, rules, and current state.
@@ -27,8 +28,9 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 1. Original PDFs live only in `sources/`.  
 2. Parsed text is indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
 3. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
-4. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
-5. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.
+4. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
+5. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
+6. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.
 
 ---
 
@@ -48,6 +50,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | Feature | Works without extra install? |
 |---------|------------------------------|
 | `sil init` / structure / SQLite | Needs **git** + built `sil` |
+| `sil settings` / `sil tui` | Terminal TUI built into `sil` (powered by Ratatui & Crossterm) |
 | `sil parse` | Needs **Python 3**; quality improves with **marker-pdf** |
 | `sil source fetch` | Needs **Python 3** (stdlib networking) |
 | `sil build` | Needs a **LaTeX engine** on `PATH` |
@@ -111,6 +114,9 @@ cargo install --path crates/sil
 sil init my-paper
 cd my-paper
 
+# Configure global author info & article settings via Ratatui TUI
+sil settings     # or: sil tui
+
 # After upgrading the sil binary, refresh templates / .gitignore
 # (preserves config, structure, manuscripts, and custom gitignore rules)
 sil init --update
@@ -130,6 +136,9 @@ sil context --paper --agent --skill-paper
 
 # Build the manuscript (requires configured LaTeX engine)
 sil build
+
+# Format into conference/journal templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
+sil template apply -t neurips
 
 # Sci-Action annotated history
 sil log
@@ -156,6 +165,7 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 |---------|-------------|
 | `sil init [name]` | Create full project tree, templates, auto `.gitignore`, git repo, SQLite DB; **propose** first commit |
 | `sil init --update` | Upgrade an existing project to the current sil templates (skills, managed `.gitignore`, missing scaffold) |
+| `sil settings` / `sil tui` | Interactive Ratatui TUI to manage global author requisites, local project settings, and co-author/grant cache |
 | `sil status [--json]` | Stage, git status, source counts, structure completion, draft dirty flag |
 | `sil parse [pdf]` | Parse one PDF, or interactively multi-select unparsed files in `sources/` |
 | `sil source fetch <doi\|arxiv\|url>` | Download PDF into `sources/`, offer parse |
@@ -185,12 +195,39 @@ Sci-Action: fetch-source
 
 ---
 
+## Settings & Co-Author Cache TUI (`sil settings`)
+
+`sil settings` (or `sil tui`) opens an interactive Ratatui interface for managing:
+
+1. **Global Settings (`~/.config/sil/settings.yaml`)**:
+   - Primary Author Name, Email, Affiliation, and ORCID iD.
+   - Default Grant Funder, Grant Number, and Acknowledgment prose.
+   - Default LaTeX engine and default target template.
+2. **Local Project Settings (`.sil/config.yaml`)**:
+   - Article title, active co-authors list, active grant requisites, and project notes.
+3. **Co-Authors & Grants Cache (`~/.config/sil/cache.yaml`)**:
+   - History of all co-authors and grants encountered across previous works.
+   - One-key import into local project settings (`u`), fast picker modal (`a`), and deduplication.
+
+### Keybindings in TUI
+
+- `1`-`4` or `Tab` / `Shift+Tab`: Switch tabs (Global, Local, Co-Author Cache, Grant Cache).
+- `↑`/`↓` or `j`/`k`: Navigate fields or lists.
+- `e` or `Enter`: Edit selected field value.
+- `a`: Add new item or select from cache modal.
+- `d` / `Delete`: Remove item from local project or cache.
+- `u`: Use selected cached item in active local project settings.
+- `s` or `Ctrl+S`: Save global settings, local settings, and cache.
+- `q` or `Esc`: Quit settings TUI.
+
+---
+
 ## Layout created by `sil init`
 
 ```text
 my-paper/
 ├── .sil/
-│   ├── config.yaml
+│   ├── config.yaml          # project paths, latex engine, local settings (co-authors, grants)
 │   ├── structure.yaml
 │   ├── structure.example.yaml
 │   ├── db.sqlite
@@ -289,14 +326,17 @@ sil context --task "edit introduction in paper_draft.tex"
 ```text
 crates/
   sil/          # binary only — clap + wiring
-  sil-core/     # domain types, Config, errors, paths, terminal UX
+  sil-core/     # domain types, Config, settings, errors, paths, terminal UX
   sil-db/       # SQLite + FTS5
   sil-git/      # status, commit proposals, Sci-Action trailers
   sil-parse/    # PDF validation + Marker orchestration
   sil-latex/    # engine abstraction + section splitter
   sil-agent/    # dynamic skills + context generation
+  sil-template/ # ML/AI conference article templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
+  sil-tui/      # Ratatui TUI for global/local settings and co-author cache
 python/         # download_pdf.py, parse_with_marker.py
 templates/      # files copied by sil init
+docs/adr/       # Architectural Decision Records (ADRs)
 ```
 
 - Domain logic lives in libraries; the binary stays thin.  
@@ -320,10 +360,12 @@ cargo run -p sil -- --help
 | `sil init` exact layout + templates + managed `.gitignore` + git + SQLite | Done |
 | `sil init --update` template upgrade for existing projects | Done |
 | Typed `config.yaml` / `structure.yaml` + `sil status` | Done |
+| `sil settings` / `sil tui` interactive Ratatui TUI for global/local settings & co-author cache | Done |
 | `sil parse` (path + noninteractive multi-select) + FTS5 `sil search` | Done |
 | Marker via Python helper (stubbable for tests) | Done |
 | Commit proposals + `sil log` Sci-Action trailers | Done |
 | `sil build` / `sil source fetch` / `sil context` + skills | Done |
+| `sil template list\|apply` ML/AI manuscript templating | Done |
 | Colored output + progress (disabled in tests) | Done |
 | Auto-commit | **Never** (by design) |
 | Engines beyond Marker | Out of scope for MVP |
