@@ -165,8 +165,11 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 |---------|-------------|
 | `sil init [name]` | Create full project tree, templates, auto `.gitignore`, git repo, SQLite DB; **propose** first commit |
 | `sil init --update` | Upgrade an existing project to the current sil templates (skills, managed `.gitignore`, missing scaffold) |
+| `sil dashboard` / `sil daily` | Interactive Ratatui TUI command center dashboard (progress, health audit, literature feed, idea blocks) |
 | `sil settings` / `sil tui` | Interactive Ratatui TUI to manage global author requisites, local project settings, and co-author/grant cache |
 | `sil status [--json]` | Stage, git status, source counts, structure completion, draft dirty flag |
+| `sil digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
+| `sil todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
 | `sil parse [pdf]` | Parse one PDF, or interactively multi-select unparsed files in `sources/` |
 | `sil source fetch <doi\|arxiv\|url>` | Download PDF into `sources/`, offer parse |
 | `sil source list [--json]` | List sources with parsed vs unparsed (and on-disk) visibility |
@@ -181,7 +184,8 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
 | `sil structure list\|set` | Inspect or update section completion in `structure.yaml` |
 | `sil cite <source\|query>` | Suggest deterministic BibTeX + `\cite{…}` (optional `--append` to `references.bib`) |
-| `sil doctor [--json]` | Project layout and host dependency checks |
+| `sil doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
+
 
 Commit proposals always include a trailer such as:
 
@@ -307,9 +311,26 @@ Proposes a commit with `Sci-Action: update` (never auto-committed).
 4. Update `completion` in `structure.yaml` when changing a section’s status.  
 5. Write new prose into `paper_draft.tex`; promote to `paper.tex` only when sections are at least `draft`.  
 6. After significant work, use the **commit proposal** `sil` prints; keep the `Sci-Action` trailer.  
-7. Never invent new top-level directories. Never auto-commit.
+7. Use `# -- X -- #` blocks in `paper_draft.tex` to communicate ideas or TODOs with human scientists. Never auto-commit.
+
+### Idea & TODO Blocks (`# -- X -- #`)
+
+Both human researchers and AI agents can bound ideas, questions, or revision notes directly inside `paper_draft.tex`:
+
+```latex
+% # -- X -- #
+% TODO: Re-evaluate section 3 baseline comparisons using the new dataset.
+% Idea: Add an ablation table comparing model A vs model B.
+% # -- X -- #
+```
+
+`sil` automatically parses these blocks into SQLite memory. They are surfaced in:
+- `sil dashboard` / `sil daily` (TUI Command Center)
+- `sil todo` (CLI list of active ideas)
+- `sil context` (automatically loaded into AI agent context)
 
 Flags for richer context:
+
 
 ```bash
 sil context --paper              # deterministic LaTeX section split of paper_draft.tex

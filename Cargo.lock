@@ -1099,6 +1099,7 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "console",
+ "serde_json",
  "sil-core",
  "sil-db",
  "tempfile",

@@ -92,6 +92,10 @@ fn run() -> Result<()> {
             json,
         } => commands::cite(&target, append, json, ui.as_ref()),
         Commands::Doctor { json } => commands::doctor(json, ui.as_ref()),
+        Commands::Dashboard => commands::settings(),
         Commands::Settings => commands::settings(),
+        Commands::Digest { query, limit } => commands::digest(&query, limit, ui.as_ref()),
+        Commands::Todo { json } => commands::todo(json, ui.as_ref()),
     }
 }
+

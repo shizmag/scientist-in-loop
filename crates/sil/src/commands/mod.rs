@@ -3,6 +3,7 @@
 mod build;
 mod cite;
 mod context;
+mod digest;
 mod doctor;
 mod init;
 mod log;
@@ -16,10 +17,12 @@ mod status;
 mod structure_cmd;
 mod template_cmd;
 mod settings_cmd;
+mod todo;
 
 pub use build::run as build;
 pub use cite::run as cite;
 pub use context::run as context;
+pub use digest::run as digest;
 pub use doctor::run as doctor;
 pub use init::run as init;
 pub use log::run as log;
@@ -33,3 +36,5 @@ pub use status::run as status;
 pub use structure_cmd::{list as structure_list, set_completion as structure_set};
 pub use template_cmd::run as template;
 pub use settings_cmd::run as settings;
+pub use todo::run as todo;
+

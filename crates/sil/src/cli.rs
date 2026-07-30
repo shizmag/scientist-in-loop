@@ -152,16 +152,35 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
-    /// Check project layout and host dependencies
+    /// Check project layout, host dependencies, and manuscript health
     Doctor {
         /// Machine-readable JSON output
         #[arg(long)]
         json: bool,
     },
-    /// Launch interactive TUI to manage global/local settings and co-authors cache
+    /// Launch interactive TUI command center dashboard & settings
+    #[command(alias = "daily")]
+    Dashboard,
+    /// Launch interactive TUI settings manager
     #[command(alias = "tui")]
     Settings,
+    /// Fetch top peer-reviewed journal publications digest
+    Digest {
+        /// Search query or topic (default: machine learning)
+        #[arg(default_value = "machine learning")]
+        query: String,
+        /// Max publications to fetch
+        #[arg(short, long, default_value_t = 10)]
+        limit: usize,
+    },
+    /// List active # -- X -- # idea and TODO blocks parsed from paper_draft.tex
+    Todo {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
 }
+
 
 /// `sil template` subcommands.
 #[derive(Debug, Subcommand)]

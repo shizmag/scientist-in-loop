@@ -29,3 +29,15 @@ You are working inside a `sil`-managed scientific project.
 
 ## Context
 Use `sil context` to obtain a fresh, structured view of the project state.
+
+## Idea & TODO Blocks (# -- X -- #)
+- In `paper_draft.tex`, human scientists or AI agents bound ideas, questions, or TODO notes using:
+  ```latex
+  % # -- X -- #
+  % TODO: Re-evaluate section 3 baseline comparisons.
+  % Idea: Add an ablation table comparing model A vs model B.
+  % # -- X -- #
+  ```
+- Use `sil todo` or `sil context` to inspect active idea/TODO blocks parsed into SQLite memory.
+- When an idea/TODO item is completed in prose, remove or update the `# -- X -- #` block.
+

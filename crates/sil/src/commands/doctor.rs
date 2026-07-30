@@ -91,8 +91,58 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
                     "not found (build may fail)".into()
                 },
             });
+
+            // Manuscript Health & Quality Audit
+            let bib_path = root.join("references.bib");
+            let bib_opt = if bib_path.exists() { Some(bib_path.as_path()) } else { None };
+            match sil_latex::audit_manuscript(&paths.paper_draft(), bib_opt) {
+                Ok(report) => {
+
+                    let missing = report.missing_citations_count;
+                    checks.push(Check {
+                        name: "manuscript health: citations".into(),
+                        ok: missing == 0,
+                        detail: if missing == 0 {
+                            "all cite keys resolved".into()
+                        } else {
+                            format!("{missing} missing citation key(s) in references.bib")
+                        },
+                    });
+
+                    let unref = report.unreferenced_labels_count;
+                    checks.push(Check {
+                        name: "manuscript health: labels".into(),
+                        ok: true, // warning soft
+                        detail: if unref == 0 {
+                            "all labels referenced".into()
+                        } else {
+                            format!("{unref} unreferenced label(s)")
+                        },
+                    });
+
+                    checks.push(Check {
+                        name: "manuscript health: word count".into(),
+                        ok: true,
+                        detail: format!("{} words in paper_draft.tex", report.word_count),
+                    });
+
+                    checks.push(Check {
+                        name: "manuscript health: # -- X -- # ideas".into(),
+                        ok: true,
+                        detail: format!("{} active idea/TODO block(s)", report.todo_ideas_count),
+                    });
+                }
+                Err(e) => {
+                    checks.push(Check {
+                        name: "manuscript health audit".into(),
+                        ok: false,
+                        detail: format!("audit failed: {e}"),
+                    });
+                }
+            }
         }
         Err(e) => {
+
             checks.push(Check {
                 name: "sil project".into(),
                 ok: false,
