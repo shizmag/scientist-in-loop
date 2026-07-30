@@ -6,7 +6,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, Clear, List, ListItem, Paragraph,
-        Row, Table, Tabs,
+        Row, Table, Tabs, Wrap,
     },
     Frame,
 };
@@ -694,7 +694,11 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::styled("  Switch between Dashboard & Settings tabs", Style::default().fg(Color::DarkGray)),
+            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::DarkGray)),
+        ]),
+        Line::from(vec![
+            Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
+            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
             Span::styled("  sil doctor", Style::default().fg(Color::Yellow)),
@@ -755,7 +759,7 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(" 📄 Manuscript Sections ");
+        .title(" 📄 Manuscript Sections (↑/↓ to navigate) ");
 
     let left_list = List::new(items).block(left_block);
     frame.render_widget(left_list, chunks[0]);
@@ -765,11 +769,23 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         && app.paper_section_index < app.paper_sections.len()
     {
         let sec = &app.paper_sections[app.paper_section_index];
-        (format!(" Section: {} ", sec.title), sec.body.clone())
+        (
+            format!(
+                " Section: {} (Press 'e': edit, 'v': $EDITOR, PgUp/PgDn: scroll) ",
+                sec.title
+            ),
+            sec.body.clone(),
+        )
     } else if !app.paper_draft_content.is_empty() {
-        (" paper_draft.tex (Full View) ".to_string(), app.paper_draft_content.clone())
+        (
+            " paper_draft.tex (Full View — Press 'v' for $EDITOR) ".to_string(),
+            app.paper_draft_content.clone(),
+        )
     } else {
-        (" Section Content ".to_string(), "No paper_draft.tex found or empty file.\nPress 'e' to create/edit draft.".to_string())
+        (
+            " Section Content ".to_string(),
+            "No paper_draft.tex found or empty file.\nPress 'v' to launch external editor (nvim/helix) or 'e' to create draft.".to_string(),
+        )
     };
 
     let right_block = Block::default()
@@ -778,7 +794,11 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(Color::Green))
         .title(sec_title);
 
-    let paragraph = Paragraph::new(body_text).block(right_block);
+    let paragraph = Paragraph::new(body_text)
+        .block(right_block)
+        .wrap(Wrap { trim: false })
+        .scroll((app.paper_scroll_offset as u16, 0));
+
     frame.render_widget(paragraph, chunks[1]);
 }
 
@@ -789,9 +809,12 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
     let sec_title = if !app.paper_sections.is_empty()
         && app.paper_section_index < app.paper_sections.len()
     {
-        format!(" Editing Section: {} ", app.paper_sections[app.paper_section_index].title)
+        format!(
+            " Editing Section: {} (Enter: Confirm, Esc: Cancel) ",
+            app.paper_sections[app.paper_section_index].title
+        )
     } else {
-        " Editing paper_draft.tex ".to_string()
+        " Editing paper_draft.tex (Enter: Confirm, Esc: Cancel) ".to_string()
     };
 
     let popup_block = Block::default()
@@ -803,7 +826,10 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         ));
 
-    let paragraph = Paragraph::new(app.paper_edit_buffer.as_str()).block(popup_block);
+    let paragraph = Paragraph::new(app.paper_edit_buffer.as_str())
+        .block(popup_block)
+        .wrap(Wrap { trim: false });
+
     frame.render_widget(paragraph, area);
 }
 

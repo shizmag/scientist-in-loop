@@ -130,7 +130,9 @@ pub struct App {
     pub paper_draft_content: String,
     pub paper_sections: Vec<sil_latex::TexSection>,
     pub paper_section_index: usize,
+    pub paper_scroll_offset: usize,
     pub paper_edit_buffer: String,
+    pub pending_external_editor: bool,
 }
 
 impl App {
@@ -165,7 +167,7 @@ impl App {
             local_coauthor_index: 0,
             local_grant_index: 0,
             input_buffer: String::new(),
-            status_message: "Ready. Press 'Tab' to switch views, 'e'/'Enter' to edit, 's' to save.".to_string(),
+            status_message: "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string(),
             dirty: false,
             should_quit: false,
             new_author: AuthorDetails::default(),
@@ -175,7 +177,9 @@ impl App {
             paper_draft_content: String::new(),
             paper_sections: Vec::new(),
             paper_section_index: 0,
+            paper_scroll_offset: 0,
             paper_edit_buffer: String::new(),
+            pending_external_editor: false,
         };
         app.reload_paper_draft();
         app
@@ -237,12 +241,30 @@ impl App {
             KeyCode::Char('6') => self.active_tab = ActiveTab::GrantCache,
 
             KeyCode::Char('s') => self.save_all(),
+            KeyCode::Char('v') => {
+                if self.active_tab == ActiveTab::PaperDraft || self.project_root.is_some() {
+                    self.pending_external_editor = true;
+                    self.status_message = "Launching external editor ($EDITOR / nvim / helix)...".to_string();
+                }
+            }
+
+            KeyCode::PageUp => {
+                if self.active_tab == ActiveTab::PaperDraft {
+                    self.paper_scroll_offset = self.paper_scroll_offset.saturating_sub(5);
+                }
+            }
+            KeyCode::PageDown => {
+                if self.active_tab == ActiveTab::PaperDraft {
+                    self.paper_scroll_offset += 5;
+                }
+            }
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
                 ActiveTab::Dashboard => {}
                 ActiveTab::PaperDraft => {
                     if self.paper_section_index > 0 {
                         self.paper_section_index -= 1;
+                        self.paper_scroll_offset = 0;
                     }
                 }
                 ActiveTab::GlobalSettings => {
@@ -273,6 +295,7 @@ impl App {
                         && self.paper_section_index + 1 < self.paper_sections.len()
                     {
                         self.paper_section_index += 1;
+                        self.paper_scroll_offset = 0;
                     }
                 }
                 ActiveTab::GlobalSettings => {
