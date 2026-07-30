@@ -1,0 +1,23 @@
+[package]
+name = "sil-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Model Context Protocol (MCP) server for scientist-in-loop"
+
+[dependencies]
+sil-core.workspace = true
+sil-db.workspace = true
+sil-agent.workspace = true
+sil-latex.workspace = true
+sil-git.workspace = true
+sil-template.workspace = true
+
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+camino.workspace = true
+
+tokio = { version = "1", features = ["full"] }

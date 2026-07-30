@@ -10,6 +10,7 @@ members = [
     "crates/sil-agent",
     "crates/sil-template",
     "crates/sil-tui",
+    "crates/sil-mcp",
 ]
 default-members = ["crates/sil"]
 
@@ -28,6 +29,7 @@ sil-latex = { path = "crates/sil-latex" }
 sil-agent = { path = "crates/sil-agent" }
 sil-template = { path = "crates/sil-template" }
 sil-tui = { path = "crates/sil-tui" }
+sil-mcp = { path = "crates/sil-mcp" }
 
 ratatui = "0.29"
 crossterm = "0.28"
