@@ -60,10 +60,12 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 20)]
         limit: usize,
     },
-    /// Compile the LaTeX main file from config
+    /// Compile the LaTeX main file from config ('sil build release' formats template, strips #-- X --# notes, and creates submission zip)
     Build {
-        /// Format with target template from config before compiling
-        #[arg(long)]
+        /// Target build mode ("release" or "draft")
+        target: Option<String>,
+        /// Format with target template from config before compiling (legacy flag)
+        #[arg(long, hide = true)]
         release: bool,
     },
     /// Show git log annotated by Sci-Action trailers

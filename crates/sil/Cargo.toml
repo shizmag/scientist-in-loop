@@ -31,3 +31,4 @@ assert_cmd = { workspace = true }
 predicates = { workspace = true }
 serde_json = { workspace = true }
 sil-parse = { workspace = true }
+zip = { workspace = true }

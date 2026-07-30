@@ -10,6 +10,7 @@ publish = false
 camino = { workspace = true }
 sil-core = { workspace = true }
 thiserror = { workspace = true }
+zip = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

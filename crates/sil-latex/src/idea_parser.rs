@@ -82,6 +82,31 @@ pub fn parse_idea_blocks(tex_content: &str) -> Vec<IdeaBlock> {
     blocks
 }
 
+/// Strip all `# -- X -- #` (or `#-- X --#`) idea and TODO blocks from LaTeX file contents.
+///
+/// Lines between opening and closing markers (inclusive) are removed.
+pub fn strip_idea_blocks(tex_content: &str) -> String {
+    let mut kept_lines = Vec::new();
+    let mut in_block = false;
+
+    for line in tex_content.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains("# -- X -- #") || trimmed.contains("#-- X --#") {
+            in_block = !in_block;
+            continue;
+        }
+        if !in_block {
+            kept_lines.push(line);
+        }
+    }
+
+    let mut result = kept_lines.join("\n");
+    if tex_content.ends_with('\n') && !result.ends_with('\n') {
+        result.push('\n');
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,6 +200,24 @@ Need to revise conclusion.
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].section_id, None);
         assert_eq!(blocks[0].content, "General preamble idea before any section.");
+    }
+
+    #[test]
+    fn test_strip_idea_blocks() {
+        let tex = r#"\section{Introduction}
+Some text here.
+
+% # -- X -- #
+% Idea: Add an ablation table comparing model A vs model B.
+% TODO: Verify equation 3 derivation.
+% # -- X -- #
+
+More text here."#;
+        let stripped = strip_idea_blocks(tex);
+        assert!(!stripped.contains("ablation table"));
+        assert!(!stripped.contains("# -- X -- #"));
+        assert!(stripped.contains("Some text here."));
+        assert!(stripped.contains("More text here."));
     }
 }
 

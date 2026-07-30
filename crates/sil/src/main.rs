@@ -42,7 +42,7 @@ fn run() -> Result<()> {
             }
         },
         Commands::Search { query, limit } => commands::search(&query, limit, ui.as_ref()),
-        Commands::Build { release } => commands::build(release, ui.as_ref()),
+        Commands::Build { target, release } => commands::build(target, release, ui.as_ref()),
         Commands::Log {
             limit,
             sci_only,

@@ -2,14 +2,24 @@
 
 use anyhow::{Result, bail};
 use sil_core::SilUi;
-use sil_latex::build as latex_build;
+use sil_latex::{build as latex_build, create_submission_archive};
 
 use crate::commands::template_cmd;
 use crate::util::load_project;
 
-pub fn run(release: bool, ui: &dyn SilUi) -> Result<()> {
+pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, config, _paths) = load_project()?;
-    let main = if release {
+
+    let is_release = legacy_release
+        || target
+            .as_deref()
+            .map(|s| {
+                let lower = s.to_lowercase();
+                lower == "release" || lower == "realese" || lower == "rel"
+            })
+            .unwrap_or(false);
+
+    let main = if is_release {
         template_cmd::apply(None, None, None, ui)?;
         let t_name = config.latex.template.clone();
         camino::Utf8PathBuf::from(format!("paper_{t_name}.tex"))
@@ -17,18 +27,45 @@ pub fn run(release: bool, ui: &dyn SilUi) -> Result<()> {
         config.latex.main.clone()
     };
 
+    let mode_str = if is_release { "release" } else { "draft" };
     let engine = config.latex.engine;
-    ui.info(&format!("Building {main} with {engine}"));
+    ui.info(&format!("Building {main} with {engine} ({mode_str} mode)"));
     let mut spinner = ui.spinner("Compiling LaTeX…");
-    match latex_build(engine, &main, &root) {
+
+    let pdf = match latex_build(engine, &main, &root) {
         Ok(pdf) => {
             spinner.finish_success(&format!("Built {pdf}"));
             ui.success(&format!("PDF: {pdf}"));
+            Some(pdf)
         }
         Err(e) => {
             spinner.finish_error("build failed");
-            bail!("{e}");
+            if is_release {
+                ui.warn(&format!("LaTeX engine warning: {e}"));
+                None
+            } else {
+                bail!("{e}");
+            }
+        }
+    };
+
+    if is_release {
+        let t_name = config.latex.template.clone();
+        let zip_name = format!("submission_{t_name}.zip");
+        let zip_path = root.join(&zip_name);
+
+        ui.info(&format!(
+            "Packaging autonomous journal submission archive: {zip_name}"
+        ));
+        match create_submission_archive(&root, &main, pdf.as_deref(), &zip_path) {
+            Ok(created_zip) => {
+                ui.success(&format!("Journal Submission Archive: {created_zip}"));
+            }
+            Err(e) => {
+                ui.warn(&format!("Could not create submission archive: {e}"));
+            }
         }
     }
+
     Ok(())
 }

@@ -14,7 +14,8 @@ pub use template::PaperTemplate;
 
 /// Apply a target template to a manuscript `.tex` string and return the rendered document.
 pub fn apply_template(template: PaperTemplate, tex_source: &str) -> String {
-    let manuscript = ExtractedManuscript::parse(tex_source);
+    let clean_source = sil_latex::strip_idea_blocks(tex_source);
+    let manuscript = ExtractedManuscript::parse(&clean_source);
     render(template, &manuscript)
 }
 
@@ -41,6 +42,30 @@ Methods section body.
         assert!(neurips.contains("Generative Agent Foundations"));
         assert!(neurips.contains("Antigravity Team"));
         assert!(neurips.contains("neurips_2024"));
+        assert!(neurips.contains("Methods section body."));
+    }
+
+    #[test]
+    fn apply_template_strips_idea_blocks() {
+        let draft = r#"
+\documentclass{article}
+\title{Generative Agent Foundations}
+\author{Antigravity Team}
+\begin{document}
+\begin{abstract}
+Abstract text goes here.
+\end{abstract}
+\section{Methods}
+% # -- X -- #
+% TODO: Remove this internal note before submission
+% # -- X -- #
+Methods section body.
+\bibliography{references}
+\end{document}
+"#;
+        let neurips = apply_template(PaperTemplate::Neurips, draft);
+        assert!(!neurips.contains("TODO: Remove this internal note"));
+        assert!(!neurips.contains("# -- X -- #"));
         assert!(neurips.contains("Methods section body."));
     }
 }

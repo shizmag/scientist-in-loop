@@ -53,7 +53,7 @@ pub fn list_templates(ui: &dyn SilUi) -> Result<()> {
     ui.println("");
     ui.muted("Usage:");
     ui.muted("  sil template apply --target neurips");
-    ui.muted("  sil build --release");
+    ui.muted("  sil build release");
     ui.println("");
     Ok(())
 }
