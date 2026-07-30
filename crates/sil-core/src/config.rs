@@ -4,7 +4,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::ConfigError;
-use crate::settings::LocalSettings;
+use crate::settings::{LocalSettings, RagSettings};
 use crate::stage::Stage;
 use crate::types::LatexEngine;
 
@@ -22,6 +22,9 @@ pub struct Config {
     /// Local settings (co-authors, grants, notes).
     #[serde(default)]
     pub settings: LocalSettings,
+    /// Optional RAG configuration override for per-project settings.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rag: Option<RagSettings>,
 }
 
 /// `project:` section.
@@ -121,6 +124,7 @@ impl Default for Config {
                 engine: default_parse_engine(),
             },
             settings: LocalSettings::default(),
+            rag: None,
         }
     }
 }
@@ -322,5 +326,39 @@ parsing:
     fn whitespace_only_yaml() {
         let r = Config::from_yaml("   \n\t\n");
         let _ = r;
+    }
+
+    #[test]
+    fn parse_config_with_rag_override() {
+        let yaml = r#"
+project:
+  title: "RAG Test"
+paths:
+  sources: ./sources
+latex:
+  main: paper_draft.tex
+parsing:
+  engine: marker
+rag:
+  onnx_embedder_model: "all-MiniLM-L6-v2"
+  num_threads: 2
+"#;
+        let cfg = Config::from_yaml(yaml).unwrap();
+        let rag = cfg.rag.expect("rag config present");
+        assert_eq!(rag.onnx_embedder_model, "all-MiniLM-L6-v2");
+        assert_eq!(rag.num_threads, 2);
+        assert_eq!(rag.execution_provider, "cpu");
+    }
+
+    #[test]
+    fn roundtrip_config_with_rag() {
+        let mut cfg = Config::default();
+        cfg.rag = Some(RagSettings {
+            onnx_embedder_model: "custom".to_string(),
+            ..RagSettings::default()
+        });
+        let yaml = cfg.to_yaml().unwrap();
+        let again = Config::from_yaml(&yaml).unwrap();
+        assert_eq!(cfg, again);
     }
 }

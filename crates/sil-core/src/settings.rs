@@ -53,6 +53,9 @@ pub struct GlobalSettings {
     /// Custom metadata key-value pairs needed across articles.
     #[serde(default)]
     pub custom_fields: BTreeMap<String, String>,
+    /// Global RAG settings.
+    #[serde(default)]
+    pub rag: RagSettings,
 }
 
 fn default_engine() -> String {
@@ -63,6 +66,76 @@ fn default_template() -> String {
     "standard".to_string()
 }
 
+fn default_onnx_embedder_model() -> String {
+    "bge-small-en-v1.5".to_string()
+}
+
+fn default_onnx_reranker_model() -> String {
+    "ms-marco-MiniLM-L-6-v2".to_string()
+}
+
+fn default_model_cache_dir() -> Utf8PathBuf {
+    dirs::home_dir()
+        .and_then(|h| Utf8PathBuf::from_path_buf(h.join(".cache").join("sil").join("models")).ok())
+        .unwrap_or_else(|| Utf8PathBuf::from("~/.cache/sil/models"))
+}
+
+fn default_execution_provider() -> String {
+    "cpu".to_string()
+}
+
+fn default_num_threads() -> usize {
+    4
+}
+
+fn default_parent_chunk_size() -> usize {
+    1200
+}
+
+fn default_child_chunk_size() -> usize {
+    300
+}
+
+/// RAG (Retrieval-Augmented Generation) settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RagSettings {
+    /// ONNX embedding model name/identifier.
+    #[serde(default = "default_onnx_embedder_model")]
+    pub onnx_embedder_model: String,
+    /// ONNX reranker model name/identifier.
+    #[serde(default = "default_onnx_reranker_model")]
+    pub onnx_reranker_model: String,
+    /// Cache directory for storing model artifacts.
+    #[serde(default = "default_model_cache_dir")]
+    pub model_cache_dir: Utf8PathBuf,
+    /// Execution provider for ONNX runtime (e.g. cpu, cuda).
+    #[serde(default = "default_execution_provider")]
+    pub execution_provider: String,
+    /// Number of threads for ONNX inference execution.
+    #[serde(default = "default_num_threads")]
+    pub num_threads: usize,
+    /// Parent chunk size for text chunking.
+    #[serde(default = "default_parent_chunk_size")]
+    pub parent_chunk_size: usize,
+    /// Child chunk size for text chunking.
+    #[serde(default = "default_child_chunk_size")]
+    pub child_chunk_size: usize,
+}
+
+impl Default for RagSettings {
+    fn default() -> Self {
+        Self {
+            onnx_embedder_model: default_onnx_embedder_model(),
+            onnx_reranker_model: default_onnx_reranker_model(),
+            model_cache_dir: default_model_cache_dir(),
+            execution_provider: default_execution_provider(),
+            num_threads: default_num_threads(),
+            parent_chunk_size: default_parent_chunk_size(),
+            child_chunk_size: default_child_chunk_size(),
+        }
+    }
+}
+
 impl Default for GlobalSettings {
     fn default() -> Self {
         Self {
@@ -71,6 +144,7 @@ impl Default for GlobalSettings {
             default_latex_engine: default_engine(),
             default_template: default_template(),
             custom_fields: BTreeMap::new(),
+            rag: RagSettings::default(),
         }
     }
 }
@@ -258,5 +332,40 @@ mod tests {
         });
 
         assert_eq!(cache.co_authors.len(), 2);
+    }
+
+    #[test]
+    fn rag_settings_defaults() {
+        let rag = RagSettings::default();
+        assert_eq!(rag.onnx_embedder_model, "bge-small-en-v1.5");
+        assert_eq!(rag.onnx_reranker_model, "ms-marco-MiniLM-L-6-v2");
+        assert!(rag.model_cache_dir.as_str().ends_with("sil/models"));
+        assert_eq!(rag.execution_provider, "cpu");
+        assert_eq!(rag.num_threads, 4);
+        assert_eq!(rag.parent_chunk_size, 1200);
+        assert_eq!(rag.child_chunk_size, 300);
+    }
+
+    #[test]
+    fn global_settings_rag_roundtrip() {
+        let dir = tempdir().unwrap();
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("settings.yaml")).unwrap();
+
+        let mut gs = GlobalSettings::default();
+        gs.rag.onnx_embedder_model = "custom-embedder".to_string();
+        gs.rag.num_threads = 8;
+
+        gs.save(Some(&path)).unwrap();
+        let loaded = GlobalSettings::load_or_default(Some(&path));
+
+        assert_eq!(loaded.rag.onnx_embedder_model, "custom-embedder");
+        assert_eq!(loaded.rag.num_threads, 8);
+    }
+
+    #[test]
+    fn global_settings_deserializes_missing_rag() {
+        let yaml = "default_latex_engine: tectonic\n";
+        let gs: GlobalSettings = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(gs.rag, RagSettings::default());
     }
 }

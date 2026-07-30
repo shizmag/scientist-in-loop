@@ -33,7 +33,9 @@ pub use error::{ConfigError, SilError, StructureError, ValidationError};
 pub use health::{DiagnosticLevel, HealthDiagnostic, ManuscriptHealthReport};
 pub use paths::{ProjectPaths, project_root_from_cwd};
 pub use sci_action::{SciAction, extract_from_message};
-pub use settings::{AuthorDetails, GlobalSettings, GrantDetails, LocalSettings, SettingsCache};
+pub use settings::{
+    AuthorDetails, GlobalSettings, GrantDetails, LocalSettings, RagSettings, SettingsCache,
+};
 pub use source::{DocumentStatus, SourceDocument, SourceId, validate_pdf_path};
 pub use stage::Stage;
 pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};

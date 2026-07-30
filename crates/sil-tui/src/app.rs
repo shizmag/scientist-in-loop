@@ -16,16 +16,18 @@ pub enum ActiveTab {
     LocalSettings = 3,
     CoAuthorCache = 4,
     GrantCache = 5,
+    RagSettings = 6,
 }
 
 impl ActiveTab {
-    pub const ALL: [ActiveTab; 6] = [
+    pub const ALL: [ActiveTab; 7] = [
         ActiveTab::Dashboard,
         ActiveTab::PaperDraft,
         ActiveTab::GlobalSettings,
         ActiveTab::LocalSettings,
         ActiveTab::CoAuthorCache,
         ActiveTab::GrantCache,
+        ActiveTab::RagSettings,
     ];
 
     pub fn title(&self) -> &'static str {
@@ -36,6 +38,7 @@ impl ActiveTab {
             ActiveTab::LocalSettings => "4. Local Settings",
             ActiveTab::CoAuthorCache => "5. Co-Authors Cache",
             ActiveTab::GrantCache => "6. Grants Cache",
+            ActiveTab::RagSettings => "7. RAG Settings",
         }
     }
 }
@@ -97,6 +100,30 @@ impl LocalField {
     ];
 }
 
+/// Currently active input field in RAG settings form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RagField {
+    EmbedderModel = 0,
+    RerankerModel = 1,
+    CacheDir = 2,
+    ExecutionProvider = 3,
+    NumThreads = 4,
+    ParentChunkSize = 5,
+    ChildChunkSize = 6,
+}
+
+impl RagField {
+    pub const ALL: [RagField; 7] = [
+        RagField::EmbedderModel,
+        RagField::RerankerModel,
+        RagField::CacheDir,
+        RagField::ExecutionProvider,
+        RagField::NumThreads,
+        RagField::ParentChunkSize,
+        RagField::ChildChunkSize,
+    ];
+}
+
 /// Application state struct for TUI.
 pub struct App {
     pub active_tab: ActiveTab,
@@ -109,6 +136,7 @@ pub struct App {
 
     pub selected_global_field: usize,
     pub selected_local_field: usize,
+    pub selected_rag_field: usize,
 
     pub cache_coauthor_index: usize,
     pub cache_grant_index: usize,
@@ -162,6 +190,7 @@ impl App {
             loaded_config,
             selected_global_field: 0,
             selected_local_field: 0,
+            selected_rag_field: 0,
             cache_coauthor_index: 0,
             cache_grant_index: 0,
             local_coauthor_index: 0,
@@ -239,6 +268,7 @@ impl App {
             KeyCode::Char('4') => self.active_tab = ActiveTab::LocalSettings,
             KeyCode::Char('5') => self.active_tab = ActiveTab::CoAuthorCache,
             KeyCode::Char('6') => self.active_tab = ActiveTab::GrantCache,
+            KeyCode::Char('7') => self.active_tab = ActiveTab::RagSettings,
 
             KeyCode::Char('s') => self.save_all(),
             KeyCode::Char('v') => {
@@ -287,6 +317,11 @@ impl App {
                         self.cache_grant_index -= 1;
                     }
                 }
+                ActiveTab::RagSettings => {
+                    if self.selected_rag_field > 0 {
+                        self.selected_rag_field -= 1;
+                    }
+                }
             },
             KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
                 ActiveTab::Dashboard => {}
@@ -321,6 +356,11 @@ impl App {
                         && self.cache_grant_index + 1 < self.cache.grants.len()
                     {
                         self.cache_grant_index += 1;
+                    }
+                }
+                ActiveTab::RagSettings => {
+                    if self.selected_rag_field + 1 < RagField::ALL.len() {
+                        self.selected_rag_field += 1;
                     }
                 }
             },
@@ -474,6 +514,19 @@ impl App {
                     self.status_message = "Editing project notes. Press Enter to confirm, Esc to cancel.".to_string();
                 }
             }
+            ActiveTab::RagSettings => {
+                self.input_buffer = match RagField::ALL[self.selected_rag_field] {
+                    RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model.clone(),
+                    RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model.clone(),
+                    RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
+                    RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
+                    RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
+                    RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
+                    RagField::ChildChunkSize => self.global_settings.rag.child_chunk_size.to_string(),
+                };
+                self.input_mode = InputMode::Editing;
+                self.status_message = "Editing RAG setting. Press Enter to confirm, Esc to cancel.".to_string();
+            }
             _ => {}
         }
     }
@@ -568,6 +621,29 @@ impl App {
                     self.local_settings.title = val;
                 } else if self.selected_local_field == LocalField::Notes as usize {
                     self.local_settings.notes = val;
+                }
+            }
+            ActiveTab::RagSettings => {
+                match RagField::ALL[self.selected_rag_field] {
+                    RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model = val,
+                    RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model = val,
+                    RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
+                    RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
+                    RagField::NumThreads => {
+                        if let Ok(n) = val.parse::<usize>() {
+                            self.global_settings.rag.num_threads = n;
+                        }
+                    }
+                    RagField::ParentChunkSize => {
+                        if let Ok(n) = val.parse::<usize>() {
+                            self.global_settings.rag.parent_chunk_size = n;
+                        }
+                    }
+                    RagField::ChildChunkSize => {
+                        if let Ok(n) = val.parse::<usize>() {
+                            self.global_settings.rag.child_chunk_size = n;
+                        }
+                    }
                 }
             }
             _ => {}
@@ -826,6 +902,8 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::GrantCache);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
+        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
     }
 
@@ -866,6 +944,8 @@ mod tests {
         assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
         app.handle_key(KeyEvent::from(KeyCode::Char('6')));
         assert_eq!(app.active_tab, ActiveTab::GrantCache);
+        app.handle_key(KeyEvent::from(KeyCode::Char('7')));
+        assert_eq!(app.active_tab, ActiveTab::RagSettings);
     }
 
     #[test]
@@ -873,9 +953,41 @@ mod tests {
         let mut app = App::new(None);
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
         app.handle_key(KeyEvent::from(KeyCode::BackTab));
+        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        app.handle_key(KeyEvent::from(KeyCode::BackTab));
         assert_eq!(app.active_tab, ActiveTab::GrantCache);
         app.handle_key(KeyEvent::from(KeyCode::BackTab));
         assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+    }
+
+    #[test]
+    fn test_rag_settings_tui_editing() {
+        let mut app = App::new(None);
+        app.handle_key(KeyEvent::from(KeyCode::Char('7')));
+        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        assert_eq!(app.selected_rag_field, 0);
+
+        // Edit embedder model (field 0)
+        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
+        assert_eq!(app.input_mode, InputMode::Editing);
+        app.input_buffer = "bge-large-en-v1.5".to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(app.global_settings.rag.onnx_embedder_model, "bge-large-en-v1.5");
+        assert!(app.dirty);
+
+        // Move to num_threads (field 4)
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        assert_eq!(app.selected_rag_field, 4);
+
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+        app.input_buffer = "12".to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(app.global_settings.rag.num_threads, 12);
     }
 
     #[test]

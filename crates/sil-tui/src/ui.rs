@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::{ActiveTab, App, GlobalField, InputMode, LocalField};
+use crate::app::{ActiveTab, App, GlobalField, InputMode, LocalField, RagField};
 
 /// Main UI draw loop.
 pub fn draw(frame: &mut Frame, app: &mut App) {
@@ -33,6 +33,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         ActiveTab::LocalSettings => draw_local_settings(frame, app, chunks[1]),
         ActiveTab::CoAuthorCache => draw_coauthor_cache(frame, app, chunks[1]),
         ActiveTab::GrantCache => draw_grant_cache(frame, app, chunks[1]),
+        ActiveTab::RagSettings => draw_rag_settings(frame, app, chunks[1]),
     }
 
 
@@ -165,6 +166,59 @@ fn draw_global_settings(frame: &mut Frame, app: &App, area: Rect) {
 
     let right_list = List::new(right_items).block(right_block);
     frame.render_widget(right_list, chunks[1]);
+}
+
+fn draw_rag_settings(frame: &mut Frame, app: &App, area: Rect) {
+    let rag = &app.global_settings.rag;
+
+    let num_threads_str = rag.num_threads.to_string();
+    let parent_chunk_str = rag.parent_chunk_size.to_string();
+    let child_chunk_str = rag.child_chunk_size.to_string();
+
+    let fields = [
+        ("ONNX Embedder Model", rag.onnx_embedder_model.as_str(), RagField::EmbedderModel),
+        ("ONNX Reranker Model", rag.onnx_reranker_model.as_str(), RagField::RerankerModel),
+        ("Model Cache Dir", rag.model_cache_dir.as_str(), RagField::CacheDir),
+        ("Execution Provider", rag.execution_provider.as_str(), RagField::ExecutionProvider),
+        ("Num Threads", num_threads_str.as_str(), RagField::NumThreads),
+        ("Parent Chunk Size", parent_chunk_str.as_str(), RagField::ParentChunkSize),
+        ("Child Chunk Size", child_chunk_str.as_str(), RagField::ChildChunkSize),
+    ];
+
+    let mut items = Vec::new();
+    for (label, val, field) in fields {
+        let is_selected = app.selected_rag_field == field as usize;
+        let prefix = if is_selected { "► " } else { "  " };
+        let style = if is_selected {
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Reset)
+        };
+
+        items.push(ListItem::new(Line::from(vec![
+            Span::styled(format!("{prefix}{label:<22}: "), style),
+            Span::styled(if val.is_empty() { "<none>" } else { val }, Style::default().fg(Color::Magenta)),
+        ])));
+    }
+
+    let title_text = if let Some(ref cfg) = app.loaded_config {
+        if cfg.rag.is_some() {
+            " 🤖 ONNX & Local RAG Settings (Active: .sil/config.yaml project override) "
+        } else {
+            " 🤖 ONNX & Local RAG Settings (~/.config/sil/settings.yaml) "
+        }
+    } else {
+        " 🤖 ONNX & Local RAG Settings (~/.config/sil/settings.yaml) "
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Magenta))
+        .title(title_text);
+
+    let list = List::new(items).block(block);
+    frame.render_widget(list, area);
 }
 
 fn draw_local_settings(frame: &mut Frame, app: &App, area: Rect) {
