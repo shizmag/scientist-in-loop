@@ -104,12 +104,26 @@ pub fn generate_context(input: &ContextInput<'_>) -> Result<String, ContextError
             Ok(tex) => {
                 let sections = paper_subsections(&tex);
                 out.push_str(&format_subsections_markdown(&sections));
+
+                let ideas = sil_latex::parse_idea_blocks(&tex);
+                if !ideas.is_empty() {
+                    out.push_str("### Active Ideas & TODO blocks (# -- X -- #)\n\n");
+                    for idea in ideas {
+                        let sec = idea.section_id.as_deref().unwrap_or("General");
+                        out.push_str(&format!(
+                            "- **Lines {}-{} [{sec}]**: {}\n",
+                            idea.line_start, idea.line_end, idea.content
+                        ));
+                    }
+                    out.push('\n');
+                }
             }
             Err(e) => {
                 out.push_str(&format!("_Could not read paper_draft.tex: {e}_\n\n"));
             }
         }
     }
+
 
     if input.flags.agent {
         out.push_str("## Agent directory\n\n");
