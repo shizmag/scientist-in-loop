@@ -37,9 +37,8 @@ sil log                 # Sci-Action annotated git history
 sil init --update       # refresh skills / managed .gitignore after upgrading sil
 ```
 
-Large artifacts (SQLite DB, figure binaries, experiment data under `data/`) are
-gitignored by default. Document them in the folder READMEs. Literature PDFs in
-`sources/` stay trackable. `.sil/improvement/` and `.sil/draft_sections/` are
+Large artifacts (SQLite DB, PDFs everywhere including `sources/`, figure/image binaries, experiment data under `data/`) are
+gitignored by default. Document literature and assets in folder READMEs. `.sil/improvement/` and `.sil/draft_sections/` are
 **not** gitignored.
 
 ## For agents

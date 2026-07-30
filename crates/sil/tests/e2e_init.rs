@@ -117,12 +117,8 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
         "experiment data should be ignored:\n{gitignore}"
     );
     assert!(
-        gitignore.contains("/*.pdf"),
-        "root build PDFs should be ignored:\n{gitignore}"
-    );
-    assert!(
-        !gitignore.lines().any(|l| l.trim() == "*.pdf"),
-        "blanket *.pdf must not ignore sources/:\n{gitignore}"
+        gitignore.contains("*.pdf"),
+        "PDFs should be ignored:\n{gitignore}"
     );
 
     fs::write(project.join("sources/paper.pdf"), sil_parse::minimal_pdf_bytes()).unwrap();
@@ -149,7 +145,8 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
             .success()
     };
 
-    assert!(!check("sources/paper.pdf"), "sources literature must stay trackable");
+    assert!(check("sources/paper.pdf"), "sources literature PDFs ignored by default");
+    assert!(!check("sources/README.md"));
     assert!(!check("figures/plots/README.md"));
     assert!(!check("figures/images/README.md"));
     assert!(!check("data/README.md"));
@@ -199,7 +196,8 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
         .output()
         .unwrap();
     let staged = String::from_utf8_lossy(&staged.stdout);
-    assert!(staged.contains("sources/paper.pdf"), "{staged}");
+    assert!(!staged.contains("sources/paper.pdf"), "PDFs in sources/ must be gitignored:\n{staged}");
+    assert!(staged.contains("sources/README.md"), "sources/README.md must be stageable:\n{staged}");
     assert!(staged.contains("figures/plots/README.md"), "{staged}");
     assert!(
         staged.contains("suggestion_1") || staged.contains("improvement"),

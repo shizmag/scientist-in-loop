@@ -232,6 +232,7 @@ fn write_initial_draft_sections(target: &Utf8Path) -> Result<usize> {
 /// Returns relative paths that were created.
 fn write_scaffold_readmes(target: &Utf8Path, overwrite: bool) -> Result<Vec<String>> {
     let files = [
+        ("sources/README.md", templates::SOURCES_README),
         ("data/README.md", templates::DATA_README),
         ("figures/plots/README.md", templates::FIGURES_PLOTS_README),
         ("figures/images/README.md", templates::FIGURES_IMAGES_README),

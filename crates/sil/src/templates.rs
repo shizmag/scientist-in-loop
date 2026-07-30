@@ -26,6 +26,8 @@ pub const FIGURES_IMAGES_README: &str = include_str!("../../../templates/figures
 pub const AGENT_README: &str = include_str!("../../../templates/agent.README.md");
 /// Project README.md
 pub const PROJECT_README: &str = include_str!("../../../templates/README.md");
+/// sources/README.md
+pub const SOURCES_README: &str = include_str!("../../../templates/sources.README.md");
 /// `.sil/improvement/README.md`
 pub const IMPROVEMENT_README: &str = include_str!("../../../templates/improvement.README.md");
 
@@ -94,13 +96,14 @@ pub const GITIGNORE_MANAGED_END: &str = "# <<< sil-managed";
 
 /// Default project `.gitignore` (sil-managed block + room for local rules).
 ///
-/// Large / rebuildable artifacts are ignored by default:
+/// Large / rebuildable / binary artifacts are ignored by default:
+/// - All PDFs (`*.pdf`) and image binaries (`*.jpg`, `*.png`, etc.) everywhere
 /// - SQLite FTS database (rebuild with `sil parse`)
 /// - figure binaries under `figures/plots/` and `figures/images/`
 /// - experiment data under `data/` (except README)
 /// - common result / cache / checkpoint trees
 ///
-/// Literature PDFs in `sources/` stay trackable. Folder README.md files stay tracked.
+/// Folder README.md files stay tracked.
 pub const GITIGNORE: &str = r#"# >>> sil-managed
 # Refreshed by `sil init --update`. Put custom rules below the end marker.
 
@@ -133,9 +136,33 @@ pub const GITIGNORE: &str = r#"# >>> sil-managed
 *-blx.bib
 _minted*/
 
-# Root-only build PDFs (paper_draft.pdf, paper.pdf, …).
-# Literature under sources/ remains trackable.
-/*.pdf
+# --- Binaries: PDFs, images, archives, media (ignored everywhere by default) ---
+*.pdf
+*.PDF
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.png
+*.PNG
+*.webp
+*.gif
+*.svg
+*.tif
+*.tiff
+*.bmp
+*.eps
+*.zip
+*.tar.gz
+*.tgz
+*.gz
+*.7z
+*.rar
+*.bz2
+*.xz
+
+# Folder README files remain tracked
+!**/README.md
 
 # --- large binaries: figures (keep README.md tracked) ---
 figures/plots/**

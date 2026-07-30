@@ -232,10 +232,10 @@ my-paper/
 | Ignored | Still tracked |
 |---------|----------------|
 | `.sil/db.sqlite` (and other SQLite files under `.sil/`) | `.sil/config.yaml`, `structure.yaml`, skills, **improvement/**, **draft_sections/** |
-| Binaries under `figures/plots/**` and `figures/images/**` | `figures/**/README.md` |
-| Contents of `data/**` (experiment outputs) | `data/README.md` |
-| Root build PDFs (`/*.pdf`), LaTeX aux files | Literature PDFs in `sources/` |
-| Common result/cache trees (`results/`, `wandb/`, checkpoints, …) | Manuscripts, `references.bib`, project README |
+| All PDFs (`*.pdf`) everywhere (literature in `sources/`, root PDFs) | `sources/README.md`, `sources/` directory shell |
+| Image/media binaries (`*.jpg`, `*.png`, `*.webp`, `*.svg`, …) | Folder `README.md` files (`figures/**/README.md`, `data/README.md`) |
+| Contents of `data/**` (experiment outputs), LaTeX aux files | Manuscripts (`paper_draft.tex`), `references.bib`, project README |
+| Common result/cache trees (`results/`, `wandb/`, checkpoints, …) | Custom scripts in `agent/` |
 
 Put local rules **below** the managed end marker. `sil init --update` refreshes only the managed block.
 
