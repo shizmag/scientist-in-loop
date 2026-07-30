@@ -709,4 +709,38 @@ mod tests {
         assert_eq!(app.local_settings.co_authors.len(), 1);
         assert_eq!(app.local_settings.co_authors[0].name, "Dr. Smith");
     }
+
+    #[test]
+    fn test_direct_digit_tab_switching() {
+        let mut app = App::new(None);
+        app.handle_key(KeyEvent::from(KeyCode::Char('1')));
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
+        app.handle_key(KeyEvent::from(KeyCode::Char('2')));
+        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        app.handle_key(KeyEvent::from(KeyCode::Char('3')));
+        assert_eq!(app.active_tab, ActiveTab::LocalSettings);
+        app.handle_key(KeyEvent::from(KeyCode::Char('4')));
+        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+        app.handle_key(KeyEvent::from(KeyCode::Char('5')));
+        assert_eq!(app.active_tab, ActiveTab::GrantCache);
+    }
+
+    #[test]
+    fn test_backtab_reverse_navigation() {
+        let mut app = App::new(None);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
+        app.handle_key(KeyEvent::from(KeyCode::BackTab));
+        assert_eq!(app.active_tab, ActiveTab::GrantCache);
+        app.handle_key(KeyEvent::from(KeyCode::BackTab));
+        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+    }
+
+    #[test]
+    fn test_dashboard_quit_signal() {
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::Dashboard;
+        app.handle_key(KeyEvent::from(KeyCode::Char('q')));
+        assert!(app.should_quit);
+    }
 }
+

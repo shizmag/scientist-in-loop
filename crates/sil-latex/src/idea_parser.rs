@@ -117,4 +117,64 @@ Need to revise conclusion.
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].content, "Need to revise conclusion.");
     }
+
+    #[test]
+    fn parse_multiple_blocks_across_sections() {
+        let tex = r#"
+\section{Background}
+% # -- X -- #
+% Note 1 in Background
+% # -- X -- #
+
+\subsection{Related Work}
+% # -- X -- #
+% Note 2 in Related Work
+% # -- X -- #
+"#;
+        let blocks = parse_idea_blocks(tex);
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0].section_id.as_deref(), Some("Background"));
+        assert_eq!(blocks[0].content, "Note 1 in Background");
+        assert_eq!(blocks[1].section_id.as_deref(), Some("Related Work"));
+        assert_eq!(blocks[1].content, "Note 2 in Related Work");
+    }
+
+    #[test]
+    fn parse_empty_block_ignored() {
+        let tex = r#"
+# -- X -- #
+
+# -- X -- #
+"#;
+        let blocks = parse_idea_blocks(tex);
+        assert!(blocks.is_empty());
+    }
+
+    #[test]
+    fn parse_special_characters_and_latex_code() {
+        let tex = r#"
+\section{Methods}
+% # -- X -- #
+% TODO: Check $\alpha_i + \beta_j = 1$ derivation & \cite{Smith2024}.
+% # -- X -- #
+"#;
+        let blocks = parse_idea_blocks(tex);
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].content.contains(r"$\alpha_i + \beta_j = 1$"));
+        assert!(blocks[0].content.contains(r"\cite{Smith2024}"));
+    }
+
+    #[test]
+    fn parse_no_section_defaults_to_none() {
+        let tex = r#"
+% # -- X -- #
+% General preamble idea before any section.
+% # -- X -- #
+"#;
+        let blocks = parse_idea_blocks(tex);
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].section_id, None);
+        assert_eq!(blocks[0].content, "General preamble idea before any section.");
+    }
 }
+

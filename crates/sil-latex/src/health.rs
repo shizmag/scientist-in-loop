@@ -247,4 +247,42 @@ As shown in \cite{Vaswani2017, MissingKey}, see Figure~\ref{fig:arch}.
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].1, "fig:arch");
     }
+
+    #[test]
+    fn test_audit_manuscript_end_to_end() {
+        let dir = tempfile::tempdir().unwrap();
+        let tex_path = camino::Utf8PathBuf::from_path_buf(dir.path().join("paper_draft.tex")).unwrap();
+        let bib_path = camino::Utf8PathBuf::from_path_buf(dir.path().join("references.bib")).unwrap();
+
+        std::fs::write(
+            &tex_path,
+            r#"
+\section{Introduction}
+We cite \cite{KnownKey} and \cite{MissingKey}.
+Figure~\ref{fig:unref} is here.
+\label{fig:unref}
+
+% # -- X -- #
+% Idea: Improve introduction section.
+% # -- X -- #
+"#,
+        )
+        .unwrap();
+
+        std::fs::write(&bib_path, "@article{KnownKey, title={Sample}}\n").unwrap();
+
+        let report = audit_manuscript(&tex_path, Some(&bib_path)).unwrap();
+        assert_eq!(report.missing_citations_count, 1);
+        assert_eq!(report.todo_ideas_count, 1);
+        assert!(report.word_count > 0);
+        assert!(report.has_errors());
+    }
+
+    #[test]
+    fn test_audit_manuscript_missing_file() {
+        let path = camino::Utf8Path::new("/nonexistent/path/paper_draft.tex");
+        let err = audit_manuscript(path, None).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
 }
+

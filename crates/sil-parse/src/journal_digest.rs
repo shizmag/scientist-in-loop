@@ -40,5 +40,60 @@ pub fn fetch_journal_publications(
     })?;
 
     Ok(items)
-
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_missing_script_returns_empty() {
+        let missing = Utf8Path::new("/nonexistent/fetch_script.py");
+        let res = fetch_journal_publications("quantum", 5, Some(missing), None).unwrap();
+        assert!(res.is_empty());
+    }
+
+    #[test]
+    fn test_mock_python_script_success() {
+        let dir = tempfile::tempdir().unwrap();
+        let script_path = dir.path().join("mock_digest.py");
+        std::fs::write(
+            &script_path,
+            r#"
+import json
+print(json.dumps([
+  {
+    "doi": "10.1038/s41586-023-00000-0",
+    "title": "Quantum Supremacy",
+    "authors": "A. Scientist",
+    "journal": "Nature",
+    "year": 2024,
+    "abstract_text": "Sample abstract",
+    "citation_count": 100,
+    "url": "https://doi.org/10.1038/s41586-023-00000-0",
+    "pdf_url": None
+  }
+]))
+"#,
+        )
+        .unwrap();
+
+        let path = Utf8PathBuf::from_path_buf(script_path).unwrap();
+        let items = fetch_journal_publications("quantum", 5, Some(&path), Some("python3")).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Quantum Supremacy");
+        assert_eq!(items[0].journal, "Nature");
+    }
+
+    #[test]
+    fn test_mock_python_script_failure_returns_err() {
+        let dir = tempfile::tempdir().unwrap();
+        let script_path = dir.path().join("failing_digest.py");
+        std::fs::write(&script_path, "import sys; sys.stderr.write('API Error'); sys.exit(1)").unwrap();
+
+        let path = Utf8PathBuf::from_path_buf(script_path).unwrap();
+        let err = fetch_journal_publications("quantum", 5, Some(&path), Some("python3")).unwrap_err();
+        assert!(err.to_string().contains("API Error"));
+    }
+}
+

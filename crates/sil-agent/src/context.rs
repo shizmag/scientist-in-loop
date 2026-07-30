@@ -529,4 +529,42 @@ mod tests {
         let s = sources_summary(&db).unwrap();
         assert!(s.contains("0"));
     }
+
+    #[test]
+    fn context_includes_idea_blocks_when_paper_flag_set() {
+        let (_d, root) = fixture_root_with_system();
+        let draft_path = root.join("paper_draft.tex");
+        fs::write(
+            &draft_path,
+            r#"
+\section{Methods}
+Some method text.
+
+% # -- X -- #
+% Idea: Compare model A vs model B.
+% # -- X -- #
+"#,
+        )
+        .unwrap();
+
+        let flags = ContextFlags {
+            paper: true,
+            ..Default::default()
+        };
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "c",
+            structure_yaml: "s",
+            structure: None,
+            sources_summary: "sum",
+            log_entries: &[],
+            flags: &flags,
+            skills: SkillSelection::always(),
+        };
+        let ctx = generate_context(&input).unwrap();
+        assert!(ctx.contains("Active Ideas & TODO blocks"));
+        assert!(ctx.contains("Compare model A vs model B"));
+        assert!(ctx.contains("Methods"));
+    }
 }
+
