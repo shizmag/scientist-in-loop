@@ -47,7 +47,29 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             INSERT INTO sources_fts(rowid, id, filename, title, content)
             VALUES (new.rowid, new.id, new.filename, new.title, new.content);
         END;
+
+        CREATE TABLE IF NOT EXISTS todo_ideas (
+            id          TEXT PRIMARY KEY NOT NULL,
+            content     TEXT NOT NULL,
+            section_id  TEXT,
+            line_start  INTEGER NOT NULL,
+            line_end    INTEGER NOT NULL,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS journal_digest (
+            doi            TEXT PRIMARY KEY NOT NULL,
+            title          TEXT NOT NULL,
+            authors        TEXT NOT NULL,
+            journal        TEXT NOT NULL,
+            year           INTEGER,
+            abstract_text  TEXT NOT NULL,
+            citation_count INTEGER,
+            url            TEXT NOT NULL,
+            fetched_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         "#,
     )?;
     Ok(())
 }
+

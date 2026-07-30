@@ -80,7 +80,98 @@ impl SilDb {
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchHit>, DbError> {
         search::search(&self.conn, query, limit)
     }
+
+    /// Replace all idea/TODO blocks in database with fresh set from parser.
+    pub fn replace_todo_ideas(&self, ideas: &[sil_core::IdeaBlock]) -> Result<(), DbError> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM todo_ideas", [])?;
+        let mut stmt = tx.prepare(
+            "INSERT INTO todo_ideas (id, content, section_id, line_start, line_end, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        )?;
+        for idea in ideas {
+            stmt.execute(rusqlite::params![
+                idea.id,
+                idea.content,
+                idea.section_id,
+                idea.line_start,
+                idea.line_end,
+                idea.created_at
+            ])?;
+        }
+        drop(stmt);
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// List all parsed idea/TODO blocks.
+    pub fn list_todo_ideas(&self) -> Result<Vec<sil_core::IdeaBlock>, DbError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, content, section_id, line_start, line_end, created_at FROM todo_ideas ORDER BY line_start ASC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(sil_core::IdeaBlock {
+                id: row.get(0)?,
+                content: row.get(1)?,
+                section_id: row.get(2)?,
+                line_start: row.get(3)?,
+                line_end: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for r in rows {
+            result.push(r?);
+        }
+        Ok(result)
+    }
+
+    /// Upsert a journal publication entry into the database.
+    pub fn save_journal_publication(&self, item: &sil_core::JournalPublication) -> Result<(), DbError> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO journal_digest (doi, title, authors, journal, year, abstract_text, citation_count, url)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                item.doi.as_deref().unwrap_or(&item.title),
+                item.title,
+                item.authors,
+                item.journal,
+                item.year,
+                item.abstract_text,
+                item.citation_count,
+                item.url
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// List top journal publications.
+    pub fn list_journal_publications(&self) -> Result<Vec<sil_core::JournalPublication>, DbError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT doi, title, authors, journal, year, abstract_text, citation_count, url FROM journal_digest ORDER BY year DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let doi: Option<String> = row.get(0)?;
+            Ok(sil_core::JournalPublication {
+                doi,
+                title: row.get(1)?,
+                authors: row.get(2)?,
+                journal: row.get(3)?,
+                year: row.get(4)?,
+                abstract_text: row.get(5)?,
+                citation_count: row.get(6)?,
+                url: row.get(7)?,
+                pdf_url: None,
+            })
+        })?;
+        let mut result = Vec::new();
+        for r in rows {
+            result.push(r?);
+        }
+        Ok(result)
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -321,4 +412,40 @@ mod tests {
         assert!(db.search("remove_token_xyz", 5).unwrap().is_empty());
         assert!(!db.remove_source(&doc.id).unwrap());
     }
+
+    #[test]
+    fn todo_ideas_crud() {
+        let db = SilDb::open_in_memory().unwrap();
+        assert!(db.list_todo_ideas().unwrap().is_empty());
+        let idea1 = sil_core::IdeaBlock::new("id1", "Check ablation study", Some("Section 3".into()), 10, 15);
+        let idea2 = sil_core::IdeaBlock::new("id2", "Add baseline comparison graph", Some("Section 4".into()), 40, 45);
+        db.replace_todo_ideas(&[idea1.clone(), idea2.clone()]).unwrap();
+        let list = db.list_todo_ideas().unwrap();
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].content, "Check ablation study");
+        assert_eq!(list[1].content, "Add baseline comparison graph");
+    }
+
+    #[test]
+    fn journal_publication_crud() {
+        let db = SilDb::open_in_memory().unwrap();
+        assert!(db.list_journal_publications().unwrap().is_empty());
+        let item = sil_core::JournalPublication {
+            doi: Some("10.1038/s41586-023-00000-0".into()),
+            title: "Quantum Advantage in Scientific Discovery".into(),
+            authors: "A. Einstein, N. Bohr".into(),
+            journal: "Nature".into(),
+            year: Some(2024),
+            abstract_text: "We demonstrate quantum speedup for molecular simulation.".into(),
+            citation_count: Some(42),
+            url: "https://doi.org/10.1038/s41586-023-00000-0".into(),
+            pdf_url: None,
+        };
+        db.save_journal_publication(&item).unwrap();
+        let list = db.list_journal_publications().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].title, "Quantum Advantage in Scientific Discovery");
+        assert_eq!(list[0].journal, "Nature");
+    }
 }
+

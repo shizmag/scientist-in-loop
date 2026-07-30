@@ -137,28 +137,22 @@ impl SettingsCache {
 
 /// Return standard path for global settings file (`~/.config/sil/settings.yaml`).
 pub fn default_global_settings_path() -> Option<Utf8PathBuf> {
-    dirs::config_dir().map(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("settings.yaml")).ok()).flatten()
+    dirs::config_dir().and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("settings.yaml")).ok())
 }
 
 /// Return standard path for settings cache file (`~/.config/sil/cache.yaml`).
 pub fn default_settings_cache_path() -> Option<Utf8PathBuf> {
-    dirs::config_dir().map(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("cache.yaml")).ok()).flatten()
+    dirs::config_dir().and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("cache.yaml")).ok())
 }
 
 impl GlobalSettings {
     /// Load global settings from path or default path, returning default if non-existent.
     pub fn load_or_default(path: Option<&Utf8Path>) -> Self {
         let p = path.map(|p| p.to_path_buf()).or_else(default_global_settings_path);
-        if let Some(p) = p {
-            if p.exists() {
-                if let Ok(text) = std::fs::read_to_string(p.as_std_path()) {
-                    if let Ok(cfg) = serde_yaml::from_str::<GlobalSettings>(&text) {
-                        return cfg;
-                    }
-                }
-            }
-        }
-        Self::default()
+        p.filter(|path| path.exists())
+            .and_then(|path| std::fs::read_to_string(path.as_std_path()).ok())
+            .and_then(|text| serde_yaml::from_str::<GlobalSettings>(&text).ok())
+            .unwrap_or_default()
     }
 
     /// Save global settings to specified path or default user config path.
@@ -182,17 +176,14 @@ impl SettingsCache {
     /// Load cache from path or default path, returning default if non-existent.
     pub fn load_or_default(path: Option<&Utf8Path>) -> Self {
         let p = path.map(|p| p.to_path_buf()).or_else(default_settings_cache_path);
-        if let Some(p) = p {
-            if p.exists() {
-                if let Ok(text) = std::fs::read_to_string(p.as_std_path()) {
-                    if let Ok(cache) = serde_yaml::from_str::<SettingsCache>(&text) {
-                        return cache;
-                    }
-                }
-            }
-        }
-        Self::default()
+        p.filter(|path| path.exists())
+            .and_then(|path| std::fs::read_to_string(path.as_std_path()).ok())
+            .and_then(|text| serde_yaml::from_str::<SettingsCache>(&text).ok())
+            .unwrap_or_default()
     }
+
+
+
 
     /// Save cache to specified path or default user cache path.
     pub fn save(&self, path: Option<&Utf8Path>) -> Result<(), SilError> {
