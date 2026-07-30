@@ -70,10 +70,17 @@ pub struct LatexConfig {
     /// Main `.tex` file relative to project root.
     #[serde(default = "default_main_tex")]
     pub main: Utf8PathBuf,
+    /// Target article template for release/submission (e.g. neurips, icml, iclr, ieee, arxiv, standard).
+    #[serde(default = "default_template")]
+    pub template: String,
 }
 
 fn default_main_tex() -> Utf8PathBuf {
     Utf8PathBuf::from("paper_draft.tex")
+}
+
+fn default_template() -> String {
+    "standard".to_string()
 }
 
 /// `parsing:` section.
@@ -104,6 +111,7 @@ impl Default for Config {
             latex: LatexConfig {
                 engine: LatexEngine::Tectonic,
                 main: default_main_tex(),
+                template: default_template(),
             },
             parsing: ParsingConfig {
                 engine: default_parse_engine(),

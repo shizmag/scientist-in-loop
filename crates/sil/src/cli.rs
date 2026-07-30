@@ -61,7 +61,11 @@ pub enum Commands {
         limit: usize,
     },
     /// Compile the LaTeX main file from config
-    Build,
+    Build {
+        /// Format with target template from config before compiling
+        #[arg(long)]
+        release: bool,
+    },
     /// Show git log annotated by Sci-Action trailers
     Log {
         /// Max commits to show
@@ -123,6 +127,20 @@ pub enum Commands {
         #[command(subcommand)]
         action: StructureCmd,
     },
+    /// Collect manuscript prose into conference/journal article templates (NeurIPS, ICML, ICLR, IEEE/CVPR, arXiv)
+    Template {
+        #[command(subcommand)]
+        action: Option<TemplateCmd>,
+        /// Target template (neurips, icml, iclr, ieee, arxiv, standard)
+        #[arg(long, short = 't')]
+        target: Option<String>,
+        /// Source manuscript file
+        #[arg(long, short = 'i')]
+        input: Option<camino::Utf8PathBuf>,
+        /// Output file path
+        #[arg(long, short = 'o')]
+        output: Option<camino::Utf8PathBuf>,
+    },
     /// Suggest BibTeX and `\cite{...}` from a source filename or query
     Cite {
         /// Source filename/id or free-text query
@@ -139,6 +157,25 @@ pub enum Commands {
         /// Machine-readable JSON output
         #[arg(long)]
         json: bool,
+    },
+}
+
+/// `sil template` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum TemplateCmd {
+    /// List supported target templates
+    List,
+    /// Apply target template to manuscript
+    Apply {
+        /// Target template (neurips, icml, iclr, ieee, arxiv, standard)
+        #[arg(long, short = 't')]
+        target: Option<String>,
+        /// Source manuscript file
+        #[arg(long, short = 'i')]
+        input: Option<camino::Utf8PathBuf>,
+        /// Output file path
+        #[arg(long, short = 'o')]
+        output: Option<camino::Utf8PathBuf>,
     },
 }
 

@@ -42,7 +42,7 @@ fn run() -> Result<()> {
             }
         },
         Commands::Search { query, limit } => commands::search(&query, limit, ui.as_ref()),
-        Commands::Build => commands::build(ui.as_ref()),
+        Commands::Build { release } => commands::build(release, ui.as_ref()),
         Commands::Log {
             limit,
             sci_only,
@@ -80,6 +80,12 @@ fn run() -> Result<()> {
                 completion,
             } => commands::structure_set(&section_id, &completion, ui.as_ref()),
         },
+        Commands::Template {
+            action,
+            target,
+            input,
+            output,
+        } => commands::template(action, target, input, output, ui.as_ref()),
         Commands::Cite {
             target,
             append,

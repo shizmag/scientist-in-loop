@@ -8,6 +8,7 @@ members = [
     "crates/sil-parse",
     "crates/sil-latex",
     "crates/sil-agent",
+    "crates/sil-template",
 ]
 default-members = ["crates/sil"]
 
@@ -24,6 +25,7 @@ sil-git = { path = "crates/sil-git" }
 sil-parse = { path = "crates/sil-parse" }
 sil-latex = { path = "crates/sil-latex" }
 sil-agent = { path = "crates/sil-agent" }
+sil-template = { path = "crates/sil-template" }
 
 anyhow = "1"
 camino = { version = "1", features = ["serde1"] }

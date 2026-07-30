@@ -31,8 +31,9 @@ sil propose             # Sci-Action commit proposal (never auto-commits)
 sil promote             # copy draft → paper.tex + propose
 sil structure set …     # update section completion
 sil cite <source|q>     # suggest BibTeX / \cite{…}
+sil template list|apply # collect draft into ML/AI template (neurips, icml, iclr, ieee, arxiv)
 sil doctor              # layout + dependency checks
-sil build               # compile LaTeX
+sil build [--release]   # compile LaTeX (--release applies configured target template)
 sil log                 # Sci-Action annotated git history
 sil init --update       # refresh skills / managed .gitignore after upgrading sil
 ```

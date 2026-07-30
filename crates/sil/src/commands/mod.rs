@@ -14,6 +14,7 @@ mod source;
 mod split;
 mod status;
 mod structure_cmd;
+mod template_cmd;
 
 pub use build::run as build;
 pub use cite::run as cite;
@@ -29,3 +30,4 @@ pub use source::{fetch as source_fetch, list as source_list, remove as source_re
 pub use split::run as split;
 pub use status::run as status;
 pub use structure_cmd::{list as structure_list, set_completion as structure_set};
+pub use template_cmd::run as template;

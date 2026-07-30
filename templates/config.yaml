@@ -11,6 +11,7 @@ paths:
 latex:
   engine: tectonic             # tectonic | latexmk | pdflatex | xelatex | lualatex
   main: paper_draft.tex
+  template: standard           # standard | neurips | icml | iclr | ieee | arxiv
 
 parsing:
   engine: marker

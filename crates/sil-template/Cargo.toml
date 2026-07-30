@@ -1,0 +1,16 @@
+[package]
+name = "sil-template"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sil-core.workspace = true
+sil-latex.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

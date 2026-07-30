@@ -162,7 +162,8 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil source list [--json]` | List sources with parsed vs unparsed (and on-disk) visibility |
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil search <query>` | FTS5 full-text search over parsed sources |
-| `sil build` | Compile `config.latex.main` with `config.latex.engine` |
+| `sil build [--release]` | Compile `config.latex.main` with `config.latex.engine` (`--release` applies target template) |
+| `sil template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
 | `sil log` | Git log filtered/annotated by `Sci-Action` trailers |
 | `sil context [flags]` | Structured context dump for humans/agents |
 | `sil split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |

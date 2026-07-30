@@ -324,7 +324,7 @@ fn help_lists_all_commands() {
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
     for cmd in [
         "init", "status", "parse", "source", "search", "build", "log", "context", "split",
-        "propose", "promote", "structure", "cite", "doctor",
+        "propose", "promote", "structure", "template", "cite", "doctor",
     ] {
         assert!(stdout.contains(cmd), "help missing {cmd}:\n{stdout}");
     }

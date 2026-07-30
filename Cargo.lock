@@ -666,6 +666,7 @@ dependencies = [
  "sil-git",
  "sil-latex",
  "sil-parse",
+ "sil-template",
  "tempfile",
 ]
 
@@ -735,6 +736,18 @@ dependencies = [
  "console",
  "sil-core",
  "sil-db",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "sil-template"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "sil-core",
+ "sil-latex",
  "tempfile",
  "thiserror",
 ]
