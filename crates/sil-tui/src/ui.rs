@@ -26,6 +26,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     draw_header(frame, app, chunks[0]);
 
     match app.active_tab {
+        ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
         ActiveTab::Sources => draw_sources(frame, app, chunks[1]),
         ActiveTab::References => draw_references(frame, app, chunks[1]),
         ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),

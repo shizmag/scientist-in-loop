@@ -10,14 +10,16 @@ use sil_core::{
 /// Navigation tabs in the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
-    Sources = 0,
-    References = 1,
-    PaperDraft = 2,
-    Settings = 3,
+    Dashboard = 0,
+    Sources = 1,
+    References = 2,
+    PaperDraft = 3,
+    Settings = 4,
 }
 
 impl ActiveTab {
-    pub const ALL: [ActiveTab; 4] = [
+    pub const ALL: [ActiveTab; 5] = [
+        ActiveTab::Dashboard,
         ActiveTab::Sources,
         ActiveTab::References,
         ActiveTab::PaperDraft,
@@ -26,10 +28,11 @@ impl ActiveTab {
 
     pub fn title(&self) -> &'static str {
         match self {
-            ActiveTab::Sources => "1. Sources",
-            ActiveTab::References => "2. References",
-            ActiveTab::PaperDraft => "3. Paper Draft",
-            ActiveTab::Settings => "4. Settings",
+            ActiveTab::Dashboard => "1. Dashboard",
+            ActiveTab::Sources => "2. Sources",
+            ActiveTab::References => "3. References",
+            ActiveTab::PaperDraft => "4. Paper Draft",
+            ActiveTab::Settings => "5. Settings",
         }
     }
 }
@@ -243,7 +246,7 @@ impl App {
         };
 
         let mut app = Self {
-            active_tab: ActiveTab::Sources,
+            active_tab: ActiveTab::Dashboard,
 
             input_mode: InputMode::Normal,
             active_ref_pane: RefPane::RightSources,
@@ -479,10 +482,11 @@ impl App {
                 };
                 self.active_tab = ActiveTab::ALL[next];
             }
-            KeyCode::Char('1') => self.active_tab = ActiveTab::Sources,
-            KeyCode::Char('2') => self.active_tab = ActiveTab::References,
-            KeyCode::Char('3') => self.active_tab = ActiveTab::PaperDraft,
-            KeyCode::Char('4') => self.active_tab = ActiveTab::Settings,
+            KeyCode::Char('1') => self.active_tab = ActiveTab::Dashboard,
+            KeyCode::Char('2') => self.active_tab = ActiveTab::Sources,
+            KeyCode::Char('3') => self.active_tab = ActiveTab::References,
+            KeyCode::Char('4') => self.active_tab = ActiveTab::PaperDraft,
+            KeyCode::Char('5') => self.active_tab = ActiveTab::Settings,
 
             KeyCode::Char('s') => {
                 if self.active_tab == ActiveTab::References {
@@ -526,6 +530,7 @@ impl App {
             }
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
+                ActiveTab::Dashboard => {}
                 ActiveTab::References => {
                     match self.active_ref_pane {
                         RefPane::LeftBib => {
@@ -559,6 +564,7 @@ impl App {
                 }
             },
             KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
+                ActiveTab::Dashboard => {}
                 ActiveTab::References => {
                     match self.active_ref_pane {
                         RefPane::LeftBib => {
@@ -1647,17 +1653,37 @@ mod tests {
     #[test]
     fn app_initialization() {
         let app = App::new(None);
-        assert_eq!(app.active_tab, ActiveTab::Sources);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
         assert_eq!(app.input_mode, InputMode::Normal);
+    }
+
+    #[test]
+    fn test_tab_navigation() {
+        let mut app = App::new(None);
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::Sources);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('3'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::References);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('4'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('5'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::Settings);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::Dashboard);
     }
 
     #[test]
     fn test_references_tab_navigation() {
         let mut app = App::new(None);
-        app.active_tab = ActiveTab::Sources;
         
         // Go to References
-        app.handle_key(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('3'), KeyModifiers::empty()));
         assert_eq!(app.active_tab, ActiveTab::References);
         
         // Default pane is RightSources
