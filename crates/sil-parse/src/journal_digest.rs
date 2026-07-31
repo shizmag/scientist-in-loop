@@ -31,15 +31,12 @@ fn format_authors(value: &serde_json::Value) -> String {
 
 fn extract_year_from_crossref(item: &serde_json::Value) -> Option<u32> {
     for key in ["published-print", "published-online", "published", "issued", "created"] {
-        if let Some(dp) = item.get(key).and_then(|v| v.get("date-parts")).and_then(|v| v.as_array()) {
-            if let Some(first_date) = dp.first().and_then(|v| v.as_array()) {
-                if let Some(year_val) = first_date.first().and_then(|v| v.as_u64()) {
-                    if (1800..=2030).contains(&year_val) {
+        if let Some(dp) = item.get(key).and_then(|v| v.get("date-parts")).and_then(|v| v.as_array())
+            && let Some(first_date) = dp.first().and_then(|v| v.as_array())
+                && let Some(year_val) = first_date.first().and_then(|v| v.as_u64())
+                    && (1800..=2030).contains(&year_val) {
                         return Some(year_val as u32);
                     }
-                }
-            }
-        }
     }
     None
 }
@@ -68,11 +65,10 @@ fn extract_pdf_url(item: &serde_json::Value) -> Option<String> {
                 return Some(url.to_string());
             }
         }
-        if let Some(first_url) = links.first().and_then(|l| l.get("URL")).and_then(|v| v.as_str()) {
-            if !first_url.is_empty() {
+        if let Some(first_url) = links.first().and_then(|l| l.get("URL")).and_then(|v| v.as_str())
+            && !first_url.is_empty() {
                 return Some(first_url.to_string());
             }
-        }
     }
     None
 }

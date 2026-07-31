@@ -58,11 +58,10 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
 /// Extract a 4-digit publication year between 1800 and 2030 from text.
 pub fn extract_year(text: &str) -> Option<i32> {
     for mat in YEAR_REGEX.find_iter(text) {
-        if let Ok(y) = mat.as_str().parse::<i32>() {
-            if (1800..=2030).contains(&y) {
+        if let Ok(y) = mat.as_str().parse::<i32>()
+            && (1800..=2030).contains(&y) {
                 return Some(y);
             }
-        }
     }
     None
 }

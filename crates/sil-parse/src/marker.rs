@@ -26,11 +26,10 @@ fn find_binary_in_path(binary_name: &str) -> Option<Utf8PathBuf> {
     if let Ok(path_var) = std::env::var("PATH") {
         for dir in std::env::split_paths(&path_var) {
             let candidate = dir.join(binary_name);
-            if candidate.is_file() {
-                if let Ok(utf) = Utf8PathBuf::from_path_buf(candidate) {
+            if candidate.is_file()
+                && let Ok(utf) = Utf8PathBuf::from_path_buf(candidate) {
                     return Some(utf);
                 }
-            }
         }
     }
     None
@@ -108,11 +107,10 @@ impl MarkerRunner for CliMarkerRunner {
                     let path = entry.path();
                     if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
                         return Some(path);
-                    } else if path.is_dir() {
-                        if let Some(found) = find_md_file(&path) {
+                    } else if path.is_dir()
+                        && let Some(found) = find_md_file(&path) {
                             return Some(found);
                         }
-                    }
                 }
             }
             None

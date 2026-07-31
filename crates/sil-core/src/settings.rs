@@ -155,29 +155,26 @@ fn find_onnx_in_path(path: &Utf8Path) -> Option<Utf8PathBuf> {
     if path.is_file() {
         return Some(path.to_path_buf());
     }
-    if path.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(path) {
+    if path.is_dir()
+        && let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
                 let entry_path = entry.path();
-                if entry_path.extension().and_then(|s| s.to_str()) == Some("onnx") {
-                    if let Ok(utf8) = Utf8PathBuf::from_path_buf(entry_path) {
+                if entry_path.extension().and_then(|s| s.to_str()) == Some("onnx")
+                    && let Ok(utf8) = Utf8PathBuf::from_path_buf(entry_path) {
                         return Some(utf8);
                     }
-                }
             }
         }
-    }
     None
 }
 
 impl RagSettings {
     /// Resolve exact embedder *.onnx model file path based on config precedence.
     pub fn resolve_embedder_path(&self) -> Option<Utf8PathBuf> {
-        if let Some(ref path) = self.onnx_embedder_path {
-            if let Some(found) = find_onnx_in_path(path) {
+        if let Some(ref path) = self.onnx_embedder_path
+            && let Some(found) = find_onnx_in_path(path) {
                 return Some(found);
             }
-        }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_embedder_model));
             if candidate1.is_file() && candidate1.exists() {
@@ -200,11 +197,10 @@ impl RagSettings {
 
     /// Resolve exact reranker *.onnx model file path based on config precedence.
     pub fn resolve_reranker_path(&self) -> Option<Utf8PathBuf> {
-        if let Some(ref path) = self.onnx_reranker_path {
-            if let Some(found) = find_onnx_in_path(path) {
+        if let Some(ref path) = self.onnx_reranker_path
+            && let Some(found) = find_onnx_in_path(path) {
                 return Some(found);
             }
-        }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_reranker_model));
             if candidate1.is_file() && candidate1.exists() {

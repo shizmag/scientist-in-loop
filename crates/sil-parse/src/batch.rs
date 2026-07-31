@@ -111,8 +111,8 @@ pub fn parse_one(
     let extracted_doi = sil_regex::extract_doi(&content);
     let mut hydrated = false;
 
-    if let Some(ref doi) = extracted_doi {
-        if let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi) {
+    if let Some(ref doi) = extracted_doi
+        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi) {
             doc.doi = pub_item.doi.or(extracted_doi.clone());
             if !pub_item.title.is_empty() {
                 doc.title = Some(pub_item.title);
@@ -131,7 +131,6 @@ pub fn parse_one(
             }
             hydrated = true;
         }
-    }
 
     if !hydrated {
         if doc.doi.is_none() {
