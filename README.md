@@ -384,7 +384,8 @@ crates/
   sil-core/     # domain types, Config, settings, errors, paths, terminal UX
   sil-db/       # SQLite + FTS5
   sil-git/      # status, commit proposals, Sci-Action trailers
-  sil-parse/    # PDF validation + Marker orchestration
+  sil-parse/    # PDF validation, Marker orchestration, native Crossref metadata hydration
+  sil-regex/    # centralized regular expressions and pattern matchers
   sil-latex/    # engine abstraction + section splitter
   sil-agent/    # dynamic skills + context generation
   sil-template/ # ML/AI conference article templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
