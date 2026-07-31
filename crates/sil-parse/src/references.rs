@@ -57,33 +57,39 @@ pub fn parse_reference_entries(source_id: &SourceId, raw_block: &str) -> Vec<Ref
     results
 }
 
+/// Clean HTML span tags from a line or string.
+fn clean_spans(text: &str) -> String {
+    sil_regex::strip_html_spans(text).trim().to_string()
+}
+
 /// Split a raw reference block into individual citation strings.
 fn split_raw_entries(block: &str) -> Vec<String> {
-    let lines: Vec<&str> = block
+    let raw_lines: Vec<String> = block
         .lines()
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty() && !is_noise_line(l))
+        .map(|l| clean_spans(l))
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l))
         .collect();
 
-    if lines.is_empty() {
+    if raw_lines.is_empty() {
         return Vec::new();
     }
 
     let mut entries = Vec::new();
     let mut current = String::new();
 
-    for line in lines {
-        if is_reference_entry_start(line) {
+    for line in raw_lines {
+        if is_reference_entry_start(&line) {
             if !current.is_empty() {
                 entries.push(current.trim().to_string());
                 current.clear();
             }
-            current.push_str(line);
+            current.push_str(&line);
         } else {
             if !current.is_empty() {
                 current.push(' ');
             }
-            current.push_str(line);
+            current.push_str(&line);
         }
     }
 
@@ -104,32 +110,83 @@ fn is_noise_line(line: &str) -> bool {
 fn parse_entry_metadata(text: &str) -> (Option<String>, Option<i32>, Option<String>, Option<String>) {
     let doi = extract_doi(text);
     let year = extract_year(text);
-    let title = extract_quoted_title(text);
+    let title = extract_quoted_title(text).or_else(|| extract_unquoted_title(text));
     let authors = extract_authors(text, year, title.as_deref());
 
     (authors, year, title, doi)
 }
 
-fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
+/// Try to extract an unquoted title from academic citation format (`[N] Authors. Title. Venue, Year`).
+fn extract_unquoted_title(text: &str) -> Option<String> {
     let clean = text.trim();
-    if let Some(y) = year {
-        let year_str = y.to_string();
-        if let Some(pos) = clean.find(&year_str) {
-            let candidate = clean[..pos]
-                .trim_end_matches(&[' ', '(', ')', ',', '.'][..])
-                .trim();
-            if !candidate.is_empty() && candidate.len() < 120 {
-                return Some(candidate.to_string());
-            }
+    // Strip leading list prefix like "- ", "[1] ", "1. "
+    let content = if let Some(idx) = clean.find(']') {
+        clean[idx + 1..].trim()
+    } else if let Some(pos) = clean.find(". ") {
+        let first = &clean[..pos];
+        if first.chars().all(|c| c.is_ascii_digit()) {
+            clean[pos + 2..].trim()
+        } else {
+            clean
+        }
+    } else {
+        clean.trim_start_matches('-').trim()
+    };
+
+    let parts: Vec<&str> = content.split(". ").collect();
+    if parts.len() >= 2 {
+        let candidate = parts[1].trim().trim_end_matches('.');
+        if candidate.len() >= 5 && candidate.len() <= 200 && !candidate.contains("http") && !candidate.contains("doi:") {
+            return Some(candidate.to_string());
+        }
+    } else if parts.len() == 1 {
+        let candidate = parts[0].trim().trim_end_matches('.');
+        if candidate.len() >= 5 && candidate.len() <= 200 && !candidate.contains("http") && !candidate.contains("doi:") {
+            return Some(candidate.to_string());
         }
     }
+
+    None
+}
+
+fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
+    let clean = text.trim();
 
     if let Some(t) = title
         && let Some(pos) = clean.find(t)
     {
-        let candidate = clean[..pos].trim_end_matches(&[' ', '"', '“', ',', '.'][..]).trim();
-        if !candidate.is_empty() && candidate.len() < 120 {
+        let candidate = clean[..pos]
+            .trim_start_matches('-')
+            .trim();
+        // Strip leading [N] or N.
+        let candidate = if let Some(idx) = candidate.find(']') {
+            candidate[idx + 1..].trim()
+        } else {
+            candidate
+        };
+        let candidate = candidate.trim_end_matches(&[' ', '"', '“', ',', '.'][..]).trim();
+        if !candidate.is_empty() && candidate.len() < 150 {
             return Some(candidate.to_string());
+        }
+    }
+
+    if let Some(y) = year {
+        let year_str = y.to_string();
+        if let Some(pos) = clean.find(&year_str) {
+            let candidate = clean[..pos]
+                .trim_start_matches('-')
+                .trim();
+            let candidate = if let Some(idx) = candidate.find(']') {
+                candidate[idx + 1..].trim()
+            } else {
+                candidate
+            };
+            let candidate = candidate
+                .trim_end_matches(&[' ', '(', ')', ',', '.'][..])
+                .trim();
+            if !candidate.is_empty() && candidate.len() < 150 {
+                return Some(candidate.to_string());
+            }
         }
     }
 
@@ -191,6 +248,25 @@ Some content...
         assert_eq!(entries[0].year, Some(2020));
         assert_eq!(entries[1].ref_index, 2);
         assert_eq!(entries[1].year, Some(2024));
+    }
+
+    #[test]
+    fn test_multiline_span_tag_splitting() {
+        let sid = SourceId::new("paper.pdf");
+        let raw = r#"
+- <span id="page-52-4"></span>
+[1] Patrick Lewis, Ethan Perez, et al. Retrieval-augmented generation for knowledge-intensive nlp tasks. NeurIPS 2020.
+- <span id="page-52-5"></span>
+[2] Jiawei Chen, Hongyu Lin, et al. Benchmarking large language models in retrievalaugmented generation. AAAI 2024.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].ref_index, 1);
+        assert_eq!(entries[0].year, Some(2020));
+        assert_eq!(entries[0].title.as_deref(), Some("Retrieval-augmented generation for knowledge-intensive nlp tasks"));
+        assert_eq!(entries[1].ref_index, 2);
+        assert_eq!(entries[1].year, Some(2024));
+        assert_eq!(entries[1].title.as_deref(), Some("Benchmarking large language models in retrievalaugmented generation"));
     }
 
     #[test]

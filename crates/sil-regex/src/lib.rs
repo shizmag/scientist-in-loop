@@ -28,12 +28,21 @@ static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|^\s*-\s+|^\s*<span[^>]*>.*?</span>\s*[A-Z]").unwrap()
+    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|^\s*(?:-\s+)?[A-Z][a-z]+,\s+[A-Z]").unwrap()
 });
 
 static LATEX_METADATA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^\s*%\s*metadata:\s*(.+)$").unwrap()
 });
+
+static HTML_SPAN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap()
+});
+
+/// Strip HTML `<span...>` and `</span>` tags from text.
+pub fn strip_html_spans(text: &str) -> String {
+    HTML_SPAN_REGEX.replace_all(text, "").to_string()
+}
 
 /// Extract a DOI (Digital Object Identifier) from text.
 ///
