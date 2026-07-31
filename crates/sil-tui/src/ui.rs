@@ -59,7 +59,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
             } else {
-                Style::default().fg(Color::Gray)
+                Style::default().fg(Color::Reset)
             };
             Line::from(vec![Span::styled(t.title(), style)])
         })
@@ -247,7 +247,7 @@ fn draw_local_settings(frame: &mut Frame, app: &App, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled(if is_notes_sel { "► Notes: " } else { "  Notes: " }, if is_notes_sel { Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD) } else { Style::default() }),
-            Span::styled(if app.local_settings.notes.is_empty() { "<no notes>" } else { &app.local_settings.notes }, Style::default().fg(Color::Gray)),
+            Span::styled(if app.local_settings.notes.is_empty() { "<no notes>" } else { &app.local_settings.notes }, Style::default().fg(Color::Reset)),
         ]),
     ];
 
@@ -686,7 +686,7 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("• Engine: ", Style::default().fg(Color::Cyan)),
-            Span::styled("tectonic (configured)", Style::default().fg(Color::White)),
+            Span::styled("tectonic (configured)", Style::default().fg(Color::Reset)),
         ]),
     ];
     let health_block = Block::default()
@@ -703,19 +703,19 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("1. [Intro / Lines 12-18]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Refine motivation for self-attention baseline", Style::default().fg(Color::White)),
+            Span::styled("Refine motivation for self-attention baseline", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("2. [Methods / Lines 45-52]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Add equation comparing loss functions A vs B", Style::default().fg(Color::White)),
+            Span::styled("Add equation comparing loss functions A vs B", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("3. [Results / Lines 88-95]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Verify dataset metrics table with latest run", Style::default().fg(Color::White)),
+            Span::styled("Verify dataset metrics table with latest run", Style::default().fg(Color::Reset)),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.", Style::default().fg(Color::Gray)),
+            Span::styled("Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.", Style::default().fg(Color::Reset)),
         ]),
     ];
     let idea_block = Block::default()
@@ -732,19 +732,19 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("• [Nature 2024] ", Style::default().fg(Color::Green)),
-            Span::styled("Quantum Advantage in Scientific Discovery", Style::default().fg(Color::White)),
+            Span::styled("Quantum Advantage in Scientific Discovery", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("• [IEEE TPAMI] ", Style::default().fg(Color::Green)),
-            Span::styled("Scalable Multi-Agent Foundation Models", Style::default().fg(Color::White)),
+            Span::styled("Scalable Multi-Agent Foundation Models", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("• [JMLR] ", Style::default().fg(Color::Green)),
-            Span::styled("Theoretical Guarantees for Attention Mechanics", Style::default().fg(Color::White)),
+            Span::styled("Theoretical Guarantees for Attention Mechanics", Style::default().fg(Color::Reset)),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Run 'sil digest <query>' to update top journal feed", Style::default().fg(Color::Gray)),
+            Span::styled("Run 'sil digest <query>' to update top journal feed", Style::default().fg(Color::Reset)),
         ]),
     ];
     let digest_block = Block::default()
@@ -761,27 +761,27 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::Gray)),
+            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
-            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::Gray)),
+            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  sil doctor", Style::default().fg(Color::Yellow)),
-            Span::styled("       Run full host + manuscript health audit", Style::default().fg(Color::Gray)),
+            Span::styled("       Run full host + manuscript health audit", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  sil digest <q>", Style::default().fg(Color::Yellow)),
-            Span::styled("    Fetch top journal publications", Style::default().fg(Color::Gray)),
+            Span::styled("    Fetch top journal publications", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  sil todo", Style::default().fg(Color::Yellow)),
-            Span::styled("          List all # -- X -- # ideas in draft", Style::default().fg(Color::Gray)),
+            Span::styled("          List all # -- X -- # ideas in draft", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  sil propose", Style::default().fg(Color::Yellow)),
-            Span::styled("       Create git commit proposal with Sci-Action", Style::default().fg(Color::Gray)),
+            Span::styled("       Create git commit proposal with Sci-Action", Style::default().fg(Color::Reset)),
         ]),
     ];
     let guide_block = Block::default()
@@ -802,7 +802,7 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
     if app.paper_sections.is_empty() {
         items.push(ListItem::new(Line::from(Span::styled(
             " (no sections / empty paper_draft.tex)",
-            Style::default().fg(Color::Gray),
+            Style::default().fg(Color::Reset),
         ))));
     } else {
         for (idx, sec) in app.paper_sections.iter().enumerate() {
