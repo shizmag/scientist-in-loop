@@ -25,8 +25,8 @@ After `sil init`, you can hand a goal to an agent and it will understand the lay
 
 Scientific writing with AI assistants often devolves into ad-hoc folders, lost provenance, and opaque agent context. `sil` enforces a small, boring, reliable layout:
 
-1. Original PDFs live only in `sources/`.  
-2. Parsed text is indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
+1. Original literature sources (PDFs, Markdown `.md`, Plain Text `.txt`, HTML `.html`) live in `sources/`.  
+2. Parsed text and explicit bibliographic metadata (`authors`, `year`, `venue`, `doi`, `abstract`) are indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
 3. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
 4. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
 5. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
@@ -170,9 +170,9 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil status [--json]` | Stage, git status, source counts, structure completion, draft dirty flag |
 | `sil digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
 | `sil todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
-| `sil parse [pdf]` | Parse one PDF, or interactively multi-select unparsed files in `sources/` |
-| `sil source fetch <doi\|arxiv\|url>` | Download PDF into `sources/`, offer parse |
-| `sil source list [--json]` | List sources with parsed vs unparsed (and on-disk) visibility |
+| `sil parse [path]` | Parse PDF (via Marker) or Markdown/Text/HTML sources natively into SQLite + FTS5 |
+| `sil source fetch <doi\|arxiv\|url>` | Download PDF, HTML, or Markdown into `sources/` via DOI (`10.xxxx`), arXiv ID, or URL |
+| `sil source list [--json]` | List sources with format tags (`[pdf/parsed/on-disk]`, `[md/parsed/on-disk]`), metadata, and visibility |
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil search <query>` | FTS5 full-text search over parsed sources |
 | `sil build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
@@ -183,7 +183,7 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
 | `sil promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
 | `sil structure list\|set` | Inspect or update section completion in `structure.yaml` |
-| `sil cite <source\|query>` | Suggest deterministic BibTeX + `\cite{…}` (optional `--append` to `references.bib`) |
+| `sil cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
 | `sil doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
 | `sil mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
 
@@ -415,6 +415,9 @@ cargo run -p sil -- --help
 | Typed `config.yaml` / `structure.yaml` + `sil status` | Done |
 | `sil settings` / `sil tui` interactive Ratatui TUI for global/local settings & co-author cache | Done |
 | `sil parse` (path + noninteractive multi-select) + FTS5 `sil search` | Done |
+| Multi-format source probing (`PDF`, `Markdown`, `Text`, `HTML`) | Done |
+| SQLite bibliographic metadata (`authors`, `year`, `venue`, `doi`, `abstract`) | Done |
+| Rich BibTeX generation (`sil cite`) | Done |
 | Marker via Python helper (stubbable for tests) | Done |
 | Commit proposals + `sil log` Sci-Action trailers | Done |
 | `sil build` / `sil source fetch` / `sil context` + skills | Done |
