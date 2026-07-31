@@ -209,4 +209,63 @@ mod tests {
         let fetched_after = db.get_references_for_source(&sid).unwrap();
         assert!(fetched_after.is_empty());
     }
+
+    #[test]
+    fn test_get_all_references_and_search_edge_cases() {
+        let db = crate::SilDb::open_in_memory().unwrap();
+        let s1 = SourceId::new("source_a.pdf");
+        let s2 = SourceId::new("source_b.pdf");
+
+        let doc1 = SourceDocument::new("source_a.pdf".into());
+        let doc2 = SourceDocument::new("source_b.pdf".into());
+        db.upsert_parsed(&doc1, "Content A").unwrap();
+        db.upsert_parsed(&doc2, "Content B").unwrap();
+
+        let ref1 = ReferenceEntry {
+            id: "ref_a1".into(),
+            source_id: s1.clone(),
+            ref_index: 1,
+            raw_text: "Ref A1 text".into(),
+            title: Some("Title A1".into()),
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+        };
+
+
+        let ref2 = ReferenceEntry {
+            id: "ref_b1".into(),
+            source_id: s2.clone(),
+            ref_index: 1,
+            raw_text: "Ref B1 text".into(),
+            title: Some("Title B1".into()),
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+        };
+
+        db.save_source_references(&[ref1, ref2]).unwrap();
+
+        let all_refs = db.get_all_references().unwrap();
+        assert_eq!(all_refs.len(), 2);
+        assert_eq!(all_refs[0].source_id.as_str(), "source_a.pdf");
+        assert_eq!(all_refs[1].source_id.as_str(), "source_b.pdf");
+
+        // Empty search and zero limit
+        assert!(db.search_references("", 10).unwrap().is_empty());
+        assert!(db.search_references("   ", 10).unwrap().is_empty());
+        assert!(db.search_references("Title", 0).unwrap().is_empty());
+
+        // Escaped quotes in search query
+        let hits_quotes = db.search_references("\"Title A1\"", 10).unwrap();
+        assert_eq!(hits_quotes.len(), 1);
+        assert_eq!(hits_quotes[0].id, "ref_a1");
+
+        // Non-existent source id
+        let missing = db.get_references_for_source(&SourceId::new("missing.pdf")).unwrap();
+        assert!(missing.is_empty());
+    }
 }
+

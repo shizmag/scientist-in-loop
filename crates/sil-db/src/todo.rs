@@ -217,3 +217,75 @@ pub fn list_todo_ideas_filtered(
     }
     Ok(result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema;
+
+    #[test]
+    fn test_todo_ideas_direct_functions_and_sorting() {
+        let conn = Connection::open_in_memory().unwrap();
+        schema::migrate(&conn).unwrap();
+
+        // 1. insert_todo_idea
+        let mut idea1 = IdeaBlock::new("todo_1", "Fix bug in parser", Some("sec_b".into()), 10, 20);
+        idea1.status = "open".into();
+        idea1.priority = "high".into();
+        idea1.author_type = "human".into();
+        idea1.created_at = "2026-01-01 10:00:00".into();
+        insert_todo_idea(&conn, &idea1).unwrap();
+
+        let mut idea2 = IdeaBlock::new("todo_2", "Refactor cache", Some("sec_a".into()), 5, 15);
+        idea2.status = "open".into();
+        idea2.priority = "low".into();
+        idea2.author_type = "agent".into();
+        idea2.created_at = "2026-01-02 10:00:00".into();
+        insert_todo_idea(&conn, &idea2).unwrap();
+
+        // 2. get_todo_idea_by_id existing & non-existing
+        let fetched1 = get_todo_idea_by_id(&conn, "todo_1").unwrap();
+        assert!(fetched1.is_some());
+        assert_eq!(fetched1.unwrap().content, "Fix bug in parser");
+
+        let missing = get_todo_idea_by_id(&conn, "todo_missing").unwrap();
+        assert!(missing.is_none());
+
+        // 3. update_todo_idea
+        let mut idea1_updated = idea1.clone();
+        idea1_updated.content = "Fix bug in parser immediately".into();
+        update_todo_idea(&conn, &idea1_updated).unwrap();
+        let fetched1_updated = get_todo_idea_by_id(&conn, "todo_1").unwrap().unwrap();
+        assert_eq!(fetched1_updated.content, "Fix bug in parser immediately");
+
+        // 4. upsert_todo_idea
+        let mut idea3 = IdeaBlock::new("todo_3", "New feature", Some("sec_c".into()), 30, 40);
+        idea3.status = "closed".into();
+        idea3.priority = "critical".into();
+        idea3.created_at = "2026-01-03 10:00:00".into();
+        upsert_todo_idea(&conn, &idea3).unwrap();
+
+
+        // 5. list_todo_ideas_filtered with sort_by = "date", "section", and unknown
+        let sort_date = list_todo_ideas_filtered(&conn, None, None, None, Some("date")).unwrap();
+        assert_eq!(sort_date.len(), 3);
+        assert_eq!(sort_date[0].id, "todo_3"); // newest first
+
+        let sort_sec = list_todo_ideas_filtered(&conn, None, None, None, Some("section")).unwrap();
+        assert_eq!(sort_sec.len(), 3);
+        assert_eq!(sort_sec[0].id, "todo_2"); // sec_a comes before sec_b
+
+        let sort_other = list_todo_ideas_filtered(&conn, None, None, None, Some("other")).unwrap();
+        assert_eq!(sort_other.len(), 3);
+
+        // Filter all criteria simultaneously
+        let filtered = list_todo_ideas_filtered(&conn, Some("open"), Some("high"), Some("sec_b"), None).unwrap();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "todo_1");
+
+        // 6. delete_todo_idea existing & non-existing
+        assert!(delete_todo_idea(&conn, "todo_1").unwrap());
+        assert!(!delete_todo_idea(&conn, "todo_1").unwrap());
+    }
+}
+

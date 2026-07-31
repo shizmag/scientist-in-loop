@@ -188,3 +188,87 @@ impl OnnxReranker {
         Ok(score)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sil_core::RagSettings;
+
+    #[test]
+    fn test_onnx_embedder_constructors_and_dimension() {
+        let embedder1 = OnnxEmbedder::new(Some("/path/to/model.onnx"));
+        assert_eq!(embedder1.dimension(), DEFAULT_EMBEDDING_DIM);
+
+        let embedder2 = OnnxEmbedder::new(None::<&Path>);
+        assert_eq!(embedder2.dimension(), DEFAULT_EMBEDDING_DIM);
+
+        let custom_dim = OnnxEmbedder::with_dimension(128);
+        assert_eq!(custom_dim.dimension(), 128);
+
+        let settings = RagSettings::default();
+        let from_settings = OnnxEmbedder::from_rag_settings(&settings);
+        assert_eq!(from_settings.dimension(), DEFAULT_EMBEDDING_DIM);
+    }
+
+    #[test]
+    fn test_onnx_embedder_embedding_logic() {
+        let embedder = OnnxEmbedder::with_dimension(64);
+
+        // Empty text fallback
+        let empty_emb = embedder.embed("").unwrap();
+        assert_eq!(empty_emb.len(), 64);
+        let expected_val = 1.0 / (64.0f32).sqrt();
+        for &v in &empty_emb {
+            assert!((v - expected_val).abs() < 1e-5);
+        }
+
+        // Punctuation-only text fallback (tokens empty)
+        let punc_emb = embedder.embed("!@#$%^&*()").unwrap();
+        assert_eq!(punc_emb.len(), 64);
+
+        // Normal text embedding and normalization
+        let text_emb = embedder.embed("Machine learning transformers").unwrap();
+        assert_eq!(text_emb.len(), 64);
+        let norm_sq: f32 = text_emb.iter().map(|x| x * x).sum();
+        assert!((norm_sq.sqrt() - 1.0).abs() < 1e-4);
+
+        // Deterministic output test
+        let text_emb2 = embedder.embed("Machine learning transformers").unwrap();
+        assert_eq!(text_emb, text_emb2);
+    }
+
+    #[test]
+    fn test_onnx_reranker_constructors_and_scoring() {
+        let reranker = OnnxReranker::new(Some("/path/to/reranker.onnx"));
+        let settings = RagSettings::default();
+        let reranker_from_settings = OnnxReranker::from_rag_settings(&settings);
+        assert!(reranker.model_path.is_some());
+        assert!(reranker_from_settings.model_path.is_none());
+
+        let reranker_none = OnnxReranker::new(None::<&Path>);
+
+        // Empty query or doc
+        assert_eq!(reranker_none.score("", "some document").unwrap(), 0.0);
+        assert_eq!(reranker_none.score("query", "").unwrap(), 0.0);
+        assert_eq!(reranker_none.score("!!", "document").unwrap(), 0.0);
+
+        // Token overlap scoring
+        let score_match = reranker_none
+            .score("transformer attention", "Attention is all you need for transformers")
+            .unwrap();
+        let score_no_match = reranker_none
+            .score("quantum computing", "Attention is all you need for transformers")
+            .unwrap();
+        assert!(score_match > score_no_match);
+
+        // Rerank batch
+        let docs = vec![
+            "Attention mechanism in transformers",
+            "Recipe for baking sourdough bread",
+        ];
+        let scores = reranker_none.rerank("transformer attention", &docs).unwrap();
+        assert_eq!(scores.len(), 2);
+        assert!(scores[0] > scores[1]);
+    }
+}
+

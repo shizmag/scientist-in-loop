@@ -624,3 +624,156 @@ pub fn search_hybrid_dual(
 
     Ok(hits)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema;
+
+    #[test]
+    fn test_chunk_type_enum() {
+        assert_eq!(ChunkType::Parent.as_str(), "parent");
+        assert_eq!(ChunkType::Child.as_str(), "child");
+
+        assert_eq!(ChunkType::from_str("parent"), Some(ChunkType::Parent));
+        assert_eq!(ChunkType::from_str("child"), Some(ChunkType::Child));
+        assert_eq!(ChunkType::from_str("other"), None);
+    }
+
+    #[test]
+    fn test_cosine_similarity_edge_cases() {
+        // Different lengths
+        assert_eq!(cosine_similarity(&[1.0, 2.0], &[1.0]), 0.0);
+        // Empty
+        assert_eq!(cosine_similarity(&[], &[]), 0.0);
+        // Zero norm
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[1.0, 2.0]), 0.0);
+        assert_eq!(cosine_similarity(&[1.0, 2.0], &[0.0, 0.0]), 0.0);
+
+        // Identical vectors
+        let v1 = vec![1.0, 0.0, 0.0];
+        assert!((cosine_similarity(&v1, &v1) - 1.0).abs() < 1e-6);
+
+        // Orthogonal vectors
+        let v2 = vec![0.0, 1.0, 0.0];
+        assert_eq!(cosine_similarity(&v1, &v2), 0.0);
+    }
+
+    #[test]
+    fn test_embedding_blob_roundtrip() {
+        let empty: &[f32] = &[];
+        let blob_empty = embedding_to_blob(empty);
+        assert!(blob_empty.is_empty());
+        assert!(blob_to_embedding(&blob_empty).is_empty());
+
+        let floats = vec![0.5f32, -1.25f32, 3.14159f32];
+        let blob = embedding_to_blob(&floats);
+        assert_eq!(blob.len(), 12);
+        let recovered = blob_to_embedding(&blob);
+        assert_eq!(recovered, floats);
+    }
+
+    #[test]
+    fn test_chunk_markdown_edge_cases() {
+        let sid = SourceId::new("doc.md");
+
+        // Empty markdown
+        assert!(chunk_markdown(&sid, "").is_empty());
+        assert!(chunk_markdown(&sid, "   \n\n  ").is_empty());
+
+        // Text before header
+        let md_no_header = "Paragraph without heading.\n\nSecond paragraph.";
+        let chunks_no_header = chunk_markdown(&sid, md_no_header);
+        assert_eq!(chunks_no_header.len(), 3); // 1 parent + 2 children
+        assert_eq!(chunks_no_header[0].chunk_type, ChunkType::Child);
+        assert_eq!(chunks_no_header[1].chunk_type, ChunkType::Child);
+        assert_eq!(chunks_no_header[2].chunk_type, ChunkType::Parent);
+        assert_eq!(chunks_no_header[2].heading_title, None);
+
+        // Markdown with empty header line "#"
+        let md_empty_header = "# \nContent under empty header.";
+        let chunks_empty_header = chunk_markdown(&sid, md_empty_header);
+        assert!(!chunks_empty_header.is_empty());
+    }
+
+    #[test]
+    fn test_chunks_db_crud_and_search_edge_cases() {
+        let conn = Connection::open_in_memory().unwrap();
+        schema::migrate(&conn).unwrap();
+
+        let sid = SourceId::new("paper.md");
+        // Insert source first for foreign keys
+        let doc = sil_core::SourceDocument::new("paper.md".into());
+        crate::sources::upsert_parsed(&conn, &doc, "Full text").unwrap();
+
+        // 1. Non-existent chunk / empty source
+        assert!(get_chunk_by_id(&conn, "missing_chunk").unwrap().is_none());
+        assert!(get_chunks_for_source(&conn, &sid).unwrap().is_empty());
+
+        // 2. Parent and Child chunks
+        let parent_chunk = SourceChunk {
+            id: "paper.md-p1".into(),
+            source_id: sid.clone(),
+            parent_chunk_id: None,
+            chunk_type: ChunkType::Parent,
+            heading_title: Some("Section 1".into()),
+            content: "Parent section content".into(),
+            start_offset: 0,
+            end_offset: 20,
+            embedding_blob: None,
+            created_at: String::new(),
+        };
+
+        let child_chunk = SourceChunk {
+            id: "paper.md-c1".into(),
+            source_id: sid.clone(),
+            parent_chunk_id: Some("paper.md-p1".into()),
+            chunk_type: ChunkType::Child,
+            heading_title: None,
+            content: "Child paragraph content".into(),
+            start_offset: 20,
+            end_offset: 45,
+            embedding_blob: None,
+            created_at: String::new(),
+        };
+
+        let child_no_parent = SourceChunk {
+            id: "paper.md-c2".into(),
+            source_id: sid.clone(),
+            parent_chunk_id: None,
+            chunk_type: ChunkType::Child,
+            heading_title: None,
+            content: "Standalone child paragraph content".into(),
+            start_offset: 45,
+            end_offset: 75,
+            embedding_blob: None,
+            created_at: String::new(),
+        };
+
+        insert_chunks(&conn, &[parent_chunk.clone(), child_chunk.clone(), child_no_parent.clone()]).unwrap();
+        let fetched_chunks = get_chunks_for_source(&conn, &sid).unwrap();
+        assert_eq!(fetched_chunks.len(), 3);
+
+        let fetched_by_id = get_chunk_by_id(&conn, "paper.md-c1").unwrap();
+        assert!(fetched_by_id.is_some());
+        assert_eq!(fetched_by_id.unwrap().content, "Child paragraph content");
+
+        // 3. Search hybrid zero limit and special character query
+        let embedder = OnnxEmbedder::new(None::<&std::path::Path>);
+        assert!(search_hybrid(&conn, &embedder, "content", 0, true).unwrap().is_empty());
+
+        let hits_special = search_hybrid(&conn, &embedder, "!!!@@@", 5, true).unwrap();
+        assert!(hits_special.is_empty());
+
+        // Hybrid search expand parent on child without parent falls back to child chunk
+        let hits_standalone = search_hybrid(&conn, &embedder, "Standalone child", 5, true).unwrap();
+        assert_eq!(hits_standalone.len(), 1);
+        assert_eq!(hits_standalone[0].chunk.id, "paper.md-c2");
+
+        // 4. Delete chunks
+        delete_chunks_for_source(&conn, &sid).unwrap();
+        assert!(get_chunks_for_source(&conn, &sid).unwrap().is_empty());
+    }
+}
+
+

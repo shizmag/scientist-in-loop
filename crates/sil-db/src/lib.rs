@@ -849,4 +849,72 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
         assert!(!hyde_hits.is_empty());
         assert!(hyde_hits[0].score > 0.0);
     }
+
+    #[test]
+    fn test_sildb_facade_wrappers() {
+        let db = SilDb::open_in_memory().unwrap();
+
+        // 1. Source content wrapper
+        let doc = SourceDocument::new("doc_facade.pdf".into());
+        db.upsert_parsed(&doc, "Facade content test").unwrap();
+        let fetched = db.get_source_content("doc_facade.pdf").unwrap();
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().1, "Facade content test");
+
+        // 2. Chunks wrappers on SilDb
+        let chunk = SourceChunk {
+            id: "facade_c1".into(),
+            source_id: doc.id.clone(),
+            parent_chunk_id: None,
+            chunk_type: ChunkType::Child,
+            heading_title: None,
+            content: "Facade chunk text".into(),
+            start_offset: 0,
+            end_offset: 17,
+            embedding_blob: None,
+            created_at: String::new(),
+        };
+        db.insert_source_chunks(&[chunk]).unwrap();
+
+        let chunks_by_src = db.get_chunks_for_source(&doc.id).unwrap();
+        assert_eq!(chunks_by_src.len(), 1);
+
+        let chunk_by_id = db.get_chunk_by_id("facade_c1").unwrap();
+        assert!(chunk_by_id.is_some());
+
+        db.delete_chunks_for_source(&doc.id).unwrap();
+        assert!(db.get_chunks_for_source(&doc.id).unwrap().is_empty());
+
+        // 3. Reference wrappers on SilDb
+        let ref_entry = sil_core::ReferenceEntry {
+            id: "ref_facade_1".into(),
+            source_id: doc.id.clone(),
+            ref_index: 1,
+            raw_text: "Ref raw text".into(),
+            title: Some("Ref title".into()),
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+        };
+        db.save_source_references(&[ref_entry]).unwrap();
+
+        let refs_for_src = db.get_references_for_source(&doc.id).unwrap();
+        assert_eq!(refs_for_src.len(), 1);
+
+        let all_refs = db.get_all_references().unwrap();
+        assert_eq!(all_refs.len(), 1);
+
+        let search_refs = db.search_references("Ref title", 5).unwrap();
+        assert_eq!(search_refs.len(), 1);
+
+        db.delete_references_for_source(&doc.id).unwrap();
+        assert!(db.get_references_for_source(&doc.id).unwrap().is_empty());
+
+        // 4. Todo idea insert wrapper on SilDb
+        let idea = sil_core::IdeaBlock::new("idea_facade", "Facade idea content", None, 1, 5);
+        db.insert_todo_idea(&idea).unwrap();
+        assert!(db.get_todo_idea_by_id("idea_facade").unwrap().is_some());
+    }
 }
+

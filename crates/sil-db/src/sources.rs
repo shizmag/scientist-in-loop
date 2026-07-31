@@ -274,4 +274,78 @@ mod tests {
         let updated = update_source_title(&conn, &missing_id, "Another Title").unwrap();
         assert!(!updated);
     }
+
+    #[test]
+    fn test_sources_counts_is_parsed_get_content_remove() {
+        let conn = Connection::open_in_memory().unwrap();
+        schema::migrate(&conn).unwrap();
+
+        assert_eq!(source_count(&conn).unwrap(), 0);
+        assert_eq!(parsed_count(&conn).unwrap(), 0);
+
+        let doc1 = SourceDocument::new("path/doc1.pdf".into());
+        let doc2 = SourceDocument::new("path/doc2.markdown".into());
+
+        upsert_parsed(&conn, &doc1, "Content of doc 1").unwrap();
+        upsert_parsed(&conn, &doc2, "Content of doc 2").unwrap();
+
+        assert_eq!(source_count(&conn).unwrap(), 2);
+        assert_eq!(parsed_count(&conn).unwrap(), 2);
+
+        assert!(is_parsed(&conn, &doc1.id).unwrap());
+        assert!(is_parsed(&conn, &doc2.id).unwrap());
+        assert!(!is_parsed(&conn, &SourceId::new("missing.pdf")).unwrap());
+
+        // get_source_content by ID
+        let res_by_id = get_source_content(&conn, doc1.id.as_str()).unwrap();
+        assert!(res_by_id.is_some());
+        let (fetched_doc, content) = res_by_id.unwrap();
+        assert_eq!(fetched_doc.filename, "doc1.pdf");
+        assert_eq!(content, "Content of doc 1");
+
+        // get_source_content by filename
+        let res_by_fn = get_source_content(&conn, "doc2.markdown").unwrap();
+        assert!(res_by_fn.is_some());
+        let (fetched_doc2, content2) = res_by_fn.unwrap();
+        assert_eq!(fetched_doc2.id, doc2.id);
+        assert_eq!(content2, "Content of doc 2");
+
+        // get_source_content non-existent
+        assert!(get_source_content(&conn, "missing.pdf").unwrap().is_none());
+
+        // remove_source
+        assert!(remove_source(&conn, &doc1.id).unwrap());
+        assert_eq!(source_count(&conn).unwrap(), 1);
+        assert!(!remove_source(&conn, &doc1.id).unwrap());
+    }
+
+    #[test]
+    fn test_parse_status_debug_variants() {
+        assert_eq!(
+            parse_status_debug("Valid(Pdf)"),
+            Some(DocumentStatus::Valid(SourceKind::Pdf))
+        );
+        assert_eq!(
+            parse_status_debug("Valid(Markdown)"),
+            Some(DocumentStatus::Valid(SourceKind::Markdown))
+        );
+        assert_eq!(parse_status_debug("ValidPdf"), Some(DocumentStatus::ValidPdf));
+        assert_eq!(parse_status_debug("NotFound"), Some(DocumentStatus::NotFound));
+        assert_eq!(parse_status_debug("NotPdf"), Some(DocumentStatus::NotPdf));
+        assert_eq!(
+            parse_status_debug("UnsupportedFormat"),
+            Some(DocumentStatus::UnsupportedFormat)
+        );
+        assert_eq!(
+            parse_status_debug("AlreadyParsed"),
+            Some(DocumentStatus::AlreadyParsed)
+        );
+        assert_eq!(
+            parse_status_debug("Corrupted"),
+            Some(DocumentStatus::Corrupted)
+        );
+        assert_eq!(parse_status_debug("UnknownVariant"), None);
+        assert_eq!(parse_status_debug("Valid(UnknownKind)"), None);
+    }
 }
+
