@@ -355,11 +355,10 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
     } else {
         let mut all = Vec::new();
         for doc in db.list_sources().map_err(|e| anyhow::anyhow!("{e}"))? {
-            if doc.parsed {
-                if let Some((d, c)) = db.get_source_content(doc.id.as_str())? {
+            if doc.parsed
+                && let Some((d, c)) = db.get_source_content(doc.id.as_str())? {
                     all.push((d, c));
                 }
-            }
         }
         all
     };
@@ -380,8 +379,8 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
             doc.authors.is_none() || doc.venue.is_none() || doc.abstract_text.is_none();
         if needs_metadata {
             let extracted_doi = doc.doi.clone().or_else(|| sil_regex::extract_doi(&content));
-            if let Some(ref doi) = extracted_doi {
-                if let Ok(Some(pub_item)) = sil_parse::journal_digest::fetch_work_by_doi(doi) {
+            if let Some(ref doi) = extracted_doi
+                && let Ok(Some(pub_item)) = sil_parse::journal_digest::fetch_work_by_doi(doi) {
                     if doc.doi.is_none() && pub_item.doi.is_some() {
                         doc.doi = pub_item.doi;
                     }
@@ -401,7 +400,6 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
                         doc.abstract_text = Some(pub_item.abstract_text);
                     }
                 }
-            }
         }
 
         // 2. Re-extract references block and entries
@@ -425,14 +423,13 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
 
         if let Some(ref raw_block) = refs_block {
             let entries = sil_parse::references::parse_reference_entries(&doc.id, raw_block);
-            if !entries.is_empty() {
-                if let Err(e) = db.save_source_references(&entries) {
+            if !entries.is_empty()
+                && let Err(e) = db.save_source_references(&entries) {
                     ui.warn(&format!(
                         "Failed to save references for {}: {e}",
                         doc.filename
                     ));
                 }
-            }
         }
 
         healed_count += 1;
