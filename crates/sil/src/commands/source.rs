@@ -371,6 +371,7 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
 
     let mut pb = ui.progress(docs.len() as u64, "Doctoring source documents");
     let mut healed_count = 0;
+    let mut warnings = Vec::new();
 
     for (i, (mut doc, content)) in docs.into_iter().enumerate() {
         pb.set_message(&doc.filename);
@@ -395,7 +396,7 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
             };
             
             if full_path.exists() {
-                ui.info(&format!("Extracting rich metadata for {} via xberg...", doc.filename));
+                pb.set_message(&format!("{} (xberg metadata)", doc.filename));
                 if let Ok(rt) = tokio::runtime::Runtime::new() {
                     match rt.block_on(sil_parse::xberg_metadata::extract_metadata_utf8(&full_path)) {
                         Ok(meta) => {
@@ -407,7 +408,9 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
                             }
                         }
                         Err(e) => {
-                            ui.warn(&format!("xberg metadata extraction failed: {e}"));
+                            let msg = e.to_string();
+                            let first_line = msg.lines().next().unwrap_or(&msg);
+                            warnings.push(format!("{}: xberg metadata skipped: {first_line}", doc.filename));
                         }
                     }
                 }
@@ -419,7 +422,7 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         doc.references_text = refs_block.clone();
 
         if let Err(e) = db.upsert_parsed(&doc, &content) {
-            ui.warn(&format!(
+            warnings.push(format!(
                 "Failed to update database for {}: {e}",
                 doc.filename
             ));
@@ -427,7 +430,7 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         }
 
         if let Err(e) = db.delete_references_for_source(&doc.id) {
-            ui.warn(&format!(
+            warnings.push(format!(
                 "Failed to clear old references for {}: {e}",
                 doc.filename
             ));
@@ -438,7 +441,7 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
             if !entries.is_empty()
                 && let Err(e) = db.save_source_references(&entries)
             {
-                ui.warn(&format!(
+                warnings.push(format!(
                     "Failed to save references for {}: {e}",
                     doc.filename
                 ));
@@ -450,5 +453,10 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
     }
 
     pb.finish_success(&format!("Healed {healed_count} source document(s)"));
+
+    for w in &warnings {
+        ui.warn(w);
+    }
+
     Ok(())
 }

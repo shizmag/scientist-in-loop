@@ -147,9 +147,10 @@ pub fn parse_many(
     let mut ok = 0usize;
     let mut failed = 0usize;
     let mut errors = Vec::new();
+    let null_ui = sil_core::NullUi::new();
     for (i, path) in paths.iter().enumerate() {
         pb.set_message(path.file_name().unwrap_or(path.as_str()));
-        match parse_one(path, db, runner, ui) {
+        match parse_one(path, db, runner, &null_ui) {
             Ok(_) => ok += 1,
             Err(e) => {
                 failed += 1;
