@@ -78,7 +78,12 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
                 detail: format!("{}", config.latex.engine),
             });
             let engine = config.latex.engine.to_string();
-            if engine != "tectonic" && engine != "pdflatex" && engine != "xelatex" && engine != "lualatex" && engine != "latexmk" {
+            if engine != "tectonic"
+                && engine != "pdflatex"
+                && engine != "xelatex"
+                && engine != "lualatex"
+                && engine != "latexmk"
+            {
                 // still ok — just report
             }
             let eng_ok = which_ok(&engine);
@@ -94,10 +99,13 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
 
             // Manuscript Health & Quality Audit
             let bib_path = root.join("references.bib");
-            let bib_opt = if bib_path.exists() { Some(bib_path.as_path()) } else { None };
+            let bib_opt = if bib_path.exists() {
+                Some(bib_path.as_path())
+            } else {
+                None
+            };
             match sil_latex::audit_manuscript(&paths.paper_draft(), bib_opt) {
                 Ok(report) => {
-
                     let missing = report.missing_citations_count;
                     checks.push(Check {
                         name: "manuscript health: citations".into(),
@@ -142,7 +150,6 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
             }
         }
         Err(e) => {
-
             checks.push(Check {
                 name: "sil project".into(),
                 ok: false,

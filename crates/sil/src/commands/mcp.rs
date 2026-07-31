@@ -6,4 +6,3 @@ use anyhow::Result;
 pub fn run(quiet: bool) -> Result<()> {
     sil_mcp::run_stdio_server(quiet)
 }
-

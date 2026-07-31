@@ -39,7 +39,11 @@ pub fn slug_cite_key(input: &str) -> String {
     if key.is_empty() {
         "unknown".into()
     } else {
-        key.chars().take(64).collect::<String>().trim_end_matches('_').to_string()
+        key.chars()
+            .take(64)
+            .collect::<String>()
+            .trim_end_matches('_')
+            .to_string()
     }
 }
 
@@ -89,9 +93,13 @@ pub fn suggest_from_source(doc: &SourceDocument) -> BibSuggestion {
         .map(|y| y.to_string())
         .unwrap_or_else(|| "n.d.".to_string());
 
-    let has_meta = doc.authors.is_some() || doc.year.is_some() || doc.venue.is_some() || doc.doi.is_some();
+    let has_meta =
+        doc.authors.is_some() || doc.year.is_some() || doc.venue.is_some() || doc.doi.is_some();
 
-    let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset || doc.kind == SourceKind::Code || (doc.venue.is_none() && has_meta) {
+    let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset
+        || doc.kind == SourceKind::Code
+        || (doc.venue.is_none() && has_meta)
+    {
         let mut fields = vec![
             format!("  title={{{display_title}}}"),
             format!("  author={{{author}}}"),
@@ -148,11 +156,7 @@ pub fn suggest_from_filename_title(filename: &str, title: Option<&str>) -> BibSu
 pub fn suggest_from_query(query: &str) -> BibSuggestion {
     let key = slug_cite_key(query);
     let title = query.trim();
-    let title = if title.is_empty() {
-        "Untitled"
-    } else {
-        title
-    };
+    let title = if title.is_empty() { "Untitled" } else { title };
     let bibtex = format_bibtex_article(&key, title, "Unknown", "n.d.", "Unknown");
     BibSuggestion {
         cite_command: format_cite_command(&key),
@@ -193,7 +197,10 @@ mod tests {
 
     #[test]
     fn slug_from_filename() {
-        assert_eq!(slug_cite_key("Attention_Is_All_You_Need.pdf"), "attention_is_all_you_need");
+        assert_eq!(
+            slug_cite_key("Attention_Is_All_You_Need.pdf"),
+            "attention_is_all_you_need"
+        );
         assert_eq!(slug_cite_key("???"), "unknown");
     }
 
@@ -226,9 +233,20 @@ mod tests {
         doc.doi = Some("10.1109/CVPR.2016.90".into());
 
         let suggestion = suggest_from_source(&doc);
-        assert_eq!(suggestion.cite_key, "deep_residual_learning_for_image_recognition");
-        assert!(suggestion.bibtex.contains("@article{deep_residual_learning_for_image_recognition,"));
-        assert!(suggestion.bibtex.contains("author={Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun}"));
+        assert_eq!(
+            suggestion.cite_key,
+            "deep_residual_learning_for_image_recognition"
+        );
+        assert!(
+            suggestion
+                .bibtex
+                .contains("@article{deep_residual_learning_for_image_recognition,")
+        );
+        assert!(
+            suggestion
+                .bibtex
+                .contains("author={Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun}")
+        );
         assert!(suggestion.bibtex.contains("journal={CVPR}"));
         assert!(suggestion.bibtex.contains("year={2016}"));
         assert!(suggestion.bibtex.contains("doi={10.1109/CVPR.2016.90}"));

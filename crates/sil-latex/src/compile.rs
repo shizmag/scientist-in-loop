@@ -107,7 +107,10 @@ mod tests {
             "{msg}"
         );
         assert!(
-            msg.contains("config") || msg.contains("PATH") || msg.contains("install") || msg.contains(engine.command()),
+            msg.contains("config")
+                || msg.contains("PATH")
+                || msg.contains("install")
+                || msg.contains(engine.command()),
             "message should be actionable: {msg}"
         );
     }

@@ -46,4 +46,3 @@ pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};
 pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
 pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
-

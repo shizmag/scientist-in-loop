@@ -124,7 +124,6 @@ pub fn generate_context(input: &ContextInput<'_>) -> Result<String, ContextError
         }
     }
 
-
     if input.flags.agent {
         out.push_str("## Agent directory\n\n");
         let agent_dir = input.root.join(rel::AGENT);
@@ -567,4 +566,3 @@ Some method text.
         assert!(ctx.contains("Methods"));
     }
 }
-

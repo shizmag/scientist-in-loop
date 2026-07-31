@@ -41,9 +41,11 @@ fn run() -> Result<()> {
             }
             SourceCmd::Parse { path } => commands::parse(path, ui.as_ref()),
             SourceCmd::Search { query, limit } => commands::search(&query, limit, ui.as_ref()),
-            SourceCmd::Cite { target, append, json } => {
-                commands::cite(&target, append, json, ui.as_ref())
-            }
+            SourceCmd::Cite {
+                target,
+                append,
+                json,
+            } => commands::cite(&target, append, json, ui.as_ref()),
             SourceCmd::Digest { query, limit } => commands::digest(&query, limit, ui.as_ref()),
             SourceCmd::Read { id } => commands::source_read(&id, ui.as_ref()),
             SourceCmd::Doctor { id } => commands::source_doctor(id, ui.as_ref()),
@@ -113,4 +115,3 @@ fn run() -> Result<()> {
         },
     }
 }
-

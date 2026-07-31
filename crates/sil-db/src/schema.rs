@@ -218,13 +218,8 @@ fn migrate_todo_ideas_columns(conn: &Connection) -> Result<(), DbError> {
         )?;
     }
     if !columns.iter().any(|c| c == "tags") {
-        conn.execute(
-            "ALTER TABLE todo_ideas ADD COLUMN tags TEXT DEFAULT ''",
-            [],
-        )?;
+        conn.execute("ALTER TABLE todo_ideas ADD COLUMN tags TEXT DEFAULT ''", [])?;
     }
 
     Ok(())
 }
-
-

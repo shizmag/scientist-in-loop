@@ -25,4 +25,3 @@ pub fn run_stdio_server(quiet: bool) -> anyhow::Result<()> {
         server.run(stdin, stdout).await
     })
 }
-

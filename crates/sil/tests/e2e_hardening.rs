@@ -52,11 +52,7 @@ fn invalid_structure_completion_fails_status() {
     // First completion in template is "empty"
     yaml = yaml.replacen("completion: empty", "completion: done", 1);
     fs::write(project.join(".sil/structure.yaml"), yaml).unwrap();
-    sil()
-        .current_dir(&project)
-        .arg("status")
-        .assert()
-        .failure();
+    sil().current_dir(&project).arg("status").assert().failure();
 }
 
 #[test]
@@ -218,10 +214,7 @@ fn search_unicode_content_findable_via_ascii_token() {
     sil()
         .current_dir(&project)
         .args(["source", "parse", "sources/u.pdf"])
-        .env(
-            "SIL_MARKER_STUB",
-            "注意力机制 selfattentiontoken αβγ café",
-        )
+        .env("SIL_MARKER_STUB", "注意力机制 selfattentiontoken αβγ café")
         .assert()
         .success();
     sil()

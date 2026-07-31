@@ -1,9 +1,9 @@
 //! Top-journal publication digest feed and Crossref metadata hydration natively in Rust.
 
-use std::process::Command;
+use crate::error::ParseError;
 use camino::{Utf8Path, Utf8PathBuf};
 use sil_core::JournalPublication;
-use crate::error::ParseError;
+use std::process::Command;
 
 fn format_authors(value: &serde_json::Value) -> String {
     let mut names = Vec::new();
@@ -30,13 +30,23 @@ fn format_authors(value: &serde_json::Value) -> String {
 }
 
 fn extract_year_from_crossref(item: &serde_json::Value) -> Option<u32> {
-    for key in ["published-print", "published-online", "published", "issued", "created"] {
-        if let Some(dp) = item.get(key).and_then(|v| v.get("date-parts")).and_then(|v| v.as_array())
+    for key in [
+        "published-print",
+        "published-online",
+        "published",
+        "issued",
+        "created",
+    ] {
+        if let Some(dp) = item
+            .get(key)
+            .and_then(|v| v.get("date-parts"))
+            .and_then(|v| v.as_array())
             && let Some(first_date) = dp.first().and_then(|v| v.as_array())
-                && let Some(year_val) = first_date.first().and_then(|v| v.as_u64())
-                    && (1800..=2030).contains(&year_val) {
-                        return Some(year_val as u32);
-                    }
+            && let Some(year_val) = first_date.first().and_then(|v| v.as_u64())
+            && (1800..=2030).contains(&year_val)
+        {
+            return Some(year_val as u32);
+        }
     }
     None
 }
@@ -59,23 +69,33 @@ fn clean_abstract(raw: &str) -> String {
 fn extract_pdf_url(item: &serde_json::Value) -> Option<String> {
     if let Some(links) = item.get("link").and_then(|v| v.as_array()) {
         for link in links {
-            let ct = link.get("content-type").and_then(|v| v.as_str()).unwrap_or("");
+            let ct = link
+                .get("content-type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let url = link.get("URL").and_then(|v| v.as_str()).unwrap_or("");
             if (ct.contains("pdf") || url.ends_with(".pdf")) && !url.is_empty() {
                 return Some(url.to_string());
             }
         }
-        if let Some(first_url) = links.first().and_then(|l| l.get("URL")).and_then(|v| v.as_str())
-            && !first_url.is_empty() {
-                return Some(first_url.to_string());
-            }
+        if let Some(first_url) = links
+            .first()
+            .and_then(|l| l.get("URL"))
+            .and_then(|v| v.as_str())
+            && !first_url.is_empty()
+        {
+            return Some(first_url.to_string());
+        }
     }
     None
 }
 
 /// Convert a Crossref JSON work item into a domain `JournalPublication`.
 pub fn parse_crossref_item(item: &serde_json::Value) -> Option<JournalPublication> {
-    let doi = item.get("DOI").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let doi = item
+        .get("DOI")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     let title = item
         .get("title")
@@ -190,7 +210,11 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseE
     {
         Ok(res) => res,
         Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(e) => return Err(ParseError::Message(format!("Crossref DOI fetch error: {e}"))),
+        Err(e) => {
+            return Err(ParseError::Message(format!(
+                "Crossref DOI fetch error: {e}"
+            )));
+        }
     };
 
     let json: serde_json::Value = response
@@ -246,7 +270,9 @@ pub fn fetch_journal_publications_python(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(ParseError::Marker(format!("fetch_journal_digest.py failed: {stderr}")));
+        return Err(ParseError::Marker(format!(
+            "fetch_journal_digest.py failed: {stderr}"
+        )));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -304,10 +330,15 @@ print(json.dumps([
     fn test_mock_python_script_failure_returns_err() {
         let dir = tempfile::tempdir().unwrap();
         let script_path = dir.path().join("failing_digest.py");
-        std::fs::write(&script_path, "import sys; sys.stderr.write('API Error'); sys.exit(1)").unwrap();
+        std::fs::write(
+            &script_path,
+            "import sys; sys.stderr.write('API Error'); sys.exit(1)",
+        )
+        .unwrap();
 
         let path = Utf8PathBuf::from_path_buf(script_path).unwrap();
-        let err = fetch_journal_publications("quantum", 5, Some(&path), Some("python3")).unwrap_err();
+        let err =
+            fetch_journal_publications("quantum", 5, Some(&path), Some("python3")).unwrap_err();
         assert!(err.to_string().contains("API Error"));
     }
 
@@ -334,12 +365,21 @@ print(json.dumps([
 
         let pub_item = parse_crossref_item(&json).expect("should parse valid crossref item");
         assert_eq!(pub_item.doi.as_deref(), Some("10.1038/s41586-020-1234-y"));
-        assert_eq!(pub_item.title, "Quantum Supremacy in a Programmable Processor");
+        assert_eq!(
+            pub_item.title,
+            "Quantum Supremacy in a Programmable Processor"
+        );
         assert_eq!(pub_item.authors, "Frank Arute, Kunald Arya");
         assert_eq!(pub_item.journal, "Nature");
         assert_eq!(pub_item.year, Some(2019));
-        assert_eq!(pub_item.abstract_text, "The promise of quantum computers...");
+        assert_eq!(
+            pub_item.abstract_text,
+            "The promise of quantum computers..."
+        );
         assert_eq!(pub_item.citation_count, Some(1500));
-        assert_eq!(pub_item.pdf_url.as_deref(), Some("https://nature.com/articles/s41586-020-1234-y.pdf"));
+        assert_eq!(
+            pub_item.pdf_url.as_deref(),
+            Some("https://nature.com/articles/s41586-020-1234-y.pdf")
+        );
     }
 }

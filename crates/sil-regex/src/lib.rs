@@ -1,23 +1,23 @@
 //! Centralized regular expressions and text pattern matchers for scientist-in-loop.
 
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
-static DOI_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b").unwrap()
-});
+static DOI_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b").unwrap());
 
 static ARXIV_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\b(?:arxiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z\-]+(?:\.[a-z\-]+)?/\d{7}(?:v\d+)?)\b").unwrap()
+    Regex::new(
+        r"(?i)\b(?:arxiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z\-]+(?:\.[a-z\-]+)?/\d{7}(?:v\d+)?)\b",
+    )
+    .unwrap()
 });
 
-static YEAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b(1[89]\d{2}|20[0-2]\d|2030)\b").unwrap()
-});
+static YEAR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b(1[89]\d{2}|20[0-2]\d|2030)\b").unwrap());
 
-static QUOTED_TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"["“]([^"”\r\n]{2,})[”"]"#).unwrap()
-});
+static QUOTED_TITLE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"["“]([^"”\r\n]{2,})[”"]"#).unwrap());
 
 static REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(?:\*\*|__)?\s*(references|bibliography|literature cited|works cited|references and notes)(?:\*\*|__)?\b").unwrap()
@@ -31,13 +31,11 @@ static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|^\s*(?:-\s+)?[A-Z][a-z]+,\s+[A-Z]").unwrap()
 });
 
-static LATEX_METADATA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*%\s*metadata:\s*(.+)$").unwrap()
-});
+static LATEX_METADATA_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^\s*%\s*metadata:\s*(.+)$").unwrap());
 
-static HTML_SPAN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap()
-});
+static HTML_SPAN_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap());
 
 /// Strip HTML `<span...>` and `</span>` tags from text.
 pub fn strip_html_spans(text: &str) -> String {
@@ -68,18 +66,19 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
 pub fn extract_year(text: &str) -> Option<i32> {
     for mat in YEAR_REGEX.find_iter(text) {
         if let Ok(y) = mat.as_str().parse::<i32>()
-            && (1800..=2030).contains(&y) {
-                return Some(y);
-            }
+            && (1800..=2030).contains(&y)
+        {
+            return Some(y);
+        }
     }
     None
 }
 
 /// Extract a quoted title from text (matching straight double quotes or curly quotes).
 pub fn extract_quoted_title(text: &str) -> Option<String> {
-    QUOTED_TITLE_REGEX.captures(text).map(|caps| {
-        caps.get(1).unwrap().as_str().trim().to_string()
-    })
+    QUOTED_TITLE_REGEX
+        .captures(text)
+        .map(|caps| caps.get(1).unwrap().as_str().trim().to_string())
 }
 
 /// Check if a line is a reference section heading (e.g., `# References`, `Bibliography`, `8. References`).
@@ -100,9 +99,9 @@ pub fn is_reference_entry_start(line: &str) -> bool {
 
 /// Extract LaTeX `% metadata: ...` comment content from a line.
 pub fn extract_latex_metadata_comment(line: &str) -> Option<String> {
-    LATEX_METADATA_REGEX.captures(line).map(|caps| {
-        caps.get(1).unwrap().as_str().trim().to_string()
-    })
+    LATEX_METADATA_REGEX
+        .captures(line)
+        .map(|caps| caps.get(1).unwrap().as_str().trim().to_string())
 }
 
 #[cfg(test)]
@@ -158,7 +157,9 @@ mod tests {
             Some("Attention is all you need.".to_string())
         );
         assert_eq!(
-            extract_quoted_title("Author et al. “BERT: Pre-training of Deep Bidirectional Transformers” NAACL"),
+            extract_quoted_title(
+                "Author et al. “BERT: Pre-training of Deep Bidirectional Transformers” NAACL"
+            ),
             Some("BERT: Pre-training of Deep Bidirectional Transformers".to_string())
         );
         assert_eq!(extract_quoted_title("Unquoted title here"), None);
@@ -194,19 +195,31 @@ mod tests {
     fn test_is_reference_entry_start() {
         assert!(is_reference_entry_start("[1] Vaswani et al."));
         assert!(is_reference_entry_start("1. Vaswani et al."));
-        assert!(is_reference_entry_start("[Vaswani 2017] Attention is all you need."));
+        assert!(is_reference_entry_start(
+            "[Vaswani 2017] Attention is all you need."
+        ));
         assert!(is_reference_entry_start("(1) Shannon, C. E."));
-        assert!(is_reference_entry_start("- <span id=\"page-10-0\"></span>[1] Patrick Lewis et al."));
-        assert!(is_reference_entry_start("- <span id=\"page-6-0\"></span>Saurav Kadavath et al."));
+        assert!(is_reference_entry_start(
+            "- <span id=\"page-10-0\"></span>[1] Patrick Lewis et al."
+        ));
+        assert!(is_reference_entry_start(
+            "- <span id=\"page-6-0\"></span>Saurav Kadavath et al."
+        ));
         assert!(is_reference_entry_start("- Asai, A.; Wu, Z.; ..."));
-        assert!(is_reference_entry_start("<span id=\"page-8-4\"></span>Ebtesam Almazrouei et al."));
-        assert!(!is_reference_entry_start("Vaswani et al. (2017) Attention is all you need."));
+        assert!(is_reference_entry_start(
+            "<span id=\"page-8-4\"></span>Ebtesam Almazrouei et al."
+        ));
+        assert!(!is_reference_entry_start(
+            "Vaswani et al. (2017) Attention is all you need."
+        ));
     }
 
     #[test]
     fn test_extract_latex_metadata_comment() {
         assert_eq!(
-            extract_latex_metadata_comment("% metadata: title = \"My Paper\", author = \"Jane Doe\""),
+            extract_latex_metadata_comment(
+                "% metadata: title = \"My Paper\", author = \"Jane Doe\""
+            ),
             Some("title = \"My Paper\", author = \"Jane Doe\"".to_string())
         );
         assert_eq!(

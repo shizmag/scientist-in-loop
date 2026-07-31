@@ -20,7 +20,10 @@ pub fn sil() -> assert_cmd::Command {
     cmd.env("SIL_NO_COLOR", "1")
         .env("SIL_NONINTERACTIVE", "1")
         .env("NO_COLOR", "1")
-        .env("SIL_MARKER_STUB", "transformer attention mechanism for testing");
+        .env(
+            "SIL_MARKER_STUB",
+            "transformer attention mechanism for testing",
+        );
     cmd
 }
 
@@ -37,8 +40,7 @@ pub fn init_project(name: &str) -> (TempDir, PathBuf) {
 
 /// Assert that a file contains a substring.
 pub fn assert_file_contains(path: &Path, needle: &str) {
-    let text = fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let text = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     assert!(
         text.contains(needle),
         "expected {:?} to contain {:?}\n--- content ---\n{text}",
@@ -60,6 +62,9 @@ pub fn git(project: &Path, args: &[&str]) -> std::process::Output {
 pub fn git_commit_all(project: &Path, message: &str) {
     let _ = git(project, &["add", "-A"]);
     let output = git(project, &["commit", "-m", message]);
-    assert!(output.status.success(), "git commit failed: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "git commit failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
-

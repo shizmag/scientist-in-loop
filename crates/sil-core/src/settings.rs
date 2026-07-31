@@ -1,8 +1,8 @@
 //! Global and local settings data structures and cache management.
 
-use std::collections::BTreeMap;
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::error::SilError;
 
@@ -156,15 +156,17 @@ fn find_onnx_in_path(path: &Utf8Path) -> Option<Utf8PathBuf> {
         return Some(path.to_path_buf());
     }
     if path.is_dir()
-        && let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let entry_path = entry.path();
-                if entry_path.extension().and_then(|s| s.to_str()) == Some("onnx")
-                    && let Ok(utf8) = Utf8PathBuf::from_path_buf(entry_path) {
-                        return Some(utf8);
-                    }
+        && let Ok(entries) = std::fs::read_dir(path)
+    {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            if entry_path.extension().and_then(|s| s.to_str()) == Some("onnx")
+                && let Ok(utf8) = Utf8PathBuf::from_path_buf(entry_path)
+            {
+                return Some(utf8);
             }
         }
+    }
     None
 }
 
@@ -172,9 +174,10 @@ impl RagSettings {
     /// Resolve exact embedder *.onnx model file path based on config precedence.
     pub fn resolve_embedder_path(&self) -> Option<Utf8PathBuf> {
         if let Some(ref path) = self.onnx_embedder_path
-            && let Some(found) = find_onnx_in_path(path) {
-                return Some(found);
-            }
+            && let Some(found) = find_onnx_in_path(path)
+        {
+            return Some(found);
+        }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_embedder_model));
             if candidate1.is_file() && candidate1.exists() {
@@ -188,7 +191,9 @@ impl RagSettings {
                 return Some(found);
             }
         }
-        let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_embedder_model));
+        let cache_candidate = self
+            .model_cache_dir
+            .join(format!("{}.onnx", self.onnx_embedder_model));
         if cache_candidate.is_file() && cache_candidate.exists() {
             return Some(cache_candidate);
         }
@@ -198,9 +203,10 @@ impl RagSettings {
     /// Resolve exact reranker *.onnx model file path based on config precedence.
     pub fn resolve_reranker_path(&self) -> Option<Utf8PathBuf> {
         if let Some(ref path) = self.onnx_reranker_path
-            && let Some(found) = find_onnx_in_path(path) {
-                return Some(found);
-            }
+            && let Some(found) = find_onnx_in_path(path)
+        {
+            return Some(found);
+        }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_reranker_model));
             if candidate1.is_file() && candidate1.exists() {
@@ -214,7 +220,9 @@ impl RagSettings {
                 return Some(found);
             }
         }
-        let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_reranker_model));
+        let cache_candidate = self
+            .model_cache_dir
+            .join(format!("{}.onnx", self.onnx_reranker_model));
         if cache_candidate.is_file() && cache_candidate.exists() {
             return Some(cache_candidate);
         }
@@ -297,18 +305,22 @@ impl SettingsCache {
 
 /// Return standard path for global settings file (`~/.config/sil/settings.yaml`).
 pub fn default_global_settings_path() -> Option<Utf8PathBuf> {
-    dirs::config_dir().and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("settings.yaml")).ok())
+    dirs::config_dir()
+        .and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("settings.yaml")).ok())
 }
 
 /// Return standard path for settings cache file (`~/.config/sil/cache.yaml`).
 pub fn default_settings_cache_path() -> Option<Utf8PathBuf> {
-    dirs::config_dir().and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("cache.yaml")).ok())
+    dirs::config_dir()
+        .and_then(|p| Utf8PathBuf::from_path_buf(p.join("sil").join("cache.yaml")).ok())
 }
 
 impl GlobalSettings {
     /// Load global settings from path or default path, returning default if non-existent.
     pub fn load_or_default(path: Option<&Utf8Path>) -> Self {
-        let p = path.map(|p| p.to_path_buf()).or_else(default_global_settings_path);
+        let p = path
+            .map(|p| p.to_path_buf())
+            .or_else(default_global_settings_path);
         p.filter(|path| path.exists())
             .and_then(|path| std::fs::read_to_string(path.as_std_path()).ok())
             .and_then(|text| serde_yaml::from_str::<GlobalSettings>(&text).ok())
@@ -317,8 +329,12 @@ impl GlobalSettings {
 
     /// Save global settings to specified path or default user config path.
     pub fn save(&self, path: Option<&Utf8Path>) -> Result<(), SilError> {
-        let target_path = path.map(|p| p.to_path_buf()).or_else(default_global_settings_path)
-            .ok_or_else(|| SilError::Message("cannot resolve global config directory".to_string()))?;
+        let target_path = path
+            .map(|p| p.to_path_buf())
+            .or_else(default_global_settings_path)
+            .ok_or_else(|| {
+                SilError::Message("cannot resolve global config directory".to_string())
+            })?;
 
         if let Some(parent) = target_path.parent() {
             std::fs::create_dir_all(parent.as_std_path())?;
@@ -335,20 +351,23 @@ impl GlobalSettings {
 impl SettingsCache {
     /// Load cache from path or default path, returning default if non-existent.
     pub fn load_or_default(path: Option<&Utf8Path>) -> Self {
-        let p = path.map(|p| p.to_path_buf()).or_else(default_settings_cache_path);
+        let p = path
+            .map(|p| p.to_path_buf())
+            .or_else(default_settings_cache_path);
         p.filter(|path| path.exists())
             .and_then(|path| std::fs::read_to_string(path.as_std_path()).ok())
             .and_then(|text| serde_yaml::from_str::<SettingsCache>(&text).ok())
             .unwrap_or_default()
     }
 
-
-
-
     /// Save cache to specified path or default user cache path.
     pub fn save(&self, path: Option<&Utf8Path>) -> Result<(), SilError> {
-        let target_path = path.map(|p| p.to_path_buf()).or_else(default_settings_cache_path)
-            .ok_or_else(|| SilError::Message("cannot resolve global config directory".to_string()))?;
+        let target_path = path
+            .map(|p| p.to_path_buf())
+            .or_else(default_settings_cache_path)
+            .ok_or_else(|| {
+                SilError::Message("cannot resolve global config directory".to_string())
+            })?;
 
         if let Some(parent) = target_path.parent() {
             std::fs::create_dir_all(parent.as_std_path())?;

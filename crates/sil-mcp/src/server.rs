@@ -1,7 +1,7 @@
 //! MCP JSON-RPC Server over async stdin/stdout streams.
 
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use serde_json::json;
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 
 use crate::protocol::{JsonRpcRequest, JsonRpcResponse, Tool};
 use crate::tools::{call_tool, list_tools};
@@ -36,7 +36,11 @@ impl McpServer {
 
         while buf_reader.read_line(&mut line).await? > 0 {
             let trimmed = line.trim();
-            if let Some(resp) = if trimmed.is_empty() { None } else { self.handle_request_line(trimmed).await } {
+            if let Some(resp) = if trimmed.is_empty() {
+                None
+            } else {
+                self.handle_request_line(trimmed).await
+            } {
                 let mut json_bytes = serde_json::to_vec(&resp)?;
                 json_bytes.push(b'\n');
                 writer.write_all(&json_bytes).await?;
@@ -123,7 +127,10 @@ mod tests {
     async fn test_jsonrpc_initialize() {
         let server = McpServer::new();
         let req_json = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#;
-        let response = server.handle_request_line(req_json).await.expect("Expected response for initialize");
+        let response = server
+            .handle_request_line(req_json)
+            .await
+            .expect("Expected response for initialize");
 
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, Some(json!(1)));
@@ -140,14 +147,19 @@ mod tests {
     async fn test_tools_list_schema_validation() {
         let server = McpServer::new();
         let req_json = r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#;
-        let response = server.handle_request_line(req_json).await.expect("Expected response for tools/list");
+        let response = server
+            .handle_request_line(req_json)
+            .await
+            .expect("Expected response for tools/list");
 
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, Some(json!(2)));
         assert!(response.error.is_none());
 
         let result = response.result.expect("Expected result");
-        let tools = result["tools"].as_array().expect("tools should be an array");
+        let tools = result["tools"]
+            .as_array()
+            .expect("tools should be an array");
 
         assert_eq!(tools.len(), 12, "Should register all 12 core sil MCP tools");
 
@@ -189,7 +201,10 @@ mod tests {
 
         // 1. Test sil_suggest_citations
         let req1 = r#"{"jsonrpc":"2.0","id":101,"method":"tools/call","params":{"name":"sil_suggest_citations","arguments":{"query":"generative AI"}}}"#;
-        let resp1 = server.handle_request_line(req1).await.expect("Expected response for citations");
+        let resp1 = server
+            .handle_request_line(req1)
+            .await
+            .expect("Expected response for citations");
         assert_eq!(resp1.id, Some(json!(101)));
         let call_res1: CallToolResult = serde_json::from_value(resp1.result.unwrap()).unwrap();
         assert_eq!(call_res1.content.len(), 1);
@@ -198,7 +213,10 @@ mod tests {
 
         // 2. Test sil_propose_commit
         let req2 = r#"{"jsonrpc":"2.0","id":102,"method":"tools/call","params":{"name":"sil_propose_commit","arguments":{"action":"edit-draft"}}}"#;
-        let resp2 = server.handle_request_line(req2).await.expect("Expected response for commit proposal");
+        let resp2 = server
+            .handle_request_line(req2)
+            .await
+            .expect("Expected response for commit proposal");
         assert_eq!(resp2.id, Some(json!(102)));
         let call_res2: CallToolResult = serde_json::from_value(resp2.result.unwrap()).unwrap();
         let Content::Text { text: text2 } = &call_res2.content[0];
@@ -206,12 +224,18 @@ mod tests {
 
         // 3. Test sil_list_skills
         let req3 = r#"{"jsonrpc":"2.0","id":103,"method":"tools/call","params":{"name":"sil_list_skills","arguments":{}}}"#;
-        let resp3 = server.handle_request_line(req3).await.expect("Expected response for list skills");
+        let resp3 = server
+            .handle_request_line(req3)
+            .await
+            .expect("Expected response for list skills");
         assert_eq!(resp3.id, Some(json!(103)));
 
         // 4. Test unknown tool
         let req4 = r#"{"jsonrpc":"2.0","id":104,"method":"tools/call","params":{"name":"non_existent_tool"}}"#;
-        let resp4 = server.handle_request_line(req4).await.expect("Expected response for unknown tool");
+        let resp4 = server
+            .handle_request_line(req4)
+            .await
+            .expect("Expected response for unknown tool");
         let call_res4: CallToolResult = serde_json::from_value(resp4.result.unwrap()).unwrap();
         assert_eq!(call_res4.is_error, Some(true));
     }
@@ -272,7 +296,10 @@ mod tests {
         // Method not found as a notification (without id) -> returns None
         let notification = r#"{"jsonrpc":"2.0","method":"unknown/notification"}"#;
         let resp_notif = server.handle_request_line(notification).await;
-        assert!(resp_notif.is_none(), "Unknown notification should return None");
+        assert!(
+            resp_notif.is_none(),
+            "Unknown notification should return None"
+        );
     }
 
     #[tokio::test]
@@ -286,7 +313,10 @@ mod tests {
             server_inst.run(server_read, server_write).await.unwrap();
         });
 
-        client_write.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"ping\"}\n").await.unwrap();
+        client_write
+            .write_all(b"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"ping\"}\n")
+            .await
+            .unwrap();
 
         let mut reader = BufReader::new(client_read);
         let mut resp_line = String::new();

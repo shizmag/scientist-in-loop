@@ -74,7 +74,11 @@ fn parse_uppercase_pdf_extension() {
         .args(["source", "search", "token_upper"])
         .assert()
         .success()
-        .stdout(predicates::str::contains("Paper.PDF").or(predicates::str::contains("paper.pdf")).or(predicates::str::contains("Paper")));
+        .stdout(
+            predicates::str::contains("Paper.PDF")
+                .or(predicates::str::contains("paper.pdf"))
+                .or(predicates::str::contains("Paper")),
+        );
 }
 
 #[test]
@@ -135,10 +139,7 @@ fn log_with_no_commits_is_calm() {
 #[test]
 fn status_after_manual_commit_is_clean() {
     let (_dir, project) = init_project("clean-status");
-    git_commit_all(
-        &project,
-        "Initialize sil project\n\nSci-Action: init\n",
-    );
+    git_commit_all(&project, "Initialize sil project\n\nSci-Action: init\n");
     sil()
         .current_dir(&project)
         .arg("status")
@@ -155,7 +156,9 @@ fn context_only_skill_agent_without_agent_flag() {
         .args(["project", "context", "--skill-agent-code"])
         .assert()
         .success()
-        .stdout(predicates::str::contains("Rules for code written by the agent"));
+        .stdout(predicates::str::contains(
+            "Rules for code written by the agent",
+        ));
 }
 
 #[test]
@@ -194,10 +197,7 @@ fn search_after_failed_parse_stays_empty() {
 #[test]
 fn status_shows_draft_dirty_when_tex_modified() {
     let (_dir, project) = init_project("draft-dirty");
-    git_commit_all(
-        &project,
-        "Initialize sil project\n\nSci-Action: init\n",
-    );
+    git_commit_all(&project, "Initialize sil project\n\nSci-Action: init\n");
     fs::write(
         project.join("paper_draft.tex"),
         "% modified after commit\n\\documentclass{article}\\begin{document}x\\end{document}\n",
@@ -269,8 +269,15 @@ fn context_task_agent_loads_agent_skill() {
     let (_dir, project) = init_project("task-agent");
     sil()
         .current_dir(&project)
-        .args(["project", "context", "--task", "add a script under agent/ for reproducibility"])
+        .args([
+            "project",
+            "context",
+            "--task",
+            "add a script under agent/ for reproducibility",
+        ])
         .assert()
         .success()
-        .stdout(predicates::str::contains("Rules for code written by the agent"));
+        .stdout(predicates::str::contains(
+            "Rules for code written by the agent",
+        ));
 }

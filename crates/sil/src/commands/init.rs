@@ -52,8 +52,7 @@ fn resolve_path(n: &str) -> Result<Utf8PathBuf> {
         Ok(p)
     } else {
         let cwd = std::env::current_dir()?;
-        let cwd =
-            Utf8PathBuf::from_path_buf(cwd).map_err(|_| anyhow::anyhow!("cwd not utf-8"))?;
+        let cwd = Utf8PathBuf::from_path_buf(cwd).map_err(|_| anyhow::anyhow!("cwd not utf-8"))?;
         Ok(cwd.join(n))
     }
 }

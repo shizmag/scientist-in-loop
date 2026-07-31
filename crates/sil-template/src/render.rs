@@ -311,11 +311,26 @@ mod tests {
             PaperTemplate::Arxiv,
         ] {
             let rendered = render(t, &manuscript);
-            assert!(rendered.contains("Test Title"), "template {t:?} missing title");
-            assert!(rendered.contains("Author A"), "template {t:?} missing author");
-            assert!(rendered.contains("Sample abstract."), "template {t:?} missing abstract");
-            assert!(rendered.contains("Hello world."), "template {t:?} missing body");
-            assert!(rendered.contains("refs"), "template {t:?} missing bibliography");
+            assert!(
+                rendered.contains("Test Title"),
+                "template {t:?} missing title"
+            );
+            assert!(
+                rendered.contains("Author A"),
+                "template {t:?} missing author"
+            );
+            assert!(
+                rendered.contains("Sample abstract."),
+                "template {t:?} missing abstract"
+            );
+            assert!(
+                rendered.contains("Hello world."),
+                "template {t:?} missing body"
+            );
+            assert!(
+                rendered.contains("refs"),
+                "template {t:?} missing bibliography"
+            );
         }
     }
 }

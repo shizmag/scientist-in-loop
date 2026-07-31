@@ -412,12 +412,15 @@ impl App {
                     if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
                         let doc_id = self.sources[self.selected_source_index].id.clone();
                         let filename = self.sources[self.selected_source_index].filename.clone();
-                        let ref_text = self.sources[self.selected_source_index].references_text.clone();
+                        let ref_text = self.sources[self.selected_source_index]
+                            .references_text
+                            .clone();
                         self.load_and_view_references(&doc_id, &filename, ref_text.as_deref());
                     }
                 } else if self.active_tab == ActiveTab::PaperDraft || self.project_root.is_some() {
                     self.pending_external_editor = true;
-                    self.status_message = "Launching external editor ($EDITOR / nvim / helix)...".to_string();
+                    self.status_message =
+                        "Launching external editor ($EDITOR / nvim / helix)...".to_string();
                 }
             }
 
@@ -490,7 +493,8 @@ impl App {
                         self.reading_md_content = Some(content);
                         self.input_mode = InputMode::ReadingSourceMd;
                         self.source_scroll_offset = 0;
-                        self.status_message = format!("Reading {}. Press Esc to exit.", doc.filename);
+                        self.status_message =
+                            format!("Reading {}. Press Esc to exit.", doc.filename);
                     }
                 }
                 ActiveTab::Settings => self.start_editing_selected_field(),
@@ -580,7 +584,8 @@ impl App {
                                 if idx < self.cache.co_authors.len() {
                                     self.cache.co_authors.remove(idx);
                                     self.dirty = true;
-                                    self.status_message = "Removed co-author from cache.".to_string();
+                                    self.status_message =
+                                        "Removed co-author from cache.".to_string();
                                 }
                             }
                             SettingItem::CacheGrant(idx) => {
@@ -594,14 +599,16 @@ impl App {
                                 if idx < self.local_settings.co_authors.len() {
                                     self.local_settings.co_authors.remove(idx);
                                     self.dirty = true;
-                                    self.status_message = "Removed co-author from local settings.".to_string();
+                                    self.status_message =
+                                        "Removed co-author from local settings.".to_string();
                                 }
                             }
                             SettingItem::LocalGrant(idx) => {
                                 if idx < self.local_settings.grants.len() {
                                     self.local_settings.grants.remove(idx);
                                     self.dirty = true;
-                                    self.status_message = "Removed grant from local settings.".to_string();
+                                    self.status_message =
+                                        "Removed grant from local settings.".to_string();
                                 }
                             }
                             _ => {}
@@ -625,7 +632,8 @@ impl App {
                                     if !self.local_settings.co_authors.contains(&author) {
                                         self.local_settings.co_authors.push(author);
                                         self.dirty = true;
-                                        self.status_message = "Added cached co-author to local project!".to_string();
+                                        self.status_message =
+                                            "Added cached co-author to local project!".to_string();
                                     }
                                 }
                             }
@@ -635,7 +643,8 @@ impl App {
                                     if !self.local_settings.grants.contains(&grant) {
                                         self.local_settings.grants.push(grant);
                                         self.dirty = true;
-                                        self.status_message = "Added cached grant to local project!".to_string();
+                                        self.status_message =
+                                            "Added cached grant to local project!".to_string();
                                     }
                                 }
                             }
@@ -672,7 +681,9 @@ impl App {
         format!(
             "# {}\n\n{}",
             doc.title.as_deref().unwrap_or(&doc.filename),
-            doc.abstract_text.as_deref().unwrap_or("No markdown content available for this source.")
+            doc.abstract_text
+                .as_deref()
+                .unwrap_or("No markdown content available for this source.")
         )
     }
 
@@ -737,41 +748,96 @@ impl App {
                         SettingItem::Global(f) => {
                             self.input_buffer = match f {
                                 GlobalField::AuthorName => self.global_settings.author.name.clone(),
-                                GlobalField::AuthorEmail => self.global_settings.author.email.clone(),
-                                GlobalField::AuthorAffiliation => self.global_settings.author.affiliation.clone(),
-                                GlobalField::AuthorOrcid => self.global_settings.author.orcid.clone().unwrap_or_default(),
-                                GlobalField::GrantFunder => self.global_settings.default_grant.funder.clone(),
-                                GlobalField::GrantNumber => self.global_settings.default_grant.grant_number.clone(),
-                                GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment.clone(),
-                                GlobalField::Engine => self.global_settings.default_latex_engine.clone(),
-                                GlobalField::Template => self.global_settings.default_template.clone(),
+                                GlobalField::AuthorEmail => {
+                                    self.global_settings.author.email.clone()
+                                }
+                                GlobalField::AuthorAffiliation => {
+                                    self.global_settings.author.affiliation.clone()
+                                }
+                                GlobalField::AuthorOrcid => self
+                                    .global_settings
+                                    .author
+                                    .orcid
+                                    .clone()
+                                    .unwrap_or_default(),
+                                GlobalField::GrantFunder => {
+                                    self.global_settings.default_grant.funder.clone()
+                                }
+                                GlobalField::GrantNumber => {
+                                    self.global_settings.default_grant.grant_number.clone()
+                                }
+                                GlobalField::GrantAck => {
+                                    self.global_settings.default_grant.acknowledgment.clone()
+                                }
+                                GlobalField::Engine => {
+                                    self.global_settings.default_latex_engine.clone()
+                                }
+                                GlobalField::Template => {
+                                    self.global_settings.default_template.clone()
+                                }
                             };
                             self.input_mode = InputMode::Editing;
-                            self.status_message = "Editing global setting. Press Enter to confirm, Esc to cancel.".to_string();
+                            self.status_message =
+                                "Editing global setting. Press Enter to confirm, Esc to cancel."
+                                    .to_string();
                         }
                         SettingItem::Rag(f) => {
                             self.input_buffer = match f {
-                                RagField::EmbedderPath => self.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                                RagField::RerankerPath => self.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                                RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                                RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
-                                RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
-                                RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
-                                RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
-                                RagField::ChildChunkSize => self.global_settings.rag.child_chunk_size.to_string(),
+                                RagField::EmbedderPath => self
+                                    .global_settings
+                                    .rag
+                                    .onnx_embedder_path
+                                    .as_ref()
+                                    .map(|p| p.to_string())
+                                    .unwrap_or_default(),
+                                RagField::RerankerPath => self
+                                    .global_settings
+                                    .rag
+                                    .onnx_reranker_path
+                                    .as_ref()
+                                    .map(|p| p.to_string())
+                                    .unwrap_or_default(),
+                                RagField::ModelsDir => self
+                                    .global_settings
+                                    .rag
+                                    .onnx_models_dir
+                                    .as_ref()
+                                    .map(|p| p.to_string())
+                                    .unwrap_or_default(),
+                                RagField::CacheDir => {
+                                    self.global_settings.rag.model_cache_dir.to_string()
+                                }
+                                RagField::ExecutionProvider => {
+                                    self.global_settings.rag.execution_provider.clone()
+                                }
+                                RagField::NumThreads => {
+                                    self.global_settings.rag.num_threads.to_string()
+                                }
+                                RagField::ParentChunkSize => {
+                                    self.global_settings.rag.parent_chunk_size.to_string()
+                                }
+                                RagField::ChildChunkSize => {
+                                    self.global_settings.rag.child_chunk_size.to_string()
+                                }
                             };
                             self.input_mode = InputMode::Editing;
-                            self.status_message = "Editing RAG setting. Press Enter to confirm, Esc to cancel.".to_string();
+                            self.status_message =
+                                "Editing RAG setting. Press Enter to confirm, Esc to cancel."
+                                    .to_string();
                         }
                         SettingItem::LocalTitle => {
                             self.input_buffer = self.local_settings.title.clone();
                             self.input_mode = InputMode::Editing;
-                            self.status_message = "Editing project title. Press Enter to confirm, Esc to cancel.".to_string();
+                            self.status_message =
+                                "Editing project title. Press Enter to confirm, Esc to cancel."
+                                    .to_string();
                         }
                         SettingItem::LocalNotes => {
                             self.input_buffer = self.local_settings.notes.clone();
                             self.input_mode = InputMode::Editing;
-                            self.status_message = "Editing project notes. Press Enter to confirm, Esc to cancel.".to_string();
+                            self.status_message =
+                                "Editing project notes. Press Enter to confirm, Esc to cancel."
+                                    .to_string();
                         }
                         _ => {}
                     }
@@ -805,9 +871,7 @@ impl App {
     }
 
     fn commit_edited_paper(&mut self) {
-        if !self.paper_sections.is_empty()
-            && self.paper_section_index < self.paper_sections.len()
-        {
+        if !self.paper_sections.is_empty() && self.paper_section_index < self.paper_sections.len() {
             self.paper_sections[self.paper_section_index].body = self.paper_edit_buffer.clone();
             let mut out = String::new();
             for sec in &self.paper_sections {
@@ -857,30 +921,54 @@ impl App {
                     SettingItem::Global(f) => match f {
                         GlobalField::AuthorName => self.global_settings.author.name = val,
                         GlobalField::AuthorEmail => self.global_settings.author.email = val,
-                        GlobalField::AuthorAffiliation => self.global_settings.author.affiliation = val,
+                        GlobalField::AuthorAffiliation => {
+                            self.global_settings.author.affiliation = val
+                        }
                         GlobalField::AuthorOrcid => {
-                            self.global_settings.author.orcid = if val.is_empty() { None } else { Some(val) }
+                            self.global_settings.author.orcid =
+                                if val.is_empty() { None } else { Some(val) }
                         }
                         GlobalField::GrantFunder => self.global_settings.default_grant.funder = val,
-                        GlobalField::GrantNumber => self.global_settings.default_grant.grant_number = val,
-                        GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment = val,
+                        GlobalField::GrantNumber => {
+                            self.global_settings.default_grant.grant_number = val
+                        }
+                        GlobalField::GrantAck => {
+                            self.global_settings.default_grant.acknowledgment = val
+                        }
                         GlobalField::Engine => self.global_settings.default_latex_engine = val,
                         GlobalField::Template => self.global_settings.default_template = val,
                     },
                     SettingItem::Rag(f) => match f {
                         RagField::EmbedderPath => {
                             let resolved = resolve_onnx_from_dir(&val);
-                            self.global_settings.rag.onnx_embedder_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                            self.global_settings.rag.onnx_embedder_path = if resolved.is_empty() {
+                                None
+                            } else {
+                                Some(camino::Utf8PathBuf::from(resolved))
+                            };
                         }
                         RagField::RerankerPath => {
                             let resolved = resolve_onnx_from_dir(&val);
-                            self.global_settings.rag.onnx_reranker_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                            self.global_settings.rag.onnx_reranker_path = if resolved.is_empty() {
+                                None
+                            } else {
+                                Some(camino::Utf8PathBuf::from(resolved))
+                            };
                         }
-                        RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
+                        RagField::CacheDir => {
+                            self.global_settings.rag.model_cache_dir =
+                                camino::Utf8PathBuf::from(val)
+                        }
                         RagField::ModelsDir => {
-                            self.global_settings.rag.onnx_models_dir = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
+                            self.global_settings.rag.onnx_models_dir = if val.is_empty() {
+                                None
+                            } else {
+                                Some(camino::Utf8PathBuf::from(val))
+                            };
                         }
-                        RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
+                        RagField::ExecutionProvider => {
+                            self.global_settings.rag.execution_provider = val
+                        }
                         RagField::NumThreads => {
                             if let Ok(n) = val.parse::<usize>() {
                                 self.global_settings.rag.num_threads = n;
@@ -912,9 +1000,13 @@ impl App {
                 self.status_message = "Picker closed.".to_string();
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                if self.selected_local_field == LocalField::CoAuthorsList as usize && self.cache_coauthor_index > 0 {
+                if self.selected_local_field == LocalField::CoAuthorsList as usize
+                    && self.cache_coauthor_index > 0
+                {
                     self.cache_coauthor_index -= 1;
-                } else if self.selected_local_field == LocalField::GrantsList as usize && self.cache_grant_index > 0 {
+                } else if self.selected_local_field == LocalField::GrantsList as usize
+                    && self.cache_grant_index > 0
+                {
                     self.cache_grant_index -= 1;
                 }
             }
@@ -932,12 +1024,16 @@ impl App {
                 }
             }
             KeyCode::Enter => {
-                if self.selected_local_field == LocalField::CoAuthorsList as usize && !self.cache.co_authors.is_empty() {
+                if self.selected_local_field == LocalField::CoAuthorsList as usize
+                    && !self.cache.co_authors.is_empty()
+                {
                     let author = self.cache.co_authors[self.cache_coauthor_index].clone();
                     if !self.local_settings.co_authors.contains(&author) {
                         self.local_settings.co_authors.push(author);
                     }
-                } else if self.selected_local_field == LocalField::GrantsList as usize && !self.cache.grants.is_empty() {
+                } else if self.selected_local_field == LocalField::GrantsList as usize
+                    && !self.cache.grants.is_empty()
+                {
                     let grant = self.cache.grants[self.cache_grant_index].clone();
                     if !self.local_settings.grants.contains(&grant) {
                         self.local_settings.grants.push(grant);
@@ -972,7 +1068,11 @@ impl App {
                 self.modal_field_index = (self.modal_field_index + 1) % 4;
             }
             KeyCode::BackTab | KeyCode::Up => {
-                self.modal_field_index = if self.modal_field_index == 0 { 3 } else { self.modal_field_index - 1 };
+                self.modal_field_index = if self.modal_field_index == 0 {
+                    3
+                } else {
+                    self.modal_field_index - 1
+                };
             }
             KeyCode::Enter => {
                 if !self.new_author.name.trim().is_empty() {
@@ -983,7 +1083,8 @@ impl App {
                     }
                     self.dirty = true;
                     self.input_mode = InputMode::Normal;
-                    self.status_message = "Co-author saved to cache and local settings!".to_string();
+                    self.status_message =
+                        "Co-author saved to cache and local settings!".to_string();
                 } else {
                     self.status_message = "Author name cannot be empty.".to_string();
                 }
@@ -1030,10 +1131,16 @@ impl App {
                 self.modal_field_index = (self.modal_field_index + 1) % 3;
             }
             KeyCode::BackTab | KeyCode::Up => {
-                self.modal_field_index = if self.modal_field_index == 0 { 2 } else { self.modal_field_index - 1 };
+                self.modal_field_index = if self.modal_field_index == 0 {
+                    2
+                } else {
+                    self.modal_field_index - 1
+                };
             }
             KeyCode::Enter => {
-                if !self.new_grant.funder.trim().is_empty() || !self.new_grant.grant_number.trim().is_empty() {
+                if !self.new_grant.funder.trim().is_empty()
+                    || !self.new_grant.grant_number.trim().is_empty()
+                {
                     let grant = self.new_grant.clone();
                     self.cache.remember_grant(grant.clone());
                     if !self.local_settings.grants.contains(&grant) {
@@ -1302,7 +1409,15 @@ mod tests {
         let initial_cache_len = app.cache.co_authors.len();
         app.active_tab = ActiveTab::Settings;
         let items = app.setting_items();
-        let cache_coauthor_idx = items.iter().position(|it| matches!(it, SettingItem::CacheCoAuthorEmpty | SettingItem::CacheCoAuthor(_))).unwrap();
+        let cache_coauthor_idx = items
+            .iter()
+            .position(|it| {
+                matches!(
+                    it,
+                    SettingItem::CacheCoAuthorEmpty | SettingItem::CacheCoAuthor(_)
+                )
+            })
+            .unwrap();
         app.selected_setting_index = cache_coauthor_idx;
 
         app.handle_key(KeyEvent::from(KeyCode::Char('a')));
@@ -1414,7 +1529,10 @@ mod tests {
 
         // Move down to RAG field
         let items = app.setting_items();
-        let rag_embedder_idx = items.iter().position(|it| matches!(it, SettingItem::Rag(RagField::EmbedderPath))).unwrap();
+        let rag_embedder_idx = items
+            .iter()
+            .position(|it| matches!(it, SettingItem::Rag(RagField::EmbedderPath)))
+            .unwrap();
         app.selected_setting_index = rag_embedder_idx;
 
         app.handle_key(KeyEvent::from(KeyCode::Char('e')));
@@ -1423,9 +1541,12 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Enter));
 
         assert_eq!(
-            app.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.as_str()),
+            app.global_settings
+                .rag
+                .onnx_embedder_path
+                .as_ref()
+                .map(|p| p.as_str()),
             Some("/tmp/models/embedder.onnx")
         );
     }
 }
-

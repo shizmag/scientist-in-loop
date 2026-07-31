@@ -185,9 +185,7 @@ impl Config {
         }
         if self.latex.main.as_str().is_empty() {
             return Err(ConfigError::Validation(
-                crate::error::ValidationError::Message(
-                    "latex.main must not be empty".to_string(),
-                ),
+                crate::error::ValidationError::Message("latex.main must not be empty".to_string()),
             ));
         }
         Ok(())

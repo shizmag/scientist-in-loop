@@ -61,13 +61,13 @@ We did science unique_token_methods.
 fn split_second_run_refreshes_tree() {
     let (_tmp, project) = init_project("split-refresh");
     let draft_path = project.join("paper_draft.tex");
-    fs::write(
-        &draft_path,
-        "\\section{A}\nold-a\n\\section{B}\nold-b\n",
-    )
-    .unwrap();
+    fs::write(&draft_path, "\\section{A}\nold-a\n\\section{B}\nold-b\n").unwrap();
 
-    sil().current_dir(&project).args(["paper", "split"]).assert().success();
+    sil()
+        .current_dir(&project)
+        .args(["paper", "split"])
+        .assert()
+        .success();
     assert!(project.join(".sil/draft_sections/01-a.tex").is_file());
 
     fs::write(
@@ -77,7 +77,11 @@ fn split_second_run_refreshes_tree() {
     .unwrap();
     let draft_snapshot = fs::read_to_string(&draft_path).unwrap();
 
-    sil().current_dir(&project).args(["paper", "split"]).assert().success();
+    sil()
+        .current_dir(&project)
+        .args(["paper", "split"])
+        .assert()
+        .success();
 
     assert_eq!(
         fs::read_to_string(&draft_path).unwrap(),
@@ -99,12 +103,7 @@ fn init_seeds_draft_sections() {
     let entries: Vec<_> = fs::read_dir(&secs)
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .map(|x| x == "tex")
-                .unwrap_or(false)
-        })
+        .filter(|e| e.path().extension().map(|x| x == "tex").unwrap_or(false))
         .collect();
     assert!(
         entries.len() >= 3,

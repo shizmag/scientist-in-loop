@@ -19,10 +19,13 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
         .list_sources()
         .map_err(|e| anyhow::anyhow!("{e}"))?
         .into_iter()
-        .find(|d| d.filename == target || d.id.as_str() == target || d.path.as_str().ends_with(target))
-    {
+        .find(|d| {
+            d.filename == target || d.id.as_str() == target || d.path.as_str().ends_with(target)
+        }) {
         suggest_from_source(&doc)
-    } else if let Ok(ref_hits) = db.search_references(target, 1) && let Some(ref_entry) = ref_hits.first() {
+    } else if let Ok(ref_hits) = db.search_references(target, 1)
+        && let Some(ref_entry) = ref_hits.first()
+    {
         sil_core::suggest_from_reference_entry(ref_entry)
     } else if target.contains(' ') || !is_filename_target {
         // Free-text / search-style query

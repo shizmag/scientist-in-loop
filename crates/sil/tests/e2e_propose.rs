@@ -19,7 +19,14 @@ fn propose_explicit_edit_draft_has_trailer_not_commit() {
 
     let out = sil()
         .current_dir(&project)
-        .args(["git", "propose", "--action", "edit-draft", "-m", "Tweak intro"])
+        .args([
+            "git",
+            "propose",
+            "--action",
+            "edit-draft",
+            "-m",
+            "Tweak intro",
+        ])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: edit-draft"))
@@ -130,9 +137,11 @@ fn promote_copies_draft_and_proposes() {
         "paper.tex should contain promoted draft content"
     );
     // Draft still present
-    assert!(fs::read_to_string(project.join("paper_draft.tex"))
-        .unwrap()
-        .contains(unique));
+    assert!(
+        fs::read_to_string(project.join("paper_draft.tex"))
+            .unwrap()
+            .contains(unique)
+    );
 }
 
 #[test]
@@ -160,10 +169,7 @@ sections:
         .stderr
         .clone();
     let err = String::from_utf8_lossy(&fail);
-    assert!(
-        err.contains("draft") || err.contains("force"),
-        "{err}"
-    );
+    assert!(err.contains("draft") || err.contains("force"), "{err}");
 
     sil()
         .current_dir(&project)

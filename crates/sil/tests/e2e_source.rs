@@ -133,5 +133,8 @@ fn source_remove_allows_reparse_path() {
         .stdout
         .clone();
     let stdout = String::from_utf8_lossy(&out);
-    assert!(stdout.contains("unparsed") || stdout.contains("gone.pdf"), "{stdout}");
+    assert!(
+        stdout.contains("unparsed") || stdout.contains("gone.pdf"),
+        "{stdout}"
+    );
 }

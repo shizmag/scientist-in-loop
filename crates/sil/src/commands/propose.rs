@@ -2,7 +2,7 @@
 
 use anyhow::{Result, bail};
 use sil_core::{SciAction, SilUi};
-use sil_git::{propose_from_status, proposal_for_action, status as git_status};
+use sil_git::{proposal_for_action, propose_from_status, status as git_status};
 
 use crate::util::{load_project, print_proposal};
 

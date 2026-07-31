@@ -30,7 +30,10 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     }
 
     ui.println("");
-    ui.info(&format!("Active `# -- X -- #` Idea & TODO Blocks ({})", ideas.len()));
+    ui.info(&format!(
+        "Active `# -- X -- #` Idea & TODO Blocks ({})",
+        ideas.len()
+    ));
     ui.println("─────────────────────────────────────────────────────────────");
 
     if ideas.is_empty() {

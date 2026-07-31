@@ -177,7 +177,10 @@ c
 d
 ";
         let secs = split_tex_sections(src);
-        assert!(secs.iter().any(|s| s.title == "C" && s.kind == "subsubsection"));
+        assert!(
+            secs.iter()
+                .any(|s| s.title == "C" && s.kind == "subsubsection")
+        );
         // body of A should stop before D
         let a = secs.iter().find(|s| s.title == "A").unwrap();
         assert!(!a.body.contains("d\n") || !a.body.trim_end().ends_with('d'));

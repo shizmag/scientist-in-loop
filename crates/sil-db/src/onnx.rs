@@ -25,7 +25,9 @@ impl OnnxEmbedder {
 
     /// Create an ONNX embedder automatically resolving model path from RagSettings.
     pub fn from_rag_settings(settings: &sil_core::RagSettings) -> Self {
-        let resolved = settings.resolve_embedder_path().map(|p| p.into_std_path_buf());
+        let resolved = settings
+            .resolve_embedder_path()
+            .map(|p| p.into_std_path_buf());
         Self::new(resolved)
     }
 
@@ -132,7 +134,9 @@ impl OnnxReranker {
 
     /// Create an ONNX reranker automatically resolving model path from RagSettings.
     pub fn from_rag_settings(settings: &sil_core::RagSettings) -> Self {
-        let resolved = settings.resolve_reranker_path().map(|p| p.into_std_path_buf());
+        let resolved = settings
+            .resolve_reranker_path()
+            .map(|p| p.into_std_path_buf());
         Self::new(resolved)
     }
 

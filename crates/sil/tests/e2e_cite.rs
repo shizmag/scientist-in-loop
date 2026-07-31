@@ -30,7 +30,10 @@ fn cite_from_filename_is_deterministic_and_nonempty() {
     assert_eq!(s1, s2, "cite suggestions must be deterministic");
     assert!(s1.contains("\\cite{"), "{s1}");
     assert!(s1.contains("@article{"), "{s1}");
-    assert!(s1.contains("attention_is_all_you_need") || s1.contains("cite:"), "{s1}");
+    assert!(
+        s1.contains("attention_is_all_you_need") || s1.contains("cite:"),
+        "{s1}"
+    );
 }
 
 #[test]
@@ -44,11 +47,25 @@ fn cite_json_and_append_to_references() {
         .get_output()
         .stdout
         .clone();
-    let v: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&out)).expect("json");
-    assert!(v.get("cite_key").and_then(|k| k.as_str()).map(|s| !s.is_empty()) == Some(true));
-    assert!(v.get("cite_command").and_then(|c| c.as_str()).map(|s| s.contains("\\cite{")) == Some(true));
-    assert!(v.get("bibtex").and_then(|b| b.as_str()).map(|s| s.contains("@article")) == Some(true));
+    let v: serde_json::Value = serde_json::from_str(&String::from_utf8_lossy(&out)).expect("json");
+    assert!(
+        v.get("cite_key")
+            .and_then(|k| k.as_str())
+            .map(|s| !s.is_empty())
+            == Some(true)
+    );
+    assert!(
+        v.get("cite_command")
+            .and_then(|c| c.as_str())
+            .map(|s| s.contains("\\cite{"))
+            == Some(true)
+    );
+    assert!(
+        v.get("bibtex")
+            .and_then(|b| b.as_str())
+            .map(|s| s.contains("@article"))
+            == Some(true)
+    );
 
     sil()
         .current_dir(&project)
@@ -83,8 +100,7 @@ fn cite_from_parsed_source_uses_title() {
         .get_output()
         .stdout
         .clone();
-    let v: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&out)).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&String::from_utf8_lossy(&out)).unwrap();
     let key = v["cite_key"].as_str().expect("cite_key");
     assert!(!key.is_empty(), "{v}");
     let cmd = v["cite_command"].as_str().unwrap();

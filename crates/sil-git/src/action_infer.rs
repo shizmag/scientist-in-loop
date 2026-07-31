@@ -120,7 +120,14 @@ pub fn propose_from_status(
     };
     let mut p = proposal_for_action(action, subject, body);
     if !paths.is_empty() && body.is_none() {
-        p = p.with_body(format!("Changed paths:\n{}", paths.iter().map(|x| format!("- {x}")).collect::<Vec<_>>().join("\n")));
+        p = p.with_body(format!(
+            "Changed paths:\n{}",
+            paths
+                .iter()
+                .map(|x| format!("- {x}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ));
     }
     Ok(p)
 }

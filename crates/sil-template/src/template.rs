@@ -26,14 +26,8 @@ pub enum PaperTemplate {
 
 impl PaperTemplate {
     /// All supported template target names.
-    pub const ALL: &'static [&'static str] = &[
-        "standard",
-        "neurips",
-        "icml",
-        "iclr",
-        "ieee",
-        "arxiv",
-    ];
+    pub const ALL: &'static [&'static str] =
+        &["standard", "neurips", "icml", "iclr", "ieee", "arxiv"];
 
     /// String name of the template.
     pub fn as_str(&self) -> &'static str {
@@ -91,13 +85,19 @@ mod tests {
 
     #[test]
     fn parse_templates() {
-        assert_eq!("neurips".parse::<PaperTemplate>(), Ok(PaperTemplate::Neurips));
+        assert_eq!(
+            "neurips".parse::<PaperTemplate>(),
+            Ok(PaperTemplate::Neurips)
+        );
         assert_eq!("icml".parse::<PaperTemplate>(), Ok(PaperTemplate::Icml));
         assert_eq!("iclr".parse::<PaperTemplate>(), Ok(PaperTemplate::Iclr));
         assert_eq!("ieee".parse::<PaperTemplate>(), Ok(PaperTemplate::Ieee));
         assert_eq!("cvpr".parse::<PaperTemplate>(), Ok(PaperTemplate::Ieee));
         assert_eq!("arxiv".parse::<PaperTemplate>(), Ok(PaperTemplate::Arxiv));
-        assert_eq!("standard".parse::<PaperTemplate>(), Ok(PaperTemplate::Standard));
+        assert_eq!(
+            "standard".parse::<PaperTemplate>(),
+            Ok(PaperTemplate::Standard)
+        );
         assert!("unknown".parse::<PaperTemplate>().is_err());
     }
 

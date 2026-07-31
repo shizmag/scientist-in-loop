@@ -133,14 +133,12 @@ pub fn chunk_markdown(source_id: &SourceId, markdown: &str) -> Vec<SourceChunk> 
 
     let mut byte_offset = 0;
 
-    let flush_child = |
-        chunks: &mut Vec<SourceChunk>,
-        para: &mut String,
-        para_start: usize,
-        para_end: usize,
-        parent_id: Option<&str>,
-        child_counter: &mut usize
-    | {
+    let flush_child = |chunks: &mut Vec<SourceChunk>,
+                       para: &mut String,
+                       para_start: usize,
+                       para_end: usize,
+                       parent_id: Option<&str>,
+                       child_counter: &mut usize| {
         let content = para.trim().to_string();
         if !content.is_empty() {
             *child_counter += 1;
@@ -161,14 +159,12 @@ pub fn chunk_markdown(source_id: &SourceId, markdown: &str) -> Vec<SourceChunk> 
         para.clear();
     };
 
-    let flush_parent = |
-        chunks: &mut Vec<SourceChunk>,
-        parent_id: &mut Option<String>,
-        parent_title: &mut Option<String>,
-        parent_content: &mut String,
-        parent_start: usize,
-        parent_end: usize,
-    | {
+    let flush_parent = |chunks: &mut Vec<SourceChunk>,
+                        parent_id: &mut Option<String>,
+                        parent_title: &mut Option<String>,
+                        parent_content: &mut String,
+                        parent_start: usize,
+                        parent_end: usize| {
         if let Some(id) = parent_id.take() {
             let content = parent_content.trim().to_string();
             if !content.is_empty() {
@@ -198,14 +194,32 @@ pub fn chunk_markdown(source_id: &SourceId, markdown: &str) -> Vec<SourceChunk> 
         let is_header = trimmed.starts_with('#');
         let header_text = if is_header {
             let h = trimmed.trim_start_matches('#').trim();
-            if !h.is_empty() { Some(h.to_string()) } else { None }
+            if !h.is_empty() {
+                Some(h.to_string())
+            } else {
+                None
+            }
         } else {
             None
         };
 
         if is_header && header_text.is_some() {
-            flush_child(&mut chunks, &mut current_para, current_para_start, line_start, current_parent_id.as_deref(), &mut child_counter);
-            flush_parent(&mut chunks, &mut current_parent_id, &mut current_parent_title, &mut current_parent_content, current_parent_start, line_start);
+            flush_child(
+                &mut chunks,
+                &mut current_para,
+                current_para_start,
+                line_start,
+                current_parent_id.as_deref(),
+                &mut child_counter,
+            );
+            flush_parent(
+                &mut chunks,
+                &mut current_parent_id,
+                &mut current_parent_title,
+                &mut current_parent_content,
+                current_parent_start,
+                line_start,
+            );
 
             parent_counter += 1;
             let new_parent_id = format!("{}-p{}", source_id.as_str(), parent_counter);
@@ -214,7 +228,14 @@ pub fn chunk_markdown(source_id: &SourceId, markdown: &str) -> Vec<SourceChunk> 
             current_parent_content = format!("{}\n", trimmed);
             current_parent_start = line_start;
         } else if trimmed.is_empty() {
-            flush_child(&mut chunks, &mut current_para, current_para_start, line_end, current_parent_id.as_deref(), &mut child_counter);
+            flush_child(
+                &mut chunks,
+                &mut current_para,
+                current_para_start,
+                line_end,
+                current_parent_id.as_deref(),
+                &mut child_counter,
+            );
             if !current_parent_content.is_empty() {
                 current_parent_content.push('\n');
             }
@@ -240,8 +261,22 @@ pub fn chunk_markdown(source_id: &SourceId, markdown: &str) -> Vec<SourceChunk> 
         byte_offset += line_len;
     }
 
-    flush_child(&mut chunks, &mut current_para, current_para_start, byte_offset, current_parent_id.as_deref(), &mut child_counter);
-    flush_parent(&mut chunks, &mut current_parent_id, &mut current_parent_title, &mut current_parent_content, current_parent_start, byte_offset);
+    flush_child(
+        &mut chunks,
+        &mut current_para,
+        current_para_start,
+        byte_offset,
+        current_parent_id.as_deref(),
+        &mut child_counter,
+    );
+    flush_parent(
+        &mut chunks,
+        &mut current_parent_id,
+        &mut current_parent_title,
+        &mut current_parent_content,
+        current_parent_start,
+        byte_offset,
+    );
 
     chunks
 }
@@ -291,7 +326,10 @@ pub fn insert_chunks(conn: &Connection, chunks: &[SourceChunk]) -> Result<(), Db
 }
 
 /// Get all chunks belonging to a specific source ID.
-pub fn get_chunks_for_source(conn: &Connection, source_id: &SourceId) -> Result<Vec<SourceChunk>, DbError> {
+pub fn get_chunks_for_source(
+    conn: &Connection,
+    source_id: &SourceId,
+) -> Result<Vec<SourceChunk>, DbError> {
     let mut stmt = conn.prepare(
         "SELECT id, source_id, parent_chunk_id, chunk_type, heading_title, content, start_offset, end_offset, embedding_blob, created_at
          FROM source_chunks
@@ -301,8 +339,13 @@ pub fn get_chunks_for_source(conn: &Connection, source_id: &SourceId) -> Result<
 
     let rows = stmt.query_map(params![source_id.as_str()], |row| {
         let chunk_type_str: String = row.get(3)?;
-        let chunk_type = ChunkType::from_str(&chunk_type_str)
-            .ok_or_else(|| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(DbError::Message("invalid chunk type".into()))))?;
+        let chunk_type = ChunkType::from_str(&chunk_type_str).ok_or_else(|| {
+            rusqlite::Error::FromSqlConversionFailure(
+                3,
+                rusqlite::types::Type::Text,
+                Box::new(DbError::Message("invalid chunk type".into())),
+            )
+        })?;
 
         Ok(SourceChunk {
             id: row.get(0)?,
@@ -335,8 +378,13 @@ pub fn get_chunk_by_id(conn: &Connection, chunk_id: &str) -> Result<Option<Sourc
 
     let mut rows = stmt.query_map(params![chunk_id], |row| {
         let chunk_type_str: String = row.get(3)?;
-        let chunk_type = ChunkType::from_str(&chunk_type_str)
-            .ok_or_else(|| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(DbError::Message("invalid chunk type".into()))))?;
+        let chunk_type = ChunkType::from_str(&chunk_type_str).ok_or_else(|| {
+            rusqlite::Error::FromSqlConversionFailure(
+                3,
+                rusqlite::types::Type::Text,
+                Box::new(DbError::Message("invalid chunk type".into())),
+            )
+        })?;
 
         Ok(SourceChunk {
             id: row.get(0)?,
@@ -361,7 +409,10 @@ pub fn get_chunk_by_id(conn: &Connection, chunk_id: &str) -> Result<Option<Sourc
 
 /// Delete all chunks for a source.
 pub fn delete_chunks_for_source(conn: &Connection, source_id: &SourceId) -> Result<(), DbError> {
-    conn.execute("DELETE FROM source_chunks WHERE source_id = ?1", params![source_id.as_str()])?;
+    conn.execute(
+        "DELETE FROM source_chunks WHERE source_id = ?1",
+        params![source_id.as_str()],
+    )?;
     Ok(())
 }
 
@@ -400,9 +451,18 @@ pub fn search_hybrid_dual(
     let mut bm25_ranks: HashMap<String, (usize, SourceChunk, String)> = HashMap::new();
     let sanitized_query = bm25_query
         .chars()
-        .map(|c| if c.is_alphanumeric() || c.is_whitespace() { c } else { ' ' })
+        .map(|c| {
+            if c.is_alphanumeric() || c.is_whitespace() {
+                c
+            } else {
+                ' '
+            }
+        })
         .collect::<String>();
-    let clean_q = sanitized_query.split_whitespace().collect::<Vec<_>>().join(" ");
+    let clean_q = sanitized_query
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
 
     if !clean_q.is_empty() {
         let mut stmt = conn.prepare(
@@ -415,7 +475,7 @@ pub fn search_hybrid_dual(
             WHERE chunks_fts MATCH ?1
             ORDER BY rank
             LIMIT ?2
-            "#
+            "#,
         )?;
 
         let fetch_limit = (limit * 3).max(50) as i64;
@@ -450,43 +510,43 @@ pub fn search_hybrid_dual(
     {
         let mut dense_candidates: Vec<(String, f32, SourceChunk)> = Vec::new();
 
-            let mut stmt = conn.prepare(
+        let mut stmt = conn.prepare(
                 "SELECT id, source_id, parent_chunk_id, chunk_type, heading_title, content, start_offset, end_offset, embedding_blob, created_at
                  FROM source_chunks
                  WHERE embedding_blob IS NOT NULL"
             )?;
 
-            if let Ok(rows) = stmt.query_map([], |row| {
-                let chunk_type_str: String = row.get(3)?;
-                let chunk_type = ChunkType::from_str(&chunk_type_str).unwrap_or(ChunkType::Child);
-                Ok(SourceChunk {
-                    id: row.get(0)?,
-                    source_id: SourceId::new(row.get::<_, String>(1)?),
-                    parent_chunk_id: row.get(2)?,
-                    chunk_type,
-                    heading_title: row.get(4)?,
-                    content: row.get(5)?,
-                    start_offset: row.get::<_, i64>(6)? as usize,
-                    end_offset: row.get::<_, i64>(7)? as usize,
-                    embedding_blob: row.get(8)?,
-                    created_at: row.get(9)?,
-                })
-            }) {
-                for chunk in rows.flatten() {
-                    if let Some(ref blob) = chunk.embedding_blob {
-                        let chunk_emb = blob_to_embedding(blob);
-                        let sim = cosine_similarity(&q_emb, &chunk_emb);
-                        dense_candidates.push((chunk.id.clone(), sim, chunk));
-                    }
+        if let Ok(rows) = stmt.query_map([], |row| {
+            let chunk_type_str: String = row.get(3)?;
+            let chunk_type = ChunkType::from_str(&chunk_type_str).unwrap_or(ChunkType::Child);
+            Ok(SourceChunk {
+                id: row.get(0)?,
+                source_id: SourceId::new(row.get::<_, String>(1)?),
+                parent_chunk_id: row.get(2)?,
+                chunk_type,
+                heading_title: row.get(4)?,
+                content: row.get(5)?,
+                start_offset: row.get::<_, i64>(6)? as usize,
+                end_offset: row.get::<_, i64>(7)? as usize,
+                embedding_blob: row.get(8)?,
+                created_at: row.get(9)?,
+            })
+        }) {
+            for chunk in rows.flatten() {
+                if let Some(ref blob) = chunk.embedding_blob {
+                    let chunk_emb = blob_to_embedding(blob);
+                    let sim = cosine_similarity(&q_emb, &chunk_emb);
+                    dense_candidates.push((chunk.id.clone(), sim, chunk));
                 }
             }
-
-            dense_candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-            for (rank_0, (id, _sim, chunk)) in dense_candidates.into_iter().enumerate() {
-                dense_ranks.insert(id, (rank_0 + 1, chunk));
-            }
         }
+
+        dense_candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        for (rank_0, (id, _sim, chunk)) in dense_candidates.into_iter().enumerate() {
+            dense_ranks.insert(id, (rank_0 + 1, chunk));
+        }
+    }
 
     // 3. Reciprocal Rank Fusion (RRF)
     let k = 60.0f32;
@@ -522,26 +582,32 @@ pub fn search_hybrid_dual(
     let mut final_hits_map: HashMap<String, ChunkSearchHit> = HashMap::new();
 
     for (chunk, score, snippet) in scored_chunks {
-        let (target_chunk, target_snippet) = if expand_to_parent && chunk.chunk_type == ChunkType::Child {
-            if let Some(ref p_id) = chunk.parent_chunk_id {
-                if let Ok(Some(parent_chunk)) = expand_parent(conn, p_id) {
-                    let p_snip = format!("Section: {}", parent_chunk.heading_title.as_deref().unwrap_or(""));
-                    (parent_chunk, p_snip)
+        let (target_chunk, target_snippet) =
+            if expand_to_parent && chunk.chunk_type == ChunkType::Child {
+                if let Some(ref p_id) = chunk.parent_chunk_id {
+                    if let Ok(Some(parent_chunk)) = expand_parent(conn, p_id) {
+                        let p_snip = format!(
+                            "Section: {}",
+                            parent_chunk.heading_title.as_deref().unwrap_or("")
+                        );
+                        (parent_chunk, p_snip)
+                    } else {
+                        (chunk, snippet)
+                    }
                 } else {
                     (chunk, snippet)
                 }
             } else {
                 (chunk, snippet)
-            }
-        } else {
-            (chunk, snippet)
-        };
+            };
 
-        let entry = final_hits_map.entry(target_chunk.id.clone()).or_insert_with(|| ChunkSearchHit {
-            chunk: target_chunk.clone(),
-            score,
-            snippet: target_snippet,
-        });
+        let entry = final_hits_map
+            .entry(target_chunk.id.clone())
+            .or_insert_with(|| ChunkSearchHit {
+                chunk: target_chunk.clone(),
+                score,
+                snippet: target_snippet,
+            });
 
         if score > entry.score {
             entry.score = score;
@@ -549,7 +615,11 @@ pub fn search_hybrid_dual(
     }
 
     let mut hits: Vec<ChunkSearchHit> = final_hits_map.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(limit);
 
     Ok(hits)

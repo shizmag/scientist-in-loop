@@ -146,10 +146,7 @@ mod tests {
         ];
         for a in actions {
             assert_eq!(SciAction::from_str(a.as_str()).unwrap(), a);
-            assert_eq!(
-                SciAction::from_str(&a.trailer_line()).unwrap(),
-                a
-            );
+            assert_eq!(SciAction::from_str(&a.trailer_line()).unwrap(), a);
             assert!(a.trailer_line().starts_with("Sci-Action: "));
             assert_eq!(a.to_string(), a.as_str());
         }

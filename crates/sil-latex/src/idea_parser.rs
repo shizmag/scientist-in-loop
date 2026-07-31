@@ -383,7 +383,10 @@ More text.
         assert_eq!(b.status, "in_progress");
         assert_eq!(b.author_type, "agent");
         assert_eq!(b.tags, vec!["ablation", "baseline"]);
-        assert_eq!(b.content, "Perform hyperparameter grid search for learning rate.");
+        assert_eq!(
+            b.content,
+            "Perform hyperparameter grid search for learning rate."
+        );
         assert_eq!(b.section_id.as_deref(), Some("Experiments"));
     }
 
@@ -405,14 +408,23 @@ Initial text.
         assert_eq!(blocks[0].status, "resolved");
 
         // 2. Insert new block into Introduction section
-        let mut new_block = IdeaBlock::new("todo-2", "Add motivation figure", Some("Introduction".into()), 0, 0);
+        let mut new_block = IdeaBlock::new(
+            "todo-2",
+            "Add motivation figure",
+            Some("Introduction".into()),
+            0,
+            0,
+        );
         new_block.priority = "critical".into();
         new_block.tags = vec!["figure".into(), "intro".into()];
 
         let inserted = update_or_insert_idea_block(&updated, &new_block);
         let blocks2 = parse_idea_blocks(&inserted);
         assert_eq!(blocks2.len(), 2);
-        let b2 = blocks2.iter().find(|b| b.id == "todo-2").expect("todo-2 block should exist");
+        let b2 = blocks2
+            .iter()
+            .find(|b| b.id == "todo-2")
+            .expect("todo-2 block should exist");
         assert_eq!(b2.priority, "critical");
         assert_eq!(b2.tags, vec!["figure", "intro"]);
     }
@@ -485,7 +497,10 @@ Need to revise conclusion.
         let blocks = parse_idea_blocks(tex);
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].section_id, None);
-        assert_eq!(blocks[0].content, "General preamble idea before any section.");
+        assert_eq!(
+            blocks[0].content,
+            "General preamble idea before any section."
+        );
     }
 
     #[test]
@@ -506,5 +521,3 @@ More text here."#;
         assert!(stripped.contains("More text here."));
     }
 }
-
-

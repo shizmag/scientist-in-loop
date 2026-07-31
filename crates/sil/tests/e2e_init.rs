@@ -44,10 +44,7 @@ fn init_creates_exact_layout_and_readmes() {
         assert!(project.join(rel).exists(), "missing {rel}");
     }
 
-    assert_file_contains(
-        &project.join(".sil/improvement/README.md"),
-        "suggestion_n",
-    );
+    assert_file_contains(&project.join(".sil/improvement/README.md"), "suggestion_n");
 
     assert_file_contains(
         &project.join(".sil/skills/SYSTEM.md"),
@@ -55,11 +52,20 @@ fn init_creates_exact_layout_and_readmes() {
     );
     assert_file_contains(&project.join(".sil/skills/SYSTEM.md"), "Never auto-commit");
     assert_file_contains(&project.join(".sil/skills/paper.md"), "structure.yaml");
-    assert_file_contains(&project.join(".sil/skills/agent-code.md"), "agent/README.md");
+    assert_file_contains(
+        &project.join(".sil/skills/agent-code.md"),
+        "agent/README.md",
+    );
 
     assert_file_contains(&project.join("data/README.md"), "# Data");
-    assert_file_contains(&project.join("figures/plots/README.md"), "# Generated Plots");
-    assert_file_contains(&project.join("figures/images/README.md"), "# External Images");
+    assert_file_contains(
+        &project.join("figures/plots/README.md"),
+        "# Generated Plots",
+    );
+    assert_file_contains(
+        &project.join("figures/images/README.md"),
+        "# External Images",
+    );
     assert_file_contains(&project.join("agent/README.md"), "# Agent-written code");
 
     for rel in [
@@ -121,7 +127,11 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
         "PDFs should be ignored:\n{gitignore}"
     );
 
-    fs::write(project.join("sources/paper.pdf"), sil_parse::minimal_pdf_bytes()).unwrap();
+    fs::write(
+        project.join("sources/paper.pdf"),
+        sil_parse::minimal_pdf_bytes(),
+    )
+    .unwrap();
     fs::write(
         project.join("figures/plots/fig1.pdf"),
         sil_parse::minimal_pdf_bytes(),
@@ -133,7 +143,11 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
     )
     .unwrap();
     fs::write(project.join("data/results.csv"), b"a,b\n1,2\n").unwrap();
-    fs::write(project.join("paper_draft.pdf"), sil_parse::minimal_pdf_bytes()).unwrap();
+    fs::write(
+        project.join("paper_draft.pdf"),
+        sil_parse::minimal_pdf_bytes(),
+    )
+    .unwrap();
     // DB is created by init; ensure it exists for check-ignore
     assert!(project.join(".sil/db.sqlite").exists());
 
@@ -145,14 +159,26 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
             .success()
     };
 
-    assert!(check("sources/paper.pdf"), "sources literature PDFs ignored by default");
+    assert!(
+        check("sources/paper.pdf"),
+        "sources literature PDFs ignored by default"
+    );
     assert!(!check("sources/README.md"));
     assert!(!check("figures/plots/README.md"));
     assert!(!check("figures/images/README.md"));
     assert!(!check("data/README.md"));
-    assert!(check("figures/plots/fig1.pdf"), "plot binaries ignored by default");
-    assert!(check("figures/images/photo.png"), "image binaries ignored by default");
-    assert!(check("data/results.csv"), "experiment data ignored by default");
+    assert!(
+        check("figures/plots/fig1.pdf"),
+        "plot binaries ignored by default"
+    );
+    assert!(
+        check("figures/images/photo.png"),
+        "image binaries ignored by default"
+    );
+    assert!(
+        check("data/results.csv"),
+        "experiment data ignored by default"
+    );
     assert!(check("paper_draft.pdf"), "root build PDF ignored");
     assert!(check(".sil/db.sqlite"), "sqlite db ignored");
 
@@ -196,8 +222,14 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
         .output()
         .unwrap();
     let staged = String::from_utf8_lossy(&staged.stdout);
-    assert!(!staged.contains("sources/paper.pdf"), "PDFs in sources/ must be gitignored:\n{staged}");
-    assert!(staged.contains("sources/README.md"), "sources/README.md must be stageable:\n{staged}");
+    assert!(
+        !staged.contains("sources/paper.pdf"),
+        "PDFs in sources/ must be gitignored:\n{staged}"
+    );
+    assert!(
+        staged.contains("sources/README.md"),
+        "sources/README.md must be stageable:\n{staged}"
+    );
     assert!(staged.contains("figures/plots/README.md"), "{staged}");
     assert!(
         staged.contains("suggestion_1") || staged.contains("improvement"),
@@ -223,11 +255,7 @@ fn init_update_refreshes_templates_preserves_user_files() {
         .success();
 
     // Simulate older / customized project state
-    fs::write(
-        project.join(".sil/skills/SYSTEM.md"),
-        "# OLD SYSTEM\n",
-    )
-    .unwrap();
+    fs::write(project.join(".sil/skills/SYSTEM.md"), "# OLD SYSTEM\n").unwrap();
     fs::write(
         project.join(".sil/structure.yaml"),
         "title: User Paper\nsections: []\n",
@@ -281,7 +309,10 @@ fn init_update_refreshes_templates_preserves_user_files() {
 
     // Custom gitignore rule preserved; managed content present
     let gi = fs::read_to_string(project.join(".gitignore")).unwrap();
-    assert!(gi.contains("*.secret"), "custom rules must survive update:\n{gi}");
+    assert!(
+        gi.contains("*.secret"),
+        "custom rules must survive update:\n{gi}"
+    );
     assert!(gi.contains(".sil/db.sqlite"));
     assert!(gi.contains("# >>> sil-managed"));
 
@@ -337,7 +368,9 @@ fn init_skills_contain_loading_rules_and_goal_phrases() {
         .success();
 
     let system = std::fs::read_to_string(project.join(".sil/skills/SYSTEM.md")).unwrap();
-    assert!(system.contains("Skill loading rules") || system.contains("Always read this SYSTEM.md"));
+    assert!(
+        system.contains("Skill loading rules") || system.contains("Always read this SYSTEM.md")
+    );
     assert!(system.contains("sources/"));
     assert!(system.contains("Never auto-commit"));
 
@@ -353,11 +386,7 @@ fn init_skills_contain_loading_rules_and_goal_phrases() {
 #[test]
 fn init_in_cwd_when_name_omitted() {
     let dir = tempfile::tempdir().unwrap();
-    sil()
-        .current_dir(dir.path())
-        .arg("init")
-        .assert()
-        .success();
+    sil().current_dir(dir.path()).arg("init").assert().success();
     assert!(dir.path().join(".sil/config.yaml").exists());
     assert!(dir.path().join("sources").is_dir());
 }

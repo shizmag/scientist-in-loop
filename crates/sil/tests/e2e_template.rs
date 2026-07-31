@@ -49,7 +49,10 @@ Details of quantum circuits.
     assert!(formatted_path.is_file(), "missing paper_neurips.tex");
 
     let formatted = fs::read_to_string(formatted_path).unwrap();
-    assert!(formatted.contains("Quantum Generative Modeling"), "{formatted}");
+    assert!(
+        formatted.contains("Quantum Generative Modeling"),
+        "{formatted}"
+    );
     assert!(formatted.contains("Quantum Agent Lab"), "{formatted}");
     assert!(formatted.contains("neurips_2024"), "{formatted}");
     assert!(formatted.contains("Quantum Circuits"), "{formatted}");

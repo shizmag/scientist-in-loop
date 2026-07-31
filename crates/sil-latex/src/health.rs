@@ -4,10 +4,10 @@
 
 use camino::Utf8Path;
 
-use std::collections::HashSet;
-use sil_core::{DiagnosticLevel, HealthDiagnostic, ManuscriptHealthReport};
 use crate::error::LatexError;
 use crate::idea_parser::parse_idea_blocks;
+use sil_core::{DiagnosticLevel, HealthDiagnostic, ManuscriptHealthReport};
+use std::collections::HashSet;
 
 /// Audit LaTeX manuscript file for missing citations, broken references, and TODO blocks.
 pub fn audit_manuscript(
@@ -22,7 +22,6 @@ pub fn audit_manuscript(
         path: tex_path.to_string(),
         source: e,
     })?;
-
 
     // Parse bib keys if bib_path is present
     let bib_keys = if let Some(bp) = bib_path {
@@ -77,7 +76,9 @@ pub fn audit_manuscript(
                 level: DiagnosticLevel::Error,
                 category: "undefined_reference".to_string(),
                 line: Some(*line),
-                message: format!("Reference '\\ref{{{ref_key}}}' targets undefined label '\\label{{{ref_key}}}'"),
+                message: format!(
+                    "Reference '\\ref{{{ref_key}}}' targets undefined label '\\label{{{ref_key}}}'"
+                ),
             });
         }
     }
@@ -148,7 +149,6 @@ fn extract_cite_keys(tex: &str) -> Vec<(usize, String)> {
     results
 }
 
-
 fn extract_defined_labels(tex: &str) -> Vec<(usize, String)> {
     let mut results = Vec::new();
     for (idx, line) in tex.lines().enumerate() {
@@ -200,7 +200,10 @@ fn count_words(tex: &str) -> usize {
         if trimmed.starts_with('%') || trimmed.starts_with('\\') {
             continue;
         }
-        count += trimmed.split_whitespace().filter(|w| !w.starts_with('\\')).count();
+        count += trimmed
+            .split_whitespace()
+            .filter(|w| !w.starts_with('\\'))
+            .count();
     }
     count
 }
@@ -251,8 +254,10 @@ As shown in \cite{Vaswani2017, MissingKey}, see Figure~\ref{fig:arch}.
     #[test]
     fn test_audit_manuscript_end_to_end() {
         let dir = tempfile::tempdir().unwrap();
-        let tex_path = camino::Utf8PathBuf::from_path_buf(dir.path().join("paper_draft.tex")).unwrap();
-        let bib_path = camino::Utf8PathBuf::from_path_buf(dir.path().join("references.bib")).unwrap();
+        let tex_path =
+            camino::Utf8PathBuf::from_path_buf(dir.path().join("paper_draft.tex")).unwrap();
+        let bib_path =
+            camino::Utf8PathBuf::from_path_buf(dir.path().join("references.bib")).unwrap();
 
         std::fs::write(
             &tex_path,
@@ -285,4 +290,3 @@ Figure~\ref{fig:unref} is here.
         assert!(err.to_string().contains("not found"));
     }
 }
-

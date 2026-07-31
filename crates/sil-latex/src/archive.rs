@@ -47,20 +47,23 @@ pub fn create_submission_archive(
         })?;
 
         let mut buffer = Vec::new();
-        f.read_to_end(&mut buffer).map_err(|e| LatexError::BuildFailed {
-            engine: "tectonic".to_string(),
-            message: format!("Could not read {abs_path}: {e}"),
-        })?;
+        f.read_to_end(&mut buffer)
+            .map_err(|e| LatexError::BuildFailed {
+                engine: "tectonic".to_string(),
+                message: format!("Could not read {abs_path}: {e}"),
+            })?;
 
-        zip.start_file(zip_path, options).map_err(|e| LatexError::BuildFailed {
-            engine: "tectonic".to_string(),
-            message: format!("Could not write entry {zip_path} to zip: {e}"),
-        })?;
+        zip.start_file(zip_path, options)
+            .map_err(|e| LatexError::BuildFailed {
+                engine: "tectonic".to_string(),
+                message: format!("Could not write entry {zip_path} to zip: {e}"),
+            })?;
 
-        zip.write_all(&buffer).map_err(|e| LatexError::BuildFailed {
-            engine: "tectonic".to_string(),
-            message: format!("Could not write buffer for {zip_path} to zip: {e}"),
-        })?;
+        zip.write_all(&buffer)
+            .map_err(|e| LatexError::BuildFailed {
+                engine: "tectonic".to_string(),
+                message: format!("Could not write buffer for {zip_path} to zip: {e}"),
+            })?;
 
         Ok(())
     };
@@ -168,8 +171,7 @@ mod tests {
         fs::write(&fig_file, "fake png").unwrap();
 
         let zip_out = root.join("submission_neurips.zip");
-        let result =
-            create_submission_archive(root, &main_tex, Some(&pdf_file), &zip_out).unwrap();
+        let result = create_submission_archive(root, &main_tex, Some(&pdf_file), &zip_out).unwrap();
 
         assert!(result.is_file());
 

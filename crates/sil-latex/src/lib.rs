@@ -25,4 +25,3 @@ pub use split_write::{
     WrittenSection, section_filename, slugify_title, write_draft_sections,
     write_draft_sections_from_file,
 };
-

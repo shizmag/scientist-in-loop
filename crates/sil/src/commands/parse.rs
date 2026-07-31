@@ -28,8 +28,7 @@ pub fn run(path: Option<PathBuf>, ui: &dyn SilUi) -> Result<()> {
         };
         vec![abs]
     } else {
-        let unparsed =
-            list_unparsed_pdfs(&sources_dir, &db).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let unparsed = list_unparsed_pdfs(&sources_dir, &db).map_err(|e| anyhow::anyhow!("{e}"))?;
         let selected =
             select_pdfs_interactive(&unparsed, ui).map_err(|e| anyhow::anyhow!("{e}"))?;
         selected.into_iter().map(|i| unparsed[i].clone()).collect()
@@ -81,7 +80,9 @@ pub fn run(path: Option<PathBuf>, ui: &dyn SilUi) -> Result<()> {
             ui.error(&format!("{}: {err}", p.file_name().unwrap_or(p.as_str())));
         }
         if ok > 0 {
-            ui.success(&format!("Batch parsing finished: {ok} parsed, {failed} failed"));
+            ui.success(&format!(
+                "Batch parsing finished: {ok} parsed, {failed} failed"
+            ));
             let proposal = CommitProposal::new(format!("Parse {ok} PDF(s)"), SciAction::ParsePdf)
                 .with_body(format!("Parsed {ok} file(s), {failed} failed."));
             print_proposal(ui, &proposal);

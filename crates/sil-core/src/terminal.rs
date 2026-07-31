@@ -166,7 +166,9 @@ impl StdUi {
     pub fn new() -> Self {
         let is_tty = console::Term::stdout().is_term();
         let no_color = std::env::var_os("NO_COLOR").is_some()
-            || std::env::var("SIL_NO_COLOR").map(|v| v == "1").unwrap_or(false);
+            || std::env::var("SIL_NO_COLOR")
+                .map(|v| v == "1")
+                .unwrap_or(false);
         Self {
             colors: is_tty && !no_color,
             interactive: is_tty
@@ -188,7 +190,11 @@ impl StdUi {
 
     fn write_line(&self, styled: String, plain: &str) {
         let mut out = self.out.lock().unwrap_or_else(|e| e.into_inner());
-        let line = if self.colors { styled } else { plain.to_string() };
+        let line = if self.colors {
+            styled
+        } else {
+            plain.to_string()
+        };
         let _ = writeln!(out, "{line}");
         let _ = out.flush();
     }
@@ -225,10 +231,7 @@ impl SilUi for StdUi {
     }
     fn info(&self, msg: &str) {
         use owo_colors::OwoColorize;
-        self.write_line(
-            format!("{} {msg}", "ℹ".cyan().bold()),
-            &format!("ℹ {msg}"),
-        );
+        self.write_line(format!("{} {msg}", "ℹ".cyan().bold()), &format!("ℹ {msg}"));
     }
     fn muted(&self, msg: &str) {
         use owo_colors::OwoColorize;

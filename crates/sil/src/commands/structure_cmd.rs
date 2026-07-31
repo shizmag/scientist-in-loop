@@ -13,8 +13,7 @@ pub fn set_completion(section_id: &str, completion: &str, ui: &dyn SilUi) -> Res
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid completion: {e}"))?;
 
-    let mut structure =
-        Structure::load(&paths.structure()).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let mut structure = Structure::load(&paths.structure()).map_err(|e| anyhow::anyhow!("{e}"))?;
     let prev = structure
         .set_section_completion(section_id, completion)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -23,9 +22,7 @@ pub fn set_completion(section_id: &str, completion: &str, ui: &dyn SilUi) -> Res
         .save(&paths.structure())
         .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    ui.success(&format!(
-        "Section '{section_id}': {prev} → {completion}"
-    ));
+    ui.success(&format!("Section '{section_id}': {prev} → {completion}"));
     ui.muted(&format!("  {}", structure.completion_summary()));
 
     let proposal = CommitProposal::new(

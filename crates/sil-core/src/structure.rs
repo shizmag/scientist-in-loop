@@ -372,7 +372,10 @@ sections:
             .unwrap();
         assert_eq!(prev, SectionCompletion::Outline);
         assert_eq!(s.sections[0].completion, SectionCompletion::Draft);
-        assert!(s.set_section_completion("missing", SectionCompletion::Empty).is_err());
+        assert!(
+            s.set_section_completion("missing", SectionCompletion::Empty)
+                .is_err()
+        );
 
         let dir = tempfile::tempdir().unwrap();
         let path = camino::Utf8PathBuf::from_path_buf(dir.path().join("s.yaml")).unwrap();
@@ -401,6 +404,10 @@ sections:
     #[test]
     fn invalid_yaml_syntax_structure() {
         let err = Structure::from_yaml("sections: [").unwrap_err();
-        assert!(err.to_string().to_lowercase().contains("invalid") || err.to_string().contains("YAML") || err.to_string().contains("yaml"));
+        assert!(
+            err.to_string().to_lowercase().contains("invalid")
+                || err.to_string().contains("YAML")
+                || err.to_string().contains("yaml")
+        );
     }
 }

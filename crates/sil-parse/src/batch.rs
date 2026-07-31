@@ -103,7 +103,9 @@ pub fn parse_one(
             }
             Err(e) => {
                 spin.finish_error(&format!("Failed reading {}", doc.filename));
-                return Err(ParseError::InvalidDocument(format!("failed to read text content of {path}: {e}")));
+                return Err(ParseError::InvalidDocument(format!(
+                    "failed to read text content of {path}: {e}"
+                )));
             }
         },
     };
@@ -112,25 +114,26 @@ pub fn parse_one(
     let mut hydrated = false;
 
     if let Some(ref doi) = extracted_doi
-        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi) {
-            doc.doi = pub_item.doi.or(extracted_doi.clone());
-            if !pub_item.title.is_empty() {
-                doc.title = Some(pub_item.title);
-            }
-            if !pub_item.authors.is_empty() {
-                doc.authors = Some(pub_item.authors);
-            }
-            if let Some(y) = pub_item.year {
-                doc.year = Some(y as i32);
-            }
-            if !pub_item.journal.is_empty() {
-                doc.venue = Some(pub_item.journal);
-            }
-            if !pub_item.abstract_text.is_empty() {
-                doc.abstract_text = Some(pub_item.abstract_text);
-            }
-            hydrated = true;
+        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi)
+    {
+        doc.doi = pub_item.doi.or(extracted_doi.clone());
+        if !pub_item.title.is_empty() {
+            doc.title = Some(pub_item.title);
         }
+        if !pub_item.authors.is_empty() {
+            doc.authors = Some(pub_item.authors);
+        }
+        if let Some(y) = pub_item.year {
+            doc.year = Some(y as i32);
+        }
+        if !pub_item.journal.is_empty() {
+            doc.venue = Some(pub_item.journal);
+        }
+        if !pub_item.abstract_text.is_empty() {
+            doc.abstract_text = Some(pub_item.abstract_text);
+        }
+        hydrated = true;
+    }
 
     if !hydrated {
         if doc.doi.is_none() {
@@ -200,5 +203,3 @@ pub fn parse_many(
     }
     (ok, failed, errors)
 }
-
-

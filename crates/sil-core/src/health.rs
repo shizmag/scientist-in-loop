@@ -45,11 +45,16 @@ pub struct ManuscriptHealthReport {
 impl ManuscriptHealthReport {
     /// Has any critical errors.
     pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| d.level == DiagnosticLevel::Error)
+        self.diagnostics
+            .iter()
+            .any(|d| d.level == DiagnosticLevel::Error)
     }
 
     /// Count of warnings.
     pub fn warning_count(&self) -> usize {
-        self.diagnostics.iter().filter(|d| d.level == DiagnosticLevel::Warning).count()
+        self.diagnostics
+            .iter()
+            .filter(|d| d.level == DiagnosticLevel::Warning)
+            .count()
     }
 }

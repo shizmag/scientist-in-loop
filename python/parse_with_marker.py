@@ -28,6 +28,7 @@ def parse_with_marker(pdf: Path) -> str:
         from marker.output import text_from_rendered  # type: ignore
 
         config = {"mode": mode} if mode else {}
+        config["pdftext_workers"] = 1
         converter = PdfConverter(artifact_dict=create_model_dict(), config=config)
         rendered = converter(str(pdf))
         text, _, _ = text_from_rendered(rendered)

@@ -221,7 +221,10 @@ impl SilDb {
     }
 
     /// Upsert a journal publication entry into the database.
-    pub fn save_journal_publication(&self, item: &sil_core::JournalPublication) -> Result<(), DbError> {
+    pub fn save_journal_publication(
+        &self,
+        item: &sil_core::JournalPublication,
+    ) -> Result<(), DbError> {
         self.conn.execute(
             "INSERT OR REPLACE INTO journal_digest (doi, title, authors, journal, year, abstract_text, citation_count, url)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -296,7 +299,6 @@ impl SilDb {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,8 +326,7 @@ mod tests {
         let hits = db.search("transformer", 10).unwrap();
         assert_eq!(hits.len(), 1);
         assert!(
-            hits[0].snippet.to_lowercase().contains("transformer")
-                || !hits[0].snippet.is_empty()
+            hits[0].snippet.to_lowercase().contains("transformer") || !hits[0].snippet.is_empty()
         );
     }
 
@@ -386,7 +387,8 @@ mod tests {
             let db = SilDb::open(&path).unwrap();
             let mut doc = SourceDocument::new("x.pdf".into());
             doc.status = Some(DocumentStatus::ValidPdf);
-            db.upsert_parsed(&doc, "persisted content token_persist").unwrap();
+            db.upsert_parsed(&doc, "persisted content token_persist")
+                .unwrap();
         }
         let db2 = SilDb::open(&path).unwrap();
         assert_eq!(db2.source_count().unwrap(), 1);
@@ -399,7 +401,8 @@ mod tests {
         for i in 0..5 {
             let mut doc = SourceDocument::new(format!("p{i}.pdf").into());
             doc.status = Some(DocumentStatus::ValidPdf);
-            db.upsert_parsed(&doc, "sharedkeyword document body").unwrap();
+            db.upsert_parsed(&doc, "sharedkeyword document body")
+                .unwrap();
         }
         let hits = db.search("sharedkeyword", 2).unwrap();
         assert_eq!(hits.len(), 2);
@@ -416,11 +419,8 @@ mod tests {
         let db = SilDb::open_in_memory().unwrap();
         let mut doc = SourceDocument::new("zh.pdf".into());
         doc.status = Some(DocumentStatus::ValidPdf);
-        db.upsert_parsed(
-            &doc,
-            "注意力机制 uniquetokenxyz 自注意力 café αβγ",
-        )
-        .unwrap();
+        db.upsert_parsed(&doc, "注意力机制 uniquetokenxyz 自注意力 café αβγ")
+            .unwrap();
         let hits = db.search("uniquetokenxyz", 5).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].filename, "zh.pdf");
@@ -536,9 +536,13 @@ mod tests {
         let db = SilDb::open_in_memory().unwrap();
         let mut doc = SourceDocument::new("sildb_paper.pdf".into());
         doc.status = Some(DocumentStatus::ValidPdf);
-        db.upsert_parsed(&doc, "sildb update title test content").unwrap();
+        db.upsert_parsed(&doc, "sildb update title test content")
+            .unwrap();
 
-        assert!(db.update_source_title(&doc.id, "Updated SilDb Title").unwrap());
+        assert!(
+            db.update_source_title(&doc.id, "Updated SilDb Title")
+                .unwrap()
+        );
         let list = db.list_sources().unwrap();
         assert_eq!(list[0].title.as_deref(), Some("Updated SilDb Title"));
     }
@@ -548,20 +552,33 @@ mod tests {
         let db = SilDb::open_in_memory().unwrap();
         assert!(db.list_todo_ideas().unwrap().is_empty());
 
-        let mut idea1 = sil_core::IdeaBlock::new("id1", "Check ablation study", Some("Section 3".into()), 10, 15);
+        let mut idea1 = sil_core::IdeaBlock::new(
+            "id1",
+            "Check ablation study",
+            Some("Section 3".into()),
+            10,
+            15,
+        );
         idea1.status = "open".into();
         idea1.priority = "high".into();
         idea1.author_type = "human".into();
         idea1.tags = vec!["ablation".into()];
 
-        let mut idea2 = sil_core::IdeaBlock::new("id2", "Add baseline comparison graph", Some("Section 4".into()), 40, 45);
+        let mut idea2 = sil_core::IdeaBlock::new(
+            "id2",
+            "Add baseline comparison graph",
+            Some("Section 4".into()),
+            40,
+            45,
+        );
         idea2.status = "in_progress".into();
         idea2.priority = "critical".into();
         idea2.author_type = "agent".into();
         idea2.tags = vec!["baseline".into(), "figure".into()];
 
         // 1. insert & replace
-        db.replace_todo_ideas(&[idea1.clone(), idea2.clone()]).unwrap();
+        db.replace_todo_ideas(&[idea1.clone(), idea2.clone()])
+            .unwrap();
         let list = db.list_todo_ideas().unwrap();
         assert_eq!(list.len(), 2);
         assert_eq!(list[0].id, "id1");
@@ -578,7 +595,8 @@ mod tests {
         assert_eq!(fetched.status, "resolved");
 
         // 3. upsert
-        let mut idea3 = sil_core::IdeaBlock::new("id3", "New upserted idea", Some("Section 1".into()), 5, 8);
+        let mut idea3 =
+            sil_core::IdeaBlock::new("id3", "New upserted idea", Some("Section 1".into()), 5, 8);
         idea3.priority = "low".into();
         db.upsert_todo_idea(&idea3).unwrap();
         assert_eq!(db.list_todo_ideas().unwrap().len(), 3);
@@ -608,20 +626,28 @@ mod tests {
         db.replace_todo_ideas(&[t1, t2, t3]).unwrap();
 
         // Filter status=open
-        let open_tasks = db.list_todo_ideas_filtered(Some("open"), None, None, None).unwrap();
+        let open_tasks = db
+            .list_todo_ideas_filtered(Some("open"), None, None, None)
+            .unwrap();
         assert_eq!(open_tasks.len(), 2);
 
         // Filter priority=critical
-        let crit_tasks = db.list_todo_ideas_filtered(None, Some("critical"), None, None).unwrap();
+        let crit_tasks = db
+            .list_todo_ideas_filtered(None, Some("critical"), None, None)
+            .unwrap();
         assert_eq!(crit_tasks.len(), 1);
         assert_eq!(crit_tasks[0].id, "t2");
 
         // Filter section_id=Intro
-        let intro_tasks = db.list_todo_ideas_filtered(None, None, Some("Intro"), None).unwrap();
+        let intro_tasks = db
+            .list_todo_ideas_filtered(None, None, Some("Intro"), None)
+            .unwrap();
         assert_eq!(intro_tasks.len(), 2);
 
         // Sort by priority (critical > high > medium)
-        let sorted_prio = db.list_todo_ideas_filtered(None, None, None, Some("priority")).unwrap();
+        let sorted_prio = db
+            .list_todo_ideas_filtered(None, None, None, Some("priority"))
+            .unwrap();
         assert_eq!(sorted_prio.len(), 3);
         assert_eq!(sorted_prio[0].id, "t2"); // critical
         assert_eq!(sorted_prio[1].id, "t3"); // high
@@ -774,21 +800,13 @@ Cross-encoder models process query and document pairs simultaneously to calculat
             .unwrap();
 
         let hits = db
-            .search_hybrid(
-                &embedder,
-                "self-attention sequence computation",
-                5,
-                false,
-            )
+            .search_hybrid(&embedder, "self-attention sequence computation", 5, false)
             .unwrap();
         assert!(!hits.is_empty());
-        assert!(
-            hits.iter().any(|h| h
-                .chunk
-                .content
-                .contains("parallel sequence computation")
-                || h.chunk.content.contains("self-attention"))
-        );
+        assert!(hits.iter().any(
+            |h| h.chunk.content.contains("parallel sequence computation")
+                || h.chunk.content.contains("self-attention")
+        ));
 
         let expanded_hits = db
             .search_hybrid(&embedder, "parallel sequence computation", 5, true)

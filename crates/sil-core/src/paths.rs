@@ -173,9 +173,8 @@ pub fn find_project_root(start: &Utf8Path) -> Option<Utf8PathBuf> {
 /// Resolve project root from the process current directory.
 pub fn project_root_from_cwd() -> Result<Utf8PathBuf, SilError> {
     let cwd = std::env::current_dir()?;
-    let cwd = Utf8PathBuf::from_path_buf(cwd).map_err(|_| {
-        SilError::Message("current directory is not valid UTF-8".into())
-    })?;
+    let cwd = Utf8PathBuf::from_path_buf(cwd)
+        .map_err(|_| SilError::Message("current directory is not valid UTF-8".into()))?;
     find_project_root(&cwd).ok_or(SilError::NotAProject)
 }
 
@@ -244,10 +243,7 @@ mod tests {
     #[test]
     fn improvement_and_draft_section_paths() {
         let paths = ProjectPaths::new("/proj");
-        assert_eq!(
-            paths.improvement_dir().as_str(),
-            "/proj/.sil/improvement"
-        );
+        assert_eq!(paths.improvement_dir().as_str(), "/proj/.sil/improvement");
         assert_eq!(
             paths.improvement_suggestion(1).as_str(),
             "/proj/.sil/improvement/suggestion_1"

@@ -14,10 +14,9 @@ pub fn source_count(conn: &Connection) -> Result<usize, DbError> {
 
 /// Number of parsed sources.
 pub fn parsed_count(conn: &Connection) -> Result<usize, DbError> {
-    let n: i64 =
-        conn.query_row("SELECT COUNT(*) FROM sources WHERE parsed = 1", [], |r| {
-            r.get(0)
-        })?;
+    let n: i64 = conn.query_row("SELECT COUNT(*) FROM sources WHERE parsed = 1", [], |r| {
+        r.get(0)
+    })?;
     Ok(n as usize)
 }
 
@@ -243,7 +242,10 @@ mod tests {
         assert_eq!(fetched.kind, SourceKind::Markdown);
         assert_eq!(fetched.title.as_deref(), Some("Deep Learning Advances"));
         assert_eq!(fetched.authors.as_deref(), Some("Alice Smith, Bob Jones"));
-        assert_eq!(fetched.abstract_text.as_deref(), Some("A survey of deep learning."));
+        assert_eq!(
+            fetched.abstract_text.as_deref(),
+            Some("A survey of deep learning.")
+        );
         assert_eq!(fetched.doi.as_deref(), Some("10.1234/5678"));
         assert_eq!(fetched.year, Some(2024));
         assert_eq!(fetched.venue.as_deref(), Some("NeurIPS"));
@@ -273,4 +275,3 @@ mod tests {
         assert!(!updated);
     }
 }
-

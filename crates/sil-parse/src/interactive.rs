@@ -114,10 +114,7 @@ pub fn select_pdfs_interactive(
     select_with_console(paths, ui)
 }
 
-fn select_with_console(
-    paths: &[Utf8PathBuf],
-    ui: &dyn SilUi,
-) -> Result<Vec<usize>, ParseError> {
+fn select_with_console(paths: &[Utf8PathBuf], ui: &dyn SilUi) -> Result<Vec<usize>, ParseError> {
     use console::{Key, Term};
 
     let term = Term::stdout();
@@ -225,4 +222,3 @@ fn paint_frame(
     }
     Ok(())
 }
-

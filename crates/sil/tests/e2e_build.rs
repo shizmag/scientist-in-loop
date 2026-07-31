@@ -10,7 +10,10 @@ fn build_invokes_engine_or_errors_clearly() {
 
     // Default engine is tectonic. On machines with tectonic this succeeds;
     // otherwise we still require a clean, actionable failure.
-    let assert = sil().current_dir(&project).args(["paper", "build"]).assert();
+    let assert = sil()
+        .current_dir(&project)
+        .args(["paper", "build"])
+        .assert();
     let output = assert.get_output();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -67,25 +70,47 @@ Main method prose goes here.
 
     let cfg_path = project.join(".sil/config.yaml");
     let cfg = fs::read_to_string(&cfg_path).unwrap();
-    fs::write(&cfg_path, cfg.replace("template: standard", "template: neurips")).unwrap();
+    fs::write(
+        &cfg_path,
+        cfg.replace("template: standard", "template: neurips"),
+    )
+    .unwrap();
 
     // Run `sil paper build release`
-    let assert = sil().current_dir(&project).args(["paper", "build", "release"]).assert();
+    let assert = sil()
+        .current_dir(&project)
+        .args(["paper", "build", "release"])
+        .assert();
     let output = assert.get_output();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{stdout}{stderr}");
 
     let formatted_tex = project.join("paper_neurips.tex");
-    assert!(formatted_tex.is_file(), "paper_neurips.tex must exist:\n{combined}");
+    assert!(
+        formatted_tex.is_file(),
+        "paper_neurips.tex must exist:\n{combined}"
+    );
 
     let content = fs::read_to_string(&formatted_tex).unwrap();
-    assert!(!content.contains("Remove internal draft notes"), "idea block must be stripped in release");
-    assert!(!content.contains("# -- X -- #"), "# -- X -- # block markers must be stripped in release");
-    assert!(content.contains("Main method prose goes here."), "prose must be preserved");
+    assert!(
+        !content.contains("Remove internal draft notes"),
+        "idea block must be stripped in release"
+    );
+    assert!(
+        !content.contains("# -- X -- #"),
+        "# -- X -- # block markers must be stripped in release"
+    );
+    assert!(
+        content.contains("Main method prose goes here."),
+        "prose must be preserved"
+    );
 
     let zip_file = project.join("submission_neurips.zip");
-    assert!(zip_file.is_file(), "submission_neurips.zip must be created:\n{combined}");
+    assert!(
+        zip_file.is_file(),
+        "submission_neurips.zip must be created:\n{combined}"
+    );
 
     // Inspect zip contents
     let f = fs::File::open(&zip_file).unwrap();

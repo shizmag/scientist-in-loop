@@ -75,6 +75,9 @@ mod tests {
         let yaml = "draft";
         let s: Stage = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(s, Stage::Draft);
-        assert_eq!(serde_yaml::to_string(&Stage::Final).unwrap().trim(), "final");
+        assert_eq!(
+            serde_yaml::to_string(&Stage::Final).unwrap().trim(),
+            "final"
+        );
     }
 }

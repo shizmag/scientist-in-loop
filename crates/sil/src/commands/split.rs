@@ -18,15 +18,15 @@ pub fn run(ui: &dyn SilUi) -> Result<()> {
     }
     let out = paths.draft_sections_dir();
 
-    let before = std::fs::read_to_string(draft.as_str())
-        .with_context(|| format!("read {draft}"))?;
+    let before =
+        std::fs::read_to_string(draft.as_str()).with_context(|| format!("read {draft}"))?;
 
     let mut spinner = ui.spinner("Splitting paper_draft.tex into section files…");
-    let (read_back, written) = write_draft_sections_from_file(&draft, &out)
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let (read_back, written) =
+        write_draft_sections_from_file(&draft, &out).map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    let after = std::fs::read_to_string(draft.as_str())
-        .with_context(|| format!("re-read {draft}"))?;
+    let after =
+        std::fs::read_to_string(draft.as_str()).with_context(|| format!("re-read {draft}"))?;
     if before != after || before != read_back {
         bail!("internal error: paper_draft.tex was modified during split");
     }

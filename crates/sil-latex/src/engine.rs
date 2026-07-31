@@ -50,8 +50,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
         let main = root.join("paper_draft.tex");
-        std::fs::write(main.as_str(), "\\documentclass{article}\\begin{document}x\\end{document}")
-            .unwrap();
+        std::fs::write(
+            main.as_str(),
+            "\\documentclass{article}\\begin{document}x\\end{document}",
+        )
+        .unwrap();
         (dir, root, main)
     }
 
@@ -59,12 +62,8 @@ mod tests {
     fn build_command_missing_main() {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        let err = build_command(
-            LatexEngine::Tectonic,
-            Utf8Path::new("missing.tex"),
-            &root,
-        )
-        .unwrap_err();
+        let err =
+            build_command(LatexEngine::Tectonic, Utf8Path::new("missing.tex"), &root).unwrap_err();
         assert!(matches!(err, LatexError::MainNotFound(_)));
     }
 

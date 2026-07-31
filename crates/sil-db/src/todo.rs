@@ -152,7 +152,7 @@ pub fn list_todo_ideas_filtered(
     sort_by: Option<&str>,
 ) -> Result<Vec<IdeaBlock>, DbError> {
     let mut query = String::from(
-        "SELECT id, content, section_id, line_start, line_end, status, priority, author_type, tags, created_at FROM todo_ideas WHERE 1=1"
+        "SELECT id, content, section_id, line_start, line_end, status, priority, author_type, tags, created_at FROM todo_ideas WHERE 1=1",
     );
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
@@ -184,7 +184,10 @@ pub fn list_todo_ideas_filtered(
         }
     }
 
-    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref() as &dyn rusqlite::ToSql).collect();
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params
+        .iter()
+        .map(|p| p.as_ref() as &dyn rusqlite::ToSql)
+        .collect();
     let mut stmt = conn.prepare(&query)?;
     let rows = stmt.query_map(param_refs.as_slice(), |row| {
         let tags_raw: String = row.get(8)?;

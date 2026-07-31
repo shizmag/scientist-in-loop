@@ -8,10 +8,7 @@ use common::{git_commit_all, init_project, sil};
 fn log_shows_sci_action() {
     let (_dir, project) = init_project("logp");
 
-    git_commit_all(
-        &project,
-        "Initialize sil project\n\nSci-Action: init\n",
-    );
+    git_commit_all(&project, "Initialize sil project\n\nSci-Action: init\n");
 
     sil()
         .current_dir(&project)

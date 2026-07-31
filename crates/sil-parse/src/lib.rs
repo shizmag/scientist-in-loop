@@ -25,7 +25,6 @@ pub use marker::{
 };
 pub use validate::{list_unparsed_pdfs, minimal_pdf_bytes, validate_for_parse, write_fixture_pdf};
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,7 +73,11 @@ mod tests {
             content: "x".into(),
         };
         let err = parse_one(&path, &db, &runner, &ui).unwrap_err();
-        assert!(err.to_string().to_lowercase().contains("unsupported format"));
+        assert!(
+            err.to_string()
+                .to_lowercase()
+                .contains("unsupported format")
+        );
     }
 
     #[test]
@@ -159,9 +162,7 @@ mod tests {
         let runner = StubMarkerRunner {
             content: "body".into(),
         };
-        let text = runner
-            .parse_pdf(Utf8Path::new("/tmp/paper.pdf"))
-            .unwrap();
+        let text = runner.parse_pdf(Utf8Path::new("/tmp/paper.pdf")).unwrap();
         assert!(text.contains("paper.pdf"));
         assert!(text.contains("body"));
     }
@@ -284,7 +285,11 @@ mod tests {
             content: "x".into(),
         };
         let err = parse_one(&path, &db, &runner, &ui).unwrap_err();
-        assert!(err.to_string().to_lowercase().contains("not a pdf") || err.to_string().contains("not found") || err.to_string().contains("corrupt"));
+        assert!(
+            err.to_string().to_lowercase().contains("not a pdf")
+                || err.to_string().contains("not found")
+                || err.to_string().contains("corrupt")
+        );
     }
 
     #[test]
@@ -366,14 +371,21 @@ mod tests {
         let pdf = Utf8PathBuf::from_path_buf(pdf).unwrap();
         let err = runner.parse_pdf(&pdf).unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("exit") || msg.contains("Marker") || msg.contains("2"), "{msg}");
+        assert!(
+            msg.contains("exit") || msg.contains("Marker") || msg.contains("2"),
+            "{msg}"
+        );
     }
 
     #[test]
     fn parse_markdown_natively() {
         let dir = tempfile::tempdir().unwrap();
         let md_file = dir.path().join("notes.md");
-        std::fs::write(&md_file, "# Markdown Title\nThis is native markdown content.").unwrap();
+        std::fs::write(
+            &md_file,
+            "# Markdown Title\nThis is native markdown content.",
+        )
+        .unwrap();
         let path = Utf8PathBuf::from_path_buf(md_file).unwrap();
         let db = SilDb::open_in_memory().unwrap();
         let ui = NullUi::new();
@@ -451,5 +463,3 @@ mod tests {
         assert!(content.contains("# Mock Extracted Content"));
     }
 }
-
-

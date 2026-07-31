@@ -68,12 +68,18 @@ pub enum SourceKind {
 impl SourceKind {
     /// Guess source kind from file path extension.
     pub fn from_path(path: &Utf8Path) -> Self {
-        match path.extension().map(|ext| ext.to_ascii_lowercase()).as_deref() {
+        match path
+            .extension()
+            .map(|ext| ext.to_ascii_lowercase())
+            .as_deref()
+        {
             Some("pdf") => Self::Pdf,
             Some("md" | "markdown") => Self::Markdown,
             Some("txt") => Self::Text,
             Some("html" | "htm") => Self::Html,
-            Some("rs" | "py" | "js" | "ts" | "c" | "cpp" | "h" | "go" | "java" | "sh") => Self::Code,
+            Some("rs" | "py" | "js" | "ts" | "c" | "cpp" | "h" | "go" | "java" | "sh") => {
+                Self::Code
+            }
             Some("csv" | "json" | "parquet") => Self::Dataset,
             _ => Self::Pdf,
         }
@@ -121,7 +127,6 @@ impl std::str::FromStr for SourceKind {
         }
     }
 }
-
 
 /// Validation / processing status of a document candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -327,7 +332,10 @@ mod tests {
         let mut f = NamedTempFile::new().unwrap();
         f.write_all(b"%PDF-1.4\n%sil-test\n").unwrap();
         let path = Utf8PathBuf::from_path_buf(f.path().to_path_buf()).unwrap();
-        assert_eq!(probe_source(&path).unwrap(), DocumentStatus::Valid(SourceKind::Pdf));
+        assert_eq!(
+            probe_source(&path).unwrap(),
+            DocumentStatus::Valid(SourceKind::Pdf)
+        );
         assert_eq!(validate_pdf_path(&path).unwrap(), DocumentStatus::ValidPdf);
     }
 
@@ -337,7 +345,10 @@ mod tests {
         let path = dir.path().join("notes.md");
         std::fs::write(&path, b"# Title\nSome markdown text.").unwrap();
         let path = Utf8PathBuf::from_path_buf(path).unwrap();
-        assert_eq!(probe_source(&path).unwrap(), DocumentStatus::Valid(SourceKind::Markdown));
+        assert_eq!(
+            probe_source(&path).unwrap(),
+            DocumentStatus::Valid(SourceKind::Markdown)
+        );
     }
 
     #[test]
@@ -346,7 +357,10 @@ mod tests {
         let path = dir.path().join("paper.txt");
         std::fs::write(&path, b"Plain text content").unwrap();
         let path = Utf8PathBuf::from_path_buf(path).unwrap();
-        assert_eq!(probe_source(&path).unwrap(), DocumentStatus::Valid(SourceKind::Text));
+        assert_eq!(
+            probe_source(&path).unwrap(),
+            DocumentStatus::Valid(SourceKind::Text)
+        );
     }
 
     #[test]
@@ -355,7 +369,10 @@ mod tests {
         let path = dir.path().join("paper.html");
         std::fs::write(&path, b"<html><body>Hello</body></html>").unwrap();
         let path = Utf8PathBuf::from_path_buf(path).unwrap();
-        assert_eq!(probe_source(&path).unwrap(), DocumentStatus::Valid(SourceKind::Html));
+        assert_eq!(
+            probe_source(&path).unwrap(),
+            DocumentStatus::Valid(SourceKind::Html)
+        );
     }
 
     #[test]
@@ -364,7 +381,10 @@ mod tests {
         let path = dir.path().join("data.unknown");
         std::fs::write(&path, b"random bytes").unwrap();
         let path = Utf8PathBuf::from_path_buf(path).unwrap();
-        assert_eq!(probe_source(&path).unwrap(), DocumentStatus::UnsupportedFormat);
+        assert_eq!(
+            probe_source(&path).unwrap(),
+            DocumentStatus::UnsupportedFormat
+        );
     }
 
     #[test]
@@ -451,4 +471,3 @@ mod tests {
         assert_eq!(a.filename, b.filename);
     }
 }
-

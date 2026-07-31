@@ -5,17 +5,16 @@
 pub mod app;
 pub mod ui;
 
-
-use std::io;
-use std::time::Duration;
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
+use std::io;
+use std::time::Duration;
 
 pub use app::App;
 
@@ -39,10 +38,7 @@ pub fn run_tui(project_root: Option<Utf8PathBuf>) -> Result<()> {
     res
 }
 
-fn run_app<B: ratatui::backend::Backend>(
-    terminal: &mut Terminal<B>,
-    app: &mut App,
-) -> Result<()>
+fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()>
 where
     <B as ratatui::backend::Backend>::Error: Send + Sync + 'static,
 {
@@ -111,10 +107,8 @@ fn open_external_editor<B: ratatui::backend::Backend>(
         Ok(code) if code.success() => {
             app.reload_paper_draft();
             let paths = sil_core::ProjectPaths::new(&root);
-            let _ = sil_latex::write_draft_sections_from_file(
-                &draft_path,
-                &paths.draft_sections_dir(),
-            );
+            let _ =
+                sil_latex::write_draft_sections_from_file(&draft_path, &paths.draft_sections_dir());
             if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
                 let ideas = sil_latex::parse_idea_blocks(&app.paper_draft_content);
                 let _ = db.replace_todo_ideas(&ideas);

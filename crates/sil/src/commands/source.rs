@@ -137,9 +137,7 @@ pub fn remove(id_or_filename: &str, delete_file: bool, ui: &dyn SilUi) -> Result
     let (_root, config, paths) = load_project()?;
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
     let id = SourceId::new(id_or_filename);
-    let removed = db
-        .remove_source(&id)
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let removed = db.remove_source(&id).map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Also try by matching filename among listed sources
     let mut did_remove = removed;
@@ -160,7 +158,9 @@ pub fn remove(id_or_filename: &str, delete_file: bool, ui: &dyn SilUi) -> Result
             "no database row for '{id_or_filename}' (may already be unparsed)"
         ));
     } else {
-        ui.success(&format!("Removed '{id_or_filename}' from database (reparse with sil parse)"));
+        ui.success(&format!(
+            "Removed '{id_or_filename}' from database (reparse with sil parse)"
+        ));
     }
 
     if delete_file {
@@ -172,8 +172,7 @@ pub fn remove(id_or_filename: &str, delete_file: bool, ui: &dyn SilUi) -> Result
             candidate
         };
         if candidate.is_file() {
-            fs::remove_file(candidate.as_str())
-                .with_context(|| format!("delete {candidate}"))?;
+            fs::remove_file(candidate.as_str()).with_context(|| format!("delete {candidate}"))?;
             ui.success(&format!("Deleted file {candidate}"));
         } else {
             ui.warn(&format!("no file at {candidate}"));
@@ -193,8 +192,8 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
         std::collections::BTreeMap::new();
 
     for doc in docs {
-        let on_disk = sources_dir.join(&doc.filename).is_file()
-            || Utf8Path::new(doc.path.as_str()).is_file();
+        let on_disk =
+            sources_dir.join(&doc.filename).is_file() || Utf8Path::new(doc.path.as_str()).is_file();
         by_name.insert(
             doc.filename.clone(),
             SourceListEntry {
@@ -211,8 +210,8 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
 
     // Scan sources/ for source files not yet in DB
     if sources_dir.is_dir() {
-        for entry in fs::read_dir(sources_dir.as_str())
-            .with_context(|| format!("read {sources_dir}"))?
+        for entry in
+            fs::read_dir(sources_dir.as_str()).with_context(|| format!("read {sources_dir}"))?
         {
             let entry = entry?;
             let path = entry.path();
@@ -248,12 +247,12 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
 
 /// Interactive TUI reader for a parsed or raw markdown source document using termimad.
 pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
-    use std::io::Write;
     use crossterm::{
         cursor,
         event::{self, Event, KeyCode, KeyModifiers},
         queue, terminal,
     };
+    use std::io::Write;
     use termimad::{Area, MadSkin, MadView};
 
     let (_root, config, paths) = load_project()?;
@@ -271,8 +270,8 @@ pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
             camino::Utf8PathBuf::from(id_or_filename)
         };
         if path.exists() {
-            let text = fs::read_to_string(&path)
-                .with_context(|| format!("read source file at {path}"))?;
+            let text =
+                fs::read_to_string(&path).with_context(|| format!("read source file at {path}"))?;
             (path.file_name().unwrap_or(id_or_filename).to_string(), text)
         } else {
             anyhow::bail!("Source '{id_or_filename}' not found in database or on disk");
@@ -315,7 +314,11 @@ pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
                         KeyCode::PageDown | KeyCode::Char(' ') | KeyCode::Char('f') => {
                             view.try_scroll_pages(1);
                         }
-                        KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => break,
+                        KeyCode::Char('c')
+                            if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                        {
+                            break;
+                        }
                         _ => {}
                     }
                 }
@@ -373,7 +376,8 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         pb.set_message(&doc.filename);
 
         // 1. Metadata Hydration if missing key metadata
-        let needs_metadata = doc.authors.is_none() || doc.venue.is_none() || doc.abstract_text.is_none();
+        let needs_metadata =
+            doc.authors.is_none() || doc.venue.is_none() || doc.abstract_text.is_none();
         if needs_metadata {
             let extracted_doi = doc.doi.clone().or_else(|| sil_regex::extract_doi(&content));
             if let Some(ref doi) = extracted_doi {
@@ -405,19 +409,28 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         doc.references_text = refs_block.clone();
 
         if let Err(e) = db.upsert_parsed(&doc, &content) {
-            ui.warn(&format!("Failed to update database for {}: {e}", doc.filename));
+            ui.warn(&format!(
+                "Failed to update database for {}: {e}",
+                doc.filename
+            ));
             continue;
         }
 
         if let Err(e) = db.delete_references_for_source(&doc.id) {
-            ui.warn(&format!("Failed to clear old references for {}: {e}", doc.filename));
+            ui.warn(&format!(
+                "Failed to clear old references for {}: {e}",
+                doc.filename
+            ));
         }
 
         if let Some(ref raw_block) = refs_block {
             let entries = sil_parse::references::parse_reference_entries(&doc.id, raw_block);
             if !entries.is_empty() {
                 if let Err(e) = db.save_source_references(&entries) {
-                    ui.warn(&format!("Failed to save references for {}: {e}", doc.filename));
+                    ui.warn(&format!(
+                        "Failed to save references for {}: {e}",
+                        doc.filename
+                    ));
                 }
             }
         }
@@ -429,5 +442,3 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
     pb.finish_success(&format!("Healed {healed_count} source document(s)"));
     Ok(())
 }
-
-

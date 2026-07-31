@@ -18,7 +18,10 @@ fn doctor_reports_project_checks() {
         .stdout
         .clone();
     let stdout = String::from_utf8_lossy(&out);
-    assert!(stdout.contains("git") || stdout.contains("sil project"), "{stdout}");
+    assert!(
+        stdout.contains("git") || stdout.contains("sil project"),
+        "{stdout}"
+    );
     assert!(
         stdout.contains("improvement") || stdout.contains("draft_sections") || stdout.contains("✓"),
         "{stdout}"
@@ -38,7 +41,12 @@ fn doctor_json_has_checks() {
         .clone();
     let v: serde_json::Value =
         serde_json::from_str(&String::from_utf8_lossy(&out)).expect("doctor --json");
-    assert!(v.get("checks").and_then(|c| c.as_array()).map(|a| !a.is_empty()) == Some(true));
+    assert!(
+        v.get("checks")
+            .and_then(|c| c.as_array())
+            .map(|a| !a.is_empty())
+            == Some(true)
+    );
     assert!(v.get("ok").is_some());
 }
 
@@ -52,5 +60,8 @@ fn ci_workflow_exists_and_runs_tests() {
     assert!(wf.is_file(), "missing CI workflow at {}", wf.display());
     let text = std::fs::read_to_string(&wf).unwrap();
     assert!(text.contains("cargo test"), "{text}");
-    assert!(text.contains("clippy") || text.contains("cargo test --workspace"), "{text}");
+    assert!(
+        text.contains("clippy") || text.contains("cargo test --workspace"),
+        "{text}"
+    );
 }

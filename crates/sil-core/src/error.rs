@@ -151,7 +151,11 @@ mod tests {
 
     #[test]
     fn sil_error_wrappers_display() {
-        assert!(SilError::Database("locked".into()).to_string().contains("database"));
+        assert!(
+            SilError::Database("locked".into())
+                .to_string()
+                .contains("database")
+        );
         assert!(SilError::Git("boom".into()).to_string().contains("git"));
         assert!(SilError::Parse("x".into()).to_string().contains("parse"));
         assert!(SilError::Build("y".into()).to_string().contains("build"));
@@ -164,4 +168,3 @@ mod tests {
         assert!(e.to_string().contains("not found"));
     }
 }
-

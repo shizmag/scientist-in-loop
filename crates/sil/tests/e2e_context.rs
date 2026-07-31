@@ -8,10 +8,7 @@ use common::{git_commit_all, init_project, sil};
 fn context_default_and_flags() {
     let (_dir, project) = init_project("ctx");
 
-    git_commit_all(
-        &project,
-        "Initialize sil project\n\nSci-Action: init\n",
-    );
+    git_commit_all(&project, "Initialize sil project\n\nSci-Action: init\n");
 
     sil()
         .current_dir(&project)
@@ -61,5 +58,7 @@ fn context_skill_agent_code_flag() {
         .assert()
         .success()
         .stdout(predicates::str::contains("agent/README.md"))
-        .stdout(predicates::str::contains("Rules for code written by the agent"));
+        .stdout(predicates::str::contains(
+            "Rules for code written by the agent",
+        ));
 }

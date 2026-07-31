@@ -42,7 +42,12 @@ pub fn slugify_title(title: &str) -> String {
         "section".into()
     } else {
         // Cap length for path safety
-        trimmed.chars().take(48).collect::<String>().trim_end_matches('-').to_string()
+        trimmed
+            .chars()
+            .take(48)
+            .collect::<String>()
+            .trim_end_matches('-')
+            .to_string()
     }
 }
 
@@ -214,10 +219,7 @@ mod tests {
 
     #[test]
     fn section_filename_padded() {
-        assert_eq!(
-            section_filename(0, "Introduction"),
-            "01-introduction.tex"
-        );
+        assert_eq!(section_filename(0, "Introduction"), "01-introduction.tex");
         assert_eq!(section_filename(9, "Methods"), "10-methods.tex");
     }
 
@@ -239,8 +241,7 @@ We did science.
         fs::write(draft_path.as_str(), draft).unwrap();
         let before = fs::read_to_string(draft_path.as_str()).unwrap();
 
-        let (read_back, written) =
-            write_draft_sections_from_file(&draft_path, &out_dir).unwrap();
+        let (read_back, written) = write_draft_sections_from_file(&draft_path, &out_dir).unwrap();
         assert_eq!(read_back, before);
         assert_eq!(
             fs::read_to_string(draft_path.as_str()).unwrap(),

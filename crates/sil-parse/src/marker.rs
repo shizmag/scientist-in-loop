@@ -27,9 +27,10 @@ fn find_binary_in_path(binary_name: &str) -> Option<Utf8PathBuf> {
         for dir in std::env::split_paths(&path_var) {
             let candidate = dir.join(binary_name);
             if candidate.is_file()
-                && let Ok(utf) = Utf8PathBuf::from_path_buf(candidate) {
-                    return Some(utf);
-                }
+                && let Ok(utf) = Utf8PathBuf::from_path_buf(candidate)
+            {
+                return Some(utf);
+            }
         }
     }
     None
@@ -61,21 +62,24 @@ impl CliMarkerRunner {
             }
         }
         Err(ParseError::Message(
-            "could not locate marker_single or marker CLI binary in PATH; set SIL_MARKER_BIN".into(),
+            "could not locate marker_single or marker CLI binary in PATH; set SIL_MARKER_BIN"
+                .into(),
         ))
     }
 }
 
 impl MarkerRunner for CliMarkerRunner {
     fn parse_pdf(&self, pdf: &Utf8Path) -> Result<String, ParseError> {
-        let tmp = tempdir().map_err(|e| ParseError::Marker(format!("failed to create temp dir: {e}")))?;
+        let tmp =
+            tempdir().map_err(|e| ParseError::Marker(format!("failed to create temp dir: {e}")))?;
         let mut cmd = Command::new(&self.binary);
         cmd.arg(pdf.as_str())
             .arg("--output_dir")
             .arg(tmp.path())
             .arg("--output_format")
             .arg("markdown")
-            .arg("--disable_image_extraction");
+            .arg("--disable_image_extraction")
+            .arg("--disable_multiprocessing");
 
         if let Ok(flags) = std::env::var("SIL_MARKER_FLAGS") {
             for flag in flags.split_whitespace() {
@@ -83,12 +87,9 @@ impl MarkerRunner for CliMarkerRunner {
             }
         }
 
-        let output = cmd.output().map_err(|e| {
-            ParseError::Marker(format!(
-                "failed to spawn {}: {e}",
-                self.binary
-            ))
-        })?;
+        let output = cmd
+            .output()
+            .map_err(|e| ParseError::Marker(format!("failed to spawn {}: {e}", self.binary)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -108,9 +109,10 @@ impl MarkerRunner for CliMarkerRunner {
                     if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
                         return Some(path);
                     } else if path.is_dir()
-                        && let Some(found) = find_md_file(&path) {
-                            return Some(found);
-                        }
+                        && let Some(found) = find_md_file(&path)
+                    {
+                        return Some(found);
+                    }
                 }
             }
             None
@@ -177,9 +179,8 @@ impl PythonMarkerRunner {
         }
         for c in candidates {
             if c.is_file() {
-                let utf = Utf8PathBuf::from_path_buf(c).map_err(|_| {
-                    ParseError::Message("parse script path is not UTF-8".into())
-                })?;
+                let utf = Utf8PathBuf::from_path_buf(c)
+                    .map_err(|_| ParseError::Message("parse script path is not UTF-8".into()))?;
                 return Ok(Self::new(utf));
             }
         }
@@ -251,4 +252,3 @@ pub fn discover_marker_runner() -> Result<Box<dyn MarkerRunner>, ParseError> {
         "could not locate marker_single CLI binary (pip install marker-pdf) or python/parse_with_marker.py helper script; set SIL_MARKER_BIN or SIL_PARSE_SCRIPT".into(),
     ))
 }
-

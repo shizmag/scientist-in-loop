@@ -10,7 +10,9 @@ use sil_parse::MarkerRunner;
 pub fn make_ui(plain: bool) -> Box<dyn SilUi> {
     if plain
         || std::env::var_os("NO_COLOR").is_some()
-        || std::env::var("SIL_NO_COLOR").map(|v| v == "1").unwrap_or(false)
+        || std::env::var("SIL_NO_COLOR")
+            .map(|v| v == "1")
+            .unwrap_or(false)
         || std::env::var("SIL_NONINTERACTIVE")
             .map(|v| v == "1")
             .unwrap_or(false)

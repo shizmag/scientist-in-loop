@@ -13,7 +13,8 @@ pub fn validate_for_parse(
     path: &Utf8Path,
     db: &SilDb,
 ) -> Result<(DocumentStatus, SourceDocument), ParseError> {
-    let status = sil_core::probe_source(path).map_err(|e| ParseError::InvalidDocument(e.to_string()))?;
+    let status =
+        sil_core::probe_source(path).map_err(|e| ParseError::InvalidDocument(e.to_string()))?;
     let filename = path
         .file_name()
         .map(str::to_string)
@@ -67,7 +68,10 @@ pub fn list_unparsed_pdfs(
             .and_then(|e| e.to_str())
             .map(|e| {
                 let lower = e.to_ascii_lowercase();
-                matches!(lower.as_str(), "pdf" | "md" | "markdown" | "txt" | "html" | "htm")
+                matches!(
+                    lower.as_str(),
+                    "pdf" | "md" | "markdown" | "txt" | "html" | "htm"
+                )
             })
             .unwrap_or(false);
         if !is_supported {

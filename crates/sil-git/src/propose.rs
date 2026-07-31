@@ -63,10 +63,7 @@ mod tests {
         let msg = p.message();
         assert!(msg.contains("Initialize sil project"));
         assert!(msg.contains("Sci-Action: init"));
-        assert_eq!(
-            sil_core::extract_from_message(&msg),
-            Some(SciAction::Init)
-        );
+        assert_eq!(sil_core::extract_from_message(&msg), Some(SciAction::Init));
     }
 
     #[test]
@@ -106,14 +103,10 @@ mod tests {
 
     #[test]
     fn trailer_is_last_nonempty_block() {
-        let p = CommitProposal::new("Subject line", SciAction::EditDraft)
-            .with_body("details");
+        let p = CommitProposal::new("Subject line", SciAction::EditDraft).with_body("details");
         let msg = p.message();
         let trimmed = msg.trim_end();
-        assert!(
-            trimmed.ends_with("Sci-Action: edit-draft"),
-            "{trimmed:?}"
-        );
+        assert!(trimmed.ends_with("Sci-Action: edit-draft"), "{trimmed:?}");
     }
 
     #[test]

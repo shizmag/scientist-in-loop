@@ -1,16 +1,18 @@
 //! Implementation and registration of the 12 core `sil` MCP tools.
 
-use std::fs;
 use camino::Utf8PathBuf;
 use serde_json::json;
-use sil_agent::{ContextFlags, ContextInput, SkillSelection, generate_context, load_skill, sources_summary};
+use sil_agent::{
+    ContextFlags, ContextInput, SkillSelection, generate_context, load_skill, sources_summary,
+};
 use sil_core::{
-    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure,
-    project_root_from_cwd, suggest_from_query, suggest_from_source,
+    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, project_root_from_cwd,
+    suggest_from_query, suggest_from_source,
 };
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
 use sil_latex::{audit_manuscript, build_command, parse_idea_blocks, update_or_insert_idea_block};
+use std::fs;
 
 use crate::protocol::{CallToolResult, Tool, ToolInputSchema};
 
@@ -195,7 +197,10 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
     };
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
     let hyde = args.get("hyde").and_then(|v| v.as_bool()).unwrap_or(false);
-    let expand_parent = args.get("expand_parent").and_then(|v| v.as_bool()).unwrap_or(true);
+    let expand_parent = args
+        .get("expand_parent")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
 
     let (_root, paths) = match get_project_paths() {
         Ok(p) => p,
@@ -228,12 +233,17 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
         } else {
             match db.search(query, limit) {
                 Ok(hits) => {
-                    let res: Vec<_> = hits.into_iter().map(|h| json!({
-                        "source_id": h.id.as_str(),
-                        "filename": h.filename,
-                        "title": h.title,
-                        "snippet": h.snippet,
-                    })).collect();
+                    let res: Vec<_> = hits
+                        .into_iter()
+                        .map(|h| {
+                            json!({
+                                "source_id": h.id.as_str(),
+                                "filename": h.filename,
+                                "title": h.title,
+                                "snippet": h.snippet,
+                            })
+                        })
+                        .collect();
                     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
                 }
                 Err(e) => CallToolResult::error(format!("FTS search error: {e}")),
@@ -250,12 +260,17 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
     } else {
         match db.search(query, limit) {
             Ok(hits) => {
-                let res: Vec<_> = hits.into_iter().map(|h| json!({
-                    "source_id": h.id.as_str(),
-                    "filename": h.filename,
-                    "title": h.title,
-                    "snippet": h.snippet,
-                })).collect();
+                let res: Vec<_> = hits
+                    .into_iter()
+                    .map(|h| {
+                        json!({
+                            "source_id": h.id.as_str(),
+                            "filename": h.filename,
+                            "title": h.title,
+                            "snippet": h.snippet,
+                        })
+                    })
+                    .collect();
                 CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
             }
             Err(e) => CallToolResult::error(format!("FTS search error: {e}")),
@@ -323,12 +338,17 @@ fn handle_get_source_context(args: serde_json::Value) -> CallToolResult {
         let sid = sil_core::SourceId::new(source_id);
         match db.get_chunks_for_source(&sid) {
             Ok(chunks) => {
-                let chunks_json: Vec<_> = chunks.iter().map(|c| json!({
-                    "id": c.id,
-                    "chunk_type": c.chunk_type.as_str(),
-                    "heading_title": c.heading_title,
-                    "content": c.content,
-                })).collect();
+                let chunks_json: Vec<_> = chunks
+                    .iter()
+                    .map(|c| {
+                        json!({
+                            "id": c.id,
+                            "chunk_type": c.chunk_type.as_str(),
+                            "heading_title": c.heading_title,
+                            "content": c.content,
+                        })
+                    })
+                    .collect();
                 let res = json!({
                     "source_id": source_id,
                     "chunk_count": chunks.len(),
@@ -357,12 +377,15 @@ fn handle_suggest_citations(args: serde_json::Value) -> CallToolResult {
 
         if let Some(doc) = doc_opt {
             let suggestion = suggest_from_source(&doc);
-            return CallToolResult::text(serde_json::to_string_pretty(&json!({
-                "bibtex": suggestion.bibtex,
-                "cite_command": suggestion.cite_command,
-                "key": suggestion.cite_key,
-                "note": suggestion.note
-            })).unwrap_or_default());
+            return CallToolResult::text(
+                serde_json::to_string_pretty(&json!({
+                    "bibtex": suggestion.bibtex,
+                    "cite_command": suggestion.cite_command,
+                    "key": suggestion.cite_key,
+                    "note": suggestion.note
+                }))
+                .unwrap_or_default(),
+            );
         }
     }
 
@@ -428,7 +451,13 @@ fn handle_update_todo(args: serde_json::Value) -> CallToolResult {
         String::new()
     };
 
-    let mut block = IdeaBlock::new(id.unwrap_or(""), content, section_id.map(String::from), 0, 0);
+    let mut block = IdeaBlock::new(
+        id.unwrap_or(""),
+        content,
+        section_id.map(String::from),
+        0,
+        0,
+    );
     if let Some(st) = status {
         block.status = st.to_string();
     }
@@ -446,12 +475,15 @@ fn handle_update_todo(args: serde_json::Value) -> CallToolResult {
         let _ = db.replace_todo_ideas(&ideas);
     }
 
-    CallToolResult::text(json!({
-        "status": "updated",
-        "content": content,
-        "section_id": section_id,
-        "idea_blocks_count": ideas.len()
-    }).to_string())
+    CallToolResult::text(
+        json!({
+            "status": "updated",
+            "content": content,
+            "section_id": section_id,
+            "idea_blocks_count": ideas.len()
+        })
+        .to_string(),
+    )
 }
 
 fn handle_list_skills(args: serde_json::Value) -> CallToolResult {
@@ -517,7 +549,10 @@ fn handle_invoke_skill(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
-    let include_paper = args.get("include_paper").and_then(|v| v.as_bool()).unwrap_or(true);
+    let include_paper = args
+        .get("include_paper")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
 
     let (root, paths) = match get_project_paths() {
         Ok(p) => p,
@@ -528,7 +563,10 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
     let structure_yaml = fs::read_to_string(paths.structure().as_str()).unwrap_or_default();
     let structure = Structure::load(&paths.structure()).ok();
     let db = SilDb::open(&paths.db()).ok();
-    let summary = db.as_ref().and_then(|d| sources_summary(d).ok()).unwrap_or_default();
+    let summary = db
+        .as_ref()
+        .and_then(|d| sources_summary(d).ok())
+        .unwrap_or_default();
     let log = sil_git::log_entries(&root, 10, true).unwrap_or_default();
 
     let flags = ContextFlags {
@@ -558,7 +596,10 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
-    let action = args.get("action").and_then(|v| v.as_str()).unwrap_or("read");
+    let action = args
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("read");
     let section_id = args.get("section_id").and_then(|v| v.as_str());
     let completed = args.get("completed").and_then(|v| v.as_bool());
 
@@ -612,8 +653,14 @@ fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_build_and_doctor(args: serde_json::Value) -> CallToolResult {
-    let engine_str = args.get("engine").and_then(|v| v.as_str()).unwrap_or("pdflatex");
-    let run_doctor = args.get("run_doctor").and_then(|v| v.as_bool()).unwrap_or(true);
+    let engine_str = args
+        .get("engine")
+        .and_then(|v| v.as_str())
+        .unwrap_or("pdflatex");
+    let run_doctor = args
+        .get("run_doctor")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
 
     let (root, paths) = match get_project_paths() {
         Ok(p) => p,
@@ -685,7 +732,10 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
         Some(t) => t,
         None => return CallToolResult::error("Missing required parameter: target"),
     };
-    let no_parse = args.get("no_parse").and_then(|v| v.as_bool()).unwrap_or(false);
+    let no_parse = args
+        .get("no_parse")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let (root, paths) = match get_project_paths() {
         Ok(p) => p,
@@ -833,10 +883,12 @@ pub(crate) mod tests {
 
         for i in 1..=5 {
             let sid = sil_core::SourceId::new(format!("paper_{i}"));
-            let mut doc = sil_core::SourceDocument::new(Utf8PathBuf::from(format!("sources/paper_{i}.pdf")));
+            let mut doc =
+                sil_core::SourceDocument::new(Utf8PathBuf::from(format!("sources/paper_{i}.pdf")));
             doc.id = sid.clone();
             doc.title = Some(format!("Quantum Article {i}"));
-            db.upsert_parsed(&doc, "Quantum computing and state vectors.").unwrap();
+            db.upsert_parsed(&doc, "Quantum computing and state vectors.")
+                .unwrap();
 
             let chunk = sil_db::SourceChunk {
                 id: format!("chk_{i}"),
@@ -894,10 +946,12 @@ pub(crate) mod tests {
         doc.id = sid.clone();
         db.upsert_parsed(&doc, "Expansion text").unwrap();
 
-        let res_true = handle_search_sources(json!({ "query": "Expansion", "expand_parent": true }));
+        let res_true =
+            handle_search_sources(json!({ "query": "Expansion", "expand_parent": true }));
         assert!(res_true.is_error.is_none() || res_true.is_error == Some(false));
 
-        let res_false = handle_search_sources(json!({ "query": "Expansion", "expand_parent": false }));
+        let res_false =
+            handle_search_sources(json!({ "query": "Expansion", "expand_parent": false }));
         assert!(res_false.is_error.is_none() || res_false.is_error == Some(false));
     }
 
@@ -917,7 +971,8 @@ pub(crate) mod tests {
         let mut doc = sil_core::SourceDocument::new(Utf8PathBuf::from("sources/paper_match.pdf"));
         doc.id = sid.clone();
         doc.title = Some("Matching Paper Title".to_string());
-        db.upsert_parsed(&doc, "Unique matching text content.").unwrap();
+        db.upsert_parsed(&doc, "Unique matching text content.")
+            .unwrap();
 
         let chunk = sil_db::SourceChunk {
             id: "chk_match_1".to_string(),
@@ -955,7 +1010,8 @@ pub(crate) mod tests {
         let db = env.setup_db();
 
         let sid = sil_core::SourceId::new("src_all_chunks");
-        let mut doc = sil_core::SourceDocument::new(Utf8PathBuf::from("sources/src_all_chunks.pdf"));
+        let mut doc =
+            sil_core::SourceDocument::new(Utf8PathBuf::from("sources/src_all_chunks.pdf"));
         doc.id = sid.clone();
         db.upsert_parsed(&doc, "content").unwrap();
 
@@ -1037,7 +1093,10 @@ pub(crate) mod tests {
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
         assert_eq!(val["chunk"]["id"], "c_child");
         assert_eq!(val["parent_context"]["id"], "p_head");
-        assert_eq!(val["parent_context"]["content"], "Parent Section Full Context");
+        assert_eq!(
+            val["parent_context"]["content"],
+            "Parent Section Full Context"
+        );
     }
 
     #[test]
@@ -1117,7 +1176,12 @@ pub(crate) mod tests {
         }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
-        assert!(val["bibtex"].as_str().unwrap().contains("Transformers Attention"));
+        assert!(
+            val["bibtex"]
+                .as_str()
+                .unwrap()
+                .contains("Transformers Attention")
+        );
         assert!(val["key"].is_string());
     }
 
@@ -1126,8 +1190,18 @@ pub(crate) mod tests {
         let res = handle_suggest_citations(json!({ "query": "Graph Neural Networks" }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
-        assert!(val["bibtex"].as_str().unwrap().contains("Graph Neural Networks"));
-        assert!(val["cite_command"].as_str().unwrap().contains("graph_neural_networks"));
+        assert!(
+            val["bibtex"]
+                .as_str()
+                .unwrap()
+                .contains("Graph Neural Networks")
+        );
+        assert!(
+            val["cite_command"]
+                .as_str()
+                .unwrap()
+                .contains("graph_neural_networks")
+        );
     }
 
     // --- handle_list_todos ---
@@ -1373,14 +1447,21 @@ pub(crate) mod tests {
 
         let skills_dir = env.project_root.join(".sil/skills");
         fs::create_dir_all(&skills_dir).unwrap();
-        fs::write(skills_dir.join("review-guidelines.md"), "# Review Guidelines").unwrap();
+        fs::write(
+            skills_dir.join("review-guidelines.md"),
+            "# Review Guidelines",
+        )
+        .unwrap();
 
         let res = handle_list_skills(json!({}));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
         let arr = val.as_array().unwrap();
 
-        let custom = arr.iter().find(|s| s["name"] == "review-guidelines.md").unwrap();
+        let custom = arr
+            .iter()
+            .find(|s| s["name"] == "review-guidelines.md")
+            .unwrap();
         assert_eq!(custom["type"], "custom");
     }
 
@@ -1394,11 +1475,24 @@ pub(crate) mod tests {
 
         let res_builtin = handle_list_skills(json!({ "category": "built-in" }));
         let val_b: serde_json::Value = serde_json::from_str(extract_text(&res_builtin)).unwrap();
-        assert!(val_b.as_array().unwrap().iter().all(|s| s["type"] == "built-in"));
+        assert!(
+            val_b
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|s| s["type"] == "built-in")
+        );
 
         let res_custom = handle_list_skills(json!({ "category": "custom" }));
         let val_c: serde_json::Value = serde_json::from_str(extract_text(&res_custom)).unwrap();
-        assert!(val_c.as_array().unwrap().iter().all(|s| s["type"] == "custom" || s["name"].as_str().unwrap_or("").contains("custom")));
+        assert!(
+            val_c
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|s| s["type"] == "custom"
+                    || s["name"].as_str().unwrap_or("").contains("custom"))
+        );
     }
 
     // --- handle_invoke_skill ---
@@ -1435,7 +1529,11 @@ pub(crate) mod tests {
     #[test]
     fn test_get_workspace_context_default() {
         let env = TestEnv::new();
-        fs::write(env.project_root.join("paper_draft.tex"), "\\documentclass{article}").unwrap();
+        fs::write(
+            env.project_root.join("paper_draft.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
 
         let res = handle_get_workspace_context(json!({}));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
@@ -1446,7 +1544,11 @@ pub(crate) mod tests {
     #[test]
     fn test_get_workspace_context_include_paper_false() {
         let env = TestEnv::new();
-        fs::write(env.project_root.join("paper_draft.tex"), "\\documentclass{article}\nSecretDraftContent").unwrap();
+        fs::write(
+            env.project_root.join("paper_draft.tex"),
+            "\\documentclass{article}\nSecretDraftContent",
+        )
+        .unwrap();
 
         let res = handle_get_workspace_context(json!({ "include_paper": false }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
@@ -1507,7 +1609,9 @@ pub(crate) mod tests {
             "completed": true
         }));
         assert_eq!(res.is_error, Some(true));
-        assert!(extract_text(&res).contains("Section 'nonexistent_sec' not found in structure.yaml"));
+        assert!(
+            extract_text(&res).contains("Section 'nonexistent_sec' not found in structure.yaml")
+        );
     }
 
     #[test]
@@ -1543,7 +1647,11 @@ pub(crate) mod tests {
     #[test]
     fn test_build_and_doctor_engines() {
         let env = TestEnv::new();
-        fs::write(env.project_root.join("paper_draft.tex"), "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}").unwrap();
+        fs::write(
+            env.project_root.join("paper_draft.tex"),
+            "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}",
+        )
+        .unwrap();
 
         for engine in &["pdflatex", "xelatex", "lualatex", "tectonic"] {
             let res = handle_build_and_doctor(json!({ "engine": engine }));
@@ -1557,7 +1665,11 @@ pub(crate) mod tests {
     #[test]
     fn test_build_and_doctor_run_doctor_flag() {
         let env = TestEnv::new();
-        fs::write(env.project_root.join("paper_draft.tex"), "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}").unwrap();
+        fs::write(
+            env.project_root.join("paper_draft.tex"),
+            "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}",
+        )
+        .unwrap();
 
         let res_true = handle_build_and_doctor(json!({ "run_doctor": true }));
         let val_true: serde_json::Value = serde_json::from_str(extract_text(&res_true)).unwrap();
@@ -1577,7 +1689,12 @@ pub(crate) mod tests {
         let res = handle_propose_commit(json!({ "message": "My custom commit message" }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
-        assert!(val["full_commit_message"].as_str().unwrap().contains("My custom commit message"));
+        assert!(
+            val["full_commit_message"]
+                .as_str()
+                .unwrap()
+                .contains("My custom commit message")
+        );
     }
 
     #[test]
@@ -1609,11 +1726,19 @@ pub(crate) mod tests {
         let env = TestEnv::new();
 
         let mock_script_path = env.project_root.join("mock_download.py");
-        fs::write(&mock_script_path, "import sys\nprint('sources/mock_paper.pdf')\n").unwrap();
+        fs::write(
+            &mock_script_path,
+            "import sys\nprint('sources/mock_paper.pdf')\n",
+        )
+        .unwrap();
 
         let sources_dir = env.project_root.join("sources");
         fs::create_dir_all(&sources_dir).unwrap();
-        fs::write(sources_dir.join("mock_paper.pdf"), "%PDF-1.4 dummy pdf content").unwrap();
+        fs::write(
+            sources_dir.join("mock_paper.pdf"),
+            "%PDF-1.4 dummy pdf content",
+        )
+        .unwrap();
 
         unsafe {
             std::env::set_var("SIL_DOWNLOAD_SCRIPT", mock_script_path.as_str());
@@ -1629,7 +1754,8 @@ pub(crate) mod tests {
         }
 
         assert!(res_noparse.is_error.is_none() || res_noparse.is_error == Some(false));
-        let val_noparse: serde_json::Value = serde_json::from_str(extract_text(&res_noparse)).unwrap();
+        let val_noparse: serde_json::Value =
+            serde_json::from_str(extract_text(&res_noparse)).unwrap();
         assert_eq!(val_noparse["parsed"], false);
     }
 
@@ -1673,5 +1799,3 @@ pub(crate) mod tests {
         assert!(val.is_array());
     }
 }
-
-

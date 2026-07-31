@@ -1,13 +1,13 @@
 //! Ratatui UI drawing code for `sil-tui`.
 
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Row, Table, Tabs, Wrap,
     },
-    Frame,
 };
 
 use crate::app::{ActiveTab, App, GlobalField, InputMode, RagField, SettingItem};
@@ -78,7 +78,9 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
                 .border_style(Style::default().fg(Color::Blue))
                 .title(Span::styled(
                     " 🔬 scientist-in-loop ",
-                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
                 ))
                 .title_alignment(Alignment::Left)
                 .title(Span::styled(
@@ -136,18 +138,28 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
             let is_sel = idx == app.selected_source_index;
             let prefix = if is_sel { "► " } else { "  " };
             let style = if is_sel {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
 
             let status_span = if src.parsed {
-                Span::styled("[✓ Parsed] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+                Span::styled(
+                    "[✓ Parsed] ",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                )
             } else {
                 Span::styled("[Unparsed] ", Style::default().fg(Color::DarkGray))
             };
 
-            let kind_span = Span::styled(format!("[{}] ", src.kind), Style::default().fg(Color::Magenta));
+            let kind_span = Span::styled(
+                format!("[{}] ", src.kind),
+                Style::default().fg(Color::Magenta),
+            );
             let name_span = Span::styled(&src.filename, style);
 
             items.push(ListItem::new(Line::from(vec![
@@ -174,7 +186,10 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
         let title_str = src.title.as_deref().unwrap_or("<Untitled>");
         let authors_str = src.authors.as_deref().unwrap_or("-");
         let venue_str = src.venue.as_deref().unwrap_or("-");
-        let year_str = src.year.map(|y| y.to_string()).unwrap_or_else(|| "-".to_string());
+        let year_str = src
+            .year
+            .map(|y| y.to_string())
+            .unwrap_or_else(|| "-".to_string());
         let doi_str = src.doi.as_deref().unwrap_or("-");
         let abstract_str = src.abstract_text.as_deref().unwrap_or("-");
 
@@ -187,7 +202,12 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
 
         vec![
             Line::from(vec![
-                Span::styled("Title: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "Title: ",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(title_str, Style::default().fg(Color::Yellow)),
             ]),
             Line::from(vec![
@@ -221,22 +241,34 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
                 Span::raw(doi_str),
             ]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("📊 Document Statistics:", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            ]),
+            Line::from(vec![Span::styled(
+                "📊 Document Statistics:",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             Line::from(vec![
                 Span::styled("• Abstract Word Count: ", Style::default().fg(Color::Cyan)),
                 Span::raw(word_count.to_string()),
             ]),
             Line::from(vec![
-                Span::styled("• Extracted References Count: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    "• Extracted References Count: ",
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::raw(ref_count.to_string()),
             ]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("Abstract Preview:", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            ]),
-            Line::from(Span::styled(abstract_str, Style::default().fg(Color::Reset))),
+            Line::from(vec![Span::styled(
+                "Abstract Preview:",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(Span::styled(
+                abstract_str,
+                Style::default().fg(Color::Reset),
+            )),
         ]
     } else {
         vec![Line::from(Span::styled(
@@ -272,7 +304,9 @@ fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
         let is_sel = app.selected_setting_index == flat_idx;
         let prefix = if is_sel { "► " } else { "  " };
         let style = if is_sel {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -313,15 +347,40 @@ fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
         let line = match item {
             SettingItem::Global(f) => {
                 let (label, val) = match f {
-                    GlobalField::AuthorName => ("Author Name", app.global_settings.author.name.as_str()),
-                    GlobalField::AuthorEmail => ("Author Email", app.global_settings.author.email.as_str()),
-                    GlobalField::AuthorAffiliation => ("Author Affiliation", app.global_settings.author.affiliation.as_str()),
-                    GlobalField::AuthorOrcid => ("Author ORCID", app.global_settings.author.orcid.as_deref().unwrap_or("")),
-                    GlobalField::GrantFunder => ("Default Grant Funder", app.global_settings.default_grant.funder.as_str()),
-                    GlobalField::GrantNumber => ("Default Grant Number", app.global_settings.default_grant.grant_number.as_str()),
-                    GlobalField::GrantAck => ("Default Grant Ack", app.global_settings.default_grant.acknowledgment.as_str()),
-                    GlobalField::Engine => ("Default LaTeX Engine", app.global_settings.default_latex_engine.as_str()),
-                    GlobalField::Template => ("Default Template", app.global_settings.default_template.as_str()),
+                    GlobalField::AuthorName => {
+                        ("Author Name", app.global_settings.author.name.as_str())
+                    }
+                    GlobalField::AuthorEmail => {
+                        ("Author Email", app.global_settings.author.email.as_str())
+                    }
+                    GlobalField::AuthorAffiliation => (
+                        "Author Affiliation",
+                        app.global_settings.author.affiliation.as_str(),
+                    ),
+                    GlobalField::AuthorOrcid => (
+                        "Author ORCID",
+                        app.global_settings.author.orcid.as_deref().unwrap_or(""),
+                    ),
+                    GlobalField::GrantFunder => (
+                        "Default Grant Funder",
+                        app.global_settings.default_grant.funder.as_str(),
+                    ),
+                    GlobalField::GrantNumber => (
+                        "Default Grant Number",
+                        app.global_settings.default_grant.grant_number.as_str(),
+                    ),
+                    GlobalField::GrantAck => (
+                        "Default Grant Ack",
+                        app.global_settings.default_grant.acknowledgment.as_str(),
+                    ),
+                    GlobalField::Engine => (
+                        "Default LaTeX Engine",
+                        app.global_settings.default_latex_engine.as_str(),
+                    ),
+                    GlobalField::Template => (
+                        "Default Template",
+                        app.global_settings.default_template.as_str(),
+                    ),
                 };
                 Line::from(vec![
                     Span::styled(format!("{prefix}{label:<24}: "), style),
@@ -488,15 +547,22 @@ fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let dirty_indicator = if app.dirty { " [UNSAVED CHANGES] " } else { "" };
 
-    let msg_style = if app.status_message.contains("saved") || app.status_message.starts_with('✓') {
-        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+    let msg_style = if app.status_message.contains("saved") || app.status_message.starts_with('✓')
+    {
+        Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD)
     } else if app.status_message.contains("cannot")
         || app.status_message.contains("Error")
         || app.status_message.contains("failed")
     {
-        Style::default().fg(Color::LightRed).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::LightRed)
+            .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
     };
 
     let footer_text = Paragraph::new(Line::from(vec![
@@ -528,7 +594,11 @@ fn draw_editing_popup(frame: &mut Frame, app: &App) {
         .border_style(Style::default().fg(Color::Yellow));
 
     let input_p = Paragraph::new(app.input_buffer.as_str())
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
         .block(popup_block);
 
     frame.render_widget(input_p, area);
@@ -545,7 +615,9 @@ fn draw_modal_picker(frame: &mut Frame, app: &App) {
         .enumerate()
         .map(|(idx, ca)| {
             let style = if idx == app.cache_coauthor_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -561,7 +633,11 @@ fn draw_modal_picker(frame: &mut Frame, app: &App) {
                 .border_type(BorderType::Double)
                 .border_style(Style::default().fg(Color::Cyan)),
         )
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
 
     frame.render_widget(list, area);
 }
@@ -583,13 +659,18 @@ fn draw_modal_add_author(frame: &mut Frame, app: &App) {
         let is_sel = idx == app.modal_field_index;
         let prefix = if is_sel { "► " } else { "  " };
         let style = if is_sel {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
         lines.push(Line::from(vec![
             Span::styled(format!("{prefix}{label:<12}: "), style),
-            Span::styled(if val.is_empty() { "_" } else { val }, Style::default().fg(Color::Cyan)),
+            Span::styled(
+                if val.is_empty() { "_" } else { val },
+                Style::default().fg(Color::Cyan),
+            ),
         ]));
     }
 
@@ -617,13 +698,18 @@ fn draw_modal_add_grant(frame: &mut Frame, app: &App) {
         let is_sel = idx == app.modal_field_index;
         let prefix = if is_sel { "► " } else { "  " };
         let style = if is_sel {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
         lines.push(Line::from(vec![
             Span::styled(format!("{prefix}{label:<15}: "), style),
-            Span::styled(if val.is_empty() { "_" } else { val }, Style::default().fg(Color::Green)),
+            Span::styled(
+                if val.is_empty() { "_" } else { val },
+                Style::default().fg(Color::Green),
+            ),
         ]));
     }
 
@@ -647,7 +733,11 @@ fn draw_modal_add_source_link(frame: &mut Frame, app: &App) {
         .border_style(Style::default().fg(Color::Cyan));
 
     let paragraph = Paragraph::new(app.new_source_link_buffer.as_str())
-        .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
         .block(block);
 
     frame.render_widget(paragraph, area);
@@ -664,7 +754,11 @@ fn draw_modal_rename_source(frame: &mut Frame, app: &App) {
         .border_style(Style::default().fg(Color::Yellow));
 
     let paragraph = Paragraph::new(app.rename_source_buffer.as_str())
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
         .block(block);
 
     frame.render_widget(paragraph, area);
@@ -683,12 +777,21 @@ fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
     let text = vec![
         Line::from(""),
         Line::from(vec![
-            Span::styled("Are you sure you want to delete source '", Style::default().fg(Color::White)),
-            Span::styled(filename, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Are you sure you want to delete source '",
+                Style::default().fg(Color::White),
+            ),
+            Span::styled(
+                filename,
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("'?", Style::default().fg(Color::White)),
         ]),
         Line::from(""),
-        Line::from(Span::styled("Press 'y' or Enter to confirm, 'n' or Esc to cancel.", Style::default().fg(Color::Yellow))),
+        Line::from(Span::styled(
+            "Press 'y' or Enter to confirm, 'n' or Esc to cancel.",
+            Style::default().fg(Color::Yellow),
+        )),
     ];
 
     let block = Block::default()
@@ -697,7 +800,9 @@ fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(Color::Red));
 
-    let paragraph = Paragraph::new(text).block(block).alignment(Alignment::Center);
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .alignment(Alignment::Center);
     frame.render_widget(paragraph, area);
 }
 
@@ -712,16 +817,28 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
     };
 
     let rows: Vec<Row> = if app.selected_source_references.is_empty() {
-        vec![Row::new(vec!["-", "No extracted references found for this source.", "-", "-"])]
+        vec![Row::new(vec![
+            "-",
+            "No extracted references found for this source.",
+            "-",
+            "-",
+        ])]
     } else {
         app.selected_source_references
             .iter()
             .map(|r| {
                 Row::new(vec![
-                    Span::styled(format!("[{}]", r.ref_index), Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("[{}]", r.ref_index),
+                        Style::default().fg(Color::Cyan),
+                    ),
                     Span::raw(r.authors.as_deref().unwrap_or("-")),
                     Span::raw(r.title.as_deref().unwrap_or(&r.raw_text)),
-                    Span::raw(r.year.map(|y| y.to_string()).unwrap_or_else(|| "-".to_string())),
+                    Span::raw(
+                        r.year
+                            .map(|y| y.to_string())
+                            .unwrap_or_else(|| "-".to_string()),
+                    ),
                 ])
             })
             .collect()
@@ -737,8 +854,11 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
         ],
     )
     .header(
-        Row::new(vec!["#", "Authors", "Title / Raw Text", "Year"])
-            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Row::new(vec!["#", "Authors", "Title / Raw Text", "Year"]).style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
     )
     .block(
         Block::default()
@@ -747,7 +867,9 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
             .border_style(Style::default().fg(Color::Cyan))
             .title(Span::styled(
                 format!(" 📚 References for {filename} (Press Esc / 'q' to close) "),
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             )),
     );
 
@@ -793,13 +915,19 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
 
     // 1. Manuscript Progress & Health Audit
     let health_lines = vec![
-        Line::from(vec![
-            Span::styled("Manuscript Health & Progress Status", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Manuscript Health & Progress Status",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("• Stage: ", Style::default().fg(Color::Cyan)),
-            Span::styled("Stage 5 (Polish & Production)", Style::default().fg(Color::Green)),
+            Span::styled(
+                "Stage 5 (Polish & Production)",
+                Style::default().fg(Color::Green),
+            ),
         ]),
         Line::from(vec![
             Span::styled("• Main Draft: ", Style::default().fg(Color::Cyan)),
@@ -807,7 +935,10 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("• Citation Integrity: ", Style::default().fg(Color::Cyan)),
-            Span::styled("OK (references.bib synchronized)", Style::default().fg(Color::Green)),
+            Span::styled(
+                "OK (references.bib synchronized)",
+                Style::default().fg(Color::Green),
+            ),
         ]),
         Line::from(vec![
             Span::styled("• Label References: ", Style::default().fg(Color::Cyan)),
@@ -822,30 +953,55 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         .title(" [1] Manuscript Completion & Health Audit ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
-    frame.render_widget(Paragraph::new(health_lines).block(health_block), top_chunks[0]);
+    frame.render_widget(
+        Paragraph::new(health_lines).block(health_block),
+        top_chunks[0],
+    );
 
     // 2. Active Idea & TODO Blocks (# -- X -- #)
     let idea_lines = vec![
-        Line::from(vec![
-            Span::styled("# -- X -- # Idea & TODO Notes", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "# -- X -- # Idea & TODO Notes",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("1. [Intro / Lines 12-18]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Refine motivation for self-attention baseline", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "1. [Intro / Lines 12-18]: ",
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::styled(
+                "Refine motivation for self-attention baseline",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
-            Span::styled("2. [Methods / Lines 45-52]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Add equation comparing loss functions A vs B", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "2. [Methods / Lines 45-52]: ",
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::styled(
+                "Add equation comparing loss functions A vs B",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
-            Span::styled("3. [Results / Lines 88-95]: ", Style::default().fg(Color::Yellow)),
-            Span::styled("Verify dataset metrics table with latest run", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "3. [Results / Lines 88-95]: ",
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::styled(
+                "Verify dataset metrics table with latest run",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.", Style::default().fg(Color::Reset)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.",
+            Style::default().fg(Color::Reset),
+        )]),
     ];
     let idea_block = Block::default()
         .title(" [2] Active Ideas & TODO Blocks (# -- X -- #) ")
@@ -855,69 +1011,109 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
 
     // 3. Top Journal Digest Feed
     let digest_lines = vec![
-        Line::from(vec![
-            Span::styled("Top Peer-Reviewed Journal Feed (Crossref / Nature / IEEE)", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Top Peer-Reviewed Journal Feed (Crossref / Nature / IEEE)",
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("• [Nature 2024] ", Style::default().fg(Color::Green)),
-            Span::styled("Quantum Advantage in Scientific Discovery", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "Quantum Advantage in Scientific Discovery",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("• [IEEE TPAMI] ", Style::default().fg(Color::Green)),
-            Span::styled("Scalable Multi-Agent Foundation Models", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "Scalable Multi-Agent Foundation Models",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("• [JMLR] ", Style::default().fg(Color::Green)),
-            Span::styled("Theoretical Guarantees for Attention Mechanics", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "Theoretical Guarantees for Attention Mechanics",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("Run 'sil digest <query>' to update top journal feed", Style::default().fg(Color::Reset)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Run 'sil digest <query>' to update top journal feed",
+            Style::default().fg(Color::Reset),
+        )]),
     ];
     let digest_block = Block::default()
         .title(" [3] Literature Digest (Top Journals) ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Magenta));
-    frame.render_widget(Paragraph::new(digest_lines).block(digest_block), bottom_chunks[0]);
+    frame.render_widget(
+        Paragraph::new(digest_lines).block(digest_block),
+        bottom_chunks[0],
+    );
 
     // 4. Scientist Command Center & Shortcut Guide
     let guide_lines = vec![
-        Line::from(vec![
-            Span::styled("Daily Scientist Helper Shortcuts", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Daily Scientist Helper Shortcuts",
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::styled("  Switch between Dashboard, Paper Draft, Sources, and Settings", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "  Switch between Dashboard, Paper Draft, Sources, and Settings",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
-            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  sil doctor", Style::default().fg(Color::Yellow)),
-            Span::styled("       Run full host + manuscript health audit", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "       Run full host + manuscript health audit",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  sil digest <q>", Style::default().fg(Color::Yellow)),
-            Span::styled("    Fetch top journal publications", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "    Fetch top journal publications",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  sil todo", Style::default().fg(Color::Yellow)),
-            Span::styled("          List all # -- X -- # ideas in draft", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "          List all # -- X -- # ideas in draft",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  sil propose", Style::default().fg(Color::Yellow)),
-            Span::styled("       Create git commit proposal with Sci-Action", Style::default().fg(Color::Reset)),
+            Span::styled(
+                "       Create git commit proposal with Sci-Action",
+                Style::default().fg(Color::Reset),
+            ),
         ]),
     ];
     let guide_block = Block::default()
         .title(" [4] Scientist Command Center ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Green));
-    frame.render_widget(Paragraph::new(guide_lines).block(guide_block), bottom_chunks[1]);
+    frame.render_widget(
+        Paragraph::new(guide_lines).block(guide_block),
+        bottom_chunks[1],
+    );
 }
 
 fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
@@ -938,15 +1134,23 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
             let is_selected = app.paper_section_index == idx;
             let prefix = if is_selected { "► " } else { "  " };
             let style = if is_selected {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::Reset)
             };
             items.push(ListItem::new(Line::from(vec![
                 Span::styled(prefix, style),
-                Span::styled(format!("[{}] ", sec.kind), Style::default().fg(Color::Magenta)),
+                Span::styled(
+                    format!("[{}] ", sec.kind),
+                    Style::default().fg(Color::Magenta),
+                ),
                 Span::styled(&sec.title, style),
-                Span::styled(format!(" (L{})", sec.line_start), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!(" (L{})", sec.line_start),
+                    Style::default().fg(Color::Cyan),
+                ),
             ])));
         }
     }
@@ -1002,16 +1206,15 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
     let area = centered_rect(80, 60, frame.area());
     frame.render_widget(Clear, area);
 
-    let sec_title = if !app.paper_sections.is_empty()
-        && app.paper_section_index < app.paper_sections.len()
-    {
-        format!(
-            " Editing Section: {} (Enter: Confirm, Esc: Cancel) ",
-            app.paper_sections[app.paper_section_index].title
-        )
-    } else {
-        " Editing paper_draft.tex (Enter: Confirm, Esc: Cancel) ".to_string()
-    };
+    let sec_title =
+        if !app.paper_sections.is_empty() && app.paper_section_index < app.paper_sections.len() {
+            format!(
+                " Editing Section: {} (Enter: Confirm, Esc: Cancel) ",
+                app.paper_sections[app.paper_section_index].title
+            )
+        } else {
+            " Editing paper_draft.tex (Enter: Confirm, Esc: Cancel) ".to_string()
+        };
 
     let popup_block = Block::default()
         .borders(Borders::ALL)
@@ -1019,7 +1222,9 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
         .border_style(Style::default().fg(Color::Yellow))
         .title(Span::styled(
             sec_title,
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let paragraph = Paragraph::new(app.paper_edit_buffer.as_str())

@@ -61,4 +61,3 @@ mod tests {
         assert!(md.contains("Empty"));
     }
 }
-

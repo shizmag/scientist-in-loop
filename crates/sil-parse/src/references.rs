@@ -107,7 +107,9 @@ fn is_noise_line(line: &str) -> bool {
 }
 
 /// Extract metadata fields (authors, year, title, doi) from a raw citation string.
-fn parse_entry_metadata(text: &str) -> (Option<String>, Option<i32>, Option<String>, Option<String>) {
+fn parse_entry_metadata(
+    text: &str,
+) -> (Option<String>, Option<i32>, Option<String>, Option<String>) {
     let doi = extract_doi(text);
     let year = extract_year(text);
     let title = extract_quoted_title(text).or_else(|| extract_unquoted_title(text));
@@ -136,12 +138,20 @@ fn extract_unquoted_title(text: &str) -> Option<String> {
     let parts: Vec<&str> = content.split(". ").collect();
     if parts.len() >= 2 {
         let candidate = parts[1].trim().trim_end_matches('.');
-        if candidate.len() >= 5 && candidate.len() <= 200 && !candidate.contains("http") && !candidate.contains("doi:") {
+        if candidate.len() >= 5
+            && candidate.len() <= 200
+            && !candidate.contains("http")
+            && !candidate.contains("doi:")
+        {
             return Some(candidate.to_string());
         }
     } else if parts.len() == 1 {
         let candidate = parts[0].trim().trim_end_matches('.');
-        if candidate.len() >= 5 && candidate.len() <= 200 && !candidate.contains("http") && !candidate.contains("doi:") {
+        if candidate.len() >= 5
+            && candidate.len() <= 200
+            && !candidate.contains("http")
+            && !candidate.contains("doi:")
+        {
             return Some(candidate.to_string());
         }
     }
@@ -155,16 +165,16 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
     if let Some(t) = title
         && let Some(pos) = clean.find(t)
     {
-        let candidate = clean[..pos]
-            .trim_start_matches('-')
-            .trim();
+        let candidate = clean[..pos].trim_start_matches('-').trim();
         // Strip leading [N] or N.
         let candidate = if let Some(idx) = candidate.find(']') {
             candidate[idx + 1..].trim()
         } else {
             candidate
         };
-        let candidate = candidate.trim_end_matches(&[' ', '"', '“', ',', '.'][..]).trim();
+        let candidate = candidate
+            .trim_end_matches(&[' ', '"', '“', ',', '.'][..])
+            .trim();
         if !candidate.is_empty() && candidate.len() < 150 {
             return Some(candidate.to_string());
         }
@@ -173,9 +183,7 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
     if let Some(y) = year {
         let year_str = y.to_string();
         if let Some(pos) = clean.find(&year_str) {
-            let candidate = clean[..pos]
-                .trim_start_matches('-')
-                .trim();
+            let candidate = clean[..pos].trim_start_matches('-').trim();
             let candidate = if let Some(idx) = candidate.find(']') {
                 candidate[idx + 1..].trim()
             } else {
@@ -263,10 +271,16 @@ Some content...
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].ref_index, 1);
         assert_eq!(entries[0].year, Some(2020));
-        assert_eq!(entries[0].title.as_deref(), Some("Retrieval-augmented generation for knowledge-intensive nlp tasks"));
+        assert_eq!(
+            entries[0].title.as_deref(),
+            Some("Retrieval-augmented generation for knowledge-intensive nlp tasks")
+        );
         assert_eq!(entries[1].ref_index, 2);
         assert_eq!(entries[1].year, Some(2024));
-        assert_eq!(entries[1].title.as_deref(), Some("Benchmarking large language models in retrievalaugmented generation"));
+        assert_eq!(
+            entries[1].title.as_deref(),
+            Some("Benchmarking large language models in retrievalaugmented generation")
+        );
     }
 
     #[test]
@@ -279,12 +293,17 @@ Some content...
         let entries = parse_reference_entries(&sid, raw);
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].year, Some(2017));
-        assert_eq!(entries[0].title.as_deref(), Some("Attention is all you need."));
+        assert_eq!(
+            entries[0].title.as_deref(),
+            Some("Attention is all you need.")
+        );
         assert!(entries[0].doi.as_ref().unwrap().contains("10.5555"));
         assert_eq!(entries[1].year, Some(2019));
         assert_eq!(
             entries[1].title.as_deref(),
-            Some("BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.")
+            Some(
+                "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding."
+            )
         );
     }
 
@@ -309,7 +328,10 @@ Mind, 59, 433-460, 1950.
 
         assert_eq!(entries[1].ref_index, 2);
         assert_eq!(entries[1].year, Some(1950));
-        assert_eq!(entries[1].title.as_deref(), Some("Computing Machinery and Intelligence."));
+        assert_eq!(
+            entries[1].title.as_deref(),
+            Some("Computing Machinery and Intelligence.")
+        );
     }
 
     #[test]
@@ -317,7 +339,13 @@ Mind, 59, 433-460, 1950.
         let text1 = "[1] Smith et al. 2020. doi:10.1038/s41586-020-1234-y";
         let text2 = "[2] Jones et al. 2021. https://doi.org/10.1016/j.cell.2021.01.001";
 
-        assert_eq!(extract_doi(text1).as_deref(), Some("10.1038/s41586-020-1234-y"));
-        assert_eq!(extract_doi(text2).as_deref(), Some("10.1016/j.cell.2021.01.001"));
+        assert_eq!(
+            extract_doi(text1).as_deref(),
+            Some("10.1038/s41586-020-1234-y")
+        );
+        assert_eq!(
+            extract_doi(text2).as_deref(),
+            Some("10.1016/j.cell.2021.01.001")
+        );
     }
 }

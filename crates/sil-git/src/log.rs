@@ -29,11 +29,7 @@ pub fn log_entries(
     }
     let out = match run_git(
         root,
-        &[
-            "log",
-            &format!("-n{limit}"),
-            "--format=%h%x1f%s%x1f%b%x1e",
-        ],
+        &["log", &format!("-n{limit}"), "--format=%h%x1f%s%x1f%b%x1e"],
     ) {
         Ok(o) => o,
         Err(GitError::CommandFailed { stderr, .. })
@@ -102,11 +98,7 @@ mod tests {
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
         init_repo(&root).unwrap();
         std::fs::write(root.join("a.txt"), "1").unwrap();
-        commit_all(
-            &root,
-            &CommitProposal::new("with trailer", SciAction::Init),
-        )
-        .unwrap();
+        commit_all(&root, &CommitProposal::new("with trailer", SciAction::Init)).unwrap();
         std::fs::write(root.join("b.txt"), "2").unwrap();
         // plain commit without trailer
         crate::cmd::run_git(&root, &["add", "-A"]).unwrap();
@@ -144,11 +136,7 @@ mod tests {
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
         init_repo(&root).unwrap();
         std::fs::write(root.join("x.txt"), "1").unwrap();
-        commit_all(
-            &root,
-            &CommitProposal::new("fetch", SciAction::FetchSource),
-        )
-        .unwrap();
+        commit_all(&root, &CommitProposal::new("fetch", SciAction::FetchSource)).unwrap();
         let sci = log_entries(&root, 5, true).unwrap();
         assert_eq!(sci[0].action, Some(SciAction::FetchSource));
     }

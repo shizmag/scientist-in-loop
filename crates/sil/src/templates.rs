@@ -8,8 +8,7 @@ pub const CONFIG_YAML: &str = include_str!("../../../templates/config.yaml");
 /// Default `.sil/structure.yaml`.
 pub const STRUCTURE_YAML: &str = include_str!("../../../templates/structure.yaml");
 /// Example structure document.
-pub const STRUCTURE_EXAMPLE_YAML: &str =
-    include_str!("../../../templates/structure.example.yaml");
+pub const STRUCTURE_EXAMPLE_YAML: &str = include_str!("../../../templates/structure.example.yaml");
 /// SYSTEM skill.
 pub const SKILL_SYSTEM: &str = include_str!("../../../templates/skills/SYSTEM.md");
 /// paper skill.
