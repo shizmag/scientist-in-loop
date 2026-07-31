@@ -750,7 +750,15 @@ mod tests {
             created_at: String::new(),
         };
 
-        insert_chunks(&conn, &[parent_chunk.clone(), child_chunk.clone(), child_no_parent.clone()]).unwrap();
+        insert_chunks(
+            &conn,
+            &[
+                parent_chunk.clone(),
+                child_chunk.clone(),
+                child_no_parent.clone(),
+            ],
+        )
+        .unwrap();
         let fetched_chunks = get_chunks_for_source(&conn, &sid).unwrap();
         assert_eq!(fetched_chunks.len(), 3);
 
@@ -760,7 +768,11 @@ mod tests {
 
         // 3. Search hybrid zero limit and special character query
         let embedder = OnnxEmbedder::new(None::<&std::path::Path>);
-        assert!(search_hybrid(&conn, &embedder, "content", 0, true).unwrap().is_empty());
+        assert!(
+            search_hybrid(&conn, &embedder, "content", 0, true)
+                .unwrap()
+                .is_empty()
+        );
 
         let hits_special = search_hybrid(&conn, &embedder, "!!!@@@", 5, true).unwrap();
         assert!(hits_special.is_empty());
@@ -775,5 +787,3 @@ mod tests {
         assert!(get_chunks_for_source(&conn, &sid).unwrap().is_empty());
     }
 }
-
-

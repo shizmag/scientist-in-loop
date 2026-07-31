@@ -265,7 +265,6 @@ mod tests {
         idea3.created_at = "2026-01-03 10:00:00".into();
         upsert_todo_idea(&conn, &idea3).unwrap();
 
-
         // 5. list_todo_ideas_filtered with sort_by = "date", "section", and unknown
         let sort_date = list_todo_ideas_filtered(&conn, None, None, None, Some("date")).unwrap();
         assert_eq!(sort_date.len(), 3);
@@ -279,7 +278,9 @@ mod tests {
         assert_eq!(sort_other.len(), 3);
 
         // Filter all criteria simultaneously
-        let filtered = list_todo_ideas_filtered(&conn, Some("open"), Some("high"), Some("sec_b"), None).unwrap();
+        let filtered =
+            list_todo_ideas_filtered(&conn, Some("open"), Some("high"), Some("sec_b"), None)
+                .unwrap();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].id, "todo_1");
 
@@ -288,4 +289,3 @@ mod tests {
         assert!(!delete_todo_idea(&conn, "todo_1").unwrap());
     }
 }
-

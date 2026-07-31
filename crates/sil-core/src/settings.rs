@@ -674,4 +674,3 @@ mod tests {
         assert_eq!(empty_rag.resolve_embedder_path(), None);
     }
 }
-

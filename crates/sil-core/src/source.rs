@@ -242,7 +242,10 @@ impl ReferenceEntry {
         let cite_key = crate::bib::slug_cite_key(title_or_raw);
         let author = self.authors.as_deref().unwrap_or("Unknown");
         let journal = self.venue.as_deref().unwrap_or("Unknown");
-        let year = self.year.map(|y| y.to_string()).unwrap_or_else(|| "n.d.".to_string());
+        let year = self
+            .year
+            .map(|y| y.to_string())
+            .unwrap_or_else(|| "n.d.".to_string());
 
         let mut fields = vec![
             format!("  title={{{}}}", title_or_raw),

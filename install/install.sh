@@ -698,6 +698,8 @@ print_summary() {
   else
     dim "latex optional (--with-latex)"
   fi
+  ok "xberg (structured metadata & citation extraction compiled into sil binary)"
+  dim "xberg model cache directory: /Volumes/happy-disk/models/xberg/huggingface"
   if have sil; then ok "sil"; else dim "sil not on PATH yet"; fi
   return "${status}"
 }

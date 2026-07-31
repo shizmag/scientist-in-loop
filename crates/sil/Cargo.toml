@@ -28,6 +28,7 @@ sil-tui = { workspace = true }
 sil-mcp = { workspace = true }
 termimad = { workspace = true }
 crossterm = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
@@ -36,3 +37,4 @@ predicates = { workspace = true }
 serde_json = { workspace = true }
 sil-parse = { workspace = true }
 zip = { workspace = true }
+tokio = { workspace = true, features = ["full"] }

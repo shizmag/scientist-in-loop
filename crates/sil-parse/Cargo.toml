@@ -7,15 +7,21 @@ description = "PDF parsing orchestration (Marker via Python)"
 publish = false
 
 [dependencies]
+anyhow = { workspace = true }
 camino = { workspace = true }
 console = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 sil-core = { workspace = true }
 sil-db = { workspace = true }
 sil-regex = { workspace = true }
-serde_json = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 ureq = { workspace = true }
+xberg = { workspace = true }
 
 [dev-dependencies]
+
 

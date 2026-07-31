@@ -108,7 +108,11 @@ fn split_raw_entries(block: &str) -> Vec<String> {
 
     let mut cleaned_entries = Vec::new();
     for entry in entries {
-        if entry.contains("$$") || entry.contains("\\mid") || entry.contains("\\mathbf") || entry.contains("\\mathcal") {
+        if entry.contains("$$")
+            || entry.contains("\\mid")
+            || entry.contains("\\mathbf")
+            || entry.contains("\\mathcal")
+        {
             continue;
         }
 
@@ -119,8 +123,13 @@ fn split_raw_entries(block: &str) -> Vec<String> {
         let lower = entry.to_lowercase();
         let has_et_al = lower.contains("et al");
         let has_author_comma = entry.contains(".,") || entry.matches(',').count() > 1;
-        
-        let has_citation_indicators = year.is_some() || doi.is_some() || arxiv.is_some() || venue.is_some() || has_et_al || has_author_comma;
+
+        let has_citation_indicators = year.is_some()
+            || doi.is_some()
+            || arxiv.is_some()
+            || venue.is_some()
+            || has_et_al
+            || has_author_comma;
 
         if !has_citation_indicators {
             continue;
@@ -410,7 +419,10 @@ $$ I[Y; M] = \sum_x ... $$
         let entries = parse_reference_entries(&sid, raw);
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].year, Some(2017));
-        assert_eq!(entries[0].title.as_deref(), Some("Attention is all you need."));
+        assert_eq!(
+            entries[0].title.as_deref(),
+            Some("Attention is all you need.")
+        );
         // The raw_text in entry might still contain some things based on how clean_reference_text works,
         // but it should strip the span tag. Let's verify the span tag is stripped from authors/title parsing.
         assert!(!entries[0].authors.as_deref().unwrap_or("").contains("span"));
@@ -450,7 +462,9 @@ $$ I[Y; M] = \sum_x ... $$
         assert!(is_noise_line("Page 42"));
         assert!(is_noise_line("page 1 of 10"));
         assert!(is_noise_line("arXiv:2405.12345v1 [cs.CL]"));
-        assert!(!is_noise_line("Vaswani et al. Attention is all you need. 2017."));
+        assert!(!is_noise_line(
+            "Vaswani et al. Attention is all you need. 2017."
+        ));
     }
 
     #[test]
@@ -464,8 +478,6 @@ $$ I[Y; M] = \sum_x ... $$
         assert_eq!(doi, None);
     }
 
-
-
     #[test]
     fn test_split_raw_entries_math_filtering() {
         let sid = SourceId::new("math.pdf");
@@ -478,4 +490,3 @@ $$ I[Y; M] = \sum_x ... $$
         assert_eq!(entries[0].year, Some(2017));
     }
 }
-

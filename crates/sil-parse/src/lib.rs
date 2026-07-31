@@ -10,6 +10,7 @@ pub mod journal_digest;
 mod marker;
 pub mod references;
 mod validate;
+pub mod xberg_metadata;
 
 pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};
 pub use error::ParseError;
@@ -60,6 +61,43 @@ mod tests {
         assert!(db.is_parsed(&result.document.id).unwrap());
         let err = parse_one(&path, &db, &runner, &ui).unwrap_err();
         assert!(err.to_string().contains("already parsed"));
+    }
+
+    #[test]
+    fn verify_database_fields_populated_correctly() {
+        let dir = tempfile::tempdir().unwrap();
+        let pdf = dir.path().join("attention.pdf");
+        write_fixture_pdf(&pdf).unwrap();
+        let path = Utf8PathBuf::from_path_buf(pdf).unwrap();
+        let db = SilDb::open_in_memory().unwrap();
+        let ui = NullUi::new();
+        let runner = StubMarkerRunner {
+            content: "# Attention Is All You Need\n\nAshish Vaswani, Noam Shazeer, Niki Parmar\n\nAbstract\nThe dominant sequence transduction models...\n\nReferences\n1. A. Vaswani et al. Attention Is All You Need. NeurIPS 2017.".into(),
+        };
+
+        let result = parse_one(&path, &db, &runner, &ui).unwrap();
+        assert!(result.document.parsed);
+
+        // Fetch from database and sample check fields
+        let sources = db.list_sources().unwrap();
+        let doc = sources
+            .iter()
+            .find(|s| s.id == result.document.id)
+            .expect("Document must exist in DB");
+        assert_eq!(doc.title.as_deref(), Some("Attention Is All You Need"));
+        assert!(doc.authors.as_ref().unwrap().contains("Vaswani"));
+        assert!(doc.references_text.is_some());
+
+        // Check reference entries in database
+        let refs = db.get_references_for_source(&result.document.id).unwrap();
+        assert!(
+            !refs.is_empty(),
+            "Extracted references must be stored in database"
+        );
+        assert!(
+            refs[0].raw_text.contains("Vaswani")
+                || refs[0].title.as_deref().unwrap_or("").contains("Attention")
+        );
     }
 
     #[test]

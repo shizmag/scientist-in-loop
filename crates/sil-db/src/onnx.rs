@@ -254,10 +254,16 @@ mod tests {
 
         // Token overlap scoring
         let score_match = reranker_none
-            .score("transformer attention", "Attention is all you need for transformers")
+            .score(
+                "transformer attention",
+                "Attention is all you need for transformers",
+            )
             .unwrap();
         let score_no_match = reranker_none
-            .score("quantum computing", "Attention is all you need for transformers")
+            .score(
+                "quantum computing",
+                "Attention is all you need for transformers",
+            )
             .unwrap();
         assert!(score_match > score_no_match);
 
@@ -266,9 +272,10 @@ mod tests {
             "Attention mechanism in transformers",
             "Recipe for baking sourdough bread",
         ];
-        let scores = reranker_none.rerank("transformer attention", &docs).unwrap();
+        let scores = reranker_none
+            .rerank("transformer attention", &docs)
+            .unwrap();
         assert_eq!(scores.len(), 2);
         assert!(scores[0] > scores[1]);
     }
 }
-

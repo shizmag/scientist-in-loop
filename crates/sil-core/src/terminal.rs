@@ -474,4 +474,3 @@ mod tests {
         let _progress3 = IndicatifProgress { pb: pb_prog3 };
     }
 }
-

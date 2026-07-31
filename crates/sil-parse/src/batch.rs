@@ -90,7 +90,25 @@ pub fn parse_one(
 
     hydrate_source_document_metadata(&mut doc, &content, path);
 
-    doc.references_text = crate::references::extract_references_block(&content);
+    if doc.kind == SourceKind::Pdf
+        && let Ok(rt) = tokio::runtime::Runtime::new()
+        && let Ok(meta) = rt.block_on(crate::xberg_metadata::extract_metadata_utf8(path))
+    {
+        if !meta.title.trim().is_empty() {
+            doc.title = Some(meta.title);
+        }
+        if !meta.authors.is_empty() {
+            doc.authors = Some(meta.authors.join(", "));
+        }
+        if !meta.citations.is_empty() {
+            doc.references_text = Some(meta.citations.join("\n"));
+        }
+    }
+
+    if doc.references_text.is_none() {
+        doc.references_text = crate::references::extract_references_block(&content);
+    }
+
     doc.parsed = true;
     doc.status = Some(DocumentStatus::Valid(doc.kind));
 
@@ -236,6 +254,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                 let lower = candidate.to_lowercase();
                 if !candidate.is_empty()
                     && !candidate.starts_with("page-")
+                    && !candidate.starts_with("Parsed from")
                     && lower != "abstract"
                     && lower != "contents"
                     && !lower.starts_with("1 introduction")
@@ -260,29 +279,36 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     if doc.authors.is_none() || doc.authors.as_deref().is_some_and(|a| a.trim().is_empty()) {
         let mut author_lines = Vec::new();
         let mut past_title = false;
-        for (i, line) in header_text.lines().enumerate() {
+        for line in header_text.lines() {
             let clean = sil_regex::strip_html_spans(line).trim().to_string();
+            let candidate = clean.trim_start_matches('#').trim().to_string();
             let lower_clean = clean.to_lowercase();
+            let lower_cand = candidate.to_lowercase();
 
-            if lower_clean == "abstract" 
-                || lower_clean.starts_with("1 introduction") 
-                || lower_clean.starts_with("keywords") 
-                || lower_clean.starts_with("index terms") 
-                || lower_clean.contains("date:") 
-                || lower_clean.contains("code:") 
-                || lower_clean.contains("data:") 
+            if lower_cand.starts_with("parsed from") {
+                continue;
+            }
+
+            if lower_clean == "abstract"
+                || lower_clean.starts_with("1 introduction")
+                || lower_clean.starts_with("keywords")
+                || lower_clean.starts_with("index terms")
+                || lower_clean.contains("date:")
+                || lower_clean.contains("code:")
+                || lower_clean.contains("data:")
             {
                 break;
             }
 
             let is_heading = clean.starts_with('#');
-            let is_title_match = doc.title.as_deref().is_some_and(|t| clean.contains(t) || t.contains(&clean));
+            let is_title_match = doc.title.as_deref().is_some_and(|t| {
+                !clean.is_empty() && (clean.contains(t) || (clean.len() >= 4 && t.contains(&clean)))
+            });
 
-            if !past_title
-                && (is_heading || is_title_match || i == 0) {
-                    past_title = true;
-                    continue;
-                }
+            if !past_title && (is_heading || is_title_match) {
+                past_title = true;
+                continue;
+            }
 
             if past_title && !clean.is_empty() {
                 if is_heading {
@@ -304,6 +330,8 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                     || lower.starts_with("october")
                     || lower.starts_with("november")
                     || lower.starts_with("december")
+                    || lower.contains("university")
+                    || lower.contains("department")
                 {
                     continue;
                 }
@@ -312,7 +340,14 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                 let cleaned_author = sil_regex::strip_author_footnote_markers(&cleaned_author);
 
                 let cleaned_author = cleaned_author
-                    .replace(['*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], "")
+                    .replace(
+                        [
+                            '*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶',
+                            '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8',
+                            '9',
+                        ],
+                        "",
+                    )
                     .trim_start_matches('-')
                     .trim_matches(|c: char| c.is_ascii_punctuation() || c.is_whitespace())
                     .to_string();
@@ -328,7 +363,11 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
 
                 if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
                     // Reject lines that start with non-author lower-case text
-                    if cleaned_author.chars().next().is_some_and(|c| c.is_lowercase()) {
+                    if cleaned_author
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_lowercase())
+                    {
                         continue;
                     }
 
@@ -336,8 +375,12 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                     let words: Vec<&str> = cleaned_author.split_whitespace().collect();
                     let word_count = words.len();
                     if word_count > 0 {
-                        let capitalized_count = words.iter().filter(|w| w.chars().next().is_some_and(|c| c.is_uppercase())).count();
-                        if word_count > 15 || (word_count > 3 && capitalized_count < word_count / 2) {
+                        let capitalized_count = words
+                            .iter()
+                            .filter(|w| w.chars().next().is_some_and(|c| c.is_uppercase()))
+                            .count();
+                        if word_count > 15 || (word_count > 3 && capitalized_count < word_count / 2)
+                        {
                             continue;
                         }
                     }
@@ -388,14 +431,14 @@ mod tests {
         let mut doc = SourceDocument::new(Utf8PathBuf::from("test.pdf"));
         doc.kind = SourceKind::Pdf;
         doc.title = Some("Test Title".to_string());
-        
+
         let header = r#"# Test Title
 [Sebastian Farquhar](#page-1-0)1, [Jannik Kossen](#page-1-0)1 2, [Lorenz Kuhn](#page-1-0)1, [Yarin Gal](#page-1-0)1
 1 University of Oxford 2 OATML
 Abstract"#;
 
         hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("test.pdf"));
-        
+
         assert_eq!(
             doc.authors.unwrap(),
             "Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, Yarin Gal"
@@ -407,7 +450,7 @@ Abstract"#;
         let mut doc = SourceDocument::new(Utf8PathBuf::from("test2.pdf"));
         doc.kind = SourceKind::Pdf;
         doc.title = Some("Another Paper".to_string());
-        
+
         let header = r#"# Another Paper
 Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
 <sup>a</sup> Some University Address
@@ -415,7 +458,7 @@ Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
 1 Introduction"#;
 
         hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("test2.pdf"));
-        
+
         assert_eq!(
             doc.authors.unwrap(),
             "Ushtar Ali, Steven Lynden, Akiyoshi Matono"
@@ -427,7 +470,7 @@ Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
         let mut doc = SourceDocument::new(Utf8PathBuf::from("2026.gem-main.4.pdf"));
         doc.kind = SourceKind::Pdf;
         doc.title = Some("Implicit Ensembles of Ensem".to_string());
-        
+
         let header = r#"Implicit Ensembles of Ensem
 Sebastian Farquhar, Armen Der Kiureghian
 a Alibaba-NTU Singapore Joint Research Institute
@@ -436,7 +479,7 @@ Keywords: something
 Abstract"#;
 
         hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("2026.gem-main.4.pdf"));
-        
+
         assert_eq!(
             doc.authors.unwrap(),
             "Sebastian Farquhar, Armen Der Kiureghian"

@@ -225,10 +225,7 @@ mod tests {
 
     #[test]
     fn test_tool_input_schema_object() {
-        let schema = ToolInputSchema::object(
-            json!({"param1": {"type": "string"}}),
-            vec!["param1"],
-        );
+        let schema = ToolInputSchema::object(json!({"param1": {"type": "string"}}), vec!["param1"]);
         assert_eq!(schema.schema_type, "object");
         assert_eq!(schema.required, vec!["param1"]);
 
@@ -257,4 +254,3 @@ mod tests {
         assert!(!ser_text.contains("isError"));
     }
 }
-

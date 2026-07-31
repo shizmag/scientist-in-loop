@@ -389,4 +389,3 @@ rag:
         assert!(err.to_string().contains("broken.yaml"));
     }
 }
-

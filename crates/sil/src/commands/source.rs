@@ -343,7 +343,7 @@ pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
 
 /// Heal parsed sources: re-extract references and fetch missing metadata via DOI.
 pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
-    let (_root, _config, paths) = load_project()?;
+    let (_root, config, paths) = load_project()?;
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
 
     let docs = if let Some(target) = id {
@@ -356,9 +356,10 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         let mut all = Vec::new();
         for doc in db.list_sources().map_err(|e| anyhow::anyhow!("{e}"))? {
             if doc.parsed
-                && let Some((d, c)) = db.get_source_content(doc.id.as_str())? {
-                    all.push((d, c));
-                }
+                && let Some((d, c)) = db.get_source_content(doc.id.as_str())?
+            {
+                all.push((d, c));
+            }
         }
         all
     };
@@ -385,6 +386,34 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         let path_clone = doc.path.clone();
         sil_parse::hydrate_source_document_metadata(&mut doc, &content, &path_clone);
 
+        if doc.kind == sil_core::SourceKind::Pdf {
+            let sources_dir = paths.sources(&config);
+            let full_path = if camino::Utf8Path::new(&path_clone).is_absolute() {
+                camino::Utf8PathBuf::from(&path_clone)
+            } else {
+                sources_dir.join(&doc.filename)
+            };
+            
+            if full_path.exists() {
+                ui.info(&format!("Extracting rich metadata for {} via xberg...", doc.filename));
+                if let Ok(rt) = tokio::runtime::Runtime::new() {
+                    match rt.block_on(sil_parse::xberg_metadata::extract_metadata_utf8(&full_path)) {
+                        Ok(meta) => {
+                            if !meta.title.is_empty() {
+                                doc.title = Some(meta.title);
+                            }
+                            if !meta.authors.is_empty() {
+                                doc.authors = Some(meta.authors.join(", "));
+                            }
+                        }
+                        Err(e) => {
+                            ui.warn(&format!("xberg metadata extraction failed: {e}"));
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. Re-extract references block and entries
         let refs_block = sil_parse::references::extract_references_block(&content);
         doc.references_text = refs_block.clone();
@@ -407,12 +436,13 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
         if let Some(ref raw_block) = refs_block {
             let entries = sil_parse::references::parse_reference_entries(&doc.id, raw_block);
             if !entries.is_empty()
-                && let Err(e) = db.save_source_references(&entries) {
-                    ui.warn(&format!(
-                        "Failed to save references for {}: {e}",
-                        doc.filename
-                    ));
-                }
+                && let Err(e) = db.save_source_references(&entries)
+            {
+                ui.warn(&format!(
+                    "Failed to save references for {}: {e}",
+                    doc.filename
+                ));
+            }
         }
 
         healed_count += 1;

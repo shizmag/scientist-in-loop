@@ -138,7 +138,7 @@ fn parse_no_args_only_unparsed_in_mix() {
         .env("SIL_MARKER_STUB", "todo unique_mix_token_99")
         .assert()
         .success()
-        .stdout(predicates::str::contains("Parsed"));
+        .stdout(predicates::str::contains("parsed"));
 
     // Only todo content should be searchable as the new token
     sil()

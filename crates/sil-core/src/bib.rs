@@ -96,9 +96,7 @@ pub fn suggest_from_source(doc: &SourceDocument) -> BibSuggestion {
     let has_meta =
         doc.authors.is_some() || doc.year.is_some() || doc.venue.is_some() || doc.doi.is_some();
 
-    let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset
-        || doc.kind == SourceKind::Code
-    {
+    let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset || doc.kind == SourceKind::Code {
         let mut fields = vec![
             format!("  title={{{display_title}}}"),
             format!("  author={{{author}}}"),

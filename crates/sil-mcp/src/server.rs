@@ -364,7 +364,10 @@ mod tests {
         });
 
         // Write blank lines followed by a valid ping request
-        client_write.write_all(b"\n   \n\n{\"jsonrpc\":\"2.0\",\"id\":123,\"method\":\"ping\"}\n").await.unwrap();
+        client_write
+            .write_all(b"\n   \n\n{\"jsonrpc\":\"2.0\",\"id\":123,\"method\":\"ping\"}\n")
+            .await
+            .unwrap();
 
         let mut reader = BufReader::new(client_read);
         let mut resp_line = String::new();
@@ -376,4 +379,3 @@ mod tests {
         let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
     }
 }
-

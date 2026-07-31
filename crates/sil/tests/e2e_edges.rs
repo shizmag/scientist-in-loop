@@ -45,7 +45,7 @@ fn parse_absolute_path_works() {
         .env("SIL_MARKER_STUB", "absolute path content token_abs")
         .assert()
         .success()
-        .stdout(predicates::str::contains("Parsed"));
+        .stdout(predicates::str::contains("parsed"));
     sil()
         .current_dir(&project)
         .args(["source", "search", "token_abs"])

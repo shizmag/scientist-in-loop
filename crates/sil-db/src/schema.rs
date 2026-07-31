@@ -233,10 +233,7 @@ fn migrate_source_references_columns(conn: &Connection) -> Result<(), DbError> {
         .collect::<Result<_, _>>()?;
 
     if !columns.iter().any(|c| c == "venue") {
-        conn.execute(
-            "ALTER TABLE source_references ADD COLUMN venue TEXT",
-            [],
-        )?;
+        conn.execute("ALTER TABLE source_references ADD COLUMN venue TEXT", [])?;
     }
 
     Ok(())

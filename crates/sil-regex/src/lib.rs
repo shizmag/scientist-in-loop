@@ -37,8 +37,7 @@ static LATEX_METADATA_REGEX: LazyLock<Regex> =
 static HTML_SPAN_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap());
 
-static A_TAG_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)<a[^>]*>|</a>").unwrap());
+static A_TAG_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)<a[^>]*>|</a>").unwrap());
 
 static MD_LINK_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\([^)]+\)").unwrap());
@@ -46,9 +45,8 @@ static MD_LINK_REGEX: LazyLock<Regex> =
 static MD_LINK_WITH_URL_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap());
 
-static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap()
-});
+static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap());
 
 /// Strip HTML `<span...>` and `</span>` tags from text.
 pub fn strip_html_spans(text: &str) -> String {
@@ -69,16 +67,18 @@ pub fn strip_author_footnote_markers(text: &str) -> String {
 pub fn clean_reference_text(text: &str) -> String {
     let mut cleaned = HTML_SPAN_REGEX.replace_all(text, "").to_string();
     cleaned = A_TAG_REGEX.replace_all(&cleaned, "").to_string();
-    
-    cleaned = MD_LINK_WITH_URL_REGEX.replace_all(&cleaned, |caps: &regex::Captures| {
-        let text_content = &caps[1];
-        let url = &caps[2];
-        if url.contains("10.") || url.contains("arxiv") || extract_arxiv_id(url).is_some() {
-            caps[0].to_string()
-        } else {
-            text_content.to_string()
-        }
-    }).to_string();
+
+    cleaned = MD_LINK_WITH_URL_REGEX
+        .replace_all(&cleaned, |caps: &regex::Captures| {
+            let text_content = &caps[1];
+            let url = &caps[2];
+            if url.contains("10.") || url.contains("arxiv") || extract_arxiv_id(url).is_some() {
+                caps[0].to_string()
+            } else {
+                text_content.to_string()
+            }
+        })
+        .to_string();
 
     static MULTI_SPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s{2,}").unwrap());
     cleaned = MULTI_SPACE_REGEX.replace_all(&cleaned, " ").to_string();
@@ -102,15 +102,52 @@ pub fn clean_reference_text(text: &str) -> String {
 pub fn is_affiliation_or_noise_line(line: &str) -> bool {
     let lower = line.to_lowercase();
     let keywords = [
-        "university", "department", "school of", "institute of", "faculty of", 
-        "laboratory", "lab", "inc.", "corplab", "address", "a r t i c l e i n f o",
-        "contents lists", "journal homepage:", "received", "accepted", "available online",
-        "@", "equal contribution", "author to whom", "correspondence", "corresponding author",
-        "abstract", "a b s t r a c t", "introduction", "keywords", "index terms", "date:",
-        "code:", "data:", "https://github", "github.com", "huggingface.co", "https://huggingface",
-        "reconstructing", "our contributions", "contributions", "the work was done", "lt;", "gt;",
-        "preliminaries", "methodology", "problem formulation", "background", "related work",
-        "table of contents", "contents"
+        "university",
+        "department",
+        "school of",
+        "institute of",
+        "faculty of",
+        "laboratory",
+        "lab",
+        "inc.",
+        "corplab",
+        "address",
+        "a r t i c l e i n f o",
+        "contents lists",
+        "journal homepage:",
+        "received",
+        "accepted",
+        "available online",
+        "@",
+        "equal contribution",
+        "author to whom",
+        "correspondence",
+        "corresponding author",
+        "abstract",
+        "a b s t r a c t",
+        "introduction",
+        "keywords",
+        "index terms",
+        "date:",
+        "code:",
+        "data:",
+        "https://github",
+        "github.com",
+        "huggingface.co",
+        "https://huggingface",
+        "reconstructing",
+        "our contributions",
+        "contributions",
+        "the work was done",
+        "lt;",
+        "gt;",
+        "preliminaries",
+        "methodology",
+        "problem formulation",
+        "background",
+        "related work",
+        "table of contents",
+        "contents",
     ];
     keywords.iter().any(|&k| lower.contains(k))
 }
@@ -180,20 +217,42 @@ pub fn extract_latex_metadata_comment(line: &str) -> Option<String> {
 /// Extract journal / conference / venue name from a reference text line.
 pub fn extract_reference_venue(text: &str) -> Option<String> {
     let clean = strip_html_spans(text);
-    
+
     // Explicit venue keywords & patterns
     let patterns = [
-        "Nature", "Science", "Cell", "PNAS",
-        "Nucleic Acids Research", "Knowledge-Based Systems",
-        "Data & Knowledge Engineering", "ACM Computing Surveys",
+        "Nature",
+        "Science",
+        "Cell",
+        "PNAS",
+        "Nucleic Acids Research",
+        "Knowledge-Based Systems",
+        "Data & Knowledge Engineering",
+        "ACM Computing Surveys",
         "Findings of the Association for Computational Linguistics",
-        "Findings of ACL", "Association for Computational Linguistics",
-        "NeurIPS", "NIPS", "Advances in Neural Information Processing Systems",
-        "ICML", "International Conference on Machine Learning",
-        "ICLR", "International Conference on Learning Representations",
-        "CVPR", "IEEE/CVF Conference on Computer Vision and Pattern Recognition",
-        "ICCV", "ECCV", "EMNLP", "NAACL", "ACL", "AAAI", "IJCAI", "KDD", "SIGIR",
-        "IEEE Transactions", "ACM Transactions", "CoRR", "arXiv",
+        "Findings of ACL",
+        "Association for Computational Linguistics",
+        "NeurIPS",
+        "NIPS",
+        "Advances in Neural Information Processing Systems",
+        "ICML",
+        "International Conference on Machine Learning",
+        "ICLR",
+        "International Conference on Learning Representations",
+        "CVPR",
+        "IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+        "ICCV",
+        "ECCV",
+        "EMNLP",
+        "NAACL",
+        "ACL",
+        "AAAI",
+        "IJCAI",
+        "KDD",
+        "SIGIR",
+        "IEEE Transactions",
+        "ACM Transactions",
+        "CoRR",
+        "arXiv",
     ];
 
     for pat in patterns {
@@ -205,7 +264,10 @@ pub fn extract_reference_venue(text: &str) -> Option<String> {
     // Generic match for "Proceedings of ..." or "Journal of ..."
     if let Some(pos) = clean.find("Proceedings of ") {
         let rest = &clean[pos..];
-        let end = rest.find('.').or_else(|| rest.find(',')).unwrap_or(rest.len());
+        let end = rest
+            .find('.')
+            .or_else(|| rest.find(','))
+            .unwrap_or(rest.len());
         let candidate = rest[..end].trim();
         if candidate.len() > 10 && candidate.len() < 120 {
             return Some(candidate.to_string());
@@ -214,7 +276,10 @@ pub fn extract_reference_venue(text: &str) -> Option<String> {
 
     if let Some(pos) = clean.find("Journal of ") {
         let rest = &clean[pos..];
-        let end = rest.find('.').or_else(|| rest.find(',')).unwrap_or(rest.len());
+        let end = rest
+            .find('.')
+            .or_else(|| rest.find(','))
+            .unwrap_or(rest.len());
         let candidate = rest[..end].trim();
         if candidate.len() > 10 && candidate.len() < 120 {
             return Some(candidate.to_string());
@@ -253,9 +318,13 @@ mod tests {
     #[test]
     fn test_is_affiliation_or_noise_line() {
         assert!(is_affiliation_or_noise_line("1 University of Oxford"));
-        assert!(is_affiliation_or_noise_line("Department of Computer Science"));
+        assert!(is_affiliation_or_noise_line(
+            "Department of Computer Science"
+        ));
         assert!(is_affiliation_or_noise_line("foo@bar.com"));
-        assert!(!is_affiliation_or_noise_line("Sebastian Farquhar, Jannik Kossen"));
+        assert!(!is_affiliation_or_noise_line(
+            "Sebastian Farquhar, Jannik Kossen"
+        ));
     }
 
     #[test]
@@ -389,7 +458,9 @@ mod tests {
             Some("Nature".to_string())
         );
         assert_eq!(
-            extract_reference_venue("In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics"),
+            extract_reference_venue(
+                "In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics"
+            ),
             Some("Association for Computational Linguistics".to_string())
         );
         assert_eq!(

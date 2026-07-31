@@ -223,7 +223,10 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseE
 
     let response = match agent
         .get(&url)
-        .set("User-Agent", "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)")
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
         .call()
     {
         Ok(res) => res,
@@ -265,7 +268,10 @@ pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublicatio
 
     let response = agent
         .get(&url)
-        .set("User-Agent", "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)")
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
         .call()
         .map_err(|e| ParseError::Message(format!("ArXiv API request failed: {e}")))?;
 
@@ -504,12 +510,16 @@ print(json.dumps([
             {}
         ]);
         let formatted = format_authors(&json);
-        assert_eq!(formatted, "Global Research Consortium, Jane, Doe, John Smith");
+        assert_eq!(
+            formatted,
+            "Global Research Consortium, Jane, Doe, John Smith"
+        );
     }
 
     #[test]
     fn test_extract_year_from_crossref_keys_and_bounds() {
-        let json_print = serde_json::json!({ "published-print": { "date-parts": [[2021, 5, 12]] } });
+        let json_print =
+            serde_json::json!({ "published-print": { "date-parts": [[2021, 5, 12]] } });
         assert_eq!(extract_year_from_crossref(&json_print), Some(2021));
 
         let json_online = serde_json::json!({ "published-online": { "date-parts": [[2022]] } });
@@ -528,7 +538,10 @@ print(json.dumps([
     #[test]
     fn test_clean_abstract_tags() {
         let raw = "<jats:p>This is a <b>bold</b> abstract statement with <jats:sec>sections</jats:sec>.</jats:p>";
-        assert_eq!(clean_abstract(raw), "This is a bold abstract statement with sections.");
+        assert_eq!(
+            clean_abstract(raw),
+            "This is a bold abstract statement with sections."
+        );
     }
 
     #[test]
@@ -539,7 +552,10 @@ print(json.dumps([
                 {"URL": "https://example.com/article.pdf", "content-type": "application/pdf"}
             ]
         });
-        assert_eq!(extract_pdf_url(&item_ct), Some("https://example.com/article.pdf".to_string()));
+        assert_eq!(
+            extract_pdf_url(&item_ct),
+            Some("https://example.com/article.pdf".to_string())
+        );
 
         // URL ending with .pdf
         let item_ext = serde_json::json!({
@@ -547,7 +563,10 @@ print(json.dumps([
                 {"URL": "https://example.com/download.pdf", "content-type": "text/html"}
             ]
         });
-        assert_eq!(extract_pdf_url(&item_ext), Some("https://example.com/download.pdf".to_string()));
+        assert_eq!(
+            extract_pdf_url(&item_ext),
+            Some("https://example.com/download.pdf".to_string())
+        );
 
         // Fallback to first URL
         let item_fallback = serde_json::json!({
@@ -555,7 +574,10 @@ print(json.dumps([
                 {"URL": "https://example.com/article", "content-type": "text/html"}
             ]
         });
-        assert_eq!(extract_pdf_url(&item_fallback), Some("https://example.com/article".to_string()));
+        assert_eq!(
+            extract_pdf_url(&item_fallback),
+            Some("https://example.com/article".to_string())
+        );
 
         // Missing link
         let item_none = serde_json::json!({});
@@ -593,4 +615,3 @@ print(json.dumps([
         assert!(res.is_none());
     }
 }
-

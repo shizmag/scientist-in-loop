@@ -1825,4 +1825,3 @@ pub(crate) mod tests {
         assert_eq!(val["action_trailer"], "edit-draft");
     }
 }
-

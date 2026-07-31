@@ -44,6 +44,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | **Git** | `init`, `status`, `log`, commit proposals | Must be on `PATH` as `git` |
 | **Python 3** | `sil parse`, `sil source fetch` | Helpers under `python/`; override with `SIL_PYTHON` |
 | **pip packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `pypdf` is the light fallback; **Marker** is preferred quality. See `python/requirements.txt` |
+| **xberg** (Rust Crate) | Structured PDF Metadata & Citation Extraction | Extracts `title`, `authors`, and `citations` via LLM/NER schema. Models cached at `/Volumes/happy-disk/models/xberg/huggingface` |
 | **C toolchain** | Building `sil` (bundled SQLite) | Xcode CLT (macOS), `build-essential` (Debian/Ubuntu), MinGW or MSVC (Windows) |
 | **LaTeX engine** | `sil build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
 
@@ -51,9 +52,10 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 |---------|------------------------------|
 | `sil init` / structure / SQLite | Needs **git** + built `sil` |
 | `sil settings` / `sil tui` | Terminal TUI built into `sil` (powered by Ratatui & Crossterm) |
-| `sil parse` | Needs **Python 3**; quality improves with **marker-pdf** |
+| `sil parse` | Uses **xberg** for structured metadata/citations and **Python 3** / **marker-pdf** for Markdown text |
 | `sil source fetch` | Needs **Python 3** (stdlib networking) |
 | `sil build` | Needs a **LaTeX engine** on `PATH` |
+
 
 ### Install script (macOS / Linux / Windows)
 

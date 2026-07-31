@@ -329,8 +329,14 @@ mod tests {
             parse_status_debug("Valid(Markdown)"),
             Some(DocumentStatus::Valid(SourceKind::Markdown))
         );
-        assert_eq!(parse_status_debug("ValidPdf"), Some(DocumentStatus::ValidPdf));
-        assert_eq!(parse_status_debug("NotFound"), Some(DocumentStatus::NotFound));
+        assert_eq!(
+            parse_status_debug("ValidPdf"),
+            Some(DocumentStatus::ValidPdf)
+        );
+        assert_eq!(
+            parse_status_debug("NotFound"),
+            Some(DocumentStatus::NotFound)
+        );
         assert_eq!(parse_status_debug("NotPdf"), Some(DocumentStatus::NotPdf));
         assert_eq!(
             parse_status_debug("UnsupportedFormat"),
@@ -348,4 +354,3 @@ mod tests {
         assert_eq!(parse_status_debug("Valid(UnknownKind)"), None);
     }
 }
-

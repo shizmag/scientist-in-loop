@@ -256,7 +256,8 @@ mod tests {
         let mut selected: Vec<bool> = vec![];
         let mut cursor = 0;
 
-        let outcome_confirm = apply_selection_event(SelectionEvent::Confirm, &mut selected, &mut cursor);
+        let outcome_confirm =
+            apply_selection_event(SelectionEvent::Confirm, &mut selected, &mut cursor);
         assert_eq!(outcome_confirm, SelectionOutcome::Cancelled);
 
         let outcome_up = apply_selection_event(SelectionEvent::Up, &mut selected, &mut cursor);
@@ -281,4 +282,3 @@ mod tests {
         assert_eq!(selected, vec![0, 1]);
     }
 }
-

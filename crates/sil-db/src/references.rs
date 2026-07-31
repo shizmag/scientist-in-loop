@@ -233,7 +233,6 @@ mod tests {
             doi: None,
         };
 
-
         let ref2 = ReferenceEntry {
             id: "ref_b1".into(),
             source_id: s2.clone(),
@@ -264,8 +263,9 @@ mod tests {
         assert_eq!(hits_quotes[0].id, "ref_a1");
 
         // Non-existent source id
-        let missing = db.get_references_for_source(&SourceId::new("missing.pdf")).unwrap();
+        let missing = db
+            .get_references_for_source(&SourceId::new("missing.pdf"))
+            .unwrap();
         assert!(missing.is_empty());
     }
 }
-

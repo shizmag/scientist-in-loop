@@ -147,5 +147,3 @@ mod tests {
         assert_eq!(report, de);
     }
 }
-
-
