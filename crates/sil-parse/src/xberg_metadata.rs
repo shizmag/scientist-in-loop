@@ -1,10 +1,12 @@
 //! Structured metadata extraction using the `xberg` crate.
 
 use camino::Utf8Path;
-use schemars::{JsonSchema, schema_for};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use xberg::{ExtractInput, ExtractionConfig, LlmConfig, StructuredExtractionConfig, extract};
+use xberg::{ExtractInput, ExtractionConfig, extract};
+use xberg::core::config::ner::{NerConfig, NerBackendKind};
+use xberg::types::entity::EntityCategory;
 
 /// Strongly typed target struct for xberg metadata extraction.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -36,19 +38,11 @@ pub async fn extract_metadata(
         }
     }
 
-    let schema = schema_for!(DocumentMetadata);
-    let schema_json = serde_json::to_value(&schema)?;
-
     let config = ExtractionConfig {
-        structured_extraction: Some(StructuredExtractionConfig {
-            schema: schema_json,
-            schema_name: "DocumentMetadata".to_string(),
-            schema_description: Some(
-                "Academic document metadata extraction (title, authors, citations)".to_string(),
-            ),
-            strict: true,
-            prompt: None,
-            llm: LlmConfig::default(),
+        ner: Some(NerConfig {
+            backend: NerBackendKind::Onnx,
+            custom_labels: vec!["title".to_string(), "author".to_string(), "citation".to_string()],
+            ..Default::default()
         }),
         ..Default::default()
     };
@@ -62,15 +56,33 @@ pub async fn extract_metadata(
         .await
         .map_err(|e| anyhow::anyhow!("xberg extraction failed: {:?}", e))?;
 
-    let content = result
+    let doc = result
         .results
         .first()
-        .map(|doc| doc.content.as_str())
         .ok_or_else(|| anyhow::anyhow!("xberg returned no document results"))?;
 
-    let metadata: DocumentMetadata = serde_json::from_str(content).map_err(|e| {
-        anyhow::anyhow!("Failed to deserialize xberg metadata JSON: {e}. Content was: {content}")
-    })?;
+    let mut metadata = DocumentMetadata {
+        title: String::new(),
+        authors: Vec::new(),
+        citations: Vec::new(),
+    };
+
+    for entity in doc.entities.iter().flatten() {
+        match &entity.category {
+            EntityCategory::Custom(label) if label == "title" => {
+                if metadata.title.is_empty() {
+                    metadata.title = entity.text.clone();
+                }
+            }
+            EntityCategory::Custom(label) if label == "author" => {
+                metadata.authors.push(entity.text.clone());
+            }
+            EntityCategory::Custom(label) if label == "citation" => {
+                metadata.citations.push(entity.text.clone());
+            }
+            _ => {}
+        }
+    }
 
     Ok(metadata)
 }
@@ -85,6 +97,7 @@ pub async fn extract_metadata_utf8(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use schemars::schema_for;
 
     #[test]
     fn test_document_metadata_serde() {
