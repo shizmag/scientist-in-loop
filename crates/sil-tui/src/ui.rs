@@ -46,7 +46,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
         InputMode::ViewingSourceRefs => draw_viewing_source_refs(frame, app),
-        InputMode::SearchingRefs | InputMode::ReadingSourceMd | InputMode::Normal => {}
+        InputMode::SearchingRefs | InputMode::SearchingBib | InputMode::ReadingSourceMd | InputMode::Normal => {}
     }
 }
 
@@ -62,25 +62,65 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         Style::default().fg(Color::Cyan)
     };
-    let mut left_items = Vec::new();
-    if app.bib_file_entries.is_empty() {
-        left_items.push(ListItem::new(Span::styled("(references.bib is empty)", Style::default().fg(Color::DarkGray))));
+
+    let total_bib = app.bib_file_entries.len();
+    let filtered_bib = app.filtered_bib_entries();
+    let count_bib = filtered_bib.len();
+
+    let left_title = if app.input_mode == InputMode::SearchingBib {
+        format!(" references.bib ({count_bib}/{total_bib} items) (Search: {}_) ", app.bib_search_query)
+    } else if !app.bib_search_query.is_empty() {
+        format!(" references.bib ({count_bib}/{total_bib} items) (Filter: {}) ", app.bib_search_query)
     } else {
-        for (i, entry) in app.bib_file_entries.iter().enumerate() {
-            let prefix = if i == app.selected_bib_index { "► " } else { "  " };
-            let style = if i == app.selected_bib_index {
+        format!(" references.bib ({total_bib} items) ")
+    };
+
+    let left_width = chunks[0].width.saturating_sub(4) as usize;
+    let mut left_items = Vec::new();
+
+    if filtered_bib.is_empty() {
+        let empty_msg = if total_bib == 0 {
+            "(references.bib is empty)"
+        } else {
+            "(no search matches in references.bib)"
+        };
+        left_items.push(ListItem::new(Span::styled(empty_msg, Style::default().fg(Color::DarkGray))));
+    } else {
+        for (i, entry) in filtered_bib.iter().enumerate() {
+            let is_sel = i == app.selected_bib_index;
+            let prefix = if is_sel { "► " } else { "  " };
+            let style = if is_sel {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
-            left_items.push(ListItem::new(Line::from(vec![
-                Span::styled(prefix, style),
-                Span::styled(entry.replace("\n", " "), style),
-            ])));
+
+            let mut item_lines = Vec::new();
+            let avail_w = left_width.saturating_sub(2).max(10);
+            for (line_idx, raw_line) in entry.lines().enumerate() {
+                let wrapped = textwrap::wrap(raw_line, avail_w);
+                if wrapped.is_empty() {
+                    let indent = if line_idx == 0 { prefix } else { "  " };
+                    item_lines.push(Line::from(vec![
+                        Span::styled(indent, style),
+                        Span::styled("", style),
+                    ]));
+                } else {
+                    for (w_idx, w_sub) in wrapped.iter().enumerate() {
+                        let indent = if line_idx == 0 && w_idx == 0 { prefix } else { "  " };
+                        item_lines.push(Line::from(vec![
+                            Span::styled(indent, style),
+                            Span::styled(w_sub.to_string(), style),
+                        ]));
+                    }
+                }
+            }
+            left_items.push(ListItem::new(item_lines));
         }
     }
+
     let left_list = List::new(left_items)
-        .block(Block::default().borders(Borders::ALL).border_style(left_style).title(" references.bib "));
+        .block(Block::default().borders(Borders::ALL).border_style(left_style).title(left_title));
     frame.render_widget(left_list, chunks[0]);
 
     // Right pane (source_references)
@@ -89,47 +129,91 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         Style::default().fg(Color::Cyan)
     };
-    
-    let mut right_items = Vec::new();
-    let filtered_refs: Vec<_> = if app.ref_search_query.is_empty() {
-        app.source_references.iter().collect()
+
+    let total_refs = app.source_references.len();
+    let filtered_refs = app.filtered_source_references();
+    let count_refs = filtered_refs.len();
+
+    let right_title = if app.input_mode == InputMode::SearchingRefs {
+        format!(" Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex (Search: {}_) ", app.ref_search_query)
+    } else if !app.ref_search_query.is_empty() {
+        format!(" Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex (Filter: {}) ", app.ref_search_query)
     } else {
-        app.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&app.ref_search_query.to_lowercase())).collect()
+        format!(" Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex ")
     };
-    
+
+    let right_width = chunks[1].width.saturating_sub(4) as usize;
+    let mut right_items = Vec::new();
+
     if filtered_refs.is_empty() {
-        right_items.push(ListItem::new(Span::styled(
-            if app.source_references.is_empty() { "(no project references found)" } else { "(no search matches)" },
-            Style::default().fg(Color::DarkGray)
-        )));
+        let empty_msg = if total_refs == 0 {
+            "(no project references found)"
+        } else {
+            "(no search matches)"
+        };
+        right_items.push(ListItem::new(Span::styled(empty_msg, Style::default().fg(Color::DarkGray))));
     } else {
         for (i, entry) in filtered_refs.iter().enumerate() {
-            let prefix = if i == app.selected_source_ref_index { "► " } else { "  " };
-            let style = if i == app.selected_source_ref_index {
+            let is_sel = i == app.selected_source_ref_index;
+            let style = if is_sel {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
+            let prefix = if is_sel { "► " } else { "  " };
             let mark = if app.marked_ref_ids.contains(&entry.id) { "[x] " } else { "[ ] " };
-            
-            right_items.push(ListItem::new(Line::from(vec![
+            let mark_style = if app.marked_ref_ids.contains(&entry.id) {
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+
+            let mut item_lines = Vec::new();
+
+            // Title / Header line
+            let title_str = entry.title.as_deref().unwrap_or_else(|| &entry.raw_text);
+            item_lines.push(Line::from(vec![
                 Span::styled(prefix, style),
-                Span::styled(mark, Style::default().fg(Color::Green)),
-                Span::styled(&entry.raw_text, style),
-            ])));
+                Span::styled(mark, mark_style),
+                Span::styled(format!("Ref #{}: ", entry.ref_index), Style::default().fg(Color::Cyan)),
+                Span::styled(title_str, style),
+            ]));
+
+            // Metadata line if structured fields present
+            let mut meta_parts = Vec::new();
+            if let Some(ref authors) = entry.authors {
+                meta_parts.push(format!("Authors: {}", authors));
+            }
+            if let Some(ref venue) = entry.venue {
+                meta_parts.push(format!("Venue: {}", venue));
+            }
+            if let Some(year) = entry.year {
+                meta_parts.push(format!("Year: {}", year));
+            }
+            if !meta_parts.is_empty() {
+                item_lines.push(Line::from(vec![
+                    Span::styled("    ", Style::default()),
+                    Span::styled(meta_parts.join(" | "), Style::default().fg(Color::Magenta)),
+                ]));
+            }
+
+            // Formatted raw text wrapped with textwrap
+            let avail_w = right_width.saturating_sub(9).max(10);
+            let wrapped_raw = textwrap::wrap(&entry.raw_text, avail_w);
+            for (w_idx, line) in wrapped_raw.iter().enumerate() {
+                let line_prefix = if w_idx == 0 { "    Raw: " } else { "         " };
+                item_lines.push(Line::from(vec![
+                    Span::styled(line_prefix, Style::default().fg(Color::DarkGray)),
+                    Span::styled(line.to_string(), style),
+                ]));
+            }
+
+            right_items.push(ListItem::new(item_lines));
         }
     }
-    
-    let search_title = if app.input_mode == InputMode::SearchingRefs {
-        format!(" Extracted References (Search: {}_) ", app.ref_search_query)
-    } else if !app.ref_search_query.is_empty() {
-        format!(" Extracted References (Filter: {}) ", app.ref_search_query)
-    } else {
-        " Extracted References ".to_string()
-    };
-    
+
     let right_list = List::new(right_items)
-        .block(Block::default().borders(Borders::ALL).border_style(right_style).title(search_title));
+        .block(Block::default().borders(Borders::ALL).border_style(right_style).title(right_title));
     frame.render_widget(right_list, chunks[1]);
 }
 
@@ -1416,6 +1500,11 @@ mod tests {
         // Searching refs mode
         app.input_mode = InputMode::SearchingRefs;
         app.ref_search_query = "Ref".to_string();
+        render_to_terminal(&mut app);
+
+        // Searching bib mode
+        app.input_mode = InputMode::SearchingBib;
+        app.bib_search_query = "article".to_string();
         render_to_terminal(&mut app);
     }
 

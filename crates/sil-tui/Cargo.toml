@@ -17,6 +17,7 @@ serde = { workspace = true }
 serde_yaml = { workspace = true }
 anyhow = { workspace = true }
 dirs = { workspace = true }
+textwrap = "0.16.2"
 
 [dev-dependencies]
 tempfile = { workspace = true }

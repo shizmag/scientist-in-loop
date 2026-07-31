@@ -54,6 +54,7 @@ pub enum InputMode {
     ConfirmDeleteSource,
     ViewingSourceRefs,
     SearchingRefs,
+    SearchingBib,
     ReadingSourceMd,
 }
 
@@ -180,6 +181,7 @@ pub struct App {
     pub selected_source_ref_index: usize,
     pub marked_ref_ids: std::collections::HashSet<String>,
     pub ref_search_query: String,
+    pub bib_search_query: String,
 
     pub global_settings: GlobalSettings,
     pub local_settings: LocalSettings,
@@ -256,6 +258,7 @@ impl App {
             selected_source_ref_index: 0,
             marked_ref_ids: std::collections::HashSet::new(),
             ref_search_query: String::new(),
+            bib_search_query: String::new(),
 
             global_settings,
             local_settings,
@@ -433,6 +436,53 @@ impl App {
         }
     }
 
+    pub fn filtered_bib_entries(&self) -> Vec<&String> {
+        if self.bib_search_query.is_empty() {
+            self.bib_file_entries.iter().collect()
+        } else {
+            let q = self.bib_search_query.to_lowercase();
+            self.bib_file_entries
+                .iter()
+                .filter(|e| e.to_lowercase().contains(&q))
+                .collect()
+        }
+    }
+
+    pub fn filtered_source_references(&self) -> Vec<&ReferenceEntry> {
+        if self.ref_search_query.is_empty() {
+            self.source_references.iter().collect()
+        } else {
+            let q = self.ref_search_query.to_lowercase();
+            self.source_references
+                .iter()
+                .filter(|r| {
+                    r.raw_text.to_lowercase().contains(&q)
+                        || r.title.as_deref().map_or(false, |t| t.to_lowercase().contains(&q))
+                        || r.authors.as_deref().map_or(false, |a| a.to_lowercase().contains(&q))
+                        || r.venue.as_deref().map_or(false, |v| v.to_lowercase().contains(&q))
+                })
+                .collect()
+        }
+    }
+
+    pub fn clamp_bib_selection(&mut self) {
+        let count = self.filtered_bib_entries().len();
+        if count == 0 {
+            self.selected_bib_index = 0;
+        } else if self.selected_bib_index >= count {
+            self.selected_bib_index = count - 1;
+        }
+    }
+
+    pub fn clamp_source_ref_selection(&mut self) {
+        let count = self.filtered_source_references().len();
+        if count == 0 {
+            self.selected_source_ref_index = 0;
+        } else if self.selected_source_ref_index >= count {
+            self.selected_source_ref_index = count - 1;
+        }
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
@@ -446,6 +496,7 @@ impl App {
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
             InputMode::SearchingRefs => self.handle_searching_refs_mode(key),
+            InputMode::SearchingBib => self.handle_searching_bib_mode(key),
             InputMode::ReadingSourceMd => self.handle_reading_source_md_mode(key),
         }
     }
@@ -459,7 +510,15 @@ impl App {
 
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => {
-                self.should_quit = true;
+                if self.active_tab == ActiveTab::References && !self.bib_search_query.is_empty() && self.active_ref_pane == RefPane::LeftBib {
+                    self.bib_search_query.clear();
+                    self.clamp_bib_selection();
+                } else if self.active_tab == ActiveTab::References && !self.ref_search_query.is_empty() && self.active_ref_pane == RefPane::RightSources {
+                    self.ref_search_query.clear();
+                    self.clamp_source_ref_selection();
+                } else {
+                    self.should_quit = true;
+                }
             }
             KeyCode::Tab => {
                 if self.active_tab == ActiveTab::References {
@@ -568,17 +627,14 @@ impl App {
                 ActiveTab::References => {
                     match self.active_ref_pane {
                         RefPane::LeftBib => {
-                            if !self.bib_file_entries.is_empty() && self.selected_bib_index + 1 < self.bib_file_entries.len() {
+                            let count = self.filtered_bib_entries().len();
+                            if count > 0 && self.selected_bib_index + 1 < count {
                                 self.selected_bib_index += 1;
                             }
                         }
                         RefPane::RightSources => {
-                            let filtered_count = if self.ref_search_query.is_empty() {
-                                self.source_references.len()
-                            } else {
-                                self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).count()
-                            };
-                            if filtered_count > 0 && self.selected_source_ref_index + 1 < filtered_count {
+                            let count = self.filtered_source_references().len();
+                            if count > 0 && self.selected_source_ref_index + 1 < count {
                                 self.selected_source_ref_index += 1;
                             }
                         }
@@ -782,11 +838,7 @@ impl App {
                         let bib_path = root.join("references.bib");
                         let mut entries_to_add = Vec::new();
                         if self.marked_ref_ids.is_empty() {
-                            let filtered: Vec<_> = if self.ref_search_query.is_empty() {
-                                self.source_references.iter().collect()
-                            } else {
-                                self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).collect()
-                            };
+                            let filtered = self.filtered_source_references();
                             if self.selected_source_ref_index < filtered.len() {
                                 entries_to_add.push(filtered[self.selected_source_ref_index].clone());
                             }
@@ -824,8 +876,16 @@ impl App {
             }
             KeyCode::Char('/') | KeyCode::Char('f') => {
                 if self.active_tab == ActiveTab::References {
-                    self.input_mode = InputMode::SearchingRefs;
-                    self.status_message = "Search right pane: type query, Enter/Esc to finish".to_string();
+                    match self.active_ref_pane {
+                        RefPane::LeftBib => {
+                            self.input_mode = InputMode::SearchingBib;
+                            self.status_message = "Search bib entries: type query, Enter/Esc to finish".to_string();
+                        }
+                        RefPane::RightSources => {
+                            self.input_mode = InputMode::SearchingRefs;
+                            self.status_message = "Search right pane: type query, Enter/Esc to finish".to_string();
+                        }
+                    }
                 }
             }
             KeyCode::Char('y') => {
@@ -840,11 +900,7 @@ impl App {
             }
             KeyCode::Char(' ') => {
                 if self.active_tab == ActiveTab::References && self.active_ref_pane == RefPane::RightSources {
-                    let filtered: Vec<_> = if self.ref_search_query.is_empty() {
-                        self.source_references.iter().collect()
-                    } else {
-                        self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).collect()
-                    };
+                    let filtered = self.filtered_source_references();
                     if self.selected_source_ref_index < filtered.len() {
                         let id = filtered[self.selected_source_ref_index].id.clone();
                         if self.marked_ref_ids.contains(&id) {
@@ -1081,9 +1137,29 @@ impl App {
             }
             KeyCode::Backspace => {
                 self.ref_search_query.pop();
+                self.clamp_source_ref_selection();
             }
             KeyCode::Char(c) => {
                 self.ref_search_query.push(c);
+                self.clamp_source_ref_selection();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_searching_bib_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Enter | KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
+            }
+            KeyCode::Backspace => {
+                self.bib_search_query.pop();
+                self.clamp_bib_selection();
+            }
+            KeyCode::Char(c) => {
+                self.bib_search_query.push(c);
+                self.clamp_bib_selection();
             }
             _ => {}
         }
@@ -2150,6 +2226,90 @@ mod tests {
         let draft_path = root.join("paper_draft.tex");
         let saved_tex = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
         assert_eq!(saved_tex, "\\section{Main}\nSaved content\n");
+    }
+
+    #[test]
+    fn test_left_bib_search_and_filtering() {
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::References;
+        app.active_ref_pane = RefPane::LeftBib;
+
+        app.bib_file_entries = vec![
+            "@article{attn, title={Attention is All You Need}}".to_string(),
+            "@misc{resnet, title={Deep Residual Learning}}".to_string(),
+        ];
+
+        // Pressing '/' in LeftBib enters SearchingBib
+        app.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::SearchingBib);
+
+        // Type query 'attn'
+        app.handle_key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+
+        assert_eq!(app.bib_search_query, "attn");
+        assert_eq!(app.filtered_bib_entries().len(), 1);
+        assert!(app.filtered_bib_entries()[0].contains("attn"));
+
+        // Enter exits SearchingBib mode
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::Normal);
+
+        // Pressing Esc in Normal mode with active filter clears the query
+        app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+        assert_eq!(app.bib_search_query, "");
+        assert_eq!(app.filtered_bib_entries().len(), 2);
+        assert!(!app.should_quit);
+    }
+
+    #[test]
+    fn test_references_tab_right_pane_sorting() {
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::References;
+        app.active_ref_pane = RefPane::RightSources;
+
+        app.source_references = vec![
+            ReferenceEntry {
+                id: "ref_a".to_string(),
+                source_id: "src_z".into(),
+                ref_index: 2,
+                raw_text: "Ref A".to_string(),
+                title: Some("Paper A".to_string()),
+                authors: Some("Author A".to_string()),
+                year: Some(2020),
+                venue: Some("NeurIPS".to_string()),
+                doi: None,
+            },
+            ReferenceEntry {
+                id: "ref_b".to_string(),
+                source_id: "src_a".into(),
+                ref_index: 1,
+                raw_text: "Ref B".to_string(),
+                title: Some("Paper B".to_string()),
+                authors: Some("Author B".to_string()),
+                year: Some(2024),
+                venue: Some("ICML".to_string()),
+                doi: None,
+            },
+        ];
+
+        // Sort by year ('y')
+        app.handle_key(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::empty()));
+        assert_eq!(app.source_references[0].year, Some(2024));
+
+        // Sort by venue ('v')
+        app.handle_key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::empty()));
+        assert_eq!(app.source_references[0].venue, Some("ICML".to_string()));
+
+        // Sort by source_id ('s')
+        app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::empty()));
+        assert_eq!(app.source_references[0].source_id.as_str(), "src_a");
+
+        // Sort by index ('i')
+        app.handle_key(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::empty()));
+        assert_eq!(app.source_references[0].ref_index, 1);
     }
 }
 
