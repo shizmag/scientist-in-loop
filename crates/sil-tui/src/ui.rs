@@ -807,19 +807,27 @@ fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
 }
 
 fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
-    let area = centered_rect(80, 70, frame.area());
+    let area = centered_rect(88, 75, frame.area());
     frame.render_widget(Clear, area);
 
     let filename = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
         &app.sources[app.selected_source_index].filename
     } else {
-        "Source"
+        "Project"
+    };
+
+    let sort_label = match app.ref_sort_key {
+        crate::app::RefSortKey::Index => "Index",
+        crate::app::RefSortKey::Year => "Year ⬇",
+        crate::app::RefSortKey::Source => "Source",
+        crate::app::RefSortKey::Venue => "Journal/Conf",
     };
 
     let rows: Vec<Row> = if app.selected_source_references.is_empty() {
         vec![Row::new(vec![
             "-",
-            "No extracted references found for this source.",
+            "No extracted references found.",
+            "-",
             "-",
             "-",
         ])]
@@ -834,6 +842,10 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
                     ),
                     Span::raw(r.authors.as_deref().unwrap_or("-")),
                     Span::raw(r.title.as_deref().unwrap_or(&r.raw_text)),
+                    Span::styled(
+                        r.venue.as_deref().unwrap_or("-"),
+                        Style::default().fg(Color::Green),
+                    ),
                     Span::raw(
                         r.year
                             .map(|y| y.to_string())
@@ -848,13 +860,14 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
         rows,
         [
             Constraint::Length(6),
-            Constraint::Percentage(30),
-            Constraint::Percentage(54),
-            Constraint::Percentage(10),
+            Constraint::Percentage(25),
+            Constraint::Percentage(44),
+            Constraint::Percentage(17),
+            Constraint::Percentage(8),
         ],
     )
     .header(
-        Row::new(vec!["#", "Authors", "Title / Raw Text", "Year"]).style(
+        Row::new(vec!["#", "Authors", "Title / Citation Text", "Journal / Conference", "Year"]).style(
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
@@ -866,7 +879,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
             .border_type(BorderType::Double)
             .border_style(Style::default().fg(Color::Cyan))
             .title(Span::styled(
-                format!(" 📚 References for {filename} (Press Esc / 'q' to close) "),
+                format!(" 📚 References ({filename}) | Sort: {sort_label} (y: Year, s: Source, v: Venue, i: Index | Esc: Close) "),
                 Style::default()
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD),

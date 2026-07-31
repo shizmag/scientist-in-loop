@@ -8,8 +8,8 @@ use crate::error::DbError;
 /// Save a batch of reference entries for a source document.
 pub fn save_source_references(conn: &Connection, refs: &[ReferenceEntry]) -> Result<(), DbError> {
     let mut stmt = conn.prepare(
-        "INSERT OR REPLACE INTO source_references (id, source_id, ref_index, raw_text, title, authors, year, doi)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT OR REPLACE INTO source_references (id, source_id, ref_index, raw_text, title, authors, year, venue, doi)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
     )?;
 
     for entry in refs {
@@ -21,6 +21,7 @@ pub fn save_source_references(conn: &Connection, refs: &[ReferenceEntry]) -> Res
             entry.title,
             entry.authors,
             entry.year,
+            entry.venue,
             entry.doi,
         ])?;
     }
@@ -34,7 +35,7 @@ pub fn get_references_for_source(
     source_id: &SourceId,
 ) -> Result<Vec<ReferenceEntry>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, source_id, ref_index, raw_text, title, authors, year, doi
+        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi
          FROM source_references
          WHERE source_id = ?1
          ORDER BY ref_index ASC",
@@ -50,7 +51,38 @@ pub fn get_references_for_source(
             title: row.get(4)?,
             authors: row.get(5)?,
             year: row.get(6)?,
-            doi: row.get(7)?,
+            venue: row.get(7)?,
+            doi: row.get(8)?,
+        })
+    })?;
+
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+/// Get all reference entries across all source documents.
+pub fn get_all_references(conn: &Connection) -> Result<Vec<ReferenceEntry>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi
+         FROM source_references
+         ORDER BY source_id ASC, ref_index ASC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        let sid: String = row.get(1)?;
+        Ok(ReferenceEntry {
+            id: row.get(0)?,
+            source_id: SourceId::new(sid),
+            ref_index: row.get::<_, i64>(2)? as usize,
+            raw_text: row.get(3)?,
+            title: row.get(4)?,
+            authors: row.get(5)?,
+            year: row.get(6)?,
+            venue: row.get(7)?,
+            doi: row.get(8)?,
         })
     })?;
 
@@ -75,7 +107,7 @@ pub fn search_references(
     // Escape FTS query
     let fts_query = clean.replace(['"', '\''], "");
     let mut stmt = conn.prepare(
-        "SELECT r.id, r.source_id, r.ref_index, r.raw_text, r.title, r.authors, r.year, r.doi
+        "SELECT r.id, r.source_id, r.ref_index, r.raw_text, r.title, r.authors, r.year, r.venue, r.doi
          FROM source_references r
          JOIN source_references_fts f ON r.rowid = f.rowid
          WHERE source_references_fts MATCH ?1
@@ -92,7 +124,8 @@ pub fn search_references(
             title: row.get(4)?,
             authors: row.get(5)?,
             year: row.get(6)?,
-            doi: row.get(7)?,
+            venue: row.get(7)?,
+            doi: row.get(8)?,
         })
     })?;
 
@@ -137,6 +170,7 @@ mod tests {
                 title: Some("Attention is all you need.".into()),
                 authors: Some("Vaswani et al.".into()),
                 year: Some(2017),
+                venue: Some("NeurIPS".into()),
                 doi: None,
             },
             ReferenceEntry {
@@ -147,6 +181,7 @@ mod tests {
                 title: Some("BERT: Pre-training of Deep Bidirectional Transformers.".into()),
                 authors: Some("Devlin et al.".into()),
                 year: Some(2019),
+                venue: None,
                 doi: None,
             },
         ];

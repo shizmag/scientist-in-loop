@@ -21,28 +21,6 @@ pub struct ParseResult {
     pub reference_count: usize,
 }
 
-fn extract_heading_title(content: &str) -> Option<String> {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(h1) = trimmed.strip_prefix("# ") {
-            let t = h1.trim();
-            if !t.is_empty() {
-                return Some(t.to_string());
-            }
-        }
-    }
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('#') {
-            let heading = trimmed.trim_start_matches('#').trim();
-            if !heading.is_empty() {
-                return Some(heading.to_string());
-            }
-        }
-    }
-    None
-}
-
 /// Parse one source document and write into the database.
 pub fn parse_one(
     path: &Utf8Path,
@@ -110,41 +88,7 @@ pub fn parse_one(
         },
     };
 
-    let extracted_doi = sil_regex::extract_doi(&content);
-    let mut hydrated = false;
-
-    if let Some(ref doi) = extracted_doi
-        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi)
-    {
-        doc.doi = pub_item.doi.or(extracted_doi.clone());
-        if !pub_item.title.is_empty() {
-            doc.title = Some(pub_item.title);
-        }
-        if !pub_item.authors.is_empty() {
-            doc.authors = Some(pub_item.authors);
-        }
-        if let Some(y) = pub_item.year {
-            doc.year = Some(y as i32);
-        }
-        if !pub_item.journal.is_empty() {
-            doc.venue = Some(pub_item.journal);
-        }
-        if !pub_item.abstract_text.is_empty() {
-            doc.abstract_text = Some(pub_item.abstract_text);
-        }
-        hydrated = true;
-    }
-
-    if !hydrated {
-        if doc.doi.is_none() {
-            doc.doi = extracted_doi;
-        }
-        if doc.title.is_none() {
-            doc.title = sil_regex::extract_quoted_title(&content)
-                .or_else(|| extract_heading_title(&content))
-                .or_else(|| path.file_stem().map(|s| s.to_string()));
-        }
-    }
+    hydrate_source_document_metadata(&mut doc, &content, path);
 
     doc.references_text = crate::references::extract_references_block(&content);
     doc.parsed = true;
@@ -202,4 +146,215 @@ pub fn parse_many(
         pb.finish_error(&format!("Parsed {ok} PDF(s), {failed} failed"));
     }
     (ok, failed, errors)
+}
+
+/// Hydrate a `SourceDocument`'s metadata (title, authors, year, venue, abstract, doi)
+/// using header-scoped DOI/arXiv API lookup and robust frontmatter text parsing.
+pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str, path: &Utf8Path) {
+    let header_text: String = if let Some(pos) = content
+        .lines()
+        .position(|l| sil_regex::is_reference_heading(l.trim()))
+    {
+        content.lines().take(pos).collect::<Vec<_>>().join("\n")
+    } else {
+        content.chars().take(4000).collect()
+    };
+
+    let header_doi = sil_regex::extract_doi(&header_text);
+    let header_arxiv = sil_regex::extract_arxiv_id(&header_text);
+
+    let mut hydrated_by_api = false;
+
+    if let Some(ref doi) = header_doi
+        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi)
+    {
+        if doc.doi.is_none() {
+            doc.doi = pub_item.doi.or_else(|| header_doi.clone());
+        }
+        if doc.title.is_none() && !pub_item.title.is_empty() {
+            doc.title = Some(pub_item.title);
+        }
+        if doc.authors.is_none() && !pub_item.authors.is_empty() {
+            doc.authors = Some(pub_item.authors);
+        }
+        if doc.year.is_none() && pub_item.year.is_some() {
+            doc.year = pub_item.year.map(|y| y as i32);
+        }
+        if doc.venue.is_none() && !pub_item.journal.is_empty() {
+            doc.venue = Some(pub_item.journal);
+        }
+        if doc.abstract_text.is_none() && !pub_item.abstract_text.is_empty() {
+            doc.abstract_text = Some(pub_item.abstract_text);
+        }
+        hydrated_by_api = true;
+    }
+
+    if !hydrated_by_api
+        && let Some(ref arxiv) = header_arxiv
+        && let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_arxiv_id(arxiv)
+    {
+        if doc.doi.is_none() {
+            doc.doi = pub_item.doi;
+        }
+        if doc.title.is_none() && !pub_item.title.is_empty() {
+            doc.title = Some(pub_item.title);
+        }
+        if doc.authors.is_none() && !pub_item.authors.is_empty() {
+            doc.authors = Some(pub_item.authors);
+        }
+        if doc.year.is_none() && pub_item.year.is_some() {
+            doc.year = pub_item.year.map(|y| y as i32);
+        }
+        if doc.venue.is_none() && !pub_item.journal.is_empty() {
+            doc.venue = Some(pub_item.journal);
+        }
+        if doc.abstract_text.is_none() && !pub_item.abstract_text.is_empty() {
+            doc.abstract_text = Some(pub_item.abstract_text);
+        }
+    }
+
+    if doc.doi.is_none() {
+        doc.doi = header_doi;
+    }
+
+    // Local extraction for Title
+    if doc.title.is_none()
+        || doc
+            .title
+            .as_deref()
+            .map_or(false, |t| t.starts_with("page-") || t.len() < 4)
+    {
+        let mut extracted_title = None;
+        for line in header_text.lines() {
+            let clean = sil_regex::strip_html_spans(line).trim().to_string();
+            if clean.starts_with('#') {
+                let candidate = clean
+                    .trim_start_matches('#')
+                    .trim()
+                    .trim_matches('*')
+                    .trim();
+                let lower = candidate.to_lowercase();
+                if !candidate.is_empty()
+                    && !candidate.starts_with("page-")
+                    && lower != "abstract"
+                    && lower != "contents"
+                    && !lower.starts_with("1 introduction")
+                    && !lower.starts_with("contents lists")
+                    && !lower.starts_with("journal homepage")
+                    && lower != "knowledge-based systems"
+                    && lower != "sciencedirect"
+                    && !lower.contains("elsevier")
+                {
+                    extracted_title = Some(candidate.to_string());
+                    break;
+                }
+            }
+        }
+        if extracted_title.is_none() {
+            extracted_title = path.file_stem().map(|s| s.to_string());
+        }
+        doc.title = extracted_title;
+    }
+
+    // Local extraction for Authors
+    if doc.authors.is_none() || doc.authors.as_deref().map_or(false, |a| a.trim().is_empty()) {
+        let mut author_lines = Vec::new();
+        let mut past_title = false;
+        for line in header_text.lines() {
+            let clean = sil_regex::strip_html_spans(line).trim().to_string();
+            if clean.starts_with('#') {
+                let heading = clean.trim_start_matches('#').trim().to_lowercase();
+                if heading == "abstract" || heading.starts_with("1 introduction") {
+                    break;
+                }
+                if doc.title.as_deref().map_or(false, |t| clean.contains(t)) {
+                    past_title = true;
+                    continue;
+                }
+                past_title = true;
+                continue;
+            }
+            if past_title && !clean.is_empty() {
+                let lower = clean.to_lowercase();
+                if lower.starts_with("abstract")
+                    || lower.starts_with("contents")
+                    || lower.starts_with("keywords")
+                    || lower.starts_with("index terms")
+                    || lower.starts_with("department")
+                    || lower.starts_with("school of")
+                    || lower.starts_with("faculty of")
+                    || lower.starts_with("university")
+                    || lower.starts_with("college of")
+                    || lower.starts_with("date:")
+                    || lower.contains("http")
+                    || lower.contains("@")
+                {
+                    continue;
+                }
+                if lower.starts_with("january")
+                    || lower.starts_with("february")
+                    || lower.starts_with("march")
+                    || lower.starts_with("april")
+                    || lower.starts_with("may")
+                    || lower.starts_with("june")
+                    || lower.starts_with("july")
+                    || lower.starts_with("august")
+                    || lower.starts_with("september")
+                    || lower.starts_with("october")
+                    || lower.starts_with("november")
+                    || lower.starts_with("december")
+                {
+                    continue;
+                }
+
+                // Remove page links like [\\1](#page-0-0) or [1](#page-0-0)
+                let mut cleaned_author = clean.clone();
+                while let Some(sp) = cleaned_author.find("[") {
+                    if let Some(ep) = cleaned_author[sp..].find(")") {
+                        cleaned_author.replace_range(sp..sp + ep + 1, "");
+                    } else {
+                        break;
+                    }
+                }
+
+                let cleaned_author = cleaned_author
+                    .replace(['*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', 'ⁿ', '՞', 'ã', 'ゥ'], "")
+                    .replace("<sup>", "")
+                    .replace("</sup>", "")
+                    .trim_start_matches('-')
+                    .trim()
+                    .to_string();
+
+                if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
+                    author_lines.push(cleaned_author);
+                    if author_lines.len() >= 2 {
+                        break;
+                    }
+                }
+            }
+        }
+        if !author_lines.is_empty() {
+            doc.authors = Some(author_lines.join(", "));
+        }
+    }
+
+    // Local extraction for Year
+    if doc.year.is_none() {
+        for line in header_text.lines().take(20) {
+            if let Some(y) = sil_regex::extract_year(line) {
+                doc.year = Some(y);
+                break;
+            }
+        }
+    }
+
+    // Local extraction for Venue
+    if doc.venue.is_none() {
+        for line in header_text.lines().take(25) {
+            if let Some(v) = sil_regex::extract_reference_venue(line) {
+                doc.venue = Some(v);
+                break;
+            }
+        }
+    }
 }

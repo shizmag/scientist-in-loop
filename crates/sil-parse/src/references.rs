@@ -39,7 +39,7 @@ pub fn parse_reference_entries(source_id: &SourceId, raw_block: &str) -> Vec<Ref
     let mut results = Vec::new();
 
     for (idx, raw_text) in raw_entries.into_iter().enumerate() {
-        let (authors, year, title, doi) = parse_entry_metadata(&raw_text);
+        let (authors, year, title, venue, doi) = parse_entry_metadata(&raw_text);
         let id = format!("{}_ref_{}", source_id.as_str(), idx + 1);
 
         results.push(ReferenceEntry {
@@ -50,6 +50,7 @@ pub fn parse_reference_entries(source_id: &SourceId, raw_block: &str) -> Vec<Ref
             title,
             authors,
             year,
+            venue,
             doi,
         });
     }
@@ -106,16 +107,23 @@ fn is_noise_line(line: &str) -> bool {
     lower.starts_with("page ") || lower.starts_with("arxiv:") && lower.contains("[cs.")
 }
 
-/// Extract metadata fields (authors, year, title, doi) from a raw citation string.
+/// Extract metadata fields (authors, year, title, venue, doi) from a raw citation string.
 fn parse_entry_metadata(
     text: &str,
-) -> (Option<String>, Option<i32>, Option<String>, Option<String>) {
+) -> (
+    Option<String>,
+    Option<i32>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
     let doi = extract_doi(text);
     let year = extract_year(text);
     let title = extract_quoted_title(text).or_else(|| extract_unquoted_title(text));
     let authors = extract_authors(text, year, title.as_deref());
+    let venue = sil_regex::extract_reference_venue(text);
 
-    (authors, year, title, doi)
+    (authors, year, title, venue, doi)
 }
 
 /// Try to extract an unquoted title from academic citation format (`[N] Authors. Title. Venue, Year`).

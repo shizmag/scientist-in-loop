@@ -50,6 +50,15 @@ pub enum InputMode {
     ReadingSourceMd,
 }
 
+/// Sorting key for references display in TUI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefSortKey {
+    Index,
+    Year,
+    Source,
+    Venue,
+}
+
 /// Items present in the unified Settings tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingItem {
@@ -196,6 +205,7 @@ pub struct App {
     pub source_scroll_offset: usize,
     pub reading_md_content: Option<String>,
     pub selected_source_references: Vec<ReferenceEntry>,
+    pub ref_sort_key: RefSortKey,
     pub new_source_link_buffer: String,
     pub rename_source_buffer: String,
 
@@ -255,6 +265,7 @@ impl App {
             source_scroll_offset: 0,
             reading_md_content: None,
             selected_source_references: Vec::new(),
+            ref_sort_key: RefSortKey::Index,
             new_source_link_buffer: String::new(),
             rename_source_buffer: String::new(),
 
@@ -715,6 +726,7 @@ impl App {
                             title: None,
                             authors: None,
                             year: None,
+                            venue: None,
                             doi: None,
                         });
                     }
@@ -722,8 +734,30 @@ impl App {
             }
         }
         self.selected_source_references = refs;
+        self.ref_sort_key = RefSortKey::Index;
         self.input_mode = InputMode::ViewingSourceRefs;
-        self.status_message = format!("Viewing references for {filename}. Press Esc to exit.");
+        self.status_message = format!(
+            "Viewing references for {filename}. Keys: 'y' (Year), 's' (Source), 'v' (Venue), 'i' (Index), Esc to close."
+        );
+    }
+
+    pub fn load_and_view_all_references(&mut self) {
+        let mut refs = Vec::new();
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                if let Ok(r) = db.get_all_references() {
+                    refs = r;
+                }
+            }
+        }
+        self.selected_source_references = refs;
+        self.ref_sort_key = RefSortKey::Index;
+        self.input_mode = InputMode::ViewingSourceRefs;
+        self.status_message = format!(
+            "Viewing all {} references in project. Keys: 'y' (Year), 's' (Source), 'v' (Venue), 'i' (Index), Esc to close.",
+            self.selected_source_references.len()
+        );
     }
 
     fn start_editing_selected_field(&mut self) {
@@ -1292,6 +1326,34 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.selected_source_references.clear();
                 self.status_message = "Closed references window.".to_string();
+            }
+            KeyCode::Char('y') => {
+                self.ref_sort_key = RefSortKey::Year;
+                self.selected_source_references.sort_by(|a, b| {
+                    b.year.unwrap_or(0).cmp(&a.year.unwrap_or(0))
+                });
+                self.status_message = "Sorted references by Year (descending).".to_string();
+            }
+            KeyCode::Char('s') => {
+                self.ref_sort_key = RefSortKey::Source;
+                self.selected_source_references.sort_by(|a, b| {
+                    a.source_id.as_str().cmp(b.source_id.as_str())
+                });
+                self.status_message = "Sorted references by Source document.".to_string();
+            }
+            KeyCode::Char('v') | KeyCode::Char('j') => {
+                self.ref_sort_key = RefSortKey::Venue;
+                self.selected_source_references.sort_by(|a, b| {
+                    a.venue.as_deref().unwrap_or("").cmp(b.venue.as_deref().unwrap_or(""))
+                });
+                self.status_message = "Sorted references by Journal/Conference (Venue).".to_string();
+            }
+            KeyCode::Char('i') | KeyCode::Char('n') => {
+                self.ref_sort_key = RefSortKey::Index;
+                self.selected_source_references.sort_by(|a, b| {
+                    a.ref_index.cmp(&b.ref_index)
+                });
+                self.status_message = "Sorted references by original Index.".to_string();
             }
             _ => {}
         }

@@ -98,7 +98,6 @@ pub fn suggest_from_source(doc: &SourceDocument) -> BibSuggestion {
 
     let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset
         || doc.kind == SourceKind::Code
-        || (doc.venue.is_none() && has_meta)
     {
         let mut fields = vec![
             format!("  title={{{display_title}}}"),

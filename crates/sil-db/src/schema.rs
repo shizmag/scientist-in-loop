@@ -126,6 +126,7 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             title       TEXT,
             authors     TEXT,
             year        INTEGER,
+            venue       TEXT,
             doi         TEXT,
             created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -161,6 +162,7 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
 
     migrate_todo_ideas_columns(conn)?;
     migrate_sources_columns(conn)?;
+    migrate_source_references_columns(conn)?;
 
     Ok(())
 }
@@ -219,6 +221,22 @@ fn migrate_todo_ideas_columns(conn: &Connection) -> Result<(), DbError> {
     }
     if !columns.iter().any(|c| c == "tags") {
         conn.execute("ALTER TABLE todo_ideas ADD COLUMN tags TEXT DEFAULT ''", [])?;
+    }
+
+    Ok(())
+}
+
+fn migrate_source_references_columns(conn: &Connection) -> Result<(), DbError> {
+    let mut stmt = conn.prepare("PRAGMA table_info(source_references)")?;
+    let columns: Vec<String> = stmt
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<_, _>>()?;
+
+    if !columns.iter().any(|c| c == "venue") {
+        conn.execute(
+            "ALTER TABLE source_references ADD COLUMN venue TEXT",
+            [],
+        )?;
     }
 
     Ok(())

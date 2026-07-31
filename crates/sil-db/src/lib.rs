@@ -281,6 +281,11 @@ impl SilDb {
         references::get_references_for_source(&self.conn, source_id)
     }
 
+    /// Get all reference entries across all source documents in the project.
+    pub fn get_all_references(&self) -> Result<Vec<sil_core::ReferenceEntry>, DbError> {
+        references::get_all_references(&self.conn)
+    }
+
     /// Full-text search over extracted source references.
     pub fn search_references(
         &self,

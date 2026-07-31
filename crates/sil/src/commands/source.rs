@@ -374,33 +374,16 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
     for (i, (mut doc, content)) in docs.into_iter().enumerate() {
         pb.set_message(&doc.filename);
 
-        // 1. Metadata Hydration if missing key metadata
-        let needs_metadata =
-            doc.authors.is_none() || doc.venue.is_none() || doc.abstract_text.is_none();
-        if needs_metadata {
-            let extracted_doi = doc.doi.clone().or_else(|| sil_regex::extract_doi(&content));
-            if let Some(ref doi) = extracted_doi
-                && let Ok(Some(pub_item)) = sil_parse::journal_digest::fetch_work_by_doi(doi) {
-                    if doc.doi.is_none() && pub_item.doi.is_some() {
-                        doc.doi = pub_item.doi;
-                    }
-                    if doc.title.is_none() && !pub_item.title.is_empty() {
-                        doc.title = Some(pub_item.title);
-                    }
-                    if doc.authors.is_none() && !pub_item.authors.is_empty() {
-                        doc.authors = Some(pub_item.authors);
-                    }
-                    if doc.year.is_none() && pub_item.year.is_some() {
-                        doc.year = pub_item.year.map(|y| y as i32);
-                    }
-                    if doc.venue.is_none() && !pub_item.journal.is_empty() {
-                        doc.venue = Some(pub_item.journal);
-                    }
-                    if doc.abstract_text.is_none() && !pub_item.abstract_text.is_empty() {
-                        doc.abstract_text = Some(pub_item.abstract_text);
-                    }
-                }
-        }
+        // 1. Reset metadata fields and re-hydrate using header-scoped lookup & frontmatter parsing
+        doc.title = None;
+        doc.authors = None;
+        doc.year = None;
+        doc.venue = None;
+        doc.doi = None;
+        doc.abstract_text = None;
+
+        let path_clone = doc.path.clone();
+        sil_parse::hydrate_source_document_metadata(&mut doc, &content, &path_clone);
 
         // 2. Re-extract references block and entries
         let refs_block = sil_parse::references::extract_references_block(&content);

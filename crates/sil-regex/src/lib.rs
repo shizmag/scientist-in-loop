@@ -104,6 +104,53 @@ pub fn extract_latex_metadata_comment(line: &str) -> Option<String> {
         .map(|caps| caps.get(1).unwrap().as_str().trim().to_string())
 }
 
+/// Extract journal / conference / venue name from a reference text line.
+pub fn extract_reference_venue(text: &str) -> Option<String> {
+    let clean = strip_html_spans(text);
+    
+    // Explicit venue keywords & patterns
+    let patterns = [
+        "Nature", "Science", "Cell", "PNAS",
+        "Nucleic Acids Research", "Knowledge-Based Systems",
+        "Data & Knowledge Engineering", "ACM Computing Surveys",
+        "Findings of the Association for Computational Linguistics",
+        "Findings of ACL", "Association for Computational Linguistics",
+        "NeurIPS", "NIPS", "Advances in Neural Information Processing Systems",
+        "ICML", "International Conference on Machine Learning",
+        "ICLR", "International Conference on Learning Representations",
+        "CVPR", "IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+        "ICCV", "ECCV", "EMNLP", "NAACL", "ACL", "AAAI", "IJCAI", "KDD", "SIGIR",
+        "IEEE Transactions", "ACM Transactions", "CoRR", "arXiv",
+    ];
+
+    for pat in patterns {
+        if clean.contains(pat) {
+            return Some(pat.to_string());
+        }
+    }
+
+    // Generic match for "Proceedings of ..." or "Journal of ..."
+    if let Some(pos) = clean.find("Proceedings of ") {
+        let rest = &clean[pos..];
+        let end = rest.find('.').or_else(|| rest.find(',')).unwrap_or(rest.len());
+        let candidate = rest[..end].trim();
+        if candidate.len() > 10 && candidate.len() < 120 {
+            return Some(candidate.to_string());
+        }
+    }
+
+    if let Some(pos) = clean.find("Journal of ") {
+        let rest = &clean[pos..];
+        let end = rest.find('.').or_else(|| rest.find(',')).unwrap_or(rest.len());
+        let candidate = rest[..end].trim();
+        if candidate.len() > 10 && candidate.len() < 120 {
+            return Some(candidate.to_string());
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,6 +276,22 @@ mod tests {
         assert_eq!(
             extract_latex_metadata_comment("% Regular LaTeX comment"),
             None
+        );
+    }
+
+    #[test]
+    fn test_extract_reference_venue() {
+        assert_eq!(
+            extract_reference_venue("Published in Nature, vol 580, 2024"),
+            Some("Nature".to_string())
+        );
+        assert_eq!(
+            extract_reference_venue("In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics"),
+            Some("Association for Computational Linguistics".to_string())
+        );
+        assert_eq!(
+            extract_reference_venue("arXiv preprint arXiv:2405.12345, 2024"),
+            Some("arXiv".to_string())
         );
     }
 }

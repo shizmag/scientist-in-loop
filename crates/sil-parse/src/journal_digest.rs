@@ -194,8 +194,26 @@ pub fn fetch_journal_publications_native(
     Ok(publications)
 }
 
+static LAST_API_CALL: std::sync::LazyLock<std::sync::Mutex<Option<std::time::Instant>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
+
+/// Enforce a minimal rate-limiting delay (250ms) between external HTTP API requests.
+pub fn enforce_api_ratelimit() {
+    if let Ok(mut guard) = LAST_API_CALL.lock() {
+        if let Some(last) = *guard {
+            let elapsed = last.elapsed();
+            let min_delay = std::time::Duration::from_millis(250);
+            if elapsed < min_delay {
+                std::thread::sleep(min_delay - elapsed);
+            }
+        }
+        *guard = Some(std::time::Instant::now());
+    }
+}
+
 /// Fetch single paper's metadata from Crossref API natively in Rust using `ureq`.
 pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseError> {
+    enforce_api_ratelimit();
     let clean_doi = doi.trim_start_matches("doi:").trim();
     let url = format!("https://api.crossref.org/works/{clean_doi}");
 
@@ -205,7 +223,7 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseE
 
     let response = match agent
         .get(&url)
-        .set("User-Agent", "scientist-in-loop/0.1.0")
+        .set("User-Agent", "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)")
         .call()
     {
         Ok(res) => res,
@@ -226,6 +244,99 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseE
     } else {
         Ok(None)
     }
+}
+
+/// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
+pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {
+    enforce_api_ratelimit();
+    let clean_id = arxiv_id
+        .trim_start_matches("arxiv:")
+        .trim_start_matches("arXiv:")
+        .trim();
+
+    if clean_id.is_empty() {
+        return Ok(None);
+    }
+
+    let url = format!("http://export.arxiv.org/api/query?id_list={clean_id}");
+    let agent = ureq::AgentBuilder::new()
+        .timeout(std::time::Duration::from_secs(10))
+        .build();
+
+    let response = agent
+        .get(&url)
+        .set("User-Agent", "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)")
+        .call()
+        .map_err(|e| ParseError::Message(format!("ArXiv API request failed: {e}")))?;
+
+    let xml = response
+        .into_string()
+        .map_err(|e| ParseError::Message(format!("Failed to read ArXiv response string: {e}")))?;
+
+    if !xml.contains("<entry>") {
+        return Ok(None);
+    }
+
+    let entry_start = xml.find("<entry>").unwrap();
+    let entry_xml = &xml[entry_start..];
+
+    let extract_tag = |tag: &str| -> Option<String> {
+        let open = format!("<{tag}>");
+        let close = format!("</{tag}>");
+        if let Some(sp) = entry_xml.find(&open)
+            && let Some(ep) = entry_xml[sp..].find(&close)
+        {
+            let raw = &entry_xml[sp + open.len()..sp + ep];
+            let clean = raw.replace('\n', " ").trim().to_string();
+            if !clean.is_empty() {
+                return Some(clean);
+            }
+        }
+        None
+    };
+
+    let title = extract_tag("title").unwrap_or_default();
+    if title.is_empty() || title.contains("Error") {
+        return Ok(None);
+    }
+
+    let mut authors_vec = Vec::new();
+    let mut search_pos = 0;
+    while let Some(sp) = entry_xml[search_pos..].find("<author>") {
+        let abs_sp = search_pos + sp;
+        if let Some(ep) = entry_xml[abs_sp..].find("</author>") {
+            let author_block = &entry_xml[abs_sp..abs_sp + ep];
+            if let Some(nsp) = author_block.find("<name>")
+                && let Some(nep) = author_block[nsp..].find("</name>")
+            {
+                let name = author_block[nsp + 6..nsp + nep].trim();
+                if !name.is_empty() {
+                    authors_vec.push(name.to_string());
+                }
+            }
+            search_pos = abs_sp + ep + 9;
+        } else {
+            break;
+        }
+    }
+    let authors = authors_vec.join(", ");
+
+    let published = extract_tag("published").unwrap_or_default();
+    let year = sil_regex::extract_year(&published);
+    let abstract_text = extract_tag("summary").unwrap_or_default();
+    let doi = extract_tag("arxiv:doi");
+
+    Ok(Some(JournalPublication {
+        doi,
+        title,
+        authors,
+        journal: format!("arXiv:{clean_id}"),
+        year: year.map(|y| y as u32),
+        abstract_text,
+        citation_count: None,
+        url: format!("https://arxiv.org/abs/{clean_id}"),
+        pdf_url: Some(format!("https://arxiv.org/pdf/{clean_id}.pdf")),
+    }))
 }
 
 /// Fetch top journal publications matching a query using native Rust Crossref API as primary source.

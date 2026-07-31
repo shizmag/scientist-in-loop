@@ -11,14 +11,15 @@ mod marker;
 pub mod references;
 mod validate;
 
-pub use batch::{ParseResult, parse_many, parse_one};
+pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};
 pub use error::ParseError;
 pub use fetch::fetch_source_target;
 pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
 pub use journal_digest::{
-    fetch_journal_publications, fetch_journal_publications_native, fetch_work_by_doi,
+    fetch_journal_publications, fetch_journal_publications_native, fetch_work_by_arxiv_id,
+    fetch_work_by_doi,
 };
 pub use marker::{
     CliMarkerRunner, MarkerRunner, PythonMarkerRunner, StubMarkerRunner, discover_marker_runner,

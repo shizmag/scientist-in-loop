@@ -292,6 +292,11 @@ pub fn discover_marker_runner() -> Result<Box<dyn MarkerRunner>, ParseError> {
     if let Ok(stub) = std::env::var("SIL_MARKER_STUB") {
         return Ok(Box::new(StubMarkerRunner { content: stub }));
     }
+    if std::env::var("SIL_PARSE_SCRIPT").is_ok() {
+        if let Ok(py) = PythonMarkerRunner::discover() {
+            return Ok(Box::new(py));
+        }
+    }
     if let Ok(cli) = CliMarkerRunner::discover() {
         return Ok(Box::new(cli));
     }

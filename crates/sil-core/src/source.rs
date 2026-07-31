@@ -229,6 +229,8 @@ pub struct ReferenceEntry {
     pub authors: Option<String>,
     /// Parsed publication year if extracted.
     pub year: Option<i32>,
+    /// Parsed venue (journal or conference) if extracted.
+    pub venue: Option<String>,
     /// Parsed DOI if extracted.
     pub doi: Option<String>,
 }
