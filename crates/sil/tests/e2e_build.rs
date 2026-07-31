@@ -10,7 +10,7 @@ fn build_invokes_engine_or_errors_clearly() {
 
     // Default engine is tectonic. On machines with tectonic this succeeds;
     // otherwise we still require a clean, actionable failure.
-    let assert = sil().current_dir(&project).arg("build").assert();
+    let assert = sil().current_dir(&project).args(["paper", "build"]).assert();
     let output = assert.get_output();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -69,8 +69,8 @@ Main method prose goes here.
     let cfg = fs::read_to_string(&cfg_path).unwrap();
     fs::write(&cfg_path, cfg.replace("template: standard", "template: neurips")).unwrap();
 
-    // Run `sil build release`
-    let assert = sil().current_dir(&project).args(["build", "release"]).assert();
+    // Run `sil paper build release`
+    let assert = sil().current_dir(&project).args(["paper", "build", "release"]).assert();
     let output = assert.get_output();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);

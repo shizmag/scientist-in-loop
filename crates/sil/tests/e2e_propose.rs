@@ -19,7 +19,7 @@ fn propose_explicit_edit_draft_has_trailer_not_commit() {
 
     let out = sil()
         .current_dir(&project)
-        .args(["propose", "--action", "edit-draft", "-m", "Tweak intro"])
+        .args(["git", "propose", "--action", "edit-draft", "-m", "Tweak intro"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: edit-draft"))
@@ -59,7 +59,7 @@ fn propose_infers_from_dirty_draft() {
 
     sil()
         .current_dir(&project)
-        .arg("propose")
+        .args(["git", "propose"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: edit-draft"))
@@ -81,7 +81,7 @@ fn structure_set_updates_yaml_and_proposes() {
 
     sil()
         .current_dir(&project)
-        .args(["structure", "set", &id, "draft"])
+        .args(["paper", "structure", "set", &id, "draft"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: update-structure"))
@@ -100,7 +100,7 @@ fn promote_copies_draft_and_proposes() {
     // Mark at least one section draft so guardrail passes
     sil()
         .current_dir(&project)
-        .args(["structure", "set", "intro", "draft"])
+        .args(["paper", "structure", "set", "intro", "draft"])
         .assert()
         .success();
 
@@ -111,7 +111,7 @@ fn promote_copies_draft_and_proposes() {
 
     let promote_out = sil()
         .current_dir(&project)
-        .arg("promote")
+        .args(["paper", "promote"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: promote-to-final"))
@@ -153,7 +153,7 @@ sections:
 
     let fail = sil()
         .current_dir(&project)
-        .arg("promote")
+        .args(["paper", "promote"])
         .assert()
         .failure()
         .get_output()
@@ -167,7 +167,7 @@ sections:
 
     sil()
         .current_dir(&project)
-        .args(["promote", "--force"])
+        .args(["paper", "promote", "--force"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Sci-Action: promote-to-final"));
@@ -177,7 +177,7 @@ sections:
 fn help_lists_propose_promote_structure() {
     let out = sil().arg("--help").assert().success();
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
-    for cmd in ["propose", "promote", "structure"] {
+    for cmd in ["git", "paper", "source"] {
         assert!(stdout.contains(cmd), "help missing {cmd}:\n{stdout}");
     }
 }

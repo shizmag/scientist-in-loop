@@ -13,11 +13,11 @@ use predicates::prelude::PredicateBooleanExt;
 fn commands_outside_project_fail_clearly() {
     let dir = tempfile::tempdir().unwrap();
     for args in [
-        vec!["parse"],
-        vec!["search", "q"],
-        vec!["log"],
-        vec!["context"],
-        vec!["build"],
+        vec!["source", "parse"],
+        vec!["source", "search", "q"],
+        vec!["git", "log"],
+        vec!["project", "context"],
+        vec!["paper", "build"],
     ] {
         sil()
             .current_dir(dir.path())
@@ -80,7 +80,7 @@ fn marker_stub_failure_via_failing_env_script() {
         .current_dir(&project)
         .env_remove("SIL_MARKER_STUB")
         .env("SIL_PARSE_SCRIPT", script.to_str().unwrap())
-        .args(["parse", "sources/a.pdf"])
+        .args(["source", "parse", "sources/a.pdf"])
         .assert()
         .failure()
         .stderr(
@@ -102,14 +102,14 @@ fn parse_no_args_when_all_already_parsed() {
     .unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/only.pdf"])
+        .args(["source", "parse", "sources/only.pdf"])
         .env("SIL_MARKER_STUB", "once")
         .assert()
         .success();
 
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "again")
         .assert()
         .success()
@@ -131,14 +131,14 @@ fn parse_no_args_only_unparsed_in_mix() {
     }
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/done.pdf"])
+        .args(["source", "parse", "sources/done.pdf"])
         .env("SIL_MARKER_STUB", "done content")
         .assert()
         .success();
 
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "todo unique_mix_token_99")
         .assert()
         .success()
@@ -147,7 +147,7 @@ fn parse_no_args_only_unparsed_in_mix() {
     // Only todo content should be searchable as the new token
     sil()
         .current_dir(&project)
-        .args(["search", "unique_mix_token_99"])
+        .args(["source", "search", "unique_mix_token_99"])
         .assert()
         .success()
         .stdout(predicates::str::contains("todo.pdf"));
@@ -161,7 +161,7 @@ fn context_missing_paper_draft() {
     fs::remove_file(project.join("paper_draft.tex")).unwrap();
     sil()
         .current_dir(&project)
-        .args(["context", "--paper"])
+        .args(["project", "context", "--paper"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Paper content"))
@@ -185,7 +185,7 @@ fn context_large_draft_ok() {
 
     sil()
         .current_dir(&project)
-        .args(["context", "--paper"])
+        .args(["project", "context", "--paper"])
         .assert()
         .success()
         .stdout(predicates::str::contains("S0"))
@@ -199,7 +199,7 @@ fn search_empty_index() {
     let (_dir, project) = init_project("empty-fts");
     sil()
         .current_dir(&project)
-        .args(["search", "anything"])
+        .args(["source", "search", "anything"])
         .assert()
         .success()
         .stdout(predicates::str::contains("No results"));
@@ -217,7 +217,7 @@ fn search_unicode_content_findable_via_ascii_token() {
     .unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/u.pdf"])
+        .args(["source", "parse", "sources/u.pdf"])
         .env(
             "SIL_MARKER_STUB",
             "注意力机制 selfattentiontoken αβγ café",
@@ -226,7 +226,7 @@ fn search_unicode_content_findable_via_ascii_token() {
         .success();
     sil()
         .current_dir(&project)
-        .args(["search", "selfattentiontoken"])
+        .args(["source", "search", "selfattentiontoken"])
         .assert()
         .success()
         .stdout(predicates::str::contains("u.pdf"));
@@ -256,13 +256,13 @@ fn reparse_same_pdf_fails_idempotently() {
     .unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/r.pdf"])
+        .args(["source", "parse", "sources/r.pdf"])
         .env("SIL_MARKER_STUB", "first")
         .assert()
         .success();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/r.pdf"])
+        .args(["source", "parse", "sources/r.pdf"])
         .env("SIL_MARKER_STUB", "second")
         .assert()
         .failure()

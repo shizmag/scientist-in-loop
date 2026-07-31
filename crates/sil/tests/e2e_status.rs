@@ -30,7 +30,7 @@ fn status_updates_after_parse() {
 
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/one.pdf"])
+        .args(["source", "parse", "sources/one.pdf"])
         .env("SIL_MARKER_STUB", "status count token")
         .assert()
         .success();

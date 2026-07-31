@@ -11,7 +11,7 @@ fn doctor_reports_project_checks() {
     let (_tmp, project) = init_project("doc-me");
     let out = sil()
         .current_dir(&project)
-        .arg("doctor")
+        .args(["project", "doctor"])
         .assert()
         .success()
         .get_output()
@@ -30,7 +30,7 @@ fn doctor_json_has_checks() {
     let (_tmp, project) = init_project("doc-json");
     let out = sil()
         .current_dir(&project)
-        .args(["doctor", "--json"])
+        .args(["project", "doctor", "--json"])
         .assert()
         .success()
         .get_output()

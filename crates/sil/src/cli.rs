@@ -29,10 +29,6 @@ pub enum Commands {
         /// Project directory name (default: current directory; with --update: project root)
         name: Option<String>,
         /// Upgrade an existing project to the current sil template version
-        ///
-        /// Refreshes skills, structure.example.yaml, and the sil-managed `.gitignore`
-        /// block. Creates any missing scaffold files. Never overwrites config.yaml,
-        /// structure.yaml, manuscripts, or custom gitignore rules outside the managed block.
         #[arg(long)]
         update: bool,
     },
@@ -42,15 +38,62 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Manage literature sources and parsing (fetch, list, remove, parse, search, cite, digest, read)
+    Source {
+        #[command(subcommand)]
+        action: SourceCmd,
+    },
+    /// Manage paper draft, compilation, structure, and templates
+    Paper {
+        #[command(subcommand)]
+        action: PaperCmd,
+    },
+    /// Project and workspace administration tools (doctor, context, mcp)
+    Project {
+        #[command(subcommand)]
+        action: ProjectCmd,
+    },
+    /// Source control and sci-actions (log, propose)
+    Git {
+        #[command(subcommand)]
+        action: GitCmd,
+    },
+    /// Interactive terminal user interfaces (dashboard, settings)
+    Tui {
+        #[command(subcommand)]
+        action: TuiCmd,
+    },
+}
+
+/// `sil source` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum SourceCmd {
+    /// Download a scientific paper or source file into sources/
+    Fetch {
+        /// Target identifier, URL, or file path.
+        target: String,
+        /// Skip interactive parse offer after download
+        #[arg(long)]
+        no_parse: bool,
+    },
+    /// List sources with parsed vs unparsed visibility
+    List {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove a source from the database (enables reparse); optional file delete
+    Remove {
+        /// Source id or filename (e.g. paper.pdf)
+        id: String,
+        /// Also delete the PDF under sources/
+        #[arg(long)]
+        delete_file: bool,
+    },
     /// Parse PDF source(s) into SQLite + FTS5 via Marker
     Parse {
         /// Path to a specific PDF (omit for interactive selection of unparsed sources/)
         path: Option<PathBuf>,
-    },
-    /// Manage source PDFs
-    Source {
-        #[command(subcommand)]
-        action: SourceCmd,
     },
     /// Full-text search over parsed sources
     Search {
@@ -60,7 +103,37 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 20)]
         limit: usize,
     },
-    /// Compile the LaTeX main file from config ('sil build release' formats template, strips #-- X --# notes, and creates submission zip)
+    /// Suggest BibTeX and `\cite{...}` from a source filename or query
+    Cite {
+        /// Source filename/id or free-text query
+        target: String,
+        /// Append the stub entry to references.bib
+        #[arg(long)]
+        append: bool,
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// Fetch top peer-reviewed journal publications digest
+    Digest {
+        /// Search query or topic (default: machine learning)
+        #[arg(default_value = "machine learning")]
+        query: String,
+        /// Max publications to fetch
+        #[arg(short, long, default_value_t = 10)]
+        limit: usize,
+    },
+    /// Open a source document in the interactive TUI markdown reader
+    Read {
+        /// Source ID, filename, or file path to read
+        id: String,
+    },
+}
+
+/// `sil paper` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum PaperCmd {
+    /// Compile the LaTeX main file from config
     Build {
         /// Target build mode ("release" or "draft")
         target: Option<String>,
@@ -68,17 +141,49 @@ pub enum Commands {
         #[arg(long, hide = true)]
         release: bool,
     },
-    /// Show git log annotated by Sci-Action trailers
-    Log {
-        /// Max commits to show
-        #[arg(short = 'n', long, default_value_t = 30)]
-        limit: usize,
-        /// Only show commits that have a Sci-Action trailer
-        #[arg(long, default_value_t = true)]
-        sci_only: bool,
-        /// Include commits without Sci-Action
+    /// Split paper_draft.tex into agent-readable files under .sil/draft_sections/
+    Split,
+    /// Copy paper_draft.tex → paper.tex and propose promote-to-final
+    Promote {
+        /// Skip structure completion guardrail (sections should be draft/polished)
         #[arg(long)]
-        all: bool,
+        force: bool,
+    },
+    /// List active # -- X -- # idea and TODO blocks parsed from paper_draft.tex
+    Todo {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// Inspect or update `.sil/structure.yaml`
+    Structure {
+        #[command(subcommand)]
+        action: StructureCmd,
+    },
+    /// Collect manuscript prose into conference/journal article templates
+    Template {
+        #[command(subcommand)]
+        action: Option<TemplateCmd>,
+        /// Target template (neurips, icml, iclr, ieee, arxiv, standard)
+        #[arg(long, short = 't')]
+        target: Option<String>,
+        /// Source manuscript file
+        #[arg(long, short = 'i')]
+        input: Option<camino::Utf8PathBuf>,
+        /// Output file path
+        #[arg(long, short = 'o')]
+        output: Option<camino::Utf8PathBuf>,
+    },
+}
+
+/// `sil project` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum ProjectCmd {
+    /// Check project layout, host dependencies, and manuscript health
+    Doctor {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
     },
     /// Generate structured context for a human or agent
     Context {
@@ -101,11 +206,29 @@ pub enum Commands {
         #[arg(long)]
         task: Option<String>,
     },
-    /// Split paper_draft.tex into agent-readable files under .sil/draft_sections/
-    ///
-    /// Does not modify paper_draft.tex. Re-run after editing the draft to refresh
-    /// the section tree (source of truth stays the draft).
-    Split,
+    /// Start Model Context Protocol (MCP) stdio server
+    Mcp {
+        /// Quiet mode (suppress log output on stderr)
+        #[arg(short, long)]
+        quiet: bool,
+    },
+}
+
+/// `sil git` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum GitCmd {
+    /// Show git log annotated by Sci-Action trailers
+    Log {
+        /// Max commits to show
+        #[arg(short = 'n', long, default_value_t = 30)]
+        limit: usize,
+        /// Only show commits that have a Sci-Action trailer
+        #[arg(long, default_value_t = true)]
+        sci_only: bool,
+        /// Include commits without Sci-Action
+        #[arg(long)]
+        all: bool,
+    },
     /// Print a Sci-Action commit proposal (never auto-commits)
     Propose {
         /// Explicit Sci-Action (e.g. edit-draft, update-structure, promote-to-final)
@@ -118,79 +241,19 @@ pub enum Commands {
         #[arg(long)]
         body: Option<String>,
     },
-    /// Copy paper_draft.tex → paper.tex and propose promote-to-final
-    Promote {
-        /// Skip structure completion guardrail (sections should be draft/polished)
-        #[arg(long)]
-        force: bool,
-    },
-    /// Inspect or update `.sil/structure.yaml`
-    Structure {
-        #[command(subcommand)]
-        action: StructureCmd,
-    },
-    /// Collect manuscript prose into conference/journal article templates (NeurIPS, ICML, ICLR, IEEE/CVPR, arXiv)
-    Template {
-        #[command(subcommand)]
-        action: Option<TemplateCmd>,
-        /// Target template (neurips, icml, iclr, ieee, arxiv, standard)
-        #[arg(long, short = 't')]
-        target: Option<String>,
-        /// Source manuscript file
-        #[arg(long, short = 'i')]
-        input: Option<camino::Utf8PathBuf>,
-        /// Output file path
-        #[arg(long, short = 'o')]
-        output: Option<camino::Utf8PathBuf>,
-    },
-    /// Suggest BibTeX and `\cite{...}` from a source filename or query
-    Cite {
-        /// Source filename/id or free-text query
-        target: String,
-        /// Append the stub entry to references.bib
-        #[arg(long)]
-        append: bool,
-        /// Machine-readable JSON output
-        #[arg(long)]
-        json: bool,
-    },
-    /// Check project layout, host dependencies, and manuscript health
-    Doctor {
-        /// Machine-readable JSON output
-        #[arg(long)]
-        json: bool,
-    },
-    /// Launch interactive TUI command center dashboard & settings
+}
+
+/// `sil tui` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum TuiCmd {
+    /// Launch interactive TUI command center dashboard
     #[command(alias = "daily")]
     Dashboard,
     /// Launch interactive TUI settings manager
-    #[command(alias = "tui")]
     Settings,
-    /// Fetch top peer-reviewed journal publications digest
-    Digest {
-        /// Search query or topic (default: machine learning)
-        #[arg(default_value = "machine learning")]
-        query: String,
-        /// Max publications to fetch
-        #[arg(short, long, default_value_t = 10)]
-        limit: usize,
-    },
-    /// List active # -- X -- # idea and TODO blocks parsed from paper_draft.tex
-    Todo {
-        /// Machine-readable JSON output
-        #[arg(long)]
-        json: bool,
-    },
-    /// Start Model Context Protocol (MCP) stdio server
-    Mcp {
-        /// Quiet mode (suppress log output on stderr)
-        #[arg(short, long)]
-        quiet: bool,
-    },
 }
 
-
-/// `sil template` subcommands.
+/// `sil paper template` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum TemplateCmd {
     /// List supported target templates
@@ -209,38 +272,7 @@ pub enum TemplateCmd {
     },
 }
 
-/// `sil source` subcommands.
-#[derive(Debug, Subcommand)]
-pub enum SourceCmd {
-    /// Download a scientific paper or source file into sources/
-    Fetch {
-        /// Target identifier, URL, or file path. Supported target protocols and formats:
-        /// - 10.xxxx/... (DOI): Resolves paper metadata & PDF/landing page. Advantage: Fast, authoritative, structured metadata extraction.
-        /// - arxiv:XXXX.YYYY or XXXX.YYYY (arXiv ID): Downloads PDF/HTML paper from arXiv. Advantage: Direct access to latest scientific preprints.
-        /// - https://... (Direct URL): Downloads PDF, HTML, or Markdown source. Advantage: Flexible web ingestion for articles and blog posts.
-        /// - Local files (sources/*.pdf, sources/*.md, sources/*.txt, sources/*.html): Multi-format scientific source verification and parsing. Advantage: Native offline ingestion and metadata tracking.
-        target: String,
-        /// Skip interactive parse offer after download
-        #[arg(long)]
-        no_parse: bool,
-    },
-    /// List sources with parsed vs unparsed visibility
-    List {
-        /// Machine-readable JSON output
-        #[arg(long)]
-        json: bool,
-    },
-    /// Remove a source from the database (enables reparse); optional file delete
-    Remove {
-        /// Source id or filename (e.g. paper.pdf)
-        id: String,
-        /// Also delete the PDF under sources/
-        #[arg(long)]
-        delete_file: bool,
-    },
-}
-
-/// `sil structure` subcommands.
+/// `sil paper structure` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum StructureCmd {
     /// List sections and completion levels

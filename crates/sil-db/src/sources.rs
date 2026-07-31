@@ -148,6 +148,57 @@ pub fn remove_source(conn: &Connection, id: &SourceId) -> Result<bool, DbError> 
     Ok(n > 0)
 }
 
+/// Get the full parsed content of a source by id or filename.
+pub fn get_source_content(
+    conn: &Connection,
+    id_or_filename: &str,
+) -> Result<Option<(SourceDocument, String)>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, path, filename, title, parsed, status, references_text, authors, abstract_text, doi, year, venue, kind, content FROM sources WHERE id = ?1 OR filename = ?1",
+    )?;
+    let row = stmt.query_row(params![id_or_filename], |row| {
+        let id: String = row.get(0)?;
+        let path: String = row.get(1)?;
+        let filename: String = row.get(2)?;
+        let title: Option<String> = row.get(3)?;
+        let parsed: i64 = row.get(4)?;
+        let status: Option<String> = row.get(5)?;
+        let references_text: Option<String> = row.get(6)?;
+        let authors: Option<String> = row.get(7)?;
+        let abstract_text: Option<String> = row.get(8)?;
+        let doi: Option<String> = row.get(9)?;
+        let year: Option<i32> = row.get(10)?;
+        let venue: Option<String> = row.get(11)?;
+        let kind_str: Option<String> = row.get(12)?;
+        let content: String = row.get(13)?;
+
+        let path_buf: Utf8PathBuf = path.into();
+        let mut doc = SourceDocument::new(path_buf);
+        doc.id = SourceId::new(id);
+        doc.filename = filename;
+        doc.parsed = parsed != 0;
+        doc.status = status.and_then(|s| parse_status_debug(&s));
+        doc.title = title;
+        doc.references_text = references_text;
+        doc.authors = authors;
+        doc.abstract_text = abstract_text;
+        doc.doi = doi;
+        doc.year = year;
+        doc.venue = venue;
+        if let Some(ks) = kind_str
+            && let Ok(k) = ks.parse::<SourceKind>()
+        {
+            doc.kind = k;
+        }
+        Ok((doc, content))
+    });
+    match row {
+        Ok(res) => Ok(Some(res)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

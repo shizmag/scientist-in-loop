@@ -80,6 +80,14 @@ impl SilDb {
         sources::list_sources(&self.conn)
     }
 
+    /// Get the full parsed document and markdown content of a source by id or filename.
+    pub fn get_source_content(
+        &self,
+        id_or_filename: &str,
+    ) -> Result<Option<(SourceDocument, String)>, DbError> {
+        sources::get_source_content(&self.conn, id_or_filename)
+    }
+
     /// Remove a source by id. Returns true if a row was deleted.
     pub fn remove_source(&self, id: &SourceId) -> Result<bool, DbError> {
         sources::remove_source(&self.conn, id)

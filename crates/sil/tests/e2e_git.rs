@@ -15,7 +15,7 @@ fn log_shows_sci_action() {
 
     sil()
         .current_dir(&project)
-        .arg("log")
+        .args(["git", "log"])
         .assert()
         .success()
         .stdout(predicates::str::contains("init"))

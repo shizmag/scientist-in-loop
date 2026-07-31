@@ -15,7 +15,7 @@ fn parse_path_mode_and_validation() {
 
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/attention.pdf"])
+        .args(["source", "parse", "sources/attention.pdf"])
         .env(
             "SIL_MARKER_STUB",
             "transformer multi-head self-attention mechanism",
@@ -28,7 +28,7 @@ fn parse_path_mode_and_validation() {
     // Already parsed rejects
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/attention.pdf"])
+        .args(["source", "parse", "sources/attention.pdf"])
         .env("SIL_MARKER_STUB", "x")
         .assert()
         .failure()
@@ -38,7 +38,7 @@ fn parse_path_mode_and_validation() {
     fs::write(project.join("sources/notes.unsupported"), "hello").unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/notes.unsupported"])
+        .args(["source", "parse", "sources/notes.unsupported"])
         .assert()
         .failure()
         .stderr(predicates::str::contains("unsupported format"));
@@ -46,7 +46,7 @@ fn parse_path_mode_and_validation() {
     // Missing file
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/missing.pdf"])
+        .args(["source", "parse", "sources/missing.pdf"])
         .assert()
         .failure()
         .stderr(predicates::str::contains("not found"));
@@ -66,7 +66,7 @@ fn parse_no_args_selects_all_noninteractive() {
 
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "batch parse content unique token xyzzy")
         .assert()
         .success()
@@ -79,7 +79,7 @@ fn parse_nothing_when_sources_empty() {
 
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Nothing to parse"));
@@ -98,7 +98,7 @@ fn parse_proposes_trailer_for_batch() {
 
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "batch trailer content")
         .assert()
         .success()

@@ -8,7 +8,7 @@ use common::{init_project, sil};
 
 #[test]
 fn template_list_outputs_all_templates() {
-    let out = sil().args(["template", "list"]).assert().success();
+    let out = sil().args(["paper", "template", "list"]).assert().success();
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
     for name in ["neurips", "icml", "iclr", "ieee", "arxiv", "standard"] {
         assert!(stdout.contains(name), "missing template {name}:\n{stdout}");
@@ -38,7 +38,7 @@ Details of quantum circuits.
 
     let out = sil()
         .current_dir(&project)
-        .args(["template", "apply", "--target", "neurips"])
+        .args(["paper", "template", "apply", "--target", "neurips"])
         .assert()
         .success();
 
@@ -77,7 +77,7 @@ Gradient descent variant.
 
     sil()
         .current_dir(&project)
-        .args(["template", "apply", "-t", "icml"])
+        .args(["paper", "template", "apply", "-t", "icml"])
         .assert()
         .success();
     let icml = fs::read_to_string(project.join("paper_icml.tex")).unwrap();
@@ -86,7 +86,7 @@ Gradient descent variant.
 
     sil()
         .current_dir(&project)
-        .args(["template", "apply", "-t", "arxiv"])
+        .args(["paper", "template", "apply", "-t", "arxiv"])
         .assert()
         .success();
     let arxiv = fs::read_to_string(project.join("paper_arxiv.tex")).unwrap();

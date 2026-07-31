@@ -322,10 +322,7 @@ fn init_without_update_still_rejects_existing_project() {
 fn help_lists_all_commands() {
     let out = sil().arg("--help").assert().success();
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
-    for cmd in [
-        "init", "status", "parse", "source", "search", "build", "log", "context", "split",
-        "propose", "promote", "structure", "template", "cite", "doctor",
-    ] {
+    for cmd in ["init", "status", "source", "paper", "project", "git", "tui"] {
         assert!(stdout.contains(cmd), "help missing {cmd}:\n{stdout}");
     }
 }

@@ -115,7 +115,7 @@ sil init my-paper
 cd my-paper
 
 # Configure global author info & article settings via Ratatui TUI
-sil settings     # or: sil tui
+sil tui settings     # or: sil tui dashboard
 
 # After upgrading the sil binary, refresh templates / .gitignore
 # (preserves config, structure, manuscripts, and custom gitignore rules)
@@ -123,25 +123,28 @@ sil init --update
 
 # Drop PDFs into sources/, then parse
 cp ~/Downloads/attention.pdf sources/
-sil parse sources/attention.pdf
-# or: sil parse          # interactive multi-select of unparsed PDFs
+sil source parse sources/attention.pdf
+# or: sil source parse          # interactive multi-select of unparsed PDFs
+
+# Open a parsed source in the TUI markdown reader
+sil source read attention.pdf
 
 # Search parsed literature
-sil search "self-attention"
+sil source search "self-attention"
 
 # Inspect state / agent context
 sil status
-sil context
-sil context --paper --agent --skill-paper
+sil project context
+sil project context --paper --agent --skill-paper
 
 # Build the manuscript (requires configured LaTeX engine)
-sil build
+sil paper build
 
 # Format into conference/journal templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
-sil template apply -t neurips
+sil paper template apply -t neurips
 
 # Sci-Action annotated history
-sil log
+sil git log
 ```
 
 Optional environment:
@@ -168,28 +171,27 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 |---------|-------------|
 | `sil init [name]` | Create full project tree, templates, auto `.gitignore`, git repo, SQLite DB; **propose** first commit |
 | `sil init --update` | Upgrade an existing project to the current sil templates (skills, managed `.gitignore`, missing scaffold) |
-| `sil dashboard` / `sil daily` | Interactive Ratatui TUI command center dashboard (progress, health audit, literature feed, idea blocks) |
-| `sil settings` / `sil tui` | Interactive Ratatui TUI to manage global author requisites, local project settings, and co-author/grant cache |
 | `sil status [--json]` | Stage, git status, source counts, structure completion, draft dirty flag |
-| `sil digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
-| `sil todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
-| `sil parse [path]` | Parse PDF (via Marker) or Markdown/Text/HTML sources natively into SQLite + FTS5 |
+| `sil source parse [path]` | Parse PDF (via Marker) or Markdown/Text/HTML sources natively into SQLite + FTS5 |
+| `sil source read <id>` | Open a parsed source document in the interactive TUI markdown reader |
+| `sil source search <query>` | FTS5 full-text search over parsed sources |
 | `sil source fetch <doi\|arxiv\|url>` | Download PDF, HTML, or Markdown into `sources/` via DOI (`10.xxxx`), arXiv ID, or URL |
 | `sil source list [--json]` | List sources with format tags (`[pdf/parsed/on-disk]`, `[md/parsed/on-disk]`), metadata, and visibility |
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
-| `sil search <query>` | FTS5 full-text search over parsed sources |
-| `sil build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
-| `sil template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
-| `sil log` | Git log filtered/annotated by `Sci-Action` trailers |
-| `sil context [flags]` | Structured context dump for humans/agents |
-| `sil split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |
-| `sil propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
-| `sil promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
-| `sil structure list\|set` | Inspect or update section completion in `structure.yaml` |
-| `sil cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
-| `sil doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
-| `sil mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
-
+| `sil source cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
+| `sil source digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
+| `sil paper build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
+| `sil paper template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
+| `sil paper split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |
+| `sil paper promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
+| `sil paper structure list\|set` | Inspect or update section completion in `structure.yaml` |
+| `sil paper todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
+| `sil project context [flags]` | Structured context dump for humans/agents |
+| `sil project doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
+| `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
+| `sil git log` | Git log filtered/annotated by `Sci-Action` trailers |
+| `sil git propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
+| `sil tui dashboard` / `sil tui settings` | Interactive Ratatui TUI for command center dashboard & settings management |
 
 Commit proposals always include a trailer such as:
 

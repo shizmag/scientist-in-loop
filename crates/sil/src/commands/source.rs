@@ -246,3 +246,95 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
     Ok(by_name.into_values().collect())
 }
 
+/// Interactive TUI reader for a parsed or raw markdown source document using termimad.
+pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
+    use std::io::Write;
+    use crossterm::{
+        cursor,
+        event::{self, Event, KeyCode, KeyModifiers},
+        queue, terminal,
+    };
+    use termimad::{Area, MadSkin, MadView};
+
+    let (_root, config, paths) = load_project()?;
+    let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let (title, content) = if let Some((doc, text)) = db.get_source_content(id_or_filename)? {
+        let t = doc.title.unwrap_or_else(|| doc.filename.clone());
+        (t, text)
+    } else {
+        let sources_dir = paths.sources(&config);
+        let file_path = sources_dir.join(id_or_filename);
+        let path = if file_path.exists() {
+            file_path
+        } else {
+            camino::Utf8PathBuf::from(id_or_filename)
+        };
+        if path.exists() {
+            let text = fs::read_to_string(&path)
+                .with_context(|| format!("read source file at {path}"))?;
+            (path.file_name().unwrap_or(id_or_filename).to_string(), text)
+        } else {
+            anyhow::bail!("Source '{id_or_filename}' not found in database or on disk");
+        }
+    };
+
+    if content.trim().is_empty() {
+        ui.warn(&format!("Source '{title}' is empty"));
+        return Ok(());
+    }
+
+    let mut area = Area::full_screen();
+    area.pad(1, 1);
+    let skin = MadSkin::default();
+    let mut view = MadView::from(content, area, skin);
+    let mut w = std::io::stdout();
+
+    terminal::enable_raw_mode()?;
+    queue!(w, terminal::EnterAlternateScreen, cursor::Hide)?;
+    w.flush()?;
+
+    view.write_on(&mut w)?;
+    w.flush()?;
+
+    loop {
+        match event::read()? {
+            Event::Key(key_event) => {
+                if key_event.kind == event::KeyEventKind::Press {
+                    match key_event.code {
+                        KeyCode::Char('q') | KeyCode::Esc => break,
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            view.try_scroll_lines(-1);
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            view.try_scroll_lines(1);
+                        }
+                        KeyCode::PageUp | KeyCode::Char('b') => {
+                            view.try_scroll_pages(-1);
+                        }
+                        KeyCode::PageDown | KeyCode::Char(' ') | KeyCode::Char('f') => {
+                            view.try_scroll_pages(1);
+                        }
+                        KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => break,
+                        _ => {}
+                    }
+                }
+            }
+            Event::Resize(width, height) => {
+                let mut area = Area::new(0, 0, width, height);
+                area.pad(1, 1);
+                view.resize(&area);
+            }
+            _ => {}
+        }
+        view.write_on(&mut w)?;
+        w.flush()?;
+    }
+
+    queue!(w, cursor::Show, terminal::LeaveAlternateScreen)?;
+    terminal::disable_raw_mode()?;
+    w.flush()?;
+
+    Ok(())
+}
+

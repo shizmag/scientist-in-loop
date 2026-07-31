@@ -11,7 +11,7 @@ fn cite_from_filename_is_deterministic_and_nonempty() {
     let (_tmp, project) = init_project("cite-fn");
     let out1 = sil()
         .current_dir(&project)
-        .args(["cite", "attention_is_all_you_need.pdf"])
+        .args(["source", "cite", "attention_is_all_you_need.pdf"])
         .assert()
         .success()
         .get_output()
@@ -19,7 +19,7 @@ fn cite_from_filename_is_deterministic_and_nonempty() {
         .clone();
     let out2 = sil()
         .current_dir(&project)
-        .args(["cite", "attention_is_all_you_need.pdf"])
+        .args(["source", "cite", "attention_is_all_you_need.pdf"])
         .assert()
         .success()
         .get_output()
@@ -38,7 +38,7 @@ fn cite_json_and_append_to_references() {
     let (_tmp, project) = init_project("cite-json");
     let out = sil()
         .current_dir(&project)
-        .args(["cite", "transformer attention", "--json"])
+        .args(["source", "cite", "transformer attention", "--json"])
         .assert()
         .success()
         .get_output()
@@ -52,7 +52,7 @@ fn cite_json_and_append_to_references() {
 
     sil()
         .current_dir(&project)
-        .args(["cite", "my_source.pdf", "--append"])
+        .args(["source", "cite", "my_source.pdf", "--append"])
         .assert()
         .success();
     let bib = fs::read_to_string(project.join("references.bib")).unwrap();
@@ -70,14 +70,14 @@ fn cite_from_parsed_source_uses_title() {
     .unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/paper.pdf"])
+        .args(["source", "parse", "sources/paper.pdf"])
         .env("SIL_MARKER_STUB", "body")
         .assert()
         .success();
 
     let out = sil()
         .current_dir(&project)
-        .args(["cite", "paper.pdf", "--json"])
+        .args(["source", "cite", "paper.pdf", "--json"])
         .assert()
         .success()
         .get_output()

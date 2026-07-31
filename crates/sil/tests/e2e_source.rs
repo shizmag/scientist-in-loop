@@ -55,7 +55,7 @@ fn source_list_shows_parsed_and_unparsed() {
 
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/parsed.pdf"])
+        .args(["source", "parse", "sources/parsed.pdf"])
         .env("SIL_MARKER_STUB", "list test content")
         .assert()
         .success();
@@ -104,7 +104,7 @@ fn source_remove_allows_reparse_path() {
     .unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/gone.pdf"])
+        .args(["source", "parse", "sources/gone.pdf"])
         .env("SIL_MARKER_STUB", "to remove")
         .assert()
         .success();

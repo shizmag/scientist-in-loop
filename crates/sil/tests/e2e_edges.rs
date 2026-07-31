@@ -13,7 +13,7 @@ fn search_empty_query_does_not_crash() {
     // Empty string argument may be rejected by clap or handled; must not panic.
     let assert = sil()
         .current_dir(&project)
-        .args(["search", ""])
+        .args(["source", "search", ""])
         .assert();
     // Either success with no/empty results or a clean failure — never panic.
     let out = assert.get_output();
@@ -41,14 +41,14 @@ fn parse_absolute_path_works() {
     let abs = pdf.canonicalize().unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", abs.to_str().unwrap()])
+        .args(["source", "parse", abs.to_str().unwrap()])
         .env("SIL_MARKER_STUB", "absolute path content token_abs")
         .assert()
         .success()
         .stdout(predicates::str::contains("Parsed"));
     sil()
         .current_dir(&project)
-        .args(["search", "token_abs"])
+        .args(["source", "search", "token_abs"])
         .assert()
         .success()
         .stdout(predicates::str::contains("abs.pdf"));
@@ -65,13 +65,13 @@ fn parse_uppercase_pdf_extension() {
     // no-args list should pick it up (extension case-insensitive)
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "upper case ext token_upper")
         .assert()
         .success();
     sil()
         .current_dir(&project)
-        .args(["search", "token_upper"])
+        .args(["source", "search", "token_upper"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Paper.PDF").or(predicates::str::contains("paper.pdf")).or(predicates::str::contains("Paper")));
@@ -82,7 +82,7 @@ fn parse_directory_path_fails() {
     let (_dir, project) = init_project("parse-dir");
     sil()
         .current_dir(&project)
-        .args(["parse", "sources"])
+        .args(["source", "parse", "sources"])
         .assert()
         .failure()
         .stderr(
@@ -99,7 +99,7 @@ fn build_missing_main_tex_fails() {
     fs::remove_file(project.join("paper_draft.tex")).unwrap();
     sil()
         .current_dir(&project)
-        .arg("build")
+        .args(["paper", "build"])
         .assert()
         .failure()
         .stderr(
@@ -114,7 +114,7 @@ fn log_outside_project_fails() {
     let dir = tempfile::tempdir().unwrap();
     sil()
         .current_dir(dir.path())
-        .arg("log")
+        .args(["git", "log"])
         .assert()
         .failure()
         .stderr(predicates::str::contains("not a sil project"));
@@ -126,7 +126,7 @@ fn log_with_no_commits_is_calm() {
     // git init exists but no commits
     sil()
         .current_dir(&project)
-        .arg("log")
+        .args(["git", "log"])
         .assert()
         .success()
         .stdout(predicates::str::contains("No matching").or(predicates::str::contains("No")));
@@ -152,7 +152,7 @@ fn context_only_skill_agent_without_agent_flag() {
     let (_dir, project) = init_project("ctx-skill-only");
     sil()
         .current_dir(&project)
-        .args(["context", "--skill-agent-code"])
+        .args(["project", "context", "--skill-agent-code"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Rules for code written by the agent"));
@@ -163,7 +163,7 @@ fn context_skill_flag_paper_only() {
     let (_dir, project) = init_project("ctx-paper-only");
     let out = sil()
         .current_dir(&project)
-        .args(["context", "--skill-paper"])
+        .args(["project", "context", "--skill-paper"])
         .assert()
         .success()
         .get_output()
@@ -180,12 +180,12 @@ fn search_after_failed_parse_stays_empty() {
     fs::write(project.join("sources/bad.unsupported"), "not pdf").unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/bad.unsupported"])
+        .args(["source", "parse", "sources/bad.unsupported"])
         .assert()
         .failure();
     sil()
         .current_dir(&project)
-        .args(["search", "anything"])
+        .args(["source", "search", "anything"])
         .assert()
         .success()
         .stdout(predicates::str::contains("No results"));
@@ -223,7 +223,7 @@ fn parse_many_with_one_invalid_reports_failure() {
     // Noninteractive parse selects all unparsed PDFs
     sil()
         .current_dir(&project)
-        .arg("parse")
+        .args(["source", "parse"])
         .env("SIL_MARKER_STUB", "partial batch ok")
         .assert()
         .failure(); // at least one failed
@@ -234,7 +234,7 @@ fn init_then_search_without_parse() {
     let (_dir, project) = init_project("fresh-search");
     sil()
         .current_dir(&project)
-        .args(["search", "hello"])
+        .args(["source", "search", "hello"])
         .assert()
         .success()
         .stdout(predicates::str::contains("No results"));
@@ -269,7 +269,7 @@ fn context_task_agent_loads_agent_skill() {
     let (_dir, project) = init_project("task-agent");
     sil()
         .current_dir(&project)
-        .args(["context", "--task", "add a script under agent/ for reproducibility"])
+        .args(["project", "context", "--task", "add a script under agent/ for reproducibility"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Rules for code written by the agent"));

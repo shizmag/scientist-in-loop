@@ -15,7 +15,7 @@ fn context_default_and_flags() {
 
     sil()
         .current_dir(&project)
-        .arg("context")
+        .args(["project", "context"])
         .assert()
         .success()
         .stdout(predicates::str::contains("SYSTEM RULES FOR THIS PROJECT"))
@@ -25,7 +25,7 @@ fn context_default_and_flags() {
 
     sil()
         .current_dir(&project)
-        .args(["context", "--paper", "--agent", "--skill-paper"])
+        .args(["project", "context", "--paper", "--agent", "--skill-paper"])
         .assert()
         .success()
         .stdout(predicates::str::contains("Paper content"))
@@ -40,6 +40,7 @@ fn context_task_loads_paper_skill() {
     sil()
         .current_dir(&project)
         .args([
+            "project",
             "context",
             "--task",
             "edit paper_draft.tex introduction section",
@@ -56,7 +57,7 @@ fn context_skill_agent_code_flag() {
 
     sil()
         .current_dir(&project)
-        .args(["context", "--skill-agent-code"])
+        .args(["project", "context", "--skill-agent-code"])
         .assert()
         .success()
         .stdout(predicates::str::contains("agent/README.md"))

@@ -27,7 +27,7 @@ We did science unique_token_methods.
 
     sil()
         .current_dir(&project)
-        .arg("split")
+        .args(["paper", "split"])
         .assert()
         .success()
         .stdout(predicates::str::contains("section file"))
@@ -67,7 +67,7 @@ fn split_second_run_refreshes_tree() {
     )
     .unwrap();
 
-    sil().current_dir(&project).arg("split").assert().success();
+    sil().current_dir(&project).args(["paper", "split"]).assert().success();
     assert!(project.join(".sil/draft_sections/01-a.tex").is_file());
 
     fs::write(
@@ -77,7 +77,7 @@ fn split_second_run_refreshes_tree() {
     .unwrap();
     let draft_snapshot = fs::read_to_string(&draft_path).unwrap();
 
-    sil().current_dir(&project).arg("split").assert().success();
+    sil().current_dir(&project).args(["paper", "split"]).assert().success();
 
     assert_eq!(
         fs::read_to_string(&draft_path).unwrap(),
@@ -118,5 +118,5 @@ fn init_seeds_draft_sections() {
 fn help_lists_split() {
     let out = sil().arg("--help").assert().success();
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
-    assert!(stdout.contains("split"), "help missing split:\n{stdout}");
+    assert!(stdout.contains("paper"), "help missing paper:\n{stdout}");
 }

@@ -18,7 +18,7 @@ fn search_returns_parsed_content() {
 
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/attention.pdf"])
+        .args(["source", "parse", "sources/attention.pdf"])
         .env(
             "SIL_MARKER_STUB",
             "transformer multi-head self-attention mechanism",
@@ -28,14 +28,14 @@ fn search_returns_parsed_content() {
 
     sil()
         .current_dir(&project)
-        .args(["search", "transformer"])
+        .args(["source", "search", "transformer"])
         .assert()
         .success()
         .stdout(predicates::str::contains("attention.pdf"));
 
     sil()
         .current_dir(&project)
-        .args(["search", "zzznomatchtoken"])
+        .args(["source", "search", "zzznomatchtoken"])
         .assert()
         .success()
         .stdout(predicates::str::contains("No results"));
