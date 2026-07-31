@@ -2,8 +2,7 @@
 
 use sil_core::{ReferenceEntry, SourceId};
 use sil_regex::{
-    extract_doi, extract_quoted_title, extract_year, is_non_ref_heading, is_reference_entry_start,
-    is_reference_heading,
+    extract_doi, extract_quoted_title, extract_year, is_non_ref_heading, is_reference_heading,
 };
 
 /// Extract raw reference text block from parsed Markdown content.
@@ -131,47 +130,38 @@ fn line_starts_with_marker(line: &str, fmt: RefNumberFormat, n: usize) -> bool {
 
 /// Split a raw reference block into individual citation strings.
 ///
-/// Uses sequential numbering detection: once the format is identified from the
-/// first entry (`[1]`, `(1)`, or `1.`), entries are split by matching the next
-/// expected number. The sequence terminates naturally when the numbering breaks,
-/// filtering out biographies, equations, and other non-reference content.
+/// Two strategies:
+/// 1. **Numbered**: detect `[1]`, `(1)`, or `1.` → split by sequential markers.
+/// 2. **Unnumbered**: split by blank lines — each paragraph is one reference.
 fn split_raw_entries(block: &str) -> Vec<String> {
-    let raw_lines: Vec<String> = block
-        .lines()
-        .map(clean_spans)
-        .map(|l| l.trim().to_string())
-        .filter(|l| {
-            !l.is_empty()
-                && l != "-"
-                && !is_noise_line(l)
-                && !l.contains("$$")
-                && !l.contains("\\mid")
-                && !l.contains("\\mathbf")
-                && !l.contains("\\mathcal")
-        })
-        .collect();
-
-    if raw_lines.is_empty() {
-        return Vec::new();
-    }
-
-    // Phase 1: detect numbering format from first few lines
+    // Phase 1: detect numbering format by scanning cleaned lines
     let mut detected: Option<(RefNumberFormat, usize)> = None;
-    for line in &raw_lines {
-        if let Some(d) = detect_number_format(line) {
+    for raw_line in block.lines() {
+        let cleaned = clean_spans(raw_line);
+        let trimmed = cleaned.trim();
+        if trimmed.is_empty() || is_noise_line(trimmed) {
+            continue;
+        }
+        if let Some(d) = detect_number_format(trimmed) {
             detected = Some(d);
             break;
         }
     }
 
-    // Phase 2: split using sequential markers if detected, otherwise fall back
+    // Phase 2: split
     let entries = if let Some((fmt, start_n)) = detected {
-        split_by_sequential_markers(&raw_lines, fmt, start_n)
+        let lines: Vec<String> = block
+            .lines()
+            .map(clean_spans)
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l))
+            .collect();
+        split_by_sequential_markers(&lines, fmt, start_n)
     } else {
-        split_by_heuristic(&raw_lines)
+        split_by_paragraphs(block)
     };
 
-    // Phase 3: clean entries
+    // Phase 3: clean
     let mut cleaned_entries = Vec::new();
     for entry in entries {
         let cleaned = sil_regex::clean_reference_text(&entry);
@@ -182,6 +172,14 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     }
 
     cleaned_entries
+}
+
+/// Check if a line is LaTeX math noise.
+fn is_math_line(line: &str) -> bool {
+    line.contains("$$")
+        || line.contains("\\mid")
+        || line.contains("\\mathbf")
+        || line.contains("\\mathcal")
 }
 
 /// Split lines by sequential numbered markers (`[1]`, `[2]`, ... or `1.`, `2.`, ...).
@@ -218,55 +216,40 @@ fn split_by_sequential_markers(
     entries
 }
 
-/// Fallback heuristic splitting for non-numbered reference lists (APA style, bullet lists).
-fn split_by_heuristic(lines: &[String]) -> Vec<String> {
+/// Split by blank lines — each paragraph is one reference entry.
+/// For unnumbered reference lists (APA style, bullet-point lists, etc.).
+fn split_by_paragraphs(block: &str) -> Vec<String> {
     let mut entries = Vec::new();
     let mut current = String::new();
 
-    for line in lines {
-        if is_reference_entry_start(line) {
+    for raw_line in block.lines() {
+        let cleaned = clean_spans(raw_line);
+        let trimmed = cleaned.trim();
+
+        if trimmed.is_empty() {
+            // Blank line = paragraph boundary
             if !current.is_empty() {
                 entries.push(current.trim().to_string());
                 current.clear();
             }
-            current.push_str(line);
-        } else {
-            if !current.is_empty() {
-                current.push(' ');
-            }
-            current.push_str(line);
+            continue;
         }
+
+        if is_noise_line(trimmed) || is_math_line(trimmed) || trimmed == "-" {
+            continue;
+        }
+
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(trimmed);
     }
 
     if !current.is_empty() {
         entries.push(current.trim().to_string());
     }
 
-    // Filter heuristic entries more aggressively
     entries
-        .into_iter()
-        .filter(|entry| {
-            if sil_regex::is_biography_or_prose_line(entry) {
-                return false;
-            }
-            if entry.len() > 450 && !sil_regex::has_strong_citation_markers(entry) {
-                return false;
-            }
-            let year = extract_year(entry);
-            let doi = sil_regex::extract_doi(entry);
-            let arxiv = sil_regex::extract_arxiv_id(entry);
-            let venue = sil_regex::extract_reference_venue(entry);
-            let lower = entry.to_lowercase();
-            let has_et_al = lower.contains("et al");
-            let has_author_comma = entry.contains(".,") || entry.matches(',').count() > 1;
-            year.is_some()
-                || doi.is_some()
-                || arxiv.is_some()
-                || venue.is_some()
-                || has_et_al
-                || has_author_comma
-        })
-        .collect()
 }
 
 /// Check if line is header/footer/page noise.
