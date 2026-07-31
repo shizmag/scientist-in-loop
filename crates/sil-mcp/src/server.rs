@@ -132,11 +132,12 @@ mod tests {
         let result = response.result.expect("Expected result");
         assert_eq!(result["protocolVersion"], "2024-11-05");
         assert_eq!(result["serverInfo"]["name"], "sil-mcp");
+        assert_eq!(result["serverInfo"]["version"], env!("CARGO_PKG_VERSION"));
         assert!(result["capabilities"]["tools"].is_object());
     }
 
     #[tokio::test]
-    async fn test_tools_list() {
+    async fn test_tools_list_schema_validation() {
         let server = McpServer::new();
         let req_json = r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#;
         let response = server.handle_request_line(req_json).await.expect("Expected response for tools/list");
@@ -175,57 +176,65 @@ mod tests {
             let schema = &tool["inputSchema"];
             assert_eq!(schema["type"], "object");
             assert!(schema["properties"].is_object());
+            if let Some(req) = schema.get("required") {
+                assert!(req.is_array());
+            }
         }
     }
 
     #[tokio::test]
-    async fn test_tool_call_dispatch() {
+    async fn test_tool_call_multiple_tools() {
         let server = McpServer::new();
 
         // 1. Test sil_suggest_citations
-        let req_json = r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sil_suggest_citations","arguments":{"query":"generative AI"}}}"#;
-        let response = server.handle_request_line(req_json).await.expect("Expected response for tools/call");
-
-        assert_eq!(response.id, Some(json!(3)));
-        let result = response.result.expect("Expected result");
-        let call_res: CallToolResult = serde_json::from_value(result).expect("Should parse as CallToolResult");
-
-        assert_eq!(call_res.content.len(), 1);
-        let Content::Text { text } = &call_res.content[0];
-        assert!(text.contains("bibtex"), "Response text should contain bibtex suggestion");
+        let req1 = r#"{"jsonrpc":"2.0","id":101,"method":"tools/call","params":{"name":"sil_suggest_citations","arguments":{"query":"generative AI"}}}"#;
+        let resp1 = server.handle_request_line(req1).await.expect("Expected response for citations");
+        assert_eq!(resp1.id, Some(json!(101)));
+        let call_res1: CallToolResult = serde_json::from_value(resp1.result.unwrap()).unwrap();
+        assert_eq!(call_res1.content.len(), 1);
+        let Content::Text { text: text1 } = &call_res1.content[0];
+        assert!(text1.contains("bibtex"));
 
         // 2. Test sil_propose_commit
-        let req_json2 = r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sil_propose_commit","arguments":{"action":"drafting"}}}"#;
-        let response2 = server.handle_request_line(req_json2).await.expect("Expected response for tools/call propose commit");
-        assert_eq!(response2.id, Some(json!(4)));
+        let req2 = r#"{"jsonrpc":"2.0","id":102,"method":"tools/call","params":{"name":"sil_propose_commit","arguments":{"action":"edit-draft"}}}"#;
+        let resp2 = server.handle_request_line(req2).await.expect("Expected response for commit proposal");
+        assert_eq!(resp2.id, Some(json!(102)));
+        let call_res2: CallToolResult = serde_json::from_value(resp2.result.unwrap()).unwrap();
+        let Content::Text { text: text2 } = &call_res2.content[0];
+        assert!(text2.contains("edit-draft"));
 
-        // 3. Test unknown tool
-        let req_json3 = r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"non_existent_tool"}}"#;
-        let response3 = server.handle_request_line(req_json3).await.expect("Expected response for unknown tool");
-        let result3 = response3.result.expect("Expected result");
-        let call_res3: CallToolResult = serde_json::from_value(result3).expect("Should parse as CallToolResult");
-        assert_eq!(call_res3.is_error, Some(true));
+        // 3. Test sil_list_skills
+        let req3 = r#"{"jsonrpc":"2.0","id":103,"method":"tools/call","params":{"name":"sil_list_skills","arguments":{}}}"#;
+        let resp3 = server.handle_request_line(req3).await.expect("Expected response for list skills");
+        assert_eq!(resp3.id, Some(json!(103)));
 
-        // 4. Test async stream run with tokio duplex
-        let (client, server_stream) = tokio::io::duplex(1024);
-        let (client_read, mut client_write) = tokio::io::split(client);
+        // 4. Test unknown tool
+        let req4 = r#"{"jsonrpc":"2.0","id":104,"method":"tools/call","params":{"name":"non_existent_tool"}}"#;
+        let resp4 = server.handle_request_line(req4).await.expect("Expected response for unknown tool");
+        let call_res4: CallToolResult = serde_json::from_value(resp4.result.unwrap()).unwrap();
+        assert_eq!(call_res4.is_error, Some(true));
+    }
 
-        let server_handle = tokio::spawn(async move {
-            let (server_read, server_write) = tokio::io::split(server_stream);
-            let server_inst = McpServer::new();
-            server_inst.run(server_read, server_write).await.unwrap();
-        });
+    #[tokio::test]
+    async fn test_jsonrpc_ping() {
+        let server = McpServer::new();
+        let req = r#"{"jsonrpc":"2.0","id":7,"method":"ping"}"#;
+        let resp = server
+            .handle_request_line(req)
+            .await
+            .expect("Expected ping response");
+        assert_eq!(resp.jsonrpc, "2.0");
+        assert_eq!(resp.id, Some(json!(7)));
+        assert!(resp.error.is_none());
+        assert_eq!(resp.result, Some(json!({})));
+    }
 
-        client_write.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"ping\"}\n").await.unwrap();
-
-        let mut reader = BufReader::new(client_read);
-        let mut resp_line = String::new();
-        reader.read_line(&mut resp_line).await.unwrap();
-
-        assert!(resp_line.contains("\"id\":10"));
-        drop(client_write);
-        drop(reader);
-        let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
+    #[tokio::test]
+    async fn test_jsonrpc_notifications_initialized() {
+        let server = McpServer::new();
+        let init_notif = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
+        let resp = server.handle_request_line(init_notif).await;
+        assert!(resp.is_none(), "notifications/initialized must return None");
     }
 
     #[tokio::test]
@@ -245,10 +254,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_jsonrpc_unknown_method_and_notifications() {
+    async fn test_jsonrpc_method_not_found_request_vs_notification() {
         let server = McpServer::new();
 
-        // Unknown method with id -> returns error -32601
+        // Method not found as a request (with id) -> returns error code -32601
         let req = r#"{"jsonrpc":"2.0","id":42,"method":"unknown/method"}"#;
         let resp = server
             .handle_request_line(req)
@@ -259,28 +268,32 @@ mod tests {
         assert_eq!(err.code, -32601);
         assert_eq!(err.message, "Method not found: unknown/method");
 
-        // Notification without id -> returns None
+        // Method not found as a notification (without id) -> returns None
         let notification = r#"{"jsonrpc":"2.0","method":"unknown/notification"}"#;
         let resp_notif = server.handle_request_line(notification).await;
-        assert!(resp_notif.is_none());
-
-        // Standard notification returns None
-        let init_notif = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
-        let resp_init = server.handle_request_line(init_notif).await;
-        assert!(resp_init.is_none());
+        assert!(resp_notif.is_none(), "Unknown notification should return None");
     }
 
     #[tokio::test]
-    async fn test_jsonrpc_ping() {
-        let server = McpServer::new();
-        let req = r#"{"jsonrpc":"2.0","id":7,"method":"ping"}"#;
-        let resp = server
-            .handle_request_line(req)
-            .await
-            .expect("Expected ping response");
-        assert_eq!(resp.jsonrpc, "2.0");
-        assert_eq!(resp.id, Some(json!(7)));
-        assert!(resp.error.is_none());
-        assert_eq!(resp.result, Some(json!({})));
+    async fn test_server_async_run_duplex() {
+        let (client, server_stream) = tokio::io::duplex(1024);
+        let (client_read, mut client_write) = tokio::io::split(client);
+
+        let server_handle = tokio::spawn(async move {
+            let (server_read, server_write) = tokio::io::split(server_stream);
+            let server_inst = McpServer::new();
+            server_inst.run(server_read, server_write).await.unwrap();
+        });
+
+        client_write.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"ping\"}\n").await.unwrap();
+
+        let mut reader = BufReader::new(client_read);
+        let mut resp_line = String::new();
+        reader.read_line(&mut resp_line).await.unwrap();
+
+        assert!(resp_line.contains("\"id\":10"));
+        drop(client_write);
+        drop(reader);
+        let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
     }
 }
