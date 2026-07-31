@@ -2648,7 +2648,7 @@ mod tests {
                 raw_text: format!("Reference item {idx}"),
                 title: Some(format!("Title {idx}")),
                 authors: Some(format!("Author {idx}")),
-                year: Some(2010 + idx as u32),
+                year: Some(2010 + idx as i32),
                 venue: Some("Conf".to_string()),
                 doi: None,
             })
