@@ -184,6 +184,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tool_call_multiple_tools() {
+        let _env = crate::tools::tests::TestEnv::new();
         let server = McpServer::new();
 
         // 1. Test sil_suggest_citations

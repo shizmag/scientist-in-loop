@@ -764,7 +764,7 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::protocol::Content;
     use std::fs;
@@ -773,7 +773,7 @@ mod tests {
 
     static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
-    struct TestEnv {
+    pub(crate) struct TestEnv {
         _guard: MutexGuard<'static, ()>,
         _dir: TempDir,
         orig_cwd: std::path::PathBuf,
@@ -781,7 +781,7 @@ mod tests {
     }
 
     impl TestEnv {
-        fn new() -> Self {
+        pub(crate) fn new() -> Self {
             let guard = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
             let orig_cwd = std::env::current_dir().unwrap();
             let dir = tempfile::tempdir().unwrap();
