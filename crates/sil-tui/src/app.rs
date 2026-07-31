@@ -1299,6 +1299,7 @@ mod tests {
     #[test]
     fn add_and_use_coauthor_flow() {
         let mut app = App::new(None);
+        let initial_cache_len = app.cache.co_authors.len();
         app.active_tab = ActiveTab::Settings;
         let items = app.setting_items();
         let cache_coauthor_idx = items.iter().position(|it| matches!(it, SettingItem::CacheCoAuthorEmpty | SettingItem::CacheCoAuthor(_))).unwrap();
@@ -1313,8 +1314,8 @@ mod tests {
         }
         app.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert_eq!(app.cache.co_authors.len(), 1);
-        assert_eq!(app.cache.co_authors[0].name, "Dr. Smith");
+        assert_eq!(app.cache.co_authors.len(), initial_cache_len + 1);
+        assert!(app.cache.co_authors.iter().any(|a| a.name == "Dr. Smith"));
         assert_eq!(app.local_settings.co_authors.len(), 1);
         assert_eq!(app.local_settings.co_authors[0].name, "Dr. Smith");
     }
