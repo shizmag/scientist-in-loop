@@ -93,6 +93,11 @@ impl SilDb {
         sources::remove_source(&self.conn, id)
     }
 
+    /// Update title of a source document by id. Returns true if a row was updated.
+    pub fn update_source_title(&self, id: &SourceId, new_title: &str) -> Result<bool, DbError> {
+        sources::update_source_title(&self.conn, id, new_title)
+    }
+
     /// Full-text search over parsed sources.
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchHit>, DbError> {
         search::search(&self.conn, query, limit)
@@ -524,6 +529,18 @@ mod tests {
         assert_eq!(db.source_count().unwrap(), 0);
         assert!(db.search("remove_token_xyz", 5).unwrap().is_empty());
         assert!(!db.remove_source(&doc.id).unwrap());
+    }
+
+    #[test]
+    fn update_source_title_on_sildb() {
+        let db = SilDb::open_in_memory().unwrap();
+        let mut doc = SourceDocument::new("sildb_paper.pdf".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "sildb update title test content").unwrap();
+
+        assert!(db.update_source_title(&doc.id, "Updated SilDb Title").unwrap());
+        let list = db.list_sources().unwrap();
+        assert_eq!(list[0].title.as_deref(), Some("Updated SilDb Title"));
     }
 
     #[test]

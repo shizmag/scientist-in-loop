@@ -148,6 +148,19 @@ pub fn remove_source(conn: &Connection, id: &SourceId) -> Result<bool, DbError> 
     Ok(n > 0)
 }
 
+/// Update title of a source document by id. Returns true if a row was updated.
+pub fn update_source_title(
+    conn: &Connection,
+    id: &SourceId,
+    new_title: &str,
+) -> Result<bool, DbError> {
+    let n = conn.execute(
+        "UPDATE sources SET title = ?1, updated_at = datetime('now') WHERE id = ?2",
+        params![new_title, id.as_str()],
+    )?;
+    Ok(n > 0)
+}
+
 /// Get the full parsed content of a source by id or filename.
 pub fn get_source_content(
     conn: &Connection,
@@ -236,6 +249,28 @@ mod tests {
         assert_eq!(fetched.venue.as_deref(), Some("NeurIPS"));
         assert_eq!(fetched.references_text.as_deref(), Some("1. Smith et al."));
         assert!(fetched.parsed);
+    }
+
+    #[test]
+    fn test_update_source_title() {
+        let conn = Connection::open_in_memory().unwrap();
+        schema::migrate(&conn).unwrap();
+
+        let doc = SourceDocument::new("paper.pdf".into());
+        upsert_parsed(&conn, &doc, "content").unwrap();
+
+        let sources = list_sources(&conn).unwrap();
+        assert_eq!(sources[0].title, None);
+
+        let updated = update_source_title(&conn, &doc.id, "New Title").unwrap();
+        assert!(updated);
+
+        let sources = list_sources(&conn).unwrap();
+        assert_eq!(sources[0].title.as_deref(), Some("New Title"));
+
+        let missing_id = SourceId::new("non_existent.pdf");
+        let updated = update_source_title(&conn, &missing_id, "Another Title").unwrap();
+        assert!(!updated);
     }
 }
 
