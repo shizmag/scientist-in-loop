@@ -63,7 +63,78 @@ fn clean_spans(text: &str) -> String {
     sil_regex::strip_html_spans(text).trim().to_string()
 }
 
+/// Detected numbering format used in a reference list.
+#[derive(Debug, Clone, Copy)]
+enum RefNumberFormat {
+    /// `[1]`, `[2]`, ...
+    Bracketed,
+    /// `(1)`, `(2)`, ...
+    Parenthesized,
+    /// `1.`, `2.`, ...
+    DotNumbered,
+}
+
+impl RefNumberFormat {
+    /// Build the expected marker string for index `n`.
+    fn marker(&self, n: usize) -> String {
+        match self {
+            Self::Bracketed => format!("[{n}]"),
+            Self::Parenthesized => format!("({n})"),
+            Self::DotNumbered => format!("{n}."),
+        }
+    }
+}
+
+/// Try to detect the numbering format from a cleaned line.
+fn detect_number_format(line: &str) -> Option<(RefNumberFormat, usize)> {
+    let t = line.trim_start_matches('-').trim();
+    // [N]
+    if t.starts_with('[') {
+        if let Some(end) = t.find(']') {
+            if let Ok(n) = t[1..end].parse::<usize>() {
+                return Some((RefNumberFormat::Bracketed, n));
+            }
+        }
+    }
+    // (N) — but only small numbers to avoid matching "(2024)" year patterns
+    if t.starts_with('(') {
+        if let Some(end) = t.find(')') {
+            if let Ok(n) = t[1..end].parse::<usize>() {
+                if n < 500 {
+                    // Check that after ')' there is a space and then text (not a year-like pattern)
+                    let rest = t[end + 1..].trim_start();
+                    if !rest.is_empty() && rest.starts_with(|c: char| c.is_alphabetic()) {
+                        return Some((RefNumberFormat::Parenthesized, n));
+                    }
+                }
+            }
+        }
+    }
+    // N. (only at start, followed by space and alphabetic)
+    if let Some(dot_pos) = t.find(". ") {
+        let prefix = &t[..dot_pos];
+        if let Ok(n) = prefix.parse::<usize>() {
+            if n < 500 {
+                return Some((RefNumberFormat::DotNumbered, n));
+            }
+        }
+    }
+    None
+}
+
+/// Check if a cleaned line starts with the expected marker for number `n` in the given format.
+fn line_starts_with_marker(line: &str, fmt: RefNumberFormat, n: usize) -> bool {
+    let marker = fmt.marker(n);
+    let t = line.trim_start_matches('-').trim();
+    t.starts_with(&marker)
+}
+
 /// Split a raw reference block into individual citation strings.
+///
+/// Uses sequential numbering detection: once the format is identified from the
+/// first entry (`[1]`, `(1)`, or `1.`), entries are split by matching the next
+/// expected number. The sequence terminates naturally when the numbering breaks,
+/// filtering out biographies, equations, and other non-reference content.
 fn split_raw_entries(block: &str) -> Vec<String> {
     let raw_lines: Vec<String> = block
         .lines()
@@ -84,62 +155,25 @@ fn split_raw_entries(block: &str) -> Vec<String> {
         return Vec::new();
     }
 
-    let mut entries = Vec::new();
-    let mut current = String::new();
-
-    for line in raw_lines {
-        if is_reference_entry_start(&line) {
-            if !current.is_empty() {
-                entries.push(current.trim().to_string());
-                current.clear();
-            }
-            current.push_str(&line);
-        } else {
-            if !current.is_empty() {
-                current.push(' ');
-            }
-            current.push_str(&line);
+    // Phase 1: detect numbering format from first few lines
+    let mut detected: Option<(RefNumberFormat, usize)> = None;
+    for line in &raw_lines {
+        if let Some(d) = detect_number_format(line) {
+            detected = Some(d);
+            break;
         }
     }
 
-    if !current.is_empty() {
-        entries.push(current.trim().to_string());
-    }
+    // Phase 2: split using sequential markers if detected, otherwise fall back
+    let entries = if let Some((fmt, start_n)) = detected {
+        split_by_sequential_markers(&raw_lines, fmt, start_n)
+    } else {
+        split_by_heuristic(&raw_lines)
+    };
 
+    // Phase 3: clean entries
     let mut cleaned_entries = Vec::new();
     for entry in entries {
-        if entry.contains("$$")
-            || entry.contains("\\mid")
-            || entry.contains("\\mathbf")
-            || entry.contains("\\mathcal")
-            || sil_regex::is_biography_or_prose_line(&entry)
-        {
-            continue;
-        }
-
-        if entry.len() > 450 && !sil_regex::has_strong_citation_markers(&entry) {
-            continue;
-        }
-
-        let year = extract_year(&entry);
-        let doi = sil_regex::extract_doi(&entry);
-        let arxiv = sil_regex::extract_arxiv_id(&entry);
-        let venue = sil_regex::extract_reference_venue(&entry);
-        let lower = entry.to_lowercase();
-        let has_et_al = lower.contains("et al");
-        let has_author_comma = entry.contains(".,") || entry.matches(',').count() > 1;
-
-        let has_citation_indicators = year.is_some()
-            || doi.is_some()
-            || arxiv.is_some()
-            || venue.is_some()
-            || has_et_al
-            || has_author_comma;
-
-        if !has_citation_indicators {
-            continue;
-        }
-
         let cleaned = sil_regex::clean_reference_text(&entry);
         if cleaned.is_empty() {
             continue;
@@ -148,6 +182,91 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     }
 
     cleaned_entries
+}
+
+/// Split lines by sequential numbered markers (`[1]`, `[2]`, ... or `1.`, `2.`, ...).
+/// Stops when the next expected number is not found within a reasonable lookahead.
+fn split_by_sequential_markers(
+    lines: &[String],
+    fmt: RefNumberFormat,
+    start_n: usize,
+) -> Vec<String> {
+    let mut entries = Vec::new();
+    let mut current = String::new();
+    let mut next_expected = start_n;
+
+    for line in lines {
+        if line_starts_with_marker(line, fmt, next_expected) {
+            if !current.is_empty() {
+                entries.push(current.trim().to_string());
+                current.clear();
+            }
+            current.push_str(line);
+            next_expected += 1;
+        } else if !current.is_empty() {
+            // Continuation line of the current entry
+            current.push(' ');
+            current.push_str(line);
+        }
+        // Lines before the first marker are silently skipped
+    }
+
+    if !current.is_empty() {
+        entries.push(current.trim().to_string());
+    }
+
+    entries
+}
+
+/// Fallback heuristic splitting for non-numbered reference lists (APA style, bullet lists).
+fn split_by_heuristic(lines: &[String]) -> Vec<String> {
+    let mut entries = Vec::new();
+    let mut current = String::new();
+
+    for line in lines {
+        if is_reference_entry_start(line) {
+            if !current.is_empty() {
+                entries.push(current.trim().to_string());
+                current.clear();
+            }
+            current.push_str(line);
+        } else {
+            if !current.is_empty() {
+                current.push(' ');
+            }
+            current.push_str(line);
+        }
+    }
+
+    if !current.is_empty() {
+        entries.push(current.trim().to_string());
+    }
+
+    // Filter heuristic entries more aggressively
+    entries
+        .into_iter()
+        .filter(|entry| {
+            if sil_regex::is_biography_or_prose_line(entry) {
+                return false;
+            }
+            if entry.len() > 450 && !sil_regex::has_strong_citation_markers(entry) {
+                return false;
+            }
+            let year = extract_year(entry);
+            let doi = sil_regex::extract_doi(entry);
+            let arxiv = sil_regex::extract_arxiv_id(entry);
+            let venue = sil_regex::extract_reference_venue(entry);
+            let lower = entry.to_lowercase();
+            let has_et_al = lower.contains("et al");
+            let has_author_comma = entry.contains(".,") || entry.matches(',').count() > 1;
+            year.is_some()
+                || doi.is_some()
+                || arxiv.is_some()
+                || venue.is_some()
+                || has_et_al
+                || has_author_comma
+        })
+        .collect()
 }
 
 /// Check if line is header/footer/page noise.
@@ -401,18 +520,19 @@ $$ I[Y; M] = \sum_x ... $$
     }
 
     #[test]
-    fn test_filtering_body_step_lists() {
+    fn test_sequential_numbered_entries() {
         let sid = SourceId::new("steps.pdf");
+        // Sequential detection: [1], [2] are parsed; anything after the sequence breaks is ignored.
         let raw = r#"
-1. For each input, we compute the logits.
-2. We calculate the cross-entropy loss.
-[3] Turing, A. M. (1950). Computing Machinery.
+[1] Turing, A. M. (1950). Computing Machinery.
+[2] Shannon, C. E. (1948). A mathematical theory of communication.
+This is not a reference, it's trailing text from the paper.
 "#;
         let entries = parse_reference_entries(&sid, raw);
-        // The first two steps lack citation indicators (year, doi, venue, etc) and should be filtered out.
-        assert_eq!(entries.len(), 1);
+        assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].year, Some(1950));
         assert!(entries[0].raw_text.contains("Computing Machinery"));
+        assert_eq!(entries[1].year, Some(1948));
     }
 
     #[test]
