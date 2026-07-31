@@ -227,4 +227,60 @@ mod tests {
         drop(reader);
         let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
     }
+
+    #[tokio::test]
+    async fn test_jsonrpc_parse_error() {
+        let server = McpServer::new();
+        let invalid_json = r#"{"jsonrpc":"2.0", "method": invalid"#;
+        let response = server
+            .handle_request_line(invalid_json)
+            .await
+            .expect("Expected parse error response");
+
+        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.id, None);
+        let err = response.error.expect("Expected error object");
+        assert_eq!(err.code, -32700);
+        assert!(err.message.starts_with("Parse error:"));
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_unknown_method_and_notifications() {
+        let server = McpServer::new();
+
+        // Unknown method with id -> returns error -32601
+        let req = r#"{"jsonrpc":"2.0","id":42,"method":"unknown/method"}"#;
+        let resp = server
+            .handle_request_line(req)
+            .await
+            .expect("Expected error response for unknown method request");
+        assert_eq!(resp.id, Some(json!(42)));
+        let err = resp.error.expect("Expected error payload");
+        assert_eq!(err.code, -32601);
+        assert_eq!(err.message, "Method not found: unknown/method");
+
+        // Notification without id -> returns None
+        let notification = r#"{"jsonrpc":"2.0","method":"unknown/notification"}"#;
+        let resp_notif = server.handle_request_line(notification).await;
+        assert!(resp_notif.is_none());
+
+        // Standard notification returns None
+        let init_notif = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
+        let resp_init = server.handle_request_line(init_notif).await;
+        assert!(resp_init.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_jsonrpc_ping() {
+        let server = McpServer::new();
+        let req = r#"{"jsonrpc":"2.0","id":7,"method":"ping"}"#;
+        let resp = server
+            .handle_request_line(req)
+            .await
+            .expect("Expected ping response");
+        assert_eq!(resp.jsonrpc, "2.0");
+        assert_eq!(resp.id, Some(json!(7)));
+        assert!(resp.error.is_none());
+        assert_eq!(resp.result, Some(json!({})));
+    }
 }

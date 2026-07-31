@@ -59,10 +59,7 @@ pub fn git(project: &Path, args: &[&str]) -> std::process::Output {
 /// Commit all with an optional Sci-Action trailer body.
 pub fn git_commit_all(project: &Path, message: &str) {
     let _ = git(project, &["add", "-A"]);
-    let status = Command::new("git")
-        .args(["commit", "-m", message])
-        .current_dir(project)
-        .status()
-        .expect("git commit");
-    assert!(status.success(), "git commit failed");
+    let output = git(project, &["commit", "-m", message]);
+    assert!(output.status.success(), "git commit failed: {}", String::from_utf8_lossy(&output.stderr));
 }
+

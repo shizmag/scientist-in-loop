@@ -766,11 +766,363 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::Content;
+    use std::fs;
+    use std::sync::{Mutex, MutexGuard};
+    use tempfile::TempDir;
+
+    static TEST_MUTEX: Mutex<()> = Mutex::new(());
+
+    struct TestEnv {
+        _guard: MutexGuard<'static, ()>,
+        _dir: TempDir,
+        orig_cwd: std::path::PathBuf,
+        project_root: Utf8PathBuf,
+    }
+
+    impl TestEnv {
+        fn new() -> Self {
+            let guard = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+            let orig_cwd = std::env::current_dir().unwrap();
+            let dir = tempfile::tempdir().unwrap();
+            let project_root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+
+            fs::create_dir_all(project_root.join(".sil")).unwrap();
+            fs::write(project_root.join(".sil/config.yaml"), "version: 1\n").unwrap();
+
+            std::env::set_current_dir(&project_root).unwrap();
+
+            Self {
+                _guard: guard,
+                _dir: dir,
+                orig_cwd,
+                project_root,
+            }
+        }
+
+        fn setup_db(&self) -> SilDb {
+            let paths = ProjectPaths::new(&self.project_root);
+            SilDb::open(&paths.db()).unwrap()
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.orig_cwd);
+        }
+    }
+
+    fn extract_text(res: &CallToolResult) -> &str {
+        match &res.content[0] {
+            Content::Text { text } => text.as_str(),
+        }
+    }
 
     #[test]
     fn test_handle_fetch_source_missing_target() {
         let res = handle_fetch_source(json!({}));
         assert_eq!(res.is_error, Some(true));
+        assert!(extract_text(&res).contains("Missing required parameter: target"));
+    }
+
+    #[test]
+    fn test_handle_search_sources() {
+        // Missing query validation
+        let res_missing = handle_search_sources(json!({}));
+        assert_eq!(res_missing.is_error, Some(true));
+        assert!(extract_text(&res_missing).contains("Missing required parameter: query"));
+
+        // Execution on temp project DB
+        let env = TestEnv::new();
+        let db = env.setup_db();
+
+        let sid = sil_core::SourceId::new("paper_fts");
+        let mut doc = sil_core::SourceDocument::new(Utf8PathBuf::from("sources/paper_fts.pdf"));
+        doc.id = sid.clone();
+        doc.title = Some("Quantum Dynamics".to_string());
+        db.upsert_parsed(&doc, "Quantum dynamics and state vector evolution.").unwrap();
+
+        let chunk = sil_db::SourceChunk {
+            id: "chk_fts_1".to_string(),
+            source_id: sid,
+            parent_chunk_id: None,
+            chunk_type: sil_db::ChunkType::Parent,
+            heading_title: Some("Quantum Section".to_string()),
+            content: "Quantum dynamics and state vector evolution.".to_string(),
+            start_offset: 0,
+            end_offset: 40,
+            embedding_blob: None,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        };
+        db.insert_source_chunks(&[chunk]).unwrap();
+
+        let res = handle_search_sources(json!({
+            "query": "Quantum",
+            "limit": 5,
+            "hyde": false
+        }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        assert!(extract_text(&res).contains("paper_fts"));
+    }
+
+    #[test]
+    fn test_handle_get_source_context() {
+        // Missing source_id validation
+        let res_missing = handle_get_source_context(json!({}));
+        assert_eq!(res_missing.is_error, Some(true));
+        assert!(extract_text(&res_missing).contains("Missing required parameter: source_id"));
+
+        let env = TestEnv::new();
+        let db = env.setup_db();
+
+        let sid = sil_core::SourceId::new("src_ctx_test");
+        let mut doc = sil_core::SourceDocument::new(Utf8PathBuf::from("sources/src_ctx_test.pdf"));
+        doc.id = sid.clone();
+        db.upsert_parsed(&doc, "source text").unwrap();
+
+        let parent_chunk = sil_db::SourceChunk {
+            id: "p1".to_string(),
+            source_id: sid.clone(),
+            parent_chunk_id: None,
+            chunk_type: sil_db::ChunkType::Parent,
+            heading_title: Some("Introduction".to_string()),
+            content: "Parent section content".to_string(),
+            start_offset: 0,
+            end_offset: 20,
+            embedding_blob: None,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        };
+        let child_chunk = sil_db::SourceChunk {
+            id: "c1".to_string(),
+            source_id: sid,
+            parent_chunk_id: Some("p1".to_string()),
+            chunk_type: sil_db::ChunkType::Child,
+            heading_title: None,
+            content: "Child paragraph text".to_string(),
+            start_offset: 21,
+            end_offset: 40,
+            embedding_blob: None,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        };
+        db.insert_source_chunks(&[parent_chunk, child_chunk]).unwrap();
+
+        // Query by source_id without chunk_id
+        let res_source = handle_get_source_context(json!({ "source_id": "src_ctx_test" }));
+        assert!(res_source.is_error.is_none() || res_source.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res_source)).unwrap();
+        assert_eq!(val["source_id"], "src_ctx_test");
+        assert_eq!(val["chunk_count"], 2);
+
+        // Query by chunk_id
+        let res_chunk = handle_get_source_context(json!({
+            "source_id": "src_ctx_test",
+            "chunk_id": "c1"
+        }));
+        assert!(res_chunk.is_error.is_none() || res_chunk.is_error == Some(false));
+        let val_c: serde_json::Value = serde_json::from_str(extract_text(&res_chunk)).unwrap();
+        assert_eq!(val_c["chunk"]["id"], "c1");
+        assert_eq!(val_c["parent_context"]["id"], "p1");
+
+        // Query missing chunk_id
+        let res_missing_chunk = handle_get_source_context(json!({
+            "source_id": "src_ctx_test",
+            "chunk_id": "nonexistent"
+        }));
+        assert_eq!(res_missing_chunk.is_error, Some(true));
+        assert!(extract_text(&res_missing_chunk).contains("Chunk 'nonexistent' not found"));
+    }
+
+    #[test]
+    fn test_handle_list_and_update_todos() {
+        let env = TestEnv::new();
+
+        let initial_tex = r#"\documentclass{article}
+\begin{document}
+% # -- X -- #
+% [TODO: id=todo_1, priority=high, status=open]
+% Add background
+% # -- X -- #
+\end{document}"#;
+        fs::write(env.project_root.join("paper_draft.tex"), initial_tex).unwrap();
+
+        // 1. List TODOs
+        let res_list = handle_list_todos(json!({ "status": "open", "priority": "high" }));
+        assert!(res_list.is_error.is_none() || res_list.is_error == Some(false));
+        assert!(extract_text(&res_list).contains("Add background"));
+
+        // 2. Update TODO missing content validation
+        let res_err = handle_update_todo(json!({}));
+        assert_eq!(res_err.is_error, Some(true));
+        assert!(extract_text(&res_err).contains("Missing required parameter: content"));
+
+        // 3. Update TODO
+        let res_upd = handle_update_todo(json!({
+            "id": "todo_1",
+            "section_id": "sec_bg",
+            "content": "Add complete background survey",
+            "status": "done",
+            "priority": "low"
+        }));
+        assert!(res_upd.is_error.is_none() || res_upd.is_error == Some(false));
+        assert!(extract_text(&res_upd).contains("\"status\":\"updated\""));
+
+        let updated_tex = fs::read_to_string(env.project_root.join("paper_draft.tex")).unwrap();
+        assert!(updated_tex.contains("Add complete background survey"));
+        assert!(updated_tex.contains("status=done"));
+        assert!(updated_tex.contains("priority=low"));
+    }
+
+    #[test]
+    fn test_handle_list_and_invoke_skills() {
+        let env = TestEnv::new();
+
+        let skills_dir = env.project_root.join(".sil/skills");
+        fs::create_dir_all(&skills_dir).unwrap();
+        fs::write(skills_dir.join("custom-tool.md"), "# Custom Tool\nInstructions.").unwrap();
+
+        // 1. List skills
+        let res_list = handle_list_skills(json!({}));
+        assert!(res_list.is_error.is_none() || res_list.is_error == Some(false));
+        let list_json: serde_json::Value = serde_json::from_str(extract_text(&res_list)).unwrap();
+        assert!(list_json.as_array().unwrap().iter().any(|s| s["name"] == "SYSTEM.md"));
+        assert!(list_json.as_array().unwrap().iter().any(|s| s["name"] == "custom-tool.md"));
+
+        // 2. Filter by category
+        let res_cat = handle_list_skills(json!({ "category": "custom" }));
+        let cat_json: serde_json::Value = serde_json::from_str(extract_text(&res_cat)).unwrap();
+        assert!(cat_json.as_array().unwrap().iter().all(|s| s["type"] == "custom" || s["name"].as_str().unwrap_or("").contains("custom")));
+
+        // 3. Invoke missing name parameter
+        let res_no_name = handle_invoke_skill(json!({}));
+        assert_eq!(res_no_name.is_error, Some(true));
+        assert!(extract_text(&res_no_name).contains("Missing required parameter: name"));
+
+        // 4. Invoke custom skill
+        let res_inv = handle_invoke_skill(json!({
+            "name": "custom-tool.md",
+            "input": "test input data"
+        }));
+        assert!(res_inv.is_error.is_none() || res_inv.is_error == Some(false));
+        let inv_val: serde_json::Value = serde_json::from_str(extract_text(&res_inv)).unwrap();
+        assert_eq!(inv_val["skill"], "custom-tool.md");
+        assert_eq!(inv_val["input"], "test input data");
+        assert!(inv_val["content"].as_str().unwrap().contains("Custom Tool"));
+    }
+
+    #[test]
+    fn test_handle_get_structure() {
+        let env = TestEnv::new();
+
+        let struct_yaml = r#"
+title: "Test Paper"
+status: "draft"
+sections:
+  - id: "sec_1"
+    title: "Intro"
+    level: 1
+    completion: "empty"
+"#;
+        fs::write(env.project_root.join(".sil/structure.yaml"), struct_yaml).unwrap();
+
+        // 1. Read structure
+        let res_read = handle_get_structure(json!({ "action": "read" }));
+        assert!(res_read.is_error.is_none() || res_read.is_error == Some(false));
+        let val_read: serde_json::Value = serde_json::from_str(extract_text(&res_read)).unwrap();
+        assert_eq!(val_read["structure"]["title"], "Test Paper");
+        assert_eq!(val_read["completion_summary"]["total"], 1);
+
+        // 2. Update section completion
+        let res_upd = handle_get_structure(json!({
+            "action": "update",
+            "section_id": "sec_1",
+            "completed": true
+        }));
+        assert!(res_upd.is_error.is_none() || res_upd.is_error == Some(false));
+        let val_upd: serde_json::Value = serde_json::from_str(extract_text(&res_upd)).unwrap();
+        assert_eq!(val_upd["completion_summary"]["draft"], 1);
+
+        // 3. Update missing section_id -> error
+        let res_no_sid = handle_get_structure(json!({ "action": "update", "completed": true }));
+        assert_eq!(res_no_sid.is_error, Some(true));
+
+        // 4. Update unknown section_id -> error
+        let res_unk_sid = handle_get_structure(json!({ "action": "update", "section_id": "unknown_sec", "completed": true }));
+        assert_eq!(res_unk_sid.is_error, Some(true));
+        assert!(extract_text(&res_unk_sid).contains("Section 'unknown_sec' not found"));
+    }
+
+    #[test]
+    fn test_handle_build_and_doctor() {
+        let env = TestEnv::new();
+        fs::write(env.project_root.join("paper_draft.tex"), "\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}").unwrap();
+
+        for engine in &["pdflatex", "xelatex", "lualatex", "tectonic"] {
+            let res = handle_build_and_doctor(json!({
+                "engine": engine,
+                "run_doctor": true
+            }));
+            assert!(res.is_error.is_none() || res.is_error == Some(false));
+            let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+            assert_eq!(val["engine"], *engine);
+            assert!(val["build_command"].as_str().unwrap().contains(engine));
+            assert!(val["health_doctor_report"].is_object());
+        }
+    }
+
+    #[test]
+    fn test_handle_propose_commit() {
+        let env = TestEnv::new();
+
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(&env.project_root)
+            .output()
+            .unwrap();
+
+        let res = handle_propose_commit(json!({
+            "message": "Add intro section",
+            "action": "edit-draft"
+        }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["action_trailer"], "edit-draft");
+        assert!(val["warning"].as_str().unwrap().contains("NEVER be committed automatically"));
+    }
+
+    #[test]
+    fn test_handle_fetch_source_with_mock_script() {
+        let env = TestEnv::new();
+
+        let mock_script_path = env.project_root.join("mock_download.py");
+        fs::write(
+            &mock_script_path,
+            "import sys\nprint('sources/mock_paper.pdf')\n",
+        )
+        .unwrap();
+
+        let sources_dir = env.project_root.join("sources");
+        fs::create_dir_all(&sources_dir).unwrap();
+        fs::write(sources_dir.join("mock_paper.pdf"), "%PDF-1.4 dummy pdf content").unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_DOWNLOAD_SCRIPT", mock_script_path.as_str());
+            std::env::set_var("SIL_MARKER_STUB", "Stub text content");
+        }
+
+        let res = handle_fetch_source(json!({
+            "target": "10.1000/182"
+        }));
+
+        unsafe {
+            std::env::remove_var("SIL_DOWNLOAD_SCRIPT");
+            std::env::remove_var("SIL_MARKER_STUB");
+        }
+
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["downloaded_path"], "sources/mock_paper.pdf");
+        assert!(val["commit_proposal"].is_object());
     }
 }
+
 
