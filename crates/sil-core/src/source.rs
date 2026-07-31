@@ -104,6 +104,27 @@ pub struct SourceDocument {
     pub references_text: Option<String>,
 }
 
+/// An individual extracted reference / citation item from a source document.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceEntry {
+    /// Unique identifier for this reference item.
+    pub id: String,
+    /// Parent source document ID.
+    pub source_id: SourceId,
+    /// 1-based index of the reference in the document.
+    pub ref_index: usize,
+    /// Full unparsed raw citation text.
+    pub raw_text: String,
+    /// Parsed title if extracted.
+    pub title: Option<String>,
+    /// Parsed authors string if extracted.
+    pub authors: Option<String>,
+    /// Parsed publication year if extracted.
+    pub year: Option<i32>,
+    /// Parsed DOI if extracted.
+    pub doi: Option<String>,
+}
+
 impl SourceDocument {
     /// Create a new unparsed source document from a path.
     pub fn new(path: Utf8PathBuf) -> Self {

@@ -5,6 +5,7 @@
 pub mod chunks;
 pub mod error;
 pub mod onnx;
+pub mod references;
 pub mod schema;
 pub mod search;
 pub mod sources;
@@ -249,6 +250,36 @@ impl SilDb {
             result.push(r?);
         }
         Ok(result)
+    }
+
+    /// Save reference entries for a source document.
+    pub fn save_source_references(&self, refs: &[sil_core::ReferenceEntry]) -> Result<(), DbError> {
+        references::save_source_references(&self.conn, refs)
+    }
+
+    /// Get all reference entries for a source ID.
+    pub fn get_references_for_source(
+        &self,
+        source_id: &sil_core::SourceId,
+    ) -> Result<Vec<sil_core::ReferenceEntry>, DbError> {
+        references::get_references_for_source(&self.conn, source_id)
+    }
+
+    /// Full-text search over extracted source references.
+    pub fn search_references(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<sil_core::ReferenceEntry>, DbError> {
+        references::search_references(&self.conn, query, limit)
+    }
+
+    /// Delete all reference entries for a source ID.
+    pub fn delete_references_for_source(
+        &self,
+        source_id: &sil_core::SourceId,
+    ) -> Result<(), DbError> {
+        references::delete_references_for_source(&self.conn, source_id)
     }
 }
 

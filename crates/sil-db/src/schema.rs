@@ -111,6 +111,45 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             url            TEXT NOT NULL,
             fetched_at     TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS source_references (
+            id          TEXT PRIMARY KEY NOT NULL,
+            source_id   TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+            ref_index   INTEGER NOT NULL,
+            raw_text    TEXT NOT NULL,
+            title       TEXT,
+            authors     TEXT,
+            year        INTEGER,
+            doi         TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS source_references_fts USING fts5(
+            id UNINDEXED,
+            source_id UNINDEXED,
+            raw_text,
+            title,
+            authors,
+            content='source_references',
+            content_rowid='rowid'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS source_references_ai AFTER INSERT ON source_references BEGIN
+            INSERT INTO source_references_fts(rowid, id, source_id, raw_text, title, authors)
+            VALUES (new.rowid, new.id, new.source_id, new.raw_text, new.title, new.authors);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS source_references_ad AFTER DELETE ON source_references BEGIN
+            INSERT INTO source_references_fts(source_references_fts, rowid, id, source_id, raw_text, title, authors)
+            VALUES ('delete', old.rowid, old.id, old.source_id, old.raw_text, old.title, old.authors);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS source_references_au AFTER UPDATE ON source_references BEGIN
+            INSERT INTO source_references_fts(source_references_fts, rowid, id, source_id, raw_text, title, authors)
+            VALUES ('delete', old.rowid, old.id, old.source_id, old.raw_text, old.title, old.authors);
+            INSERT INTO source_references_fts(rowid, id, source_id, raw_text, title, authors)
+            VALUES (new.rowid, new.id, new.source_id, new.raw_text, new.title, new.authors);
+        END;
         "#,
     )?;
 

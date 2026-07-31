@@ -7,6 +7,7 @@ mod error;
 mod interactive;
 pub mod journal_digest;
 mod marker;
+pub mod references;
 mod validate;
 
 pub use batch::{ParseResult, parse_many, parse_one};

@@ -110,6 +110,31 @@ pub fn suggest_from_query(query: &str) -> BibSuggestion {
     }
 }
 
+/// Suggest a citation from a parsed ReferenceEntry item.
+pub fn suggest_from_reference_entry(entry: &crate::ReferenceEntry) -> BibSuggestion {
+    let title = entry.title.as_deref().unwrap_or("Untitled");
+    let author = entry.authors.as_deref().unwrap_or("Unknown");
+    let year = entry
+        .year
+        .map(|y| y.to_string())
+        .unwrap_or_else(|| "n.d.".into());
+    let cite_key = slug_cite_key(if !title.is_empty() && title != "Untitled" {
+        title
+    } else {
+        &entry.raw_text
+    });
+    let bibtex = format_bibtex_article(&cite_key, title, author, &year, "Extracted Reference");
+    BibSuggestion {
+        cite_command: format_cite_command(&cite_key),
+        cite_key,
+        bibtex,
+        note: format!(
+            "Extracted reference #{} from source '{}'",
+            entry.ref_index, entry.source_id
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
