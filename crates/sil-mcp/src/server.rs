@@ -327,4 +327,53 @@ mod tests {
         drop(reader);
         let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
     }
+
+    #[test]
+    fn test_mcpserver_default() {
+        let server = McpServer::default();
+        assert_eq!(server.tools.len(), 12);
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_without_params_or_name() {
+        let server = McpServer::new();
+        // Request without params field
+        let req_no_params = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: Some(json!(99)),
+            method: "tools/call".to_string(),
+            params: None,
+        };
+        let resp = server.handle_request(req_no_params).await.unwrap();
+        assert_eq!(resp.id, Some(json!(99)));
+        let call_res: CallToolResult = serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert_eq!(call_res.is_error, Some(true));
+        let Content::Text { text } = &call_res.content[0];
+        assert!(text.contains("Unknown tool:"));
+    }
+
+    #[tokio::test]
+    async fn test_server_run_empty_lines_handling() {
+        let (client, server_stream) = tokio::io::duplex(1024);
+        let (client_read, mut client_write) = tokio::io::split(client);
+
+        let server_handle = tokio::spawn(async move {
+            let (server_read, server_write) = tokio::io::split(server_stream);
+            let server_inst = McpServer::default();
+            server_inst.run(server_read, server_write).await.unwrap();
+        });
+
+        // Write blank lines followed by a valid ping request
+        client_write.write_all(b"\n   \n\n{\"jsonrpc\":\"2.0\",\"id\":123,\"method\":\"ping\"}\n").await.unwrap();
+
+        let mut reader = BufReader::new(client_read);
+        let mut resp_line = String::new();
+        reader.read_line(&mut resp_line).await.unwrap();
+
+        assert!(resp_line.contains("\"id\":123"));
+        drop(client_write);
+        drop(reader);
+        let _ = tokio::time::timeout(std::time::Duration::from_millis(200), server_handle).await;
+    }
 }
+

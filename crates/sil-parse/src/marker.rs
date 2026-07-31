@@ -307,3 +307,131 @@ pub fn discover_marker_runner() -> Result<Box<dyn MarkerRunner>, ParseError> {
         "could not locate marker_single CLI binary (pip install marker-pdf) or python/parse_with_marker.py helper script; set SIL_MARKER_BIN or SIL_PARSE_SCRIPT".into(),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_find_binary_in_path_direct_file() {
+        let dir = tempdir().unwrap();
+        let bin_path = dir.path().join("mock_binary");
+        fs::write(&bin_path, "#!/bin/sh\nexit 0").unwrap();
+
+        let utf = Utf8PathBuf::from_path_buf(bin_path.clone()).unwrap();
+        assert_eq!(find_binary_in_path(utf.as_str()), Some(utf));
+
+        assert_eq!(find_binary_in_path("/nonexistent/bin/path"), None);
+    }
+
+    #[test]
+    fn test_cli_marker_runner_discover_env() {
+        let dir = tempdir().unwrap();
+        let bin_path = dir.path().join("custom_marker_cli");
+        fs::write(&bin_path, "#!/bin/sh\n").unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_MARKER_BIN", bin_path.to_str().unwrap());
+        }
+
+        let runner = CliMarkerRunner::discover().unwrap();
+        assert_eq!(runner.binary.as_str(), bin_path.to_str().unwrap());
+
+        unsafe {
+            std::env::remove_var("SIL_MARKER_BIN");
+        }
+    }
+
+    #[test]
+    fn test_cli_marker_runner_parse_pdf_mock() {
+        let dir = tempdir().unwrap();
+        let bin_path = dir.path().join("mock_cli_marker.sh");
+        fs::write(
+            &bin_path,
+            "#!/bin/sh\nOUT_DIR=\"\"\nfor arg in \"$@\"; do\n  if [ \"$PREV\" = \"--output_dir\" ]; then OUT_DIR=\"$arg\"; fi\n  PREV=\"$arg\"\ndone\nmkdir -p \"$OUT_DIR\"\necho '# Mock Output' > \"$OUT_DIR/out.md\"\nexit 0\n",
+        )
+        .unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&bin_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&bin_path, perms).unwrap();
+        }
+
+        let runner = CliMarkerRunner::new(Utf8PathBuf::from_path_buf(bin_path).unwrap());
+        let dummy_pdf = Utf8PathBuf::from_path_buf(dir.path().join("test.pdf")).unwrap();
+        fs::write(dummy_pdf.as_str(), "%PDF-1.4 dummy").unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_MARKER_FLAGS", "--debug");
+        }
+
+        let content = runner.parse_pdf(&dummy_pdf).unwrap();
+
+        unsafe {
+            std::env::remove_var("SIL_MARKER_FLAGS");
+        }
+
+        assert!(content.contains("# Mock Output"));
+    }
+
+    #[test]
+    fn test_python_marker_runner_discover_env() {
+        let dir = tempdir().unwrap();
+        let script_path = dir.path().join("parse_with_marker.py");
+        fs::write(&script_path, "print('ok')").unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_PARSE_SCRIPT", script_path.to_str().unwrap());
+        }
+
+        let runner = PythonMarkerRunner::discover().unwrap();
+        assert_eq!(runner.script.as_str(), script_path.to_str().unwrap());
+
+        unsafe {
+            std::env::remove_var("SIL_PARSE_SCRIPT");
+        }
+    }
+
+    #[test]
+    fn test_discover_marker_runner_stub_priority() {
+        unsafe {
+            std::env::set_var("SIL_MARKER_STUB", "Test Stub Content");
+        }
+
+        let runner = discover_marker_runner().unwrap();
+        let dummy_pdf = Utf8Path::new("dummy.pdf");
+        let parsed = runner.parse_pdf(dummy_pdf).unwrap();
+
+        unsafe {
+            std::env::remove_var("SIL_MARKER_STUB");
+        }
+
+        assert!(parsed.contains("Test Stub Content"));
+        assert!(parsed.contains("dummy.pdf"));
+    }
+
+    #[test]
+    fn test_discover_marker_runner_parse_script_priority() {
+        let dir = tempdir().unwrap();
+        let script_path = dir.path().join("parse_with_marker.py");
+        fs::write(&script_path, "print('ok')").unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_PARSE_SCRIPT", script_path.to_str().unwrap());
+        }
+
+        let runner = discover_marker_runner();
+
+        unsafe {
+            std::env::remove_var("SIL_PARSE_SCRIPT");
+        }
+
+        assert!(runner.is_ok());
+    }
+}
+

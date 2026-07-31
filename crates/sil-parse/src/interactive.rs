@@ -222,3 +222,63 @@ fn paint_frame(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sil_core::NullUi;
+
+    #[test]
+    fn test_apply_selection_event_edge_cases() {
+        let mut selected = vec![true, false, true];
+        let mut cursor = 10; // Cursor out of bounds
+
+        let outcome = apply_selection_event(SelectionEvent::Ignore, &mut selected, &mut cursor);
+        assert_eq!(outcome, SelectionOutcome::Continue);
+        assert_eq!(cursor, 2); // Clamped to len - 1
+
+        let outcome_up = apply_selection_event(SelectionEvent::Up, &mut selected, &mut cursor);
+        assert_eq!(outcome_up, SelectionOutcome::Continue);
+        assert_eq!(cursor, 1);
+
+        let outcome_up_top = apply_selection_event(SelectionEvent::Up, &mut selected, &mut cursor);
+        assert_eq!(outcome_up_top, SelectionOutcome::Continue);
+        assert_eq!(cursor, 0);
+
+        // Up at top stays 0
+        let outcome_up_top2 = apply_selection_event(SelectionEvent::Up, &mut selected, &mut cursor);
+        assert_eq!(outcome_up_top2, SelectionOutcome::Continue);
+        assert_eq!(cursor, 0);
+    }
+
+    #[test]
+    fn test_apply_selection_event_empty_selected() {
+        let mut selected: Vec<bool> = vec![];
+        let mut cursor = 0;
+
+        let outcome_confirm = apply_selection_event(SelectionEvent::Confirm, &mut selected, &mut cursor);
+        assert_eq!(outcome_confirm, SelectionOutcome::Cancelled);
+
+        let outcome_up = apply_selection_event(SelectionEvent::Up, &mut selected, &mut cursor);
+        assert_eq!(outcome_up, SelectionOutcome::Continue);
+    }
+
+    #[test]
+    fn test_select_pdfs_interactive_empty() {
+        let ui = NullUi::new();
+        let selected = select_pdfs_interactive(&[], &ui).unwrap();
+        assert!(selected.is_empty());
+    }
+
+    #[test]
+    fn test_select_pdfs_interactive_non_interactive() {
+        let ui = NullUi::new(); // NullUi is non-interactive by default
+        let paths = vec![
+            Utf8PathBuf::from("sources/doc1.pdf"),
+            Utf8PathBuf::from("sources/doc2.pdf"),
+        ];
+        let selected = select_pdfs_interactive(&paths, &ui).unwrap();
+        assert_eq!(selected, vec![0, 1]);
+    }
+}
+

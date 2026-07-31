@@ -1798,4 +1798,31 @@ pub(crate) mod tests {
         let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
         assert!(val.is_array());
     }
+
+    #[test]
+    fn test_tools_not_in_project_error() {
+        let _guard = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let orig_cwd = std::env::current_dir().unwrap();
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+
+        let res = handle_search_sources(json!({ "query": "test" }));
+        std::env::set_current_dir(&orig_cwd).unwrap();
+
+        assert_eq!(res.is_error, Some(true));
+        assert!(extract_text(&res).contains("Not in a sil project"));
+    }
+
+    #[test]
+    fn test_propose_commit_default() {
+        let _env = TestEnv::new();
+
+        let res = handle_propose_commit(json!({}));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert!(val["proposal_subject"].is_string());
+        assert!(val["full_commit_message"].is_string());
+        assert_eq!(val["action_trailer"], "edit-draft");
+    }
 }
+

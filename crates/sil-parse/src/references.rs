@@ -443,4 +443,38 @@ $$ I[Y; M] = \sum_x ... $$
         assert!(!cleaned_raw.contains("(#refhub)"));
         assert!(cleaned_raw.contains("X. Guan"));
     }
+
+    #[test]
+    fn test_is_noise_line() {
+        assert!(is_noise_line("Page 42"));
+        assert!(is_noise_line("page 1 of 10"));
+        assert!(is_noise_line("arXiv:2405.12345v1 [cs.CL]"));
+        assert!(!is_noise_line("Vaswani et al. Attention is all you need. 2017."));
+    }
+
+    #[test]
+    fn test_extract_unquoted_title_and_authors() {
+        let text = "Smith, J. Quantum Computing Foundations. Journal of Physics, 2020.";
+        let (authors, year, title, venue, doi) = parse_entry_metadata(text);
+        assert_eq!(year, Some(2020));
+        assert_eq!(title.as_deref(), Some("Quantum Computing Foundations"));
+        assert_eq!(authors.as_deref(), Some("Smith, J"));
+        assert_eq!(venue.as_deref(), Some("Journal of Physics, 2020"));
+        assert_eq!(doi, None);
+    }
+
+
+
+    #[test]
+    fn test_split_raw_entries_math_filtering() {
+        let sid = SourceId::new("math.pdf");
+        let raw = r#"
+[1] Vaswani et al. Attention is all you need. 2017.
+[2] Formula equation: $$ E = mc^2 \mid \mathbf{v} \mathcal{M} $$ 2020.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(2017));
+    }
 }
+

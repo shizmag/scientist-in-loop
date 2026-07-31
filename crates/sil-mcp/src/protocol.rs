@@ -149,3 +149,112 @@ pub enum Content {
         text: String,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_jsonrpc_request_serde() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: Some(json!(1)),
+            method: "ping".to_string(),
+            params: Some(json!({"key": "val"})),
+        };
+        let serialized = serde_json::to_string(&req).unwrap();
+        assert!(serialized.contains(r#""jsonrpc":"2.0""#));
+        assert!(serialized.contains(r#""id":1"#));
+        assert!(serialized.contains(r#""method":"ping""#));
+
+        let deserialized: JsonRpcRequest = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(req, deserialized);
+
+        let req_no_id_no_params = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: None,
+            method: "notifications/initialized".to_string(),
+            params: None,
+        };
+        let ser_no_id = serde_json::to_string(&req_no_id_no_params).unwrap();
+        assert!(!ser_no_id.contains("id"));
+        assert!(!ser_no_id.contains("params"));
+    }
+
+    #[test]
+    fn test_jsonrpc_response_success_and_error() {
+        let succ = JsonRpcResponse::success(Some(json!(42)), json!({"status": "ok"}));
+        assert_eq!(succ.jsonrpc, "2.0");
+        assert_eq!(succ.id, Some(json!(42)));
+        assert_eq!(succ.result, Some(json!({"status": "ok"})));
+        assert!(succ.error.is_none());
+
+        let succ_json = serde_json::to_string(&succ).unwrap();
+        assert!(!succ_json.contains("error"));
+
+        let err = JsonRpcResponse::error(Some(json!("req_2")), -32601, "Method not found");
+        assert_eq!(err.jsonrpc, "2.0");
+        assert_eq!(err.id, Some(json!("req_2")));
+        assert!(err.result.is_none());
+        assert_eq!(
+            err.error,
+            Some(JsonRpcError {
+                code: -32601,
+                message: "Method not found".to_string(),
+                data: None,
+            })
+        );
+
+        let err_json = serde_json::to_string(&err).unwrap();
+        assert!(!err_json.contains("result"));
+    }
+
+    #[test]
+    fn test_jsonrpc_error_data() {
+        let err_with_data = JsonRpcError {
+            code: -32000,
+            message: "Custom error".to_string(),
+            data: Some(json!({"trace": "stacktrace..."})),
+        };
+        let ser = serde_json::to_string(&err_with_data).unwrap();
+        assert!(ser.contains("trace"));
+        let de: JsonRpcError = serde_json::from_str(&ser).unwrap();
+        assert_eq!(err_with_data, de);
+    }
+
+    #[test]
+    fn test_tool_input_schema_object() {
+        let schema = ToolInputSchema::object(
+            json!({"param1": {"type": "string"}}),
+            vec!["param1"],
+        );
+        assert_eq!(schema.schema_type, "object");
+        assert_eq!(schema.required, vec!["param1"]);
+
+        let ser = serde_json::to_string(&schema).unwrap();
+        assert!(ser.contains(r#""type":"object""#));
+        assert!(ser.contains(r#""required":["param1"]"#));
+    }
+
+    #[test]
+    fn test_call_tool_result() {
+        let res_text = CallToolResult::text("hello world");
+        assert_eq!(
+            res_text.content,
+            vec![Content::Text {
+                text: "hello world".to_string(),
+            }]
+        );
+        assert_eq!(res_text.is_error, None);
+
+        let res_err = CallToolResult::error("something broke");
+        assert_eq!(res_err.is_error, Some(true));
+
+        let ser_text = serde_json::to_string(&res_text).unwrap();
+        assert!(ser_text.contains(r#""type":"text""#));
+        assert!(ser_text.contains("hello world"));
+        assert!(!ser_text.contains("isError"));
+    }
+}
+
