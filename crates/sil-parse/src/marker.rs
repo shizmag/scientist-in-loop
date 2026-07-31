@@ -68,71 +68,121 @@ impl CliMarkerRunner {
     }
 }
 
+fn find_gs_binary() -> Option<Utf8PathBuf> {
+    if let Some(path) = find_binary_in_path("gs") {
+        return Some(path);
+    }
+    for candidate in &["/opt/homebrew/bin/gs", "/usr/local/bin/gs", "/usr/bin/gs"] {
+        let p = PathBuf::from(candidate);
+        if p.is_file() {
+            if let Ok(utf) = Utf8PathBuf::from_path_buf(p) {
+                return Some(utf);
+            }
+        }
+    }
+    None
+}
+
+fn repair_pdf_with_gs(gs_bin: &Utf8Path, input_pdf: &Utf8Path, output_pdf: &Utf8Path) -> bool {
+    let status = Command::new(gs_bin)
+        .arg("-o")
+        .arg(output_pdf.as_str())
+        .arg("-sDEVICE=pdfwrite")
+        .arg(input_pdf.as_str())
+        .output();
+    if let Ok(out) = status {
+        out.status.success() && output_pdf.is_file()
+    } else {
+        false
+    }
+}
+
 impl MarkerRunner for CliMarkerRunner {
     fn parse_pdf(&self, pdf: &Utf8Path) -> Result<String, ParseError> {
-        let tmp =
-            tempdir().map_err(|e| ParseError::Marker(format!("failed to create temp dir: {e}")))?;
-        let mut cmd = Command::new(&self.binary);
-        cmd.arg(pdf.as_str())
-            .arg("--output_dir")
-            .arg(tmp.path())
-            .arg("--output_format")
-            .arg("markdown")
-            .arg("--disable_image_extraction")
-            .arg("--disable_multiprocessing");
+        let run_marker = |target: &Utf8Path| -> Result<String, ParseError> {
+            let tmp = tempdir()
+                .map_err(|e| ParseError::Marker(format!("failed to create temp dir: {e}")))?;
+            let mut cmd = Command::new(&self.binary);
+            cmd.arg(target.as_str())
+                .arg("--output_dir")
+                .arg(tmp.path())
+                .arg("--output_format")
+                .arg("markdown")
+                .arg("--disable_image_extraction")
+                .arg("--disable_multiprocessing");
 
-        if let Ok(flags) = std::env::var("SIL_MARKER_FLAGS") {
-            for flag in flags.split_whitespace() {
-                cmd.arg(flag);
-            }
-        }
-
-        let output = cmd
-            .output()
-            .map_err(|e| ParseError::Marker(format!("failed to spawn {}: {e}", self.binary)))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            return Err(ParseError::Marker(format!(
-                "exit {}: {}\n{}",
-                output.status.code().unwrap_or(-1),
-                stderr.trim(),
-                stdout.trim()
-            )));
-        }
-
-        fn find_md_file(dir: &std::path::Path) -> Option<PathBuf> {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
-                        return Some(path);
-                    } else if path.is_dir()
-                        && let Some(found) = find_md_file(&path)
-                    {
-                        return Some(found);
-                    }
+            if let Ok(flags) = std::env::var("SIL_MARKER_FLAGS") {
+                for flag in flags.split_whitespace() {
+                    cmd.arg(flag);
                 }
             }
-            None
+
+            let output = cmd
+                .output()
+                .map_err(|e| ParseError::Marker(format!("failed to spawn {}: {e}", self.binary)))?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return Err(ParseError::Marker(format!(
+                    "exit {}: {}\n{}",
+                    output.status.code().unwrap_or(-1),
+                    stderr.trim(),
+                    stdout.trim()
+                )));
+            }
+
+            fn find_md_file(dir: &std::path::Path) -> Option<PathBuf> {
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md")
+                        {
+                            return Some(path);
+                        } else if path.is_dir()
+                            && let Some(found) = find_md_file(&path)
+                        {
+                            return Some(found);
+                        }
+                    }
+                }
+                None
+            }
+
+            let md_file = find_md_file(tmp.path()).ok_or_else(|| {
+                ParseError::Marker(format!(
+                    "marker CLI executed successfully but produced no markdown output in {}",
+                    tmp.path().display()
+                ))
+            })?;
+
+            let content = std::fs::read_to_string(&md_file).map_err(|e| {
+                ParseError::Marker(format!(
+                    "failed to read extracted markdown file {}: {e}",
+                    md_file.display()
+                ))
+            })?;
+
+            Ok(content)
+        };
+
+        match run_marker(pdf) {
+            Ok(content) => Ok(content),
+            Err(first_err) => {
+                if let Some(gs_bin) = find_gs_binary()
+                    && let Ok(repair_dir) = tempdir()
+                    && let Ok(repaired_path) =
+                        Utf8PathBuf::from_path_buf(repair_dir.path().join("repaired.pdf"))
+                {
+                    if repair_pdf_with_gs(&gs_bin, pdf, &repaired_path) {
+                        if let Ok(repaired_content) = run_marker(&repaired_path) {
+                            return Ok(repaired_content);
+                        }
+                    }
+                }
+                Err(first_err)
+            }
         }
-
-        let md_file = find_md_file(tmp.path()).ok_or_else(|| {
-            ParseError::Marker(format!(
-                "marker CLI executed successfully but produced no markdown output in {}",
-                tmp.path().display()
-            ))
-        })?;
-
-        let content = std::fs::read_to_string(&md_file).map_err(|e| {
-            ParseError::Marker(format!(
-                "failed to read extracted markdown file {}: {e}",
-                md_file.display()
-            ))
-        })?;
-
-        Ok(content)
     }
 }
 
