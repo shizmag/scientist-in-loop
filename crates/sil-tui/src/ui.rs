@@ -59,7 +59,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
             } else {
-                Style::default().fg(Color::DarkGray)
+                Style::default().fg(Color::Gray)
             };
             Line::from(vec![Span::styled(t.title(), style)])
         })
@@ -180,12 +180,10 @@ fn draw_rag_settings(frame: &mut Frame, app: &App, area: Rect) {
     let reranker_path_str = rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default();
 
     let fields = [
-        ("ONNX Embedder Model", rag.onnx_embedder_model.as_str(), RagField::EmbedderModel),
-        ("ONNX Reranker Model", rag.onnx_reranker_model.as_str(), RagField::RerankerModel),
-        ("Model Cache Dir", rag.model_cache_dir.as_str(), RagField::CacheDir),
+        ("ONNX Embedder Path/Dir", embedder_path_str.as_str(), RagField::EmbedderPath),
+        ("ONNX Reranker Path/Dir", reranker_path_str.as_str(), RagField::RerankerPath),
         ("Custom ONNX Models Dir", models_dir_str.as_str(), RagField::ModelsDir),
-        ("ONNX Embedder File Path", embedder_path_str.as_str(), RagField::EmbedderPath),
-        ("ONNX Reranker File Path", reranker_path_str.as_str(), RagField::RerankerPath),
+        ("Model Cache Dir", rag.model_cache_dir.as_str(), RagField::CacheDir),
         ("Execution Provider", rag.execution_provider.as_str(), RagField::ExecutionProvider),
         ("Num Threads", num_threads_str.as_str(), RagField::NumThreads),
         ("Parent Chunk Size", parent_chunk_str.as_str(), RagField::ParentChunkSize),
@@ -249,7 +247,7 @@ fn draw_local_settings(frame: &mut Frame, app: &App, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled(if is_notes_sel { "► Notes: " } else { "  Notes: " }, if is_notes_sel { Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD) } else { Style::default() }),
-            Span::styled(if app.local_settings.notes.is_empty() { "<no notes>" } else { &app.local_settings.notes }, Style::default().fg(Color::DarkGray)),
+            Span::styled(if app.local_settings.notes.is_empty() { "<no notes>" } else { &app.local_settings.notes }, Style::default().fg(Color::Gray)),
         ]),
     ];
 
@@ -455,15 +453,23 @@ fn draw_grant_cache(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let dirty_indicator = if app.dirty { " [UNSAVED CHANGES] " } else { "" };
 
+    let msg_style = if app.status_message.contains("saved") || app.status_message.starts_with('✓') {
+        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+    } else if app.status_message.contains("cannot") || app.status_message.contains("Error") || app.status_message.contains("failed") {
+        Style::default().fg(Color::LightRed).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    };
+
     let footer_text = Paragraph::new(Line::from(vec![
-        Span::styled(&app.status_message, Style::default().fg(Color::White)),
+        Span::styled(&app.status_message, msg_style),
         Span::styled(dirty_indicator, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
     ]))
     .block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(Color::DarkGray))
+            .border_style(Style::default().fg(Color::Cyan))
             .title(" Status & Help "),
     );
 
@@ -663,23 +669,23 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("• Stage: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("• Stage: ", Style::default().fg(Color::Cyan)),
             Span::styled("Stage 5 (Polish & Production)", Style::default().fg(Color::Green)),
         ]),
         Line::from(vec![
-            Span::styled("• Main Draft: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("• Main Draft: ", Style::default().fg(Color::Cyan)),
             Span::styled("paper_draft.tex", Style::default().fg(Color::Yellow)),
         ]),
         Line::from(vec![
-            Span::styled("• Citation Integrity: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("• Citation Integrity: ", Style::default().fg(Color::Cyan)),
             Span::styled("OK (references.bib synchronized)", Style::default().fg(Color::Green)),
         ]),
         Line::from(vec![
-            Span::styled("• Label References: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("• Label References: ", Style::default().fg(Color::Cyan)),
             Span::styled("OK (all labels matched)", Style::default().fg(Color::Green)),
         ]),
         Line::from(vec![
-            Span::styled("• Engine: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("• Engine: ", Style::default().fg(Color::Cyan)),
             Span::styled("tectonic (configured)", Style::default().fg(Color::White)),
         ]),
     ];
@@ -696,20 +702,20 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("1. [Intro / Lines 12-18]: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("1. [Intro / Lines 12-18]: ", Style::default().fg(Color::Yellow)),
             Span::styled("Refine motivation for self-attention baseline", Style::default().fg(Color::White)),
         ]),
         Line::from(vec![
-            Span::styled("2. [Methods / Lines 45-52]: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("2. [Methods / Lines 45-52]: ", Style::default().fg(Color::Yellow)),
             Span::styled("Add equation comparing loss functions A vs B", Style::default().fg(Color::White)),
         ]),
         Line::from(vec![
-            Span::styled("3. [Results / Lines 88-95]: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("3. [Results / Lines 88-95]: ", Style::default().fg(Color::Yellow)),
             Span::styled("Verify dataset metrics table with latest run", Style::default().fg(Color::White)),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.", Style::default().fg(Color::DarkGray)),
+            Span::styled("Tip: Surround notes with # -- X -- # in paper_draft.tex for AI agents.", Style::default().fg(Color::Gray)),
         ]),
     ];
     let idea_block = Block::default()
@@ -738,7 +744,7 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Run 'sil digest <query>' to update top journal feed", Style::default().fg(Color::DarkGray)),
+            Span::styled("Run 'sil digest <query>' to update top journal feed", Style::default().fg(Color::Gray)),
         ]),
     ];
     let digest_block = Block::default()
@@ -755,27 +761,27 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::DarkGray)),
+            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::Gray)),
         ]),
         Line::from(vec![
             Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
-            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::DarkGray)),
+            Span::styled("        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')", Style::default().fg(Color::Gray)),
         ]),
         Line::from(vec![
             Span::styled("  sil doctor", Style::default().fg(Color::Yellow)),
-            Span::styled("       Run full host + manuscript health audit", Style::default().fg(Color::DarkGray)),
+            Span::styled("       Run full host + manuscript health audit", Style::default().fg(Color::Gray)),
         ]),
         Line::from(vec![
             Span::styled("  sil digest <q>", Style::default().fg(Color::Yellow)),
-            Span::styled("    Fetch top journal publications", Style::default().fg(Color::DarkGray)),
+            Span::styled("    Fetch top journal publications", Style::default().fg(Color::Gray)),
         ]),
         Line::from(vec![
             Span::styled("  sil todo", Style::default().fg(Color::Yellow)),
-            Span::styled("          List all # -- X -- # ideas in draft", Style::default().fg(Color::DarkGray)),
+            Span::styled("          List all # -- X -- # ideas in draft", Style::default().fg(Color::Gray)),
         ]),
         Line::from(vec![
             Span::styled("  sil propose", Style::default().fg(Color::Yellow)),
-            Span::styled("       Create git commit proposal with Sci-Action", Style::default().fg(Color::DarkGray)),
+            Span::styled("       Create git commit proposal with Sci-Action", Style::default().fg(Color::Gray)),
         ]),
     ];
     let guide_block = Block::default()
@@ -796,7 +802,7 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
     if app.paper_sections.is_empty() {
         items.push(ListItem::new(Line::from(Span::styled(
             " (no sections / empty paper_draft.tex)",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(Color::Gray),
         ))));
     } else {
         for (idx, sec) in app.paper_sections.iter().enumerate() {
@@ -811,7 +817,7 @@ fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled(prefix, style),
                 Span::styled(format!("[{}] ", sec.kind), Style::default().fg(Color::Magenta)),
                 Span::styled(&sec.title, style),
-                Span::styled(format!(" (L{})", sec.line_start), Style::default().fg(Color::DarkGray)),
+                Span::styled(format!(" (L{})", sec.line_start), Style::default().fg(Color::Cyan)),
             ])));
         }
     }

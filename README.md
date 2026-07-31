@@ -216,10 +216,13 @@ Sci-Action: fetch-source
 3. **Co-Authors & Grants Cache (`~/.config/sil/cache.yaml`)**:
    - History of all co-authors and grants encountered across previous works.
    - One-key import into local project settings (`u`), fast picker modal (`a`), and deduplication.
+4. **ONNX & Local RAG Settings Tab (`7`)**:
+   - Manage model paths, thread allocation, chunk sizes, and execution providers.
+   - Paste a directory containing `*.onnx` models into the Embedder or Reranker path fields to automatically discover and link the `.onnx` model inside.
 
 ### Keybindings in TUI
 
-- `1`-`4` or `Tab` / `Shift+Tab`: Switch tabs (Global, Local, Co-Author Cache, Grant Cache).
+- `1`-`7` or `Tab` / `Shift+Tab`: Switch tabs (Global, Local, Co-Author Cache, Grant Cache, Dashboard, Paper Draft, RAG Settings).
 - `↑`/`↓` or `j`/`k`: Navigate fields or lists.
 - `e` or `Enter`: Edit selected field value.
 - `a`: Add new item or select from cache modal.
@@ -239,7 +242,7 @@ Sci-Action: fetch-source
 1. **100% Local ONNX Hybrid RAG (`sil_search_sources`)**:
    - **Parent-Child Chunking**: Splits parsed Markdown literature by section headings (parent chunks) and paragraphs (child chunks).
    - **Dense ONNX Embeddings + BM25 FTS5**: Uses local ONNX models (`bge-small-en-v1.5` / `ms-marco-MiniLM-L-6-v2`) with Reciprocal Rank Fusion (RRF) and HyDE query expansion.
-   - **Custom ONNX Paths**: Configure custom model directories (`onnx_models_dir`) or explicit file paths (`onnx_embedder_path`, `onnx_reranker_path`) in `.sil/config.yaml` or `~/.config/sil/settings.yaml`.
+   - **Custom ONNX Paths & Directory Auto-Resolution**: Configure custom model directories (`onnx_models_dir`) or explicit file/directory paths (`onnx_embedder_path`, `onnx_reranker_path`) in `.sil/config.yaml` or `~/.config/sil/settings.yaml`. Pasting a directory path automatically locates any `*.onnx` model inside.
    - **Parent Context Expansion**: Matches on child paragraphs automatically expand to full parent section context.
 2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
    - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.

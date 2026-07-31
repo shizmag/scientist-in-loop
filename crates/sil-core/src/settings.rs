@@ -148,53 +148,81 @@ impl Default for RagSettings {
     }
 }
 
+fn find_onnx_in_path(path: &Utf8Path) -> Option<Utf8PathBuf> {
+    if !path.exists() {
+        return None;
+    }
+    if path.is_file() {
+        return Some(path.to_path_buf());
+    }
+    if path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path.extension().and_then(|s| s.to_str()) == Some("onnx") {
+                    if let Ok(utf8) = Utf8PathBuf::from_path_buf(entry_path) {
+                        return Some(utf8);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 impl RagSettings {
     /// Resolve exact embedder *.onnx model file path based on config precedence.
     pub fn resolve_embedder_path(&self) -> Option<Utf8PathBuf> {
-        if let Some(ref path) = self.onnx_embedder_path
-            && path.exists()
-        {
-            return Some(path.clone());
+        if let Some(ref path) = self.onnx_embedder_path {
+            if let Some(found) = find_onnx_in_path(path) {
+                return Some(found);
+            }
         }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_embedder_model));
-            if candidate1.exists() {
+            if candidate1.is_file() && candidate1.exists() {
                 return Some(candidate1);
             }
             let candidate2 = dir.join("embedder.onnx");
-            if candidate2.exists() {
+            if candidate2.is_file() && candidate2.exists() {
                 return Some(candidate2);
+            }
+            if let Some(found) = find_onnx_in_path(dir) {
+                return Some(found);
             }
         }
         let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_embedder_model));
-        if cache_candidate.exists() {
+        if cache_candidate.is_file() && cache_candidate.exists() {
             return Some(cache_candidate);
         }
-        None
+        find_onnx_in_path(&self.model_cache_dir)
     }
 
     /// Resolve exact reranker *.onnx model file path based on config precedence.
     pub fn resolve_reranker_path(&self) -> Option<Utf8PathBuf> {
-        if let Some(ref path) = self.onnx_reranker_path
-            && path.exists()
-        {
-            return Some(path.clone());
+        if let Some(ref path) = self.onnx_reranker_path {
+            if let Some(found) = find_onnx_in_path(path) {
+                return Some(found);
+            }
         }
         if let Some(ref dir) = self.onnx_models_dir {
             let candidate1 = dir.join(format!("{}.onnx", self.onnx_reranker_model));
-            if candidate1.exists() {
+            if candidate1.is_file() && candidate1.exists() {
                 return Some(candidate1);
             }
             let candidate2 = dir.join("reranker.onnx");
-            if candidate2.exists() {
+            if candidate2.is_file() && candidate2.exists() {
                 return Some(candidate2);
+            }
+            if let Some(found) = find_onnx_in_path(dir) {
+                return Some(found);
             }
         }
         let cache_candidate = self.model_cache_dir.join(format!("{}.onnx", self.onnx_reranker_model));
-        if cache_candidate.exists() {
+        if cache_candidate.is_file() && cache_candidate.exists() {
             return Some(cache_candidate);
         }
-        None
+        find_onnx_in_path(&self.model_cache_dir)
     }
 }
 
@@ -441,6 +469,22 @@ mod tests {
         let rag = RagSettings {
             onnx_models_dir: Some(dir_path),
             onnx_embedder_model: "custom-embedder".to_string(),
+            ..Default::default()
+        };
+
+        let resolved = rag.resolve_embedder_path();
+        assert_eq!(resolved, Some(model_file));
+    }
+
+    #[test]
+    fn test_dir_onnx_path_resolution() {
+        let dir = tempdir().unwrap();
+        let dir_path = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let model_file = dir_path.join("model.onnx");
+        std::fs::write(model_file.as_std_path(), b"fake onnx").unwrap();
+
+        let rag = RagSettings {
+            onnx_embedder_path: Some(dir_path.clone()),
             ..Default::default()
         };
 

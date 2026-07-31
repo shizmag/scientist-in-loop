@@ -103,31 +103,41 @@ impl LocalField {
 /// Currently active input field in RAG settings form.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RagField {
-    EmbedderModel = 0,
-    RerankerModel = 1,
-    CacheDir = 2,
-    ModelsDir = 3,
-    EmbedderPath = 4,
-    RerankerPath = 5,
-    ExecutionProvider = 6,
-    NumThreads = 7,
-    ParentChunkSize = 8,
-    ChildChunkSize = 9,
+    EmbedderPath = 0,
+    RerankerPath = 1,
+    ModelsDir = 2,
+    CacheDir = 3,
+    ExecutionProvider = 4,
+    NumThreads = 5,
+    ParentChunkSize = 6,
+    ChildChunkSize = 7,
 }
 
 impl RagField {
-    pub const ALL: [RagField; 10] = [
-        RagField::EmbedderModel,
-        RagField::RerankerModel,
-        RagField::CacheDir,
-        RagField::ModelsDir,
+    pub const ALL: [RagField; 8] = [
         RagField::EmbedderPath,
         RagField::RerankerPath,
+        RagField::ModelsDir,
+        RagField::CacheDir,
         RagField::ExecutionProvider,
         RagField::NumThreads,
         RagField::ParentChunkSize,
         RagField::ChildChunkSize,
     ];
+}
+
+fn resolve_onnx_from_dir(val: &str) -> String {
+    let path = std::path::Path::new(val);
+    if path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("onnx") {
+                    return entry.path().to_string_lossy().to_string();
+                }
+            }
+        }
+    }
+    val.to_string()
 }
 
 /// Application state struct for TUI.
@@ -522,12 +532,10 @@ impl App {
             }
             ActiveTab::RagSettings => {
                 self.input_buffer = match RagField::ALL[self.selected_rag_field] {
-                    RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model.clone(),
-                    RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model.clone(),
-                    RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
-                    RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
                     RagField::EmbedderPath => self.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
                     RagField::RerankerPath => self.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                    RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                    RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
                     RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
                     RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
                     RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
@@ -634,17 +642,17 @@ impl App {
             }
             ActiveTab::RagSettings => {
                 match RagField::ALL[self.selected_rag_field] {
-                    RagField::EmbedderModel => self.global_settings.rag.onnx_embedder_model = val,
-                    RagField::RerankerModel => self.global_settings.rag.onnx_reranker_model = val,
+                    RagField::EmbedderPath => {
+                        let resolved = resolve_onnx_from_dir(&val);
+                        self.global_settings.rag.onnx_embedder_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                    }
+                    RagField::RerankerPath => {
+                        let resolved = resolve_onnx_from_dir(&val);
+                        self.global_settings.rag.onnx_reranker_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                    }
                     RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
                     RagField::ModelsDir => {
                         self.global_settings.rag.onnx_models_dir = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
-                    }
-                    RagField::EmbedderPath => {
-                        self.global_settings.rag.onnx_embedder_path = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
-                    }
-                    RagField::RerankerPath => {
-                        self.global_settings.rag.onnx_reranker_path = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
                     }
                     RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
                     RagField::NumThreads => {
@@ -985,17 +993,20 @@ mod tests {
         assert_eq!(app.active_tab, ActiveTab::RagSettings);
         assert_eq!(app.selected_rag_field, 0);
 
-        // Edit embedder model (field 0)
+        // Edit embedder path (field 0)
         app.handle_key(KeyEvent::from(KeyCode::Char('e')));
         assert_eq!(app.input_mode, InputMode::Editing);
-        app.input_buffer = "bge-large-en-v1.5".to_string();
+        app.input_buffer = "/tmp/my_models/embedder.onnx".to_string();
         app.handle_key(KeyEvent::from(KeyCode::Enter));
 
-        assert_eq!(app.global_settings.rag.onnx_embedder_model, "bge-large-en-v1.5");
+        assert_eq!(
+            app.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.as_str()),
+            Some("/tmp/my_models/embedder.onnx")
+        );
         assert!(app.dirty);
 
-        // Move to num_threads (field 7)
-        for _ in 0..7 {
+        // Move to num_threads (field 5 in 8-element list)
+        for _ in 0..5 {
             app.handle_key(KeyEvent::from(KeyCode::Char('j')));
         }
         assert_eq!(app.selected_rag_field, RagField::NumThreads as usize);
@@ -1005,6 +1016,26 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Enter));
 
         assert_eq!(app.global_settings.rag.num_threads, 12);
+    }
+
+    #[test]
+    fn test_rag_settings_directory_onnx_resolution() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let model_file = temp_dir.path().join("my_custom_reranker.onnx");
+        std::fs::write(&model_file, b"dummy onnx content").unwrap();
+
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::RagSettings;
+        app.selected_rag_field = RagField::RerankerPath as usize;
+
+        app.input_mode = InputMode::Editing;
+        app.input_buffer = temp_dir.path().to_string_lossy().to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(
+            app.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.as_path()),
+            Some(camino::Utf8Path::new(model_file.to_str().unwrap()))
+        );
     }
 
     #[test]
