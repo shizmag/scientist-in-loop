@@ -4,6 +4,7 @@
 
 mod batch;
 mod error;
+mod fetch;
 mod interactive;
 pub mod journal_digest;
 mod marker;
@@ -12,6 +13,7 @@ mod validate;
 
 pub use batch::{ParseResult, parse_many, parse_one};
 pub use error::ParseError;
+pub use fetch::fetch_source_target;
 pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
@@ -398,5 +400,27 @@ mod tests {
         assert_eq!(result.document.title.as_deref(), Some("abstract"));
         assert!(db.is_parsed(&result.document.id).unwrap());
     }
+
+    #[test]
+    fn fetch_source_target_mock_script() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("download_mock.py");
+        std::fs::write(
+            &script,
+            "import sys\nprint('Downloaded to sources/test.pdf')\n",
+        )
+        .unwrap();
+        let dest = Utf8PathBuf::from_path_buf(dir.path().join("sources")).unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_DOWNLOAD_SCRIPT", &script);
+        }
+        let res = fetch_source_target("10.1234/test", &dest).unwrap();
+        unsafe {
+            std::env::remove_var("SIL_DOWNLOAD_SCRIPT");
+        }
+        assert_eq!(res.as_str(), "Downloaded to sources/test.pdf");
+    }
 }
+
 

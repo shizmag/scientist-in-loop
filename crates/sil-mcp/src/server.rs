@@ -148,7 +148,7 @@ mod tests {
         let result = response.result.expect("Expected result");
         let tools = result["tools"].as_array().expect("tools should be an array");
 
-        assert_eq!(tools.len(), 11, "Should register all 11 core sil MCP tools");
+        assert_eq!(tools.len(), 12, "Should register all 12 core sil MCP tools");
 
         let expected_names = [
             "sil_search_sources",
@@ -162,6 +162,7 @@ mod tests {
             "sil_get_structure",
             "sil_build_and_doctor",
             "sil_propose_commit",
+            "sil_fetch_source",
         ];
 
         for expected in expected_names {

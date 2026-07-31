@@ -1,4 +1,4 @@
-//! Implementation and registration of the 11 core `sil` MCP tools.
+//! Implementation and registration of the 12 core `sil` MCP tools.
 
 use std::fs;
 use camino::Utf8PathBuf;
@@ -14,7 +14,7 @@ use sil_latex::{audit_manuscript, build_command, parse_idea_blocks, update_or_in
 
 use crate::protocol::{CallToolResult, Tool, ToolInputSchema};
 
-/// Returns all 11 core `sil` registered tools with valid JSON schemas.
+/// Returns all 12 core `sil` registered tools with valid JSON schemas.
 pub fn list_tools() -> Vec<Tool> {
     vec![
         Tool {
@@ -147,6 +147,17 @@ pub fn list_tools() -> Vec<Tool> {
                 vec![],
             ),
         },
+        Tool {
+            name: "sil_fetch_source".to_string(),
+            description: "Download paper/source into sources/ by DOI, arXiv ID, or URL and optionally parse into SQLite".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "target": { "type": "string", "description": "DOI (10.xxxx), arXiv ID (arxiv:XXXX.YYYY), or direct URL" },
+                    "no_parse": { "type": "boolean", "description": "Skip immediate parsing after download (default false)" }
+                }),
+                vec!["target"],
+            ),
+        },
     ]
 }
 
@@ -166,6 +177,7 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
         "sil_get_structure" => handle_get_structure(args),
         "sil_build_and_doctor" => handle_build_and_doctor(args),
         "sil_propose_commit" => handle_propose_commit(args),
+        "sil_fetch_source" => handle_fetch_source(args),
         _ => CallToolResult::error(format!("Unknown tool: {name}")),
     }
 }
@@ -667,3 +679,98 @@ fn handle_propose_commit(args: serde_json::Value) -> CallToolResult {
 
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
 }
+
+fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
+    let target = match args.get("target").and_then(|v| v.as_str()) {
+        Some(t) => t,
+        None => return CallToolResult::error("Missing required parameter: target"),
+    };
+    let no_parse = args.get("no_parse").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    let (root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let config = sil_core::Config::load(&paths.config()).unwrap_or_default();
+    let sources_dir = paths.sources(&config);
+
+    let db = match SilDb::open(&paths.db()) {
+        Ok(d) => d,
+        Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
+    };
+
+    let saved_path = match sil_parse::fetch_source_target(target, &sources_dir) {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(format!("Fetch failed: {e}")),
+    };
+
+    let downloaded_path_str = saved_path.as_str().to_string();
+
+    let pdf_path = if saved_path.is_absolute() {
+        saved_path.clone()
+    } else if sources_dir
+        .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+        .exists()
+    {
+        sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+    } else {
+        root.join(&saved_path)
+    };
+
+    let mut parsed = false;
+    let mut title: Option<String> = None;
+    let mut source_id: Option<String> = None;
+
+    if !no_parse && pdf_path.exists() {
+        let null_ui = sil_core::NullUi::new();
+        let runner_res: Result<Box<dyn sil_parse::MarkerRunner>, sil_parse::ParseError> =
+            if let Ok(stub) = std::env::var("SIL_MARKER_STUB") {
+                Ok(Box::new(sil_parse::StubMarkerRunner { content: stub }))
+            } else {
+                sil_parse::PythonMarkerRunner::discover()
+                    .map(|r| Box::new(r) as Box<dyn sil_parse::MarkerRunner>)
+            };
+
+        if let Ok(runner) = runner_res
+            && let Ok(res) = sil_parse::parse_one(&pdf_path, &db, runner.as_ref(), &null_ui)
+        {
+            parsed = res.document.parsed;
+            title = res.document.title;
+            source_id = Some(res.document.id.as_str().to_string());
+        }
+    }
+
+    let proposal = proposal_for_action(
+        SciAction::FetchSource,
+        Some(&format!("Fetch source: {target}")),
+        Some(&format!("Saved to {downloaded_path_str}")),
+    );
+
+    let res = json!({
+        "downloaded_path": downloaded_path_str,
+        "parsed": parsed,
+        "title": title,
+        "source_id": source_id,
+        "commit_proposal": {
+            "proposal_subject": proposal.subject,
+            "proposal_body": proposal.body.join("\n"),
+            "full_commit_message": proposal.message(),
+            "action_trailer": proposal.action.as_str(),
+        }
+    });
+
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_handle_fetch_source_missing_target() {
+        let res = handle_fetch_source(json!({}));
+        assert_eq!(res.is_error, Some(true));
+    }
+}
+

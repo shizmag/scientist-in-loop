@@ -229,7 +229,7 @@ Sci-Action: fetch-source
 
 ## Model Context Protocol (MCP) Server & Local ONNX RAG
 
-`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil mcp`) allowing external AI IDEs and assistants (such as Antigravity, Claude Desktop, and Cursor) to directly inspect literature, execute skills, update `# -- X -- #` TODO blocks, and format commit proposals.
+`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil mcp`) allowing external AI IDEs and assistants (such as Antigravity, Claude Desktop, and Cursor) to directly inspect literature, execute skills, update `# -- X -- #` TODO blocks, fetch literature sources, and format commit proposals (12 core tools).
 
 ### Key MCP Features
 
@@ -240,7 +240,9 @@ Sci-Action: fetch-source
    - **Parent Context Expansion**: Matches on child paragraphs automatically expand to full parent section context.
 2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
    - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.
-3. **Commit Proposal Governance (`sil_propose_commit`)**:
+3. **Literature Fetching (`sil_fetch_source`)**:
+   - Download papers/sources into `sources/` by DOI (`10.xxxx`), arXiv ID (`arxiv:XXXX.YYYY`), or direct URL, and optionally parse into SQLite FTS5 index.
+4. **Commit Proposal Governance (`sil_propose_commit`)**:
    - Generates structured commit proposals with `Sci-Action:` trailers for human review. **Never auto-commits**.
 
 ### Standard MCP Configuration (`mcp.json`)

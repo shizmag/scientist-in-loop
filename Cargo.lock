@@ -1949,6 +1949,7 @@ dependencies = [
  "sil-db",
  "sil-git",
  "sil-latex",
+ "sil-parse",
  "sil-template",
  "thiserror 2.0.19",
  "tokio",
