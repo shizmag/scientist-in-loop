@@ -666,7 +666,7 @@ mod tests {
         assert!(blob_empty.is_empty());
         assert!(blob_to_embedding(&blob_empty).is_empty());
 
-        let floats = vec![0.5f32, -1.25f32, 3.14159f32];
+        let floats = vec![0.5f32, -1.25f32, std::f32::consts::PI];
         let blob = embedding_to_blob(&floats);
         assert_eq!(blob.len(), 12);
         let recovered = blob_to_embedding(&blob);

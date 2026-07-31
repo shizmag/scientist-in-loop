@@ -74,11 +74,10 @@ fn find_gs_binary() -> Option<Utf8PathBuf> {
     }
     for candidate in &["/opt/homebrew/bin/gs", "/usr/local/bin/gs", "/usr/bin/gs"] {
         let p = PathBuf::from(candidate);
-        if p.is_file() {
-            if let Ok(utf) = Utf8PathBuf::from_path_buf(p) {
+        if p.is_file()
+            && let Ok(utf) = Utf8PathBuf::from_path_buf(p) {
                 return Some(utf);
             }
-        }
     }
     None
 }
@@ -173,13 +172,10 @@ impl MarkerRunner for CliMarkerRunner {
                     && let Ok(repair_dir) = tempdir()
                     && let Ok(repaired_path) =
                         Utf8PathBuf::from_path_buf(repair_dir.path().join("repaired.pdf"))
-                {
-                    if repair_pdf_with_gs(&gs_bin, pdf, &repaired_path) {
-                        if let Ok(repaired_content) = run_marker(&repaired_path) {
+                    && repair_pdf_with_gs(&gs_bin, pdf, &repaired_path)
+                        && let Ok(repaired_content) = run_marker(&repaired_path) {
                             return Ok(repaired_content);
                         }
-                    }
-                }
                 Err(first_err)
             }
         }
@@ -292,11 +288,10 @@ pub fn discover_marker_runner() -> Result<Box<dyn MarkerRunner>, ParseError> {
     if let Ok(stub) = std::env::var("SIL_MARKER_STUB") {
         return Ok(Box::new(StubMarkerRunner { content: stub }));
     }
-    if std::env::var("SIL_PARSE_SCRIPT").is_ok() {
-        if let Ok(py) = PythonMarkerRunner::discover() {
+    if std::env::var("SIL_PARSE_SCRIPT").is_ok()
+        && let Ok(py) = PythonMarkerRunner::discover() {
             return Ok(Box::new(py));
         }
-    }
     if let Ok(cli) = CliMarkerRunner::discover() {
         return Ok(Box::new(cli));
     }

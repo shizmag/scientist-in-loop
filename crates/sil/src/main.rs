@@ -10,7 +10,7 @@ mod init;
 mod templates;
 mod util;
 
-use cli::{Cli, Commands, GitCmd, PaperCmd, ProjectCmd, SourceCmd, StructureCmd, TuiCmd};
+use cli::{Cli, Commands, GitCmd, PaperCmd, ProjectCmd, SourceCmd, StructureCmd};
 use util::make_ui;
 
 fn main() {

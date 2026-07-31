@@ -830,7 +830,7 @@ impl App {
             }
             KeyCode::Char('y') => {
                 if self.active_tab == ActiveTab::References {
-                    self.source_references.sort_by_key(|r| std::cmp::Reverse(r.year.clone().unwrap_or_default()));
+                    self.source_references.sort_by_key(|r| std::cmp::Reverse(r.year.unwrap_or_default()));
                 }
             }
             KeyCode::Char('i') => {
@@ -1791,7 +1791,7 @@ mod tests {
         std::fs::write(sources_dir.join("readme.md").as_std_path(), "ignore me").unwrap();
         std::fs::write(sources_dir.join("source1.md").as_std_path(), "# Source 1 Content").unwrap();
 
-        let mut app = App::new(Some(root.clone()));
+        let app = App::new(Some(root.clone()));
         assert_eq!(app.paper_draft_content, tex_content);
         assert_eq!(app.bib_file_entries.len(), 2);
         assert_eq!(app.sources.len(), 1);

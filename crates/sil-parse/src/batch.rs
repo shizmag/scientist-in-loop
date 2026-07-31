@@ -222,7 +222,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
         || doc
             .title
             .as_deref()
-            .map_or(false, |t| t.starts_with("page-") || t.len() < 4)
+            .is_some_and(|t| t.starts_with("page-") || t.len() < 4)
     {
         let mut extracted_title = None;
         for line in header_text.lines() {
@@ -257,7 +257,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     }
 
     // Local extraction for Authors
-    if doc.authors.is_none() || doc.authors.as_deref().map_or(false, |a| a.trim().is_empty()) {
+    if doc.authors.is_none() || doc.authors.as_deref().is_some_and(|a| a.trim().is_empty()) {
         let mut author_lines = Vec::new();
         let mut past_title = false;
         for (i, line) in header_text.lines().enumerate() {
@@ -276,14 +276,13 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
             }
 
             let is_heading = clean.starts_with('#');
-            let is_title_match = doc.title.as_deref().map_or(false, |t| clean.contains(t) || t.contains(&clean));
+            let is_title_match = doc.title.as_deref().is_some_and(|t| clean.contains(t) || t.contains(&clean));
 
-            if !past_title {
-                if is_heading || is_title_match || i == 0 {
+            if !past_title
+                && (is_heading || is_title_match || i == 0) {
                     past_title = true;
                     continue;
                 }
-            }
 
             if past_title && !clean.is_empty() {
                 if is_heading {
@@ -329,7 +328,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
 
                 if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
                     // Reject lines that start with non-author lower-case text
-                    if cleaned_author.chars().next().map_or(false, |c| c.is_lowercase()) {
+                    if cleaned_author.chars().next().is_some_and(|c| c.is_lowercase()) {
                         continue;
                     }
 
@@ -337,7 +336,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                     let words: Vec<&str> = cleaned_author.split_whitespace().collect();
                     let word_count = words.len();
                     if word_count > 0 {
-                        let capitalized_count = words.iter().filter(|w| w.chars().next().map_or(false, |c| c.is_uppercase())).count();
+                        let capitalized_count = words.iter().filter(|w| w.chars().next().is_some_and(|c| c.is_uppercase())).count();
                         if word_count > 15 || (word_count > 3 && capitalized_count < word_count / 2) {
                             continue;
                         }

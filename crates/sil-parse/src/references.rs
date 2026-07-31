@@ -67,7 +67,7 @@ fn clean_spans(text: &str) -> String {
 fn split_raw_entries(block: &str) -> Vec<String> {
     let raw_lines: Vec<String> = block
         .lines()
-        .map(|l| clean_spans(l))
+        .map(clean_spans)
         .map(|l| l.trim().to_string())
         .filter(|l| {
             !l.is_empty()
@@ -143,6 +143,7 @@ fn is_noise_line(line: &str) -> bool {
 }
 
 /// Extract metadata fields (authors, year, title, venue, doi) from a raw citation string.
+#[allow(clippy::type_complexity)]
 fn parse_entry_metadata(
     text: &str,
 ) -> (
