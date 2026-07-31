@@ -4,7 +4,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use sil_core::{Config, ProjectPaths, SilUi, StdUi};
 use sil_git::CommitProposal;
-use sil_parse::{MarkerRunner, PythonMarkerRunner, StubMarkerRunner};
+use sil_parse::MarkerRunner;
 
 /// Build the terminal UI for this process.
 pub fn make_ui(plain: bool) -> Box<dyn SilUi> {
@@ -41,11 +41,7 @@ pub fn print_proposal(ui: &dyn SilUi, proposal: &CommitProposal) {
     ui.muted("To apply: git add -A && git commit with the message above.");
 }
 
-/// Resolve Marker runner (stub when `SIL_MARKER_STUB` is set).
+/// Resolve Marker runner (CLI binary, Python helper, or stub).
 pub fn marker_runner() -> Result<Box<dyn MarkerRunner>> {
-    if let Ok(stub) = std::env::var("SIL_MARKER_STUB") {
-        return Ok(Box::new(StubMarkerRunner { content: stub }));
-    }
-    let runner = PythonMarkerRunner::discover().map_err(|e| anyhow::anyhow!("{e}"))?;
-    Ok(Box::new(runner))
+    sil_parse::discover_marker_runner().map_err(|e| anyhow::anyhow!("{e}"))
 }

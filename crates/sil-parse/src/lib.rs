@@ -20,7 +20,9 @@ pub use interactive::{
 pub use journal_digest::{
     fetch_journal_publications, fetch_journal_publications_native, fetch_work_by_doi,
 };
-pub use marker::{MarkerRunner, PythonMarkerRunner, StubMarkerRunner};
+pub use marker::{
+    CliMarkerRunner, MarkerRunner, PythonMarkerRunner, StubMarkerRunner, discover_marker_runner,
+};
 pub use validate::{list_unparsed_pdfs, minimal_pdf_bytes, validate_for_parse, write_fixture_pdf};
 
 
@@ -422,6 +424,31 @@ mod tests {
             std::env::remove_var("SIL_DOWNLOAD_SCRIPT");
         }
         assert_eq!(res.as_str(), "Downloaded to sources/test.pdf");
+    }
+
+    #[test]
+    fn cli_marker_runner_mock_test() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("mock_marker.sh");
+        std::fs::write(
+            &script,
+            "#!/bin/sh\nOUT_DIR=\"$3\"\nmkdir -p \"$OUT_DIR/doc\"\necho '# Mock Extracted Content' > \"$OUT_DIR/doc/doc.md\"\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&script).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&script, perms).unwrap();
+        }
+        let script = Utf8PathBuf::from_path_buf(script).unwrap();
+        let runner = CliMarkerRunner::new(script);
+        let pdf = dir.path().join("t.pdf");
+        write_fixture_pdf(&pdf).unwrap();
+        let pdf = Utf8PathBuf::from_path_buf(pdf).unwrap();
+        let content = runner.parse_pdf(&pdf).unwrap();
+        assert!(content.contains("# Mock Extracted Content"));
     }
 }
 

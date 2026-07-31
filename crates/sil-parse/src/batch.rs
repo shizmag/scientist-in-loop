@@ -15,6 +15,10 @@ pub struct ParseResult {
     pub document: SourceDocument,
     /// Extracted plain text / markdown.
     pub content: String,
+    /// Time taken for extraction and processing.
+    pub duration: std::time::Duration,
+    /// Total reference entries extracted.
+    pub reference_count: usize,
 }
 
 fn extract_heading_title(content: &str) -> Option<String> {
@@ -46,6 +50,7 @@ pub fn parse_one(
     runner: &dyn MarkerRunner,
     ui: &dyn SilUi,
 ) -> Result<ParseResult, ParseError> {
+    let start_time = std::time::Instant::now();
     let (status, mut doc) = validate_for_parse(path, db)?;
     match status {
         DocumentStatus::Valid(kind) => {
@@ -79,12 +84,28 @@ pub fn parse_one(
         }
     }
 
-    ui.info(&format!("Parsing {}", doc.filename));
+    let mut spin = ui.spinner(&format!("Extracting text: {}", doc.filename));
     let content = match doc.kind {
-        SourceKind::Pdf => runner.parse_pdf(path)?,
-        _ => std::fs::read_to_string(path).map_err(|e| {
-            ParseError::InvalidDocument(format!("failed to read text content of {path}: {e}"))
-        })?,
+        SourceKind::Pdf => match runner.parse_pdf(path) {
+            Ok(c) => {
+                spin.finish_success(&format!("Extracted {}", doc.filename));
+                c
+            }
+            Err(e) => {
+                spin.finish_error(&format!("Failed extracting {}", doc.filename));
+                return Err(e);
+            }
+        },
+        _ => match std::fs::read_to_string(path) {
+            Ok(c) => {
+                spin.finish_success(&format!("Read {}", doc.filename));
+                c
+            }
+            Err(e) => {
+                spin.finish_error(&format!("Failed reading {}", doc.filename));
+                return Err(ParseError::InvalidDocument(format!("failed to read text content of {path}: {e}")));
+            }
+        },
     };
 
     let extracted_doi = sil_regex::extract_doi(&content);
@@ -130,17 +151,23 @@ pub fn parse_one(
     db.upsert_parsed(&doc, &content)
         .map_err(|e| ParseError::Db(e.to_string()))?;
 
+    let mut reference_count = 0;
     if let Some(ref raw_block) = doc.references_text {
         let entries = crate::references::parse_reference_entries(&doc.id, raw_block);
+        reference_count = entries.len();
         if !entries.is_empty() {
             db.save_source_references(&entries)
                 .map_err(|e| ParseError::Db(e.to_string()))?;
         }
     }
 
+    let duration = start_time.elapsed();
+
     Ok(ParseResult {
         document: doc,
         content,
+        duration,
+        reference_count,
     })
 }
 

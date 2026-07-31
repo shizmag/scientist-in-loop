@@ -43,7 +43,26 @@ pub fn run(path: Option<PathBuf>, ui: &dyn SilUi) -> Result<()> {
     if to_parse.len() == 1 {
         match parse_one(&to_parse[0], &db, runner.as_ref(), ui) {
             Ok(r) => {
-                ui.success(&format!("Parsed {}", r.document.filename));
+                ui.success(&format!("Successfully parsed {}", r.document.filename));
+                ui.println(&format!("  ├─ 📄 Document: {}", r.document.filename));
+                if let Some(ref title) = r.document.title {
+                    ui.println(&format!("  ├─ 📝 Title: {}", title));
+                }
+                if let Some(ref doi) = r.document.doi {
+                    ui.println(&format!("  ├─ 🏷️ DOI: {}", doi));
+                }
+                if let Some(ref authors) = r.document.authors {
+                    ui.println(&format!("  ├─ 👤 Authors: {}", authors));
+                }
+                let words = r.content.split_whitespace().count();
+                let chars = r.content.len();
+                ui.println(&format!(
+                    "  ├─ 📊 Stats: {} chars | {} words | {} references",
+                    chars, words, r.reference_count
+                ));
+                ui.println(&format!("  ├─ ⏱️ Duration: {:.2?}", r.duration));
+                ui.println("  └─ 🟢 Status: Stored in SQLite & indexed with FTS5");
+
                 let proposal = CommitProposal::new(
                     format!("Parse PDF: {}", r.document.filename),
                     SciAction::ParsePdf,
@@ -62,6 +81,7 @@ pub fn run(path: Option<PathBuf>, ui: &dyn SilUi) -> Result<()> {
             ui.error(&format!("{}: {err}", p.file_name().unwrap_or(p.as_str())));
         }
         if ok > 0 {
+            ui.success(&format!("Batch parsing finished: {ok} parsed, {failed} failed"));
             let proposal = CommitProposal::new(format!("Parse {ok} PDF(s)"), SciAction::ParsePdf)
                 .with_body(format!("Parsed {ok} file(s), {failed} failed."));
             print_proposal(ui, &proposal);
@@ -69,7 +89,6 @@ pub fn run(path: Option<PathBuf>, ui: &dyn SilUi) -> Result<()> {
         if failed > 0 {
             bail!("Parsed {ok} PDF(s), {failed} failed");
         }
-        ui.success(&format!("Parsed {ok} PDF(s)"));
     }
     Ok(())
 }

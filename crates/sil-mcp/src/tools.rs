@@ -724,13 +724,7 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
 
     if !no_parse && pdf_path.exists() {
         let null_ui = sil_core::NullUi::new();
-        let runner_res: Result<Box<dyn sil_parse::MarkerRunner>, sil_parse::ParseError> =
-            if let Ok(stub) = std::env::var("SIL_MARKER_STUB") {
-                Ok(Box::new(sil_parse::StubMarkerRunner { content: stub }))
-            } else {
-                sil_parse::PythonMarkerRunner::discover()
-                    .map(|r| Box::new(r) as Box<dyn sil_parse::MarkerRunner>)
-            };
+        let runner_res = sil_parse::discover_marker_runner();
 
         if let Ok(runner) = runner_res
             && let Ok(res) = sil_parse::parse_one(&pdf_path, &db, runner.as_ref(), &null_ui)
