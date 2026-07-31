@@ -34,14 +34,14 @@ fn parse_path_mode_and_validation() {
         .failure()
         .stderr(predicates::str::contains("already parsed"));
 
-    // Invalid non-PDF
-    fs::write(project.join("sources/notes.txt"), "hello").unwrap();
+    // Invalid / unsupported format
+    fs::write(project.join("sources/notes.unsupported"), "hello").unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/notes.txt"])
+        .args(["parse", "sources/notes.unsupported"])
         .assert()
         .failure()
-        .stderr(predicates::str::contains("not a PDF"));
+        .stderr(predicates::str::contains("unsupported format"));
 
     // Missing file
     sil()

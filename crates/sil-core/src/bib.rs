@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::{SourceDocument, SourceKind};
+
 /// A suggested BibTeX entry and `\cite{...}` form.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BibSuggestion {
@@ -59,37 +61,87 @@ pub fn format_bibtex_article(
     )
 }
 
-/// Suggest a citation from a source filename and optional title.
+/// Suggest a citation from a source document.
 ///
-/// Deterministic: same inputs always yield the same key and BibTeX stub.
-/// Year defaults to empty placeholder when unknown.
-pub fn suggest_from_source(filename: &str, title: Option<&str>) -> BibSuggestion {
-    let display_title = title
+/// Deterministic: same inputs always yield the same key and BibTeX entry.
+/// If `authors`, `year`, `venue`, or `doi` are present on `doc`, formats a complete
+/// `@article` or `@misc` BibTeX entry with real authors, year, journal/venue, and doi.
+pub fn suggest_from_source(doc: &SourceDocument) -> BibSuggestion {
+    let display_title = doc
+        .title
+        .as_deref()
         .map(str::trim)
         .filter(|t| !t.is_empty())
         .map(|t| t.to_string())
         .unwrap_or_else(|| {
-            filename
+            doc.filename
                 .trim_end_matches(".pdf")
                 .trim_end_matches(".PDF")
+                .trim_end_matches(".md")
+                .trim_end_matches(".txt")
+                .trim_end_matches(".html")
                 .replace(['_', '-'], " ")
         });
-    let cite_key = slug_cite_key(title.unwrap_or(filename));
-    let bibtex = format_bibtex_article(
-        &cite_key,
-        &display_title,
-        "Unknown",
-        "n.d.",
-        "Unknown",
-    );
+    let cite_key = slug_cite_key(doc.title.as_deref().unwrap_or(&doc.filename));
+    let author = doc.authors.as_deref().unwrap_or("Unknown");
+    let year = doc
+        .year
+        .map(|y| y.to_string())
+        .unwrap_or_else(|| "n.d.".to_string());
+
+    let has_meta = doc.authors.is_some() || doc.year.is_some() || doc.venue.is_some() || doc.doi.is_some();
+
+    let (_entry_type, bibtex) = if doc.kind == SourceKind::Dataset || doc.kind == SourceKind::Code || (doc.venue.is_none() && has_meta) {
+        let mut fields = vec![
+            format!("  title={{{display_title}}}"),
+            format!("  author={{{author}}}"),
+        ];
+        if let Some(venue) = &doc.venue {
+            fields.push(format!("  howpublished={{{venue}}}"));
+        }
+        fields.push(format!("  year={{{year}}}"));
+        if let Some(doi) = &doc.doi {
+            fields.push(format!("  doi={{{doi}}}"));
+        }
+        let body = fields.join(",\n");
+        ("misc", format!("@misc{{{cite_key},\n{body}\n}}\n"))
+    } else {
+        let journal = doc.venue.as_deref().unwrap_or("Unknown");
+        let mut fields = vec![
+            format!("  title={{{display_title}}}"),
+            format!("  author={{{author}}}"),
+            format!("  journal={{{journal}}}"),
+            format!("  year={{{year}}}"),
+        ];
+        if let Some(doi) = &doc.doi {
+            fields.push(format!("  doi={{{doi}}}"));
+        }
+        let body = fields.join(",\n");
+        ("article", format!("@article{{{cite_key},\n{body}\n}}\n"))
+    };
+
+    let note = if has_meta {
+        format!("BibTeX derived from source metadata ('{}')", doc.filename)
+    } else {
+        format!(
+            "Stub BibTeX from source '{}'; fill author/year/journal before finalizing",
+            doc.filename
+        )
+    };
+
     BibSuggestion {
         cite_command: format_cite_command(&cite_key),
         cite_key,
         bibtex,
-        note: format!(
-            "Stub BibTeX from source '{filename}'; fill author/year/journal before finalizing"
-        ),
+        note,
     }
+}
+
+/// Helper to suggest citation from filename and optional title.
+pub fn suggest_from_filename_title(filename: &str, title: Option<&str>) -> BibSuggestion {
+    let mut doc = SourceDocument::new(filename.into());
+    doc.title = title.map(|t| t.to_string());
+    suggest_from_source(&doc)
 }
 
 /// Suggest a citation from a free-text query (e.g. search hit snippet seed).
@@ -152,14 +204,46 @@ mod tests {
 
     #[test]
     fn suggest_from_source_deterministic() {
-        let a = suggest_from_source("transformer.pdf", Some("Attention Is All You Need"));
-        let b = suggest_from_source("transformer.pdf", Some("Attention Is All You Need"));
+        let mut doc = SourceDocument::new("transformer.pdf".into());
+        doc.title = Some("Attention Is All You Need".into());
+        let a = suggest_from_source(&doc);
+        let b = suggest_from_source(&doc);
         assert_eq!(a, b);
         assert!(a.cite_command.starts_with("\\cite{"));
         assert!(a.bibtex.contains("@article{"));
         assert!(a.bibtex.contains("Attention Is All You Need"));
         assert!(!a.cite_key.is_empty());
         assert!(!a.note.is_empty());
+    }
+
+    #[test]
+    fn suggest_from_source_with_full_metadata() {
+        let mut doc = SourceDocument::new("paper.pdf".into());
+        doc.title = Some("Deep Residual Learning for Image Recognition".into());
+        doc.authors = Some("Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun".into());
+        doc.year = Some(2016);
+        doc.venue = Some("CVPR".into());
+        doc.doi = Some("10.1109/CVPR.2016.90".into());
+
+        let suggestion = suggest_from_source(&doc);
+        assert_eq!(suggestion.cite_key, "deep_residual_learning_for_image_recognition");
+        assert!(suggestion.bibtex.contains("@article{deep_residual_learning_for_image_recognition,"));
+        assert!(suggestion.bibtex.contains("author={Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun}"));
+        assert!(suggestion.bibtex.contains("journal={CVPR}"));
+        assert!(suggestion.bibtex.contains("year={2016}"));
+        assert!(suggestion.bibtex.contains("doi={10.1109/CVPR.2016.90}"));
+    }
+
+    #[test]
+    fn suggest_from_source_misc_without_venue() {
+        let mut doc = SourceDocument::new("dataset.csv".into());
+        doc.title = Some("Dataset Title".into());
+        doc.authors = Some("Author A".into());
+        doc.year = Some(2023);
+        let suggestion = suggest_from_source(&doc);
+        assert!(suggestion.bibtex.contains("@misc{dataset_title,"));
+        assert!(suggestion.bibtex.contains("author={Author A}"));
+        assert!(suggestion.bibtex.contains("year={2023}"));
     }
 
     #[test]

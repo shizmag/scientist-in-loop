@@ -1,5 +1,6 @@
 //! Source document insert / get / list.
 
+use camino::Utf8PathBuf;
 use rusqlite::{Connection, params};
 use sil_core::{DocumentStatus, SourceDocument, SourceId};
 
@@ -77,15 +78,15 @@ pub fn list_sources(conn: &Connection) -> Result<Vec<SourceDocument>, DbError> {
         let parsed: i64 = row.get(4)?;
         let status: Option<String> = row.get(5)?;
         let references_text: Option<String> = row.get(6)?;
-        Ok(SourceDocument {
-            id: SourceId::new(id),
-            path: path.into(),
-            filename,
-            parsed: parsed != 0,
-            status: status.and_then(|s| parse_status_debug(&s)),
-            title,
-            references_text,
-        })
+        let path_buf: Utf8PathBuf = path.into();
+        let mut doc = SourceDocument::new(path_buf);
+        doc.id = SourceId::new(id);
+        doc.filename = filename;
+        doc.parsed = parsed != 0;
+        doc.status = status.and_then(|s| parse_status_debug(&s));
+        doc.title = title;
+        doc.references_text = references_text;
+        Ok(doc)
     })?;
     let mut out = Vec::new();
     for r in rows {

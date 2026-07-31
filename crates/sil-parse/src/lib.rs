@@ -57,10 +57,10 @@ mod tests {
     }
 
     #[test]
-    fn reject_non_pdf() {
+    fn reject_unsupported_format() {
         let dir = tempfile::tempdir().unwrap();
-        let f = dir.path().join("notes.txt");
-        std::fs::write(&f, "not a pdf").unwrap();
+        let f = dir.path().join("notes.unsupported");
+        std::fs::write(&f, "not a supported format").unwrap();
         let path = Utf8PathBuf::from_path_buf(f).unwrap();
         let db = SilDb::open_in_memory().unwrap();
         let ui = NullUi::new();
@@ -68,7 +68,7 @@ mod tests {
             content: "x".into(),
         };
         let err = parse_one(&path, &db, &runner, &ui).unwrap_err();
-        assert!(err.to_string().to_lowercase().contains("not a pdf"));
+        assert!(err.to_string().to_lowercase().contains("unsupported format"));
     }
 
     #[test]

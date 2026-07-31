@@ -19,7 +19,7 @@ pub fn validate_for_parse(
         .map(str::to_string)
         .unwrap_or_else(|| path.to_string());
     let id = SourceId::from_sources_relative(Utf8Path::new(&filename));
-    if matches!(status, DocumentStatus::ValidPdf) && db.is_parsed(&id).unwrap_or(false) {
+    if status.is_parseable() && db.is_parsed(&id).unwrap_or(false) {
         let mut doc = SourceDocument::new(path.to_path_buf());
         doc.id = id;
         doc.status = Some(DocumentStatus::AlreadyParsed);

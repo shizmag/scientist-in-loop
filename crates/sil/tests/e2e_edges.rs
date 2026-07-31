@@ -177,10 +177,10 @@ fn context_skill_flag_paper_only() {
 #[test]
 fn search_after_failed_parse_stays_empty() {
     let (_dir, project) = init_project("fail-then-search");
-    fs::write(project.join("sources/bad.txt"), "not pdf").unwrap();
+    fs::write(project.join("sources/bad.unsupported"), "not pdf").unwrap();
     sil()
         .current_dir(&project)
-        .args(["parse", "sources/bad.txt"])
+        .args(["parse", "sources/bad.unsupported"])
         .assert()
         .failure();
     sil()

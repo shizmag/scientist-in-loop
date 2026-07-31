@@ -1,7 +1,7 @@
 //! `sil cite` — suggest BibTeX / `\cite{...}` from a source or query.
 
 use anyhow::{Result, bail};
-use sil_core::{SilUi, suggest_from_query, suggest_from_source};
+use sil_core::{SilUi, SourceDocument, suggest_from_query, suggest_from_source};
 use sil_db::SilDb;
 
 use crate::util::load_project;
@@ -17,7 +17,7 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
         .into_iter()
         .find(|d| d.filename == target || d.id.as_str() == target || d.path.as_str().ends_with(target))
     {
-        suggest_from_source(&doc.filename, doc.title.as_deref())
+        suggest_from_source(&doc)
     } else if let Ok(ref_hits) = db.search_references(target, 1) && let Some(ref_entry) = ref_hits.first() {
         sil_core::suggest_from_reference_entry(ref_entry)
     } else if target.contains(' ') || !target.ends_with(".pdf") {
@@ -25,7 +25,7 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
         suggest_from_query(target)
     } else {
         // Filename not in DB yet — still deterministic from name
-        suggest_from_source(target, None)
+        suggest_from_source(&SourceDocument::new(target.into()))
     };
 
     if json {

@@ -26,7 +26,7 @@ pub fn parse_one(
 ) -> Result<ParseResult, ParseError> {
     let (status, mut doc) = validate_for_parse(path, db)?;
     match status {
-        DocumentStatus::ValidPdf => {}
+        DocumentStatus::Valid(_) => {}
         DocumentStatus::NotFound => {
             return Err(ParseError::InvalidDocument(format!(
                 "file not found: {path}"
@@ -35,6 +35,11 @@ pub fn parse_one(
         DocumentStatus::NotPdf => {
             return Err(ParseError::InvalidDocument(format!(
                 "not a PDF file: {path}"
+            )));
+        }
+        DocumentStatus::UnsupportedFormat => {
+            return Err(ParseError::InvalidDocument(format!(
+                "unsupported format: {path}"
             )));
         }
         DocumentStatus::Corrupted => {

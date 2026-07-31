@@ -344,7 +344,7 @@ fn handle_suggest_citations(args: serde_json::Value) -> CallToolResult {
             .and_then(|sources| sources.into_iter().find(|s| s.id.as_str() == sid));
 
         if let Some(doc) = doc_opt {
-            let suggestion = suggest_from_source(&doc.filename, doc.title.as_deref());
+            let suggestion = suggest_from_source(&doc);
             return CallToolResult::text(serde_json::to_string_pretty(&json!({
                 "bibtex": suggestion.bibtex,
                 "cite_command": suggestion.cite_command,
