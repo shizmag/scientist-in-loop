@@ -16,7 +16,7 @@ pub fn save_source_references(conn: &Connection, refs: &[ReferenceEntry]) -> Res
         stmt.execute(params![
             entry.id,
             entry.source_id.as_str(),
-            entry.ref_index,
+            entry.ref_index as i64,
             entry.raw_text,
             entry.title,
             entry.authors,
@@ -45,7 +45,7 @@ pub fn get_references_for_source(
         Ok(ReferenceEntry {
             id: row.get(0)?,
             source_id: SourceId::new(sid),
-            ref_index: row.get(2)?,
+            ref_index: row.get::<_, i64>(2)? as usize,
             raw_text: row.get(3)?,
             title: row.get(4)?,
             authors: row.get(5)?,
@@ -87,7 +87,7 @@ pub fn search_references(
         Ok(ReferenceEntry {
             id: row.get(0)?,
             source_id: SourceId::new(sid),
-            ref_index: row.get(2)?,
+            ref_index: row.get::<_, i64>(2)? as usize,
             raw_text: row.get(3)?,
             title: row.get(4)?,
             authors: row.get(5)?,
