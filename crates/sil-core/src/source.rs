@@ -100,6 +100,8 @@ pub struct SourceDocument {
     pub status: Option<DocumentStatus>,
     /// Optional title extracted at parse time.
     pub title: Option<String>,
+    /// Extracted references/bibliography text.
+    pub references_text: Option<String>,
 }
 
 impl SourceDocument {
@@ -117,6 +119,7 @@ impl SourceDocument {
             parsed: false,
             status: None,
             title: None,
+            references_text: None,
         }
     }
 }

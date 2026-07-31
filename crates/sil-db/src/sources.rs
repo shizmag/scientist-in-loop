@@ -39,8 +39,8 @@ pub fn upsert_parsed(
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT INTO sources (id, path, filename, title, parsed, status, content, updated_at)
-        VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, datetime('now'))
+        INSERT INTO sources (id, path, filename, title, parsed, status, content, references_text, updated_at)
+        VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, ?7, datetime('now'))
         ON CONFLICT(id) DO UPDATE SET
             path = excluded.path,
             filename = excluded.filename,
@@ -48,6 +48,7 @@ pub fn upsert_parsed(
             parsed = 1,
             status = excluded.status,
             content = excluded.content,
+            references_text = excluded.references_text,
             updated_at = datetime('now')
         "#,
         params![
@@ -57,6 +58,7 @@ pub fn upsert_parsed(
             doc.title,
             doc.status.map(|s| format!("{s:?}")),
             content,
+            doc.references_text,
         ],
     )?;
     Ok(())
@@ -65,7 +67,7 @@ pub fn upsert_parsed(
 /// List all source documents (metadata only).
 pub fn list_sources(conn: &Connection) -> Result<Vec<SourceDocument>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, filename, title, parsed, status FROM sources ORDER BY filename",
+        "SELECT id, path, filename, title, parsed, status, references_text FROM sources ORDER BY filename",
     )?;
     let rows = stmt.query_map([], |row| {
         let id: String = row.get(0)?;
@@ -74,6 +76,7 @@ pub fn list_sources(conn: &Connection) -> Result<Vec<SourceDocument>, DbError> {
         let title: Option<String> = row.get(3)?;
         let parsed: i64 = row.get(4)?;
         let status: Option<String> = row.get(5)?;
+        let references_text: Option<String> = row.get(6)?;
         Ok(SourceDocument {
             id: SourceId::new(id),
             path: path.into(),
@@ -81,6 +84,7 @@ pub fn list_sources(conn: &Connection) -> Result<Vec<SourceDocument>, DbError> {
             parsed: parsed != 0,
             status: status.and_then(|s| parse_status_debug(&s)),
             title,
+            references_text,
         })
     })?;
     let mut out = Vec::new();

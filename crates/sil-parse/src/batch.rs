@@ -56,6 +56,7 @@ pub fn parse_one(
         let t = l.trim();
         t.strip_prefix("# ").map(str::to_string)
     });
+    doc.references_text = extract_references(&content);
     doc.parsed = true;
     doc.status = Some(DocumentStatus::ValidPdf);
 
@@ -97,4 +98,32 @@ pub fn parse_many(
         pb.finish_error(&format!("Parsed {ok} PDF(s), {failed} failed"));
     }
     (ok, failed, errors)
+}
+
+fn extract_references(content: &str) -> Option<String> {
+    let mut references = Vec::new();
+    let mut in_refs = false;
+    
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with('#') {
+            let clean = t.trim_start_matches('#').trim().to_lowercase();
+            if clean == "references" || clean == "bibliography" || clean.ends_with(" references") || clean.ends_with(" bibliography") {
+                in_refs = true;
+                continue;
+            } else if in_refs {
+                break;
+            }
+        }
+        if in_refs {
+            references.push(line);
+        }
+    }
+    
+    let joined = references.join("\n").trim().to_string();
+    if joined.is_empty() {
+        None
+    } else {
+        Some(joined)
+    }
 }

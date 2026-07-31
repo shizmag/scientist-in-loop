@@ -18,6 +18,7 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             parsed      INTEGER NOT NULL DEFAULT 0,
             status      TEXT,
             content     TEXT,
+            references_text TEXT,
             created_at  TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -114,6 +115,23 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
     )?;
 
     migrate_todo_ideas_columns(conn)?;
+    migrate_sources_columns(conn)?;
+
+    Ok(())
+}
+
+fn migrate_sources_columns(conn: &Connection) -> Result<(), DbError> {
+    let mut stmt = conn.prepare("PRAGMA table_info(sources)")?;
+    let columns: Vec<String> = stmt
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<_, _>>()?;
+
+    if !columns.iter().any(|c| c == "references_text") {
+        conn.execute(
+            "ALTER TABLE sources ADD COLUMN references_text TEXT",
+            [],
+        )?;
+    }
 
     Ok(())
 }
