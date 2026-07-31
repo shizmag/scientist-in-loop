@@ -506,4 +506,172 @@ mod tests {
         let resolved = rag.resolve_embedder_path();
         assert_eq!(resolved, Some(model_file));
     }
+
+    #[test]
+    fn grant_cache_deduplication() {
+        let mut cache = SettingsCache::default();
+
+        // Empty grant should be ignored
+        cache.remember_grant(GrantDetails::default());
+        assert!(cache.grants.is_empty());
+
+        let g1 = GrantDetails {
+            funder: "NSF".to_string(),
+            grant_number: "123".to_string(),
+            acknowledgment: "Ack 1".to_string(),
+        };
+        cache.remember_grant(g1);
+        assert_eq!(cache.grants.len(), 1);
+
+        // Update grant matching grant number
+        let g2 = GrantDetails {
+            funder: "National Science Foundation".to_string(),
+            grant_number: "123".to_string(),
+            acknowledgment: "Ack 2".to_string(),
+        };
+        cache.remember_grant(g2);
+        assert_eq!(cache.grants.len(), 1);
+        assert_eq!(cache.grants[0].funder, "National Science Foundation");
+
+        // Update grant matching funder
+        let g3 = GrantDetails {
+            funder: "national science foundation".to_string(),
+            grant_number: "456".to_string(),
+            acknowledgment: "Ack 3".to_string(),
+        };
+        cache.remember_grant(g3);
+        assert_eq!(cache.grants.len(), 1);
+        assert_eq!(cache.grants[0].grant_number, "456");
+
+        // Add new grant
+        let g4 = GrantDetails {
+            funder: "NIH".to_string(),
+            grant_number: "789".to_string(),
+            acknowledgment: "Ack 4".to_string(),
+        };
+        cache.remember_grant(g4);
+        assert_eq!(cache.grants.len(), 2);
+    }
+
+    #[test]
+    fn author_cache_edge_cases() {
+        let mut cache = SettingsCache::default();
+        // Empty author name ignored
+        cache.remember_co_author(AuthorDetails::default());
+        assert!(cache.co_authors.is_empty());
+
+        let a1 = AuthorDetails {
+            name: "Alice".to_string(),
+            email: "alice@example.com".to_string(),
+            affiliation: "Uni A".to_string(),
+            orcid: None,
+        };
+        cache.remember_co_author(a1);
+
+        // Update author matching name case-insensitively
+        let a2 = AuthorDetails {
+            name: "ALICE".to_string(),
+            email: "new_email@example.com".to_string(),
+            affiliation: "Uni B".to_string(),
+            orcid: Some("0000".to_string()),
+        };
+        cache.remember_co_author(a2);
+        assert_eq!(cache.co_authors.len(), 1);
+        assert_eq!(cache.co_authors[0].email, "new_email@example.com");
+    }
+
+    #[test]
+    fn local_settings_and_author_grant_defaults() {
+        let author = AuthorDetails::default();
+        assert_eq!(author.name, "");
+        assert_eq!(author.email, "");
+
+        let grant = GrantDetails::default();
+        assert_eq!(grant.funder, "");
+
+        let local = LocalSettings::default();
+        assert_eq!(local.title, "");
+        assert!(local.co_authors.is_empty());
+        assert!(local.grants.is_empty());
+
+        let yaml = serde_yaml::to_string(&local).unwrap();
+        let de: LocalSettings = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(local, de);
+    }
+
+    #[test]
+    fn settings_cache_save_load() {
+        let dir = tempdir().unwrap();
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("cache.yaml")).unwrap();
+
+        let mut cache = SettingsCache::default();
+        cache.remember_co_author(AuthorDetails {
+            name: "Bob".to_string(),
+            ..Default::default()
+        });
+
+        cache.save(Some(&path)).unwrap();
+        let loaded = SettingsCache::load_or_default(Some(&path));
+        assert_eq!(loaded.co_authors.len(), 1);
+        assert_eq!(loaded.co_authors[0].name, "Bob");
+
+        // Non-existent path returns default
+        let empty_path = Utf8PathBuf::from_path_buf(dir.path().join("non_existent.yaml")).unwrap();
+        let loaded_empty = SettingsCache::load_or_default(Some(&empty_path));
+        assert!(loaded_empty.co_authors.is_empty());
+    }
+
+    #[test]
+    fn global_settings_load_or_default_none() {
+        let gs = GlobalSettings::load_or_default(None);
+        assert_eq!(gs.default_latex_engine, "tectonic");
+        assert_eq!(gs.default_template, "standard");
+
+        let cache = SettingsCache::load_or_default(None);
+        let _ = cache;
+    }
+
+    #[test]
+    fn default_paths_resolution() {
+        let _p1 = default_global_settings_path();
+        let _p2 = default_settings_cache_path();
+    }
+
+    #[test]
+    fn resolve_reranker_path_precedence() {
+        let dir = tempdir().unwrap();
+        let dir_path = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+
+        // 1. Direct path override
+        let explicit_file = dir_path.join("explicit.onnx");
+        std::fs::write(explicit_file.as_std_path(), b"onnx").unwrap();
+        let mut rag = RagSettings {
+            onnx_reranker_path: Some(explicit_file.clone()),
+            ..Default::default()
+        };
+        assert_eq!(rag.resolve_reranker_path(), Some(explicit_file));
+
+        // 2. Non-existent explicit path falls back
+        rag.onnx_reranker_path = Some(dir_path.join("non_existent.onnx"));
+
+        // Models dir with reranker.onnx
+        let models_dir = dir_path.join("models_dir");
+        std::fs::create_dir_all(models_dir.as_std_path()).unwrap();
+        let reranker_file = models_dir.join("reranker.onnx");
+        std::fs::write(reranker_file.as_std_path(), b"onnx").unwrap();
+
+        rag.onnx_models_dir = Some(models_dir);
+        assert_eq!(rag.resolve_reranker_path(), Some(reranker_file));
+
+        // 3. Fallback to None when nothing found
+        let empty_rag = RagSettings {
+            onnx_reranker_path: None,
+            onnx_models_dir: None,
+            model_cache_dir: Utf8PathBuf::from("/non/existent/cache/dir"),
+            ..Default::default()
+        };
+        assert_eq!(empty_rag.resolve_reranker_path(), None);
+        assert_eq!(empty_rag.resolve_embedder_path(), None);
+    }
 }
+

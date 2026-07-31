@@ -58,3 +58,94 @@ impl ManuscriptHealthReport {
             .count()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diagnostic_level_serde() {
+        let yaml = serde_yaml::to_string(&DiagnosticLevel::Info).unwrap();
+        assert_eq!(yaml.trim(), "info");
+        let yaml = serde_yaml::to_string(&DiagnosticLevel::Warning).unwrap();
+        assert_eq!(yaml.trim(), "warning");
+        let yaml = serde_yaml::to_string(&DiagnosticLevel::Error).unwrap();
+        assert_eq!(yaml.trim(), "error");
+
+        let de: DiagnosticLevel = serde_yaml::from_str("info").unwrap();
+        assert_eq!(de, DiagnosticLevel::Info);
+        let de: DiagnosticLevel = serde_yaml::from_str("warning").unwrap();
+        assert_eq!(de, DiagnosticLevel::Warning);
+        let de: DiagnosticLevel = serde_yaml::from_str("error").unwrap();
+        assert_eq!(de, DiagnosticLevel::Error);
+    }
+
+    #[test]
+    fn health_diagnostic_serde() {
+        let diag = HealthDiagnostic {
+            level: DiagnosticLevel::Warning,
+            category: "todo_item".to_string(),
+            line: Some(42),
+            message: "Unresolved TODO item".to_string(),
+        };
+        let yaml = serde_yaml::to_string(&diag).unwrap();
+        let de: HealthDiagnostic = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(diag, de);
+    }
+
+    #[test]
+    fn manuscript_health_report_defaults_and_methods() {
+        let mut report = ManuscriptHealthReport::default();
+        assert!(!report.has_errors());
+        assert_eq!(report.warning_count(), 0);
+
+        report.diagnostics.push(HealthDiagnostic {
+            level: DiagnosticLevel::Info,
+            category: "info".to_string(),
+            line: None,
+            message: "Word count ok".to_string(),
+        });
+        assert!(!report.has_errors());
+        assert_eq!(report.warning_count(), 0);
+
+        report.diagnostics.push(HealthDiagnostic {
+            level: DiagnosticLevel::Warning,
+            category: "todo".to_string(),
+            line: Some(10),
+            message: "Fix warning".to_string(),
+        });
+        assert!(!report.has_errors());
+        assert_eq!(report.warning_count(), 1);
+
+        report.diagnostics.push(HealthDiagnostic {
+            level: DiagnosticLevel::Error,
+            category: "missing_citation".to_string(),
+            line: Some(20),
+            message: "Missing key".to_string(),
+        });
+        assert!(report.has_errors());
+        assert_eq!(report.warning_count(), 1);
+    }
+
+    #[test]
+    fn manuscript_health_report_serde() {
+        let report = ManuscriptHealthReport {
+            diagnostics: vec![HealthDiagnostic {
+                level: DiagnosticLevel::Error,
+                category: "test".to_string(),
+                line: Some(1),
+                message: "msg".to_string(),
+            }],
+            word_count: 500,
+            missing_citations_count: 1,
+            unreferenced_labels_count: 2,
+            todo_ideas_count: 3,
+        };
+
+        let yaml = serde_yaml::to_string(&report).unwrap();
+        let de: ManuscriptHealthReport = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(report, de);
+    }
+}
+
+

@@ -368,4 +368,25 @@ rag:
         let yaml = cfg.to_yaml().unwrap();
         assert!(yaml.contains("onnx_embedder_model: custom"));
     }
+
+    #[test]
+    fn parsing_config_defaults() {
+        let parsing = ParsingConfig {
+            engine: default_parse_engine(),
+            mode: default_parse_mode(),
+        };
+        assert_eq!(parsing.engine, "marker");
+        assert_eq!(parsing.mode, "balance");
+    }
+
+    #[test]
+    fn config_load_invalid_content_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = camino::Utf8PathBuf::from_path_buf(dir.path().join("broken.yaml")).unwrap();
+        std::fs::write(path.as_str(), "project: [invalid_syntax").unwrap();
+
+        let err = Config::load(&path).unwrap_err();
+        assert!(err.to_string().contains("broken.yaml"));
+    }
 }
+

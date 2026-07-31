@@ -137,3 +137,27 @@ fn detect_available_editor() -> String {
     }
     "vim".to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::backend::TestBackend;
+
+    #[test]
+    fn test_detect_available_editor() {
+        let ed = detect_available_editor();
+        assert!(!ed.is_empty());
+    }
+
+    #[test]
+    fn test_open_external_editor_without_root() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(None);
+
+        open_external_editor(&mut terminal, &mut app).unwrap();
+        assert!(app.status_message.contains("not inside a sil project root"));
+    }
+}
+
+

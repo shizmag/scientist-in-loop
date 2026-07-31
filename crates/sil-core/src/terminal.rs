@@ -404,4 +404,74 @@ mod tests {
         assert!(!ui.colors_enabled());
         assert!(!ui.interactive());
     }
+
+    #[test]
+    fn std_ui_default_and_new() {
+        let ui = StdUi::default();
+        let _ = ui.colors_enabled();
+        let _ = ui.interactive();
+
+        let ui_new = StdUi::new();
+        let _ = ui_new.colors_enabled();
+    }
+
+    #[test]
+    fn std_ui_plain_methods() {
+        let ui = StdUi::plain();
+        ui.success("ok");
+        ui.warn("warning");
+        ui.error("error");
+        ui.info("info");
+        ui.muted("muted text");
+        ui.println("line");
+        ui.print("inline");
+
+        let mut sp = ui.spinner("spinner msg");
+        sp.set_message("updating");
+        sp.finish_success("done");
+        sp.finish_error("fail");
+        sp.abandon();
+
+        let mut pr = ui.progress(10, "progress msg");
+        pr.set_position(5);
+        pr.inc(2);
+        pr.set_message("updating");
+        pr.finish_success("done");
+        pr.finish_error("fail");
+    }
+
+    #[test]
+    fn indicatif_spinner_and_progress_handles() {
+        let pb = indicatif::ProgressBar::new_spinner();
+        let mut spinner = IndicatifSpinner { pb };
+        spinner.set_message("spin");
+        spinner.finish_success("ok");
+
+        let pb2 = indicatif::ProgressBar::new_spinner();
+        let mut spinner2 = IndicatifSpinner { pb: pb2 };
+        spinner2.finish_error("err");
+
+        let pb3 = indicatif::ProgressBar::new_spinner();
+        let mut spinner3 = IndicatifSpinner { pb: pb3 };
+        spinner3.abandon();
+
+        // Test drop behavior when not finished
+        let pb4 = indicatif::ProgressBar::new_spinner();
+        let _spinner4 = IndicatifSpinner { pb: pb4 };
+
+        let pb_prog = indicatif::ProgressBar::new(100);
+        let mut progress = IndicatifProgress { pb: pb_prog };
+        progress.set_position(10);
+        progress.inc(5);
+        progress.set_message("msg");
+        progress.finish_success("ok");
+
+        let pb_prog2 = indicatif::ProgressBar::new(100);
+        let mut progress2 = IndicatifProgress { pb: pb_prog2 };
+        progress2.finish_error("err");
+
+        let pb_prog3 = indicatif::ProgressBar::new(100);
+        let _progress3 = IndicatifProgress { pb: pb_prog3 };
+    }
 }
+
