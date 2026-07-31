@@ -9,3 +9,4 @@ __pycache__/
 *.pyc
 .ctx-codegraph/
 .ctx_*/
+.codegraph/
