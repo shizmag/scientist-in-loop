@@ -24,11 +24,17 @@ static REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(appendix|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary|supplemental|ethics statement|declarations|competing interests|conflict of interest|about the authors|biography)\b").unwrap()
+    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(appendix|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary|supplemental|ethics statement|declarations|competing interests|conflict of interest|about the authors|biography|author biographies)\b").unwrap()
 });
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|[A-Z][a-z]+(?:,\s+[A-Z]|\s+[A-Z][a-z]+))").unwrap()
+    Regex::new(concat!(
+        // Branch 1: numbered/bracketed entries, or "Surname," pattern (with optional - and <span> prefix)
+        r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+[\.\)]|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\]|[A-Z][a-z]+[,\;\:]\s+[A-Z])",
+        r"|",
+        // Branch 2: "- " and/or <span> prefixed "Name et al" entries (requires at least one list marker)
+        r"^\s*(?:-\s+(?:<span[^>]*>.*?</span>\s*)?|<span[^>]*>.*?</span>\s*)[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+et\s+al",
+    )).unwrap()
 });
 
 static LATEX_METADATA_REGEX: LazyLock<Regex> =
@@ -150,6 +156,63 @@ pub fn is_affiliation_or_noise_line(line: &str) -> bool {
         "contents",
     ];
     keywords.iter().any(|&k| lower.contains(k))
+}
+
+/// Check if line is an author biography or prose line (not a citation).
+pub fn is_biography_or_prose_line(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    let bio_keywords = [
+        "received his b.",
+        "received her b.",
+        "received his m.",
+        "received her m.",
+        "received his ph.d",
+        "received her ph.d",
+        "received his bscs",
+        "received her bscs",
+        "received his mscs",
+        "received her mscs",
+        "is currently a ph.d",
+        "is currently a professor",
+        "senior researcher",
+        "research group leader",
+        "his research interests",
+        "her research interests",
+        "full professor",
+        "assistant professor",
+        "associate professor",
+        "research assistant",
+        "member of ieee",
+        "member of acm",
+        "member of dbsj",
+        "board member of",
+        "this decomposition shows",
+        "implications for large models",
+        "the epistemic uncertainty",
+    ];
+    bio_keywords.iter().any(|&k| lower.contains(k))
+}
+
+/// Check if text has strong publication / citation markers (doi, arxiv, in:, pp., vol., journal/conf keywords).
+pub fn has_strong_citation_markers(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    lower.contains("doi:")
+        || lower.contains("arxiv:")
+        || lower.contains("https://")
+        || lower.contains("http://")
+        || lower.contains("in:")
+        || lower.contains("pp.")
+        || lower.contains("vol.")
+        || lower.contains("no.")
+        || lower.contains("isbn")
+        || lower.contains("proceedings")
+        || lower.contains("journal")
+        || lower.contains("conference")
+        || lower.contains("transactions")
+        || lower.contains("symposium")
+        || lower.contains("workshop")
+        || lower.contains("press")
+        || lower.contains("publisher")
 }
 
 /// Extract a DOI (Digital Object Identifier) from text.

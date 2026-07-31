@@ -16,7 +16,7 @@ pub fn extract_references_block(content: &str) -> Option<String> {
         if is_reference_heading(t) {
             in_refs = true;
             continue;
-        } else if in_refs && is_non_ref_heading(t) {
+        } else if in_refs && (is_non_ref_heading(t) || sil_regex::is_biography_or_prose_line(t)) {
             break;
         }
 
@@ -112,7 +112,12 @@ fn split_raw_entries(block: &str) -> Vec<String> {
             || entry.contains("\\mid")
             || entry.contains("\\mathbf")
             || entry.contains("\\mathcal")
+            || sil_regex::is_biography_or_prose_line(&entry)
         {
+            continue;
+        }
+
+        if entry.len() > 450 && !sil_regex::has_strong_citation_markers(&entry) {
             continue;
         }
 
