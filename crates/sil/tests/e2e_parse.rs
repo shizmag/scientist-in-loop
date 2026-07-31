@@ -22,7 +22,7 @@ fn parse_path_mode_and_validation() {
         )
         .assert()
         .success()
-        .stdout(predicates::str::contains("Parsed"))
+        .stdout(predicates::str::contains("parsed"))
         .stdout(predicates::str::contains("Sci-Action: parse-pdf"));
 
     // Already parsed rejects

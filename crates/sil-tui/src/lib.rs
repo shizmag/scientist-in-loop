@@ -159,5 +159,3 @@ mod tests {
         assert!(app.status_message.contains("not inside a sil project root"));
     }
 }
-
-

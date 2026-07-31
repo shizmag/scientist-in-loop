@@ -6,7 +6,8 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Row, Table, Tabs, Wrap,
+        Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, Row, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, Table, TableState, Tabs, Wrap,
     },
 };
 
@@ -45,8 +46,13 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalAddSourceLink => draw_modal_add_source_link(frame, app),
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
-        InputMode::ViewingSourceRefs => draw_viewing_source_refs(frame, app),
-        InputMode::SearchingRefs | InputMode::SearchingBib | InputMode::ReadingSourceMd | InputMode::Normal => {}
+        InputMode::ViewingSourceRefs | InputMode::SearchingViewingRefs => {
+            draw_viewing_source_refs(frame, app)
+        }
+        InputMode::SearchingRefs
+        | InputMode::SearchingBib
+        | InputMode::ReadingSourceMd
+        | InputMode::Normal => {}
     }
 }
 
@@ -58,7 +64,9 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
 
     // Left pane (references.bib)
     let left_style = if app.active_ref_pane == crate::app::RefPane::LeftBib {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Cyan)
     };
@@ -68,9 +76,15 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
     let count_bib = filtered_bib.len();
 
     let left_title = if app.input_mode == InputMode::SearchingBib {
-        format!(" references.bib ({count_bib}/{total_bib} items) (Search: {}_) ", app.bib_search_query)
+        format!(
+            " references.bib ({count_bib}/{total_bib} items) (Search: {}_) ",
+            app.bib_search_query
+        )
     } else if !app.bib_search_query.is_empty() {
-        format!(" references.bib ({count_bib}/{total_bib} items) (Filter: {}) ", app.bib_search_query)
+        format!(
+            " references.bib ({count_bib}/{total_bib} items) (Filter: {}) ",
+            app.bib_search_query
+        )
     } else {
         format!(" references.bib ({total_bib} items) ")
     };
@@ -84,13 +98,18 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         } else {
             "(no search matches in references.bib)"
         };
-        left_items.push(ListItem::new(Span::styled(empty_msg, Style::default().fg(Color::DarkGray))));
+        left_items.push(ListItem::new(Span::styled(
+            empty_msg,
+            Style::default().fg(Color::DarkGray),
+        )));
     } else {
         for (i, entry) in filtered_bib.iter().enumerate() {
             let is_sel = i == app.selected_bib_index;
             let prefix = if is_sel { "► " } else { "  " };
             let style = if is_sel {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -107,7 +126,11 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
                     ]));
                 } else {
                     for (w_idx, w_sub) in wrapped.iter().enumerate() {
-                        let indent = if line_idx == 0 && w_idx == 0 { prefix } else { "  " };
+                        let indent = if line_idx == 0 && w_idx == 0 {
+                            prefix
+                        } else {
+                            "  "
+                        };
                         item_lines.push(Line::from(vec![
                             Span::styled(indent, style),
                             Span::styled(w_sub.to_string(), style),
@@ -119,13 +142,35 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         }
     }
 
-    let left_list = List::new(left_items)
-        .block(Block::default().borders(Borders::ALL).border_style(left_style).title(left_title));
-    frame.render_widget(left_list, chunks[0]);
+    let left_list = List::new(left_items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(left_style)
+            .title(left_title),
+    );
+    let mut left_state = ListState::default();
+    if !filtered_bib.is_empty() {
+        left_state.select(Some(app.selected_bib_index));
+    }
+    frame.render_stateful_widget(left_list, chunks[0], &mut left_state);
+
+    if count_bib > 0 {
+        let mut scrollbar_state =
+            ScrollbarState::new(count_bib).position(app.selected_bib_index);
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█");
+        frame.render_stateful_widget(scrollbar, chunks[0], &mut scrollbar_state);
+    }
 
     // Right pane (source_references)
     let right_style = if app.active_ref_pane == crate::app::RefPane::RightSources {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Cyan)
     };
@@ -135,11 +180,17 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
     let count_refs = filtered_refs.len();
 
     let right_title = if app.input_mode == InputMode::SearchingRefs {
-        format!(" Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex (Search: {}_) ", app.ref_search_query)
+        format!(
+            " Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle (Search: {}_) ",
+            app.ref_search_query
+        )
     } else if !app.ref_search_query.is_empty() {
-        format!(" Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex (Filter: {}) ", app.ref_search_query)
+        format!(
+            " Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle (Filter: {}) ",
+            app.ref_search_query
+        )
     } else {
-        format!(" Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex ")
+        format!(" Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle ")
     };
 
     let right_width = chunks[1].width.saturating_sub(4) as usize;
@@ -151,19 +202,30 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         } else {
             "(no search matches)"
         };
-        right_items.push(ListItem::new(Span::styled(empty_msg, Style::default().fg(Color::DarkGray))));
+        right_items.push(ListItem::new(Span::styled(
+            empty_msg,
+            Style::default().fg(Color::DarkGray),
+        )));
     } else {
         for (i, entry) in filtered_refs.iter().enumerate() {
             let is_sel = i == app.selected_source_ref_index;
             let style = if is_sel {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
             let prefix = if is_sel { "► " } else { "  " };
-            let mark = if app.marked_ref_ids.contains(&entry.id) { "[x] " } else { "[ ] " };
+            let mark = if app.marked_ref_ids.contains(&entry.id) {
+                "[x] "
+            } else {
+                "[ ] "
+            };
             let mark_style = if app.marked_ref_ids.contains(&entry.id) {
-                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::DarkGray)
             };
@@ -175,7 +237,10 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             item_lines.push(Line::from(vec![
                 Span::styled(prefix, style),
                 Span::styled(mark, mark_style),
-                Span::styled(format!("Ref #{}: ", entry.ref_index), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("Ref #{}: ", entry.ref_index),
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::styled(title_str, style),
             ]));
 
@@ -212,11 +277,30 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         }
     }
 
-    let right_list = List::new(right_items)
-        .block(Block::default().borders(Borders::ALL).border_style(right_style).title(right_title));
-    frame.render_widget(right_list, chunks[1]);
-}
+    let right_list = List::new(right_items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(right_style)
+            .title(right_title),
+    );
+    let mut right_state = ListState::default();
+    if !filtered_refs.is_empty() {
+        right_state.select(Some(app.selected_source_ref_index));
+    }
+    frame.render_stateful_widget(right_list, chunks[1], &mut right_state);
 
+    if count_refs > 0 {
+        let mut scrollbar_state =
+            ScrollbarState::new(count_refs).position(app.selected_source_ref_index);
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█");
+        frame.render_stateful_widget(scrollbar, chunks[1], &mut scrollbar_state);
+    }
+}
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let titles: Vec<Line> = ActiveTab::ALL
@@ -347,7 +431,23 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
         .title(" 📚 Source Documents ('a': Add Link, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
 
     let list = List::new(items).block(list_block);
-    frame.render_widget(list, chunks[0]);
+    let mut sources_state = ListState::default();
+    if !app.sources.is_empty() {
+        sources_state.select(Some(app.selected_source_index));
+    }
+    frame.render_stateful_widget(list, chunks[0], &mut sources_state);
+
+    if !app.sources.is_empty() {
+        let mut scrollbar_state =
+            ScrollbarState::new(app.sources.len()).position(app.selected_source_index);
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█");
+        frame.render_stateful_widget(scrollbar, chunks[0], &mut scrollbar_state);
+    }
 
     // Right column: Selected Source Metadata & Stats
     let detail_lines = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
@@ -710,7 +810,24 @@ fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
         .title(" ⚙️ Unified Settings (Global | RAG | Caches | Local Project) — Enter/'e': Edit, 'a': Add, 'd': Delete, 'u': Use Cache ");
 
     let list = List::new(list_items).block(block);
-    frame.render_widget(list, area);
+    let mut settings_state = ListState::default();
+    if !app.setting_items().is_empty() {
+        settings_state.select(Some(app.selected_setting_index));
+    }
+    frame.render_stateful_widget(list, area, &mut settings_state);
+
+    let total_settings = app.setting_items().len();
+    if total_settings > 0 {
+        let mut scrollbar_state =
+            ScrollbarState::new(total_settings).position(app.selected_setting_index);
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█");
+        frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
+    }
 }
 
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
@@ -976,8 +1093,8 @@ fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
 }
 
 fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
-    let area = centered_rect(88, 75, frame.area());
-    frame.render_widget(Clear, area);
+    let modal_area = centered_rect(92, 85, frame.area());
+    frame.render_widget(Clear, modal_area);
 
     let filename = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
         &app.sources[app.selected_source_index].filename
@@ -986,41 +1103,117 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
     };
 
     let sort_label = match app.ref_sort_key {
-        crate::app::RefSortKey::Index => "Index",
-        crate::app::RefSortKey::Year => "Year ⬇",
-        crate::app::RefSortKey::Source => "Source",
-        crate::app::RefSortKey::Venue => "Journal/Conf",
+        crate::app::RefSortKey::Index => "Index 🔢",
+        crate::app::RefSortKey::Year => "Year 📅",
+        crate::app::RefSortKey::Source => "Source 📄",
+        crate::app::RefSortKey::Venue => "Venue 🏛️",
     };
 
-    let rows: Vec<Row> = if app.selected_source_references.is_empty() {
+    let filtered = app.filtered_viewing_source_references();
+    let total_count = app.selected_source_references.len();
+    let filter_count = filtered.len();
+
+    let title_line = if app.input_mode == InputMode::SearchingViewingRefs {
+        format!(
+            " 📚 References: {filename} ({filter_count}/{total_count}) | Sort: {sort_label} | Search: {}_ ",
+            app.viewing_ref_search_query
+        )
+    } else if !app.viewing_ref_search_query.is_empty() {
+        format!(
+            " 📚 References: {filename} ({filter_count}/{total_count}) | Sort: {sort_label} | Filter: {} ",
+            app.viewing_ref_search_query
+        )
+    } else {
+        format!(" 📚 References: {filename} ({total_count} items) | Sort: {sort_label} ")
+    };
+
+    let outer_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan))
+        .title(Span::styled(
+            title_line,
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let inner_area = outer_block.inner(modal_area);
+    frame.render_widget(outer_block, modal_area);
+
+    let (table_area, detail_area) = if app.viewing_ref_show_detail {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(58), Constraint::Percentage(42)])
+            .split(inner_area);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (inner_area, None)
+    };
+
+    let rows: Vec<Row> = if filtered.is_empty() {
         vec![Row::new(vec![
-            "-",
-            "No extracted references found.",
-            "-",
-            "-",
-            "-",
+            Span::raw("-"),
+            Span::styled(
+                "No references match criteria.",
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::raw("-"),
+            Span::raw("-"),
+            Span::raw("-"),
+            Span::raw("-"),
         ])]
     } else {
-        app.selected_source_references
+        filtered
             .iter()
-            .map(|r| {
+            .enumerate()
+            .map(|(i, r)| {
+                let is_sel = i == app.selected_viewing_ref_index;
+                let style = if is_sel {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+                let prefix = if is_sel { "► " } else { "  " };
+                let marked = if app.marked_ref_ids.contains(&r.id) {
+                    "[x] "
+                } else {
+                    "    "
+                };
+                let marked_style = if app.marked_ref_ids.contains(&r.id) {
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                };
+
+                let doi_badge = if r.doi.is_some() { "[DOI]" } else { "" };
+
                 Row::new(vec![
-                    Span::styled(
-                        format!("[{}]", r.ref_index),
-                        Style::default().fg(Color::Cyan),
-                    ),
-                    Span::raw(r.authors.as_deref().unwrap_or("-")),
-                    Span::raw(r.title.as_deref().unwrap_or(&r.raw_text)),
+                    Span::styled(prefix, style),
+                    Span::styled(format!("{}[{}]", marked, r.ref_index), marked_style),
+                    Span::styled(r.authors.as_deref().unwrap_or("-"), style),
+                    Span::styled(r.title.as_deref().unwrap_or(&r.raw_text), style),
                     Span::styled(
                         r.venue.as_deref().unwrap_or("-"),
                         Style::default().fg(Color::Green),
                     ),
-                    Span::raw(
+                    Span::styled(
                         r.year
                             .map(|y| y.to_string())
                             .unwrap_or_else(|| "-".to_string()),
+                        style,
                     ),
+                    Span::styled(doi_badge, Style::default().fg(Color::LightBlue)),
                 ])
+                .style(if is_sel {
+                    Style::default().bg(Color::Rgb(30, 40, 60))
+                } else {
+                    Style::default()
+                })
             })
             .collect()
     };
@@ -1028,15 +1221,24 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
     let table = Table::new(
         rows,
         [
+            Constraint::Length(10),
+            Constraint::Percentage(22),
+            Constraint::Percentage(42),
+            Constraint::Percentage(16),
             Constraint::Length(6),
-            Constraint::Percentage(25),
-            Constraint::Percentage(44),
-            Constraint::Percentage(17),
-            Constraint::Percentage(8),
+            Constraint::Length(6),
         ],
     )
     .header(
-        Row::new(vec!["#", "Authors", "Title / Citation Text", "Journal / Conference", "Year"]).style(
+        Row::new(vec![
+            "#",
+            "Authors",
+            "Title / Citation Text",
+            "Venue",
+            "Year",
+            "DOI",
+        ])
+        .style(
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
@@ -1044,18 +1246,159 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
     )
     .block(
         Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Double)
-            .border_style(Style::default().fg(Color::Cyan))
-            .title(Span::styled(
-                format!(" 📚 References ({filename}) | Sort: {sort_label} (y: Year, s: Source, v: Venue, i: Index | Esc: Close) "),
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            )),
+            .borders(Borders::BOTTOM)
+            .border_style(Style::default().fg(Color::DarkGray)),
     );
 
-    frame.render_widget(table, area);
+    let mut state = TableState::default();
+    if !filtered.is_empty() {
+        state.select(Some(app.selected_viewing_ref_index));
+    }
+    frame.render_stateful_widget(table, table_area, &mut state);
+
+    if filter_count > 0 {
+        let mut scrollbar_state =
+            ScrollbarState::new(filter_count).position(app.selected_viewing_ref_index);
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"))
+            .track_symbol(Some("│"))
+            .thumb_symbol("█");
+        frame.render_stateful_widget(scrollbar, table_area, &mut scrollbar_state);
+    }
+
+    if let Some(detail_box_area) = detail_area {
+        if let Some(sel_ref) = filtered.get(app.selected_viewing_ref_index) {
+            draw_reference_inspector_card(frame, sel_ref, detail_box_area);
+        } else {
+            let empty_block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .title(" Reference Details ");
+            frame.render_widget(empty_block, detail_box_area);
+        }
+    }
+}
+
+fn draw_reference_inspector_card(frame: &mut Frame, entry: &sil_core::ReferenceEntry, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Green))
+        .title(Span::styled(
+            format!(" 🔎 Reference Details (Ref #{}) ", entry.ref_index),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .split(inner);
+
+    let title_str = entry.title.as_deref().unwrap_or(&entry.raw_text);
+    let authors_str = entry.authors.as_deref().unwrap_or("Unknown");
+    let venue_str = entry.venue.as_deref().unwrap_or("Unknown");
+    let year_str = entry
+        .year
+        .map(|y| y.to_string())
+        .unwrap_or_else(|| "n.d.".to_string());
+    let doi_str = entry.doi.as_deref().unwrap_or("None");
+
+    let text_lines = vec![
+        Line::from(vec![
+            Span::styled(
+                "📝 Title: ",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(title_str, Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::styled("👥 Authors: ", Style::default().fg(Color::Magenta)),
+            Span::styled(authors_str, Style::default().fg(Color::Reset)),
+        ]),
+        Line::from(vec![
+            Span::styled("🏛️ Venue: ", Style::default().fg(Color::Cyan)),
+            Span::styled(venue_str, Style::default().fg(Color::Reset)),
+            Span::styled(
+                format!("  📅 Year: {year_str}"),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("🔗 DOI: ", Style::default().fg(Color::LightBlue)),
+            Span::styled(
+                doi_str,
+                Style::default()
+                    .fg(Color::LightBlue)
+                    .add_modifier(Modifier::UNDERLINED),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("📄 Raw: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(&entry.raw_text, Style::default().fg(Color::DarkGray)),
+        ]),
+    ];
+
+    let left_para = Paragraph::new(text_lines).wrap(Wrap { trim: true });
+    frame.render_widget(left_para, chunks[0]);
+
+    let bibtex_code = entry.to_bibtex();
+    let cite_key = sil_core::slug_cite_key(title_str);
+
+    let mut bib_lines = vec![Line::from(vec![
+        Span::styled(
+            "⚡ BibTeX Snippet ",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("(\\cite{{{}}})", cite_key),
+            Style::default().fg(Color::Yellow),
+        ),
+    ])];
+
+    for line in bibtex_code.lines() {
+        if line.starts_with('@') {
+            bib_lines.push(Line::from(Span::styled(
+                line,
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            )));
+        } else if line.contains('=') {
+            let parts: Vec<&str> = line.splitn(2, '=').collect();
+            bib_lines.push(Line::from(vec![
+                Span::styled(parts[0], Style::default().fg(Color::Cyan)),
+                Span::styled("=", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    parts.get(1).copied().unwrap_or(""),
+                    Style::default().fg(Color::Green),
+                ),
+            ]));
+        } else {
+            bib_lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(Color::Reset),
+            )));
+        }
+    }
+
+    let bib_block = Block::default()
+        .borders(Borders::LEFT)
+        .border_style(Style::default().fg(Color::DarkGray));
+    let bib_para = Paragraph::new(bib_lines)
+        .block(bib_block)
+        .wrap(Wrap { trim: false });
+    frame.render_widget(bib_para, chunks[1]);
 }
 
 /// Helper function to create a centered Rect for modals/popups.
@@ -1419,10 +1762,10 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::backend::TestBackend;
-    use ratatui::Terminal;
-    use sil_core::{AuthorDetails, GrantDetails, SourceDocument};
     use camino::Utf8PathBuf;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use sil_core::{AuthorDetails, GrantDetails, SourceDocument};
 
     fn render_to_terminal(app: &mut App) {
         let backend = TestBackend::new(120, 40);
@@ -1596,4 +1939,3 @@ mod tests {
         render_to_terminal(&mut app);
     }
 }
-
