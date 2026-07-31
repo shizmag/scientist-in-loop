@@ -1,6 +1,10 @@
 //! Extract, clean, and split reference sections into structured ReferenceEntry items.
 
 use sil_core::{ReferenceEntry, SourceId};
+use sil_regex::{
+    extract_doi, extract_quoted_title, extract_year, is_non_ref_heading, is_reference_entry_start,
+    is_reference_heading,
+};
 
 /// Extract raw reference text block from parsed Markdown content.
 pub fn extract_references_block(content: &str) -> Option<String> {
@@ -12,7 +16,7 @@ pub fn extract_references_block(content: &str) -> Option<String> {
         if is_reference_heading(t) {
             in_refs = true;
             continue;
-        } else if in_refs && is_major_non_ref_heading(t) {
+        } else if in_refs && is_non_ref_heading(t) {
             break;
         }
 
@@ -27,36 +31,6 @@ pub fn extract_references_block(content: &str) -> Option<String> {
     } else {
         Some(joined)
     }
-}
-
-/// Check if line is a reference section heading.
-fn is_reference_heading(line: &str) -> bool {
-    let clean = line
-        .trim_start_matches('#')
-        .trim()
-        .trim_start_matches(|c: char| c.is_numeric() || c == '.' || c == ' ')
-        .trim()
-        .to_lowercase();
-
-    matches!(
-        clean.as_str(),
-        "references"
-            | "bibliography"
-            | "literature cited"
-            | "works cited"
-            | "references and notes"
-    ) || clean.ends_with(" references")
-        || clean.ends_with(" bibliography")
-}
-
-/// Check if line is a major non-reference heading that signals the end of references.
-fn is_major_non_ref_heading(line: &str) -> bool {
-    if !line.starts_with('#') {
-        return false;
-    }
-    let clean = line.trim_start_matches('#').trim().to_lowercase();
-    matches!(clean.as_str(), "appendix" | "author contributions" | "acknowledgements" | "acknowledgments")
-        || clean.starts_with("appendix")
 }
 
 /// Split raw reference block into individual structured ReferenceEntry items.
@@ -99,7 +73,7 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     let mut current = String::new();
 
     for line in lines {
-        if is_new_entry_start(line) {
+        if is_reference_entry_start(line) {
             if !current.is_empty() {
                 entries.push(current.trim().to_string());
                 current.clear();
@@ -126,81 +100,14 @@ fn is_noise_line(line: &str) -> bool {
     lower.starts_with("page ") || lower.starts_with("arxiv:") && lower.contains("[cs.")
 }
 
-/// Determine if a line starts a new citation entry (e.g. `[1]`, `1.`, `[Vaswani 2017]`).
-fn is_new_entry_start(line: &str) -> bool {
-    // [1], [12], [Vaswani2017]
-    if line.starts_with('[')
-        && let Some(close_pos) = line.find(']')
-    {
-        let inside = &line[1..close_pos];
-        if inside.chars().all(|c| c.is_numeric()) || inside.contains("et al") || inside.contains(',') || inside.len() < 30 {
-            return true;
-        }
-    }
-
-    // 1. Author..., 12. Author...
-    let first_word = line.split_whitespace().next().unwrap_or("");
-    if let Some(num_part) = first_word.strip_suffix('.')
-        && !num_part.is_empty()
-        && num_part.chars().all(|c| c.is_numeric())
-    {
-        return true;
-    }
-
-    false
-}
-
 /// Extract metadata fields (authors, year, title, doi) from a raw citation string.
 fn parse_entry_metadata(text: &str) -> (Option<String>, Option<i32>, Option<String>, Option<String>) {
     let doi = extract_doi(text);
     let year = extract_year(text);
-    let title = extract_title(text);
+    let title = extract_quoted_title(text);
     let authors = extract_authors(text, year, title.as_deref());
 
     (authors, year, title, doi)
-}
-
-fn extract_doi(text: &str) -> Option<String> {
-    if let Some(pos) = text.find("10.") {
-        let candidate = &text[pos..];
-        let doi: String = candidate
-            .chars()
-            .take_while(|c| !c.is_whitespace() && *c != ',' && *c != ';')
-            .collect();
-        if doi.len() > 7 && doi.contains('/') {
-            return Some(doi);
-        }
-    }
-    None
-}
-
-fn extract_year(text: &str) -> Option<i32> {
-    for word in text.split(&[' ', '(', ')', ',', '.', '[', ']'][..]) {
-        if word.len() == 4
-            && word.chars().all(|c| c.is_numeric())
-            && let Ok(y) = word.parse::<i32>()
-            && (1800..=2030).contains(&y)
-        {
-            return Some(y);
-        }
-    }
-    None
-}
-
-fn extract_title(text: &str) -> Option<String> {
-    // 1) Look for quoted title: "Title..." or “Title...”
-    for (start_quote, end_quote) in [('"', '"'), ('“', '”')] {
-        if let Some(start) = text.find(start_quote) {
-            let rest = &text[start + start_quote.len_utf8()..];
-            if let Some(end) = rest.find(end_quote) {
-                let title = rest[..end].trim();
-                if title.len() >= 4 {
-                    return Some(title.to_string());
-                }
-            }
-        }
-    }
-    None
 }
 
 fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
@@ -250,13 +157,22 @@ Some content...
 
     #[test]
     fn test_heading_variations_and_appendix_termination() {
-        for header in ["# Bibliography", "## Works Cited", "### Literature Cited", "# References and Notes", "## 10. References"] {
+        for header in [
+            "# Bibliography",
+            "## Works Cited",
+            "### Literature Cited",
+            "# References and Notes",
+            "## 10. References",
+        ] {
             let md = format!(
                 "# Intro\nText\n\n{header}\n[1] Author A. \"Title A\" 2021.\n\n# Appendix\nAppendix text"
             );
             let refs = extract_references_block(&md).unwrap();
             assert!(refs.contains("Author A"), "Failed for header: {header}");
-            assert!(!refs.contains("Appendix text"), "Failed to terminate on Appendix for header: {header}");
+            assert!(
+                !refs.contains("Appendix text"),
+                "Failed to terminate on Appendix for header: {header}"
+            );
         }
     }
 

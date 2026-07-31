@@ -36,6 +36,7 @@ sil-regex = { path = "crates/sil-regex" }
 regex = "1.11"
 ratatui = "0.30"
 crossterm = "0.29"
+ureq = { version = "2.12", features = ["json"] }
 
 anyhow = "1"
 camino = { version = "1", features = ["serde1"] }

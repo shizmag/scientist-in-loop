@@ -87,7 +87,42 @@ pub fn parse_one(
         })?,
     };
 
-    doc.title = extract_heading_title(&content).or_else(|| path.file_stem().map(|s| s.to_string()));
+    let extracted_doi = sil_regex::extract_doi(&content);
+    let mut hydrated = false;
+
+    if let Some(ref doi) = extracted_doi {
+        if let Ok(Some(pub_item)) = crate::journal_digest::fetch_work_by_doi(doi) {
+            doc.doi = pub_item.doi.or(extracted_doi.clone());
+            if !pub_item.title.is_empty() {
+                doc.title = Some(pub_item.title);
+            }
+            if !pub_item.authors.is_empty() {
+                doc.authors = Some(pub_item.authors);
+            }
+            if let Some(y) = pub_item.year {
+                doc.year = Some(y as i32);
+            }
+            if !pub_item.journal.is_empty() {
+                doc.venue = Some(pub_item.journal);
+            }
+            if !pub_item.abstract_text.is_empty() {
+                doc.abstract_text = Some(pub_item.abstract_text);
+            }
+            hydrated = true;
+        }
+    }
+
+    if !hydrated {
+        if doc.doi.is_none() {
+            doc.doi = extracted_doi;
+        }
+        if doc.title.is_none() {
+            doc.title = sil_regex::extract_quoted_title(&content)
+                .or_else(|| extract_heading_title(&content))
+                .or_else(|| path.file_stem().map(|s| s.to_string()));
+        }
+    }
+
     doc.references_text = crate::references::extract_references_block(&content);
     doc.parsed = true;
     doc.status = Some(DocumentStatus::Valid(doc.kind));

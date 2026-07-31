@@ -17,7 +17,9 @@ pub use fetch::fetch_source_target;
 pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
-pub use journal_digest::fetch_journal_publications;
+pub use journal_digest::{
+    fetch_journal_publications, fetch_journal_publications_native, fetch_work_by_doi,
+};
 pub use marker::{MarkerRunner, PythonMarkerRunner, StubMarkerRunner};
 pub use validate::{list_unparsed_pdfs, minimal_pdf_bytes, validate_for_parse, write_fixture_pdf};
 
