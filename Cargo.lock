@@ -1970,6 +1970,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sil-regex"
+version = "0.1.0"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "sil-template"
 version = "0.1.0"
 dependencies = [

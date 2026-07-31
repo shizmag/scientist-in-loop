@@ -11,6 +11,7 @@ members = [
     "crates/sil-template",
     "crates/sil-tui",
     "crates/sil-mcp",
+    "crates/sil-regex",
 ]
 default-members = ["crates/sil"]
 
@@ -30,7 +31,9 @@ sil-agent = { path = "crates/sil-agent" }
 sil-template = { path = "crates/sil-template" }
 sil-tui = { path = "crates/sil-tui" }
 sil-mcp = { path = "crates/sil-mcp" }
+sil-regex = { path = "crates/sil-regex" }
 
+regex = "1.11"
 ratatui = "0.30"
 crossterm = "0.29"
 

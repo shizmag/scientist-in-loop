@@ -1,0 +1,10 @@
+[package]
+name = "sil-regex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Centralized regular expressions and text pattern matchers for scientist-in-loop"
+publish = false
+
+[dependencies]
+regex = { workspace = true }
