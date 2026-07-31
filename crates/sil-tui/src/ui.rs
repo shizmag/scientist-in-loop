@@ -26,9 +26,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     draw_header(frame, app, chunks[0]);
 
     match app.active_tab {
-        ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
-        ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
         ActiveTab::Sources => draw_sources(frame, app, chunks[1]),
+        ActiveTab::References => draw_references(frame, app, chunks[1]),
+        ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
         ActiveTab::Settings => draw_settings(frame, app, chunks[1]),
     }
 
@@ -45,9 +45,93 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
         InputMode::ViewingSourceRefs => draw_viewing_source_refs(frame, app),
-        InputMode::ReadingSourceMd | InputMode::Normal => {}
+        InputMode::SearchingRefs | InputMode::ReadingSourceMd | InputMode::Normal => {}
     }
 }
+
+fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Left pane (references.bib)
+    let left_style = if app.active_ref_pane == crate::app::RefPane::LeftBib {
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    let mut left_items = Vec::new();
+    if app.bib_file_entries.is_empty() {
+        left_items.push(ListItem::new(Span::styled("(references.bib is empty)", Style::default().fg(Color::DarkGray))));
+    } else {
+        for (i, entry) in app.bib_file_entries.iter().enumerate() {
+            let prefix = if i == app.selected_bib_index { "► " } else { "  " };
+            let style = if i == app.selected_bib_index {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            left_items.push(ListItem::new(Line::from(vec![
+                Span::styled(prefix, style),
+                Span::styled(entry.replace("\n", " "), style),
+            ])));
+        }
+    }
+    let left_list = List::new(left_items)
+        .block(Block::default().borders(Borders::ALL).border_style(left_style).title(" references.bib "));
+    frame.render_widget(left_list, chunks[0]);
+
+    // Right pane (source_references)
+    let right_style = if app.active_ref_pane == crate::app::RefPane::RightSources {
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    
+    let mut right_items = Vec::new();
+    let filtered_refs: Vec<_> = if app.ref_search_query.is_empty() {
+        app.source_references.iter().collect()
+    } else {
+        app.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&app.ref_search_query.to_lowercase())).collect()
+    };
+    
+    if filtered_refs.is_empty() {
+        right_items.push(ListItem::new(Span::styled(
+            if app.source_references.is_empty() { "(no project references found)" } else { "(no search matches)" },
+            Style::default().fg(Color::DarkGray)
+        )));
+    } else {
+        for (i, entry) in filtered_refs.iter().enumerate() {
+            let prefix = if i == app.selected_source_ref_index { "► " } else { "  " };
+            let style = if i == app.selected_source_ref_index {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            let mark = if app.marked_ref_ids.contains(&entry.id) { "[x] " } else { "[ ] " };
+            
+            right_items.push(ListItem::new(Line::from(vec![
+                Span::styled(prefix, style),
+                Span::styled(mark, Style::default().fg(Color::Green)),
+                Span::styled(&entry.raw_text, style),
+            ])));
+        }
+    }
+    
+    let search_title = if app.input_mode == InputMode::SearchingRefs {
+        format!(" Extracted References (Search: {}_) ", app.ref_search_query)
+    } else if !app.ref_search_query.is_empty() {
+        format!(" Extracted References (Filter: {}) ", app.ref_search_query)
+    } else {
+        " Extracted References ".to_string()
+    };
+    
+    let right_list = List::new(right_items)
+        .block(Block::default().borders(Borders::ALL).border_style(right_style).title(search_title));
+    frame.render_widget(right_list, chunks[1]);
+}
+
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let titles: Vec<Line> = ActiveTab::ALL

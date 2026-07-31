@@ -278,4 +278,40 @@ mod tests {
         assert!(b.contains("title={T}"));
         assert!(b.contains("year={2020}"));
     }
+
+    #[test]
+    fn reference_entry_to_bibtex() {
+        use crate::source::{ReferenceEntry, SourceId};
+        let mut entry = ReferenceEntry {
+            id: "1".into(),
+            source_id: SourceId::new("doc1"),
+            ref_index: 1,
+            raw_text: "Raw reference text".into(),
+            title: Some("A Novel Approach".into()),
+            authors: Some("John Doe".into()),
+            year: Some(2023),
+            venue: Some("Journal of Testing".into()),
+            doi: Some("10.1234/test".into()),
+        };
+        let bib = entry.to_bibtex();
+        assert!(bib.contains("@article{a_novel_approach,"));
+        assert!(bib.contains("title={A Novel Approach}"));
+        assert!(bib.contains("author={John Doe}"));
+        assert!(bib.contains("journal={Journal of Testing}"));
+        assert!(bib.contains("year={2023}"));
+        assert!(bib.contains("doi={10.1234/test}"));
+
+        entry.title = None;
+        entry.authors = None;
+        entry.year = None;
+        entry.venue = None;
+        entry.doi = None;
+        let bib_fallback = entry.to_bibtex();
+        assert!(bib_fallback.contains("@article{raw_reference_text,"));
+        assert!(bib_fallback.contains("title={Raw reference text}"));
+        assert!(bib_fallback.contains("author={Unknown}"));
+        assert!(bib_fallback.contains("journal={Unknown}"));
+        assert!(bib_fallback.contains("year={n.d.}"));
+        assert!(!bib_fallback.contains("doi="));
+    }
 }

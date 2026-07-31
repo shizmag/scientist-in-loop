@@ -108,10 +108,6 @@ fn run() -> Result<()> {
                 ui.as_ref(),
             ),
         },
-        Commands::Tui { action } => match action {
-            TuiCmd::Dashboard => commands::settings(),
-            TuiCmd::Sources => commands::settings(),
-            TuiCmd::Settings => commands::settings(),
-        },
+        Commands::Tui { action: _ } => commands::settings(),
     }
 }

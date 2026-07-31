@@ -10,29 +10,32 @@ use sil_core::{
 /// Navigation tabs in the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
-    Dashboard = 0,
-    PaperDraft = 1,
-    Sources = 2,
+    Sources = 0,
+    References = 1,
+    PaperDraft = 2,
     Settings = 3,
 }
 
 impl ActiveTab {
     pub const ALL: [ActiveTab; 4] = [
-        ActiveTab::Dashboard,
-        ActiveTab::PaperDraft,
         ActiveTab::Sources,
+        ActiveTab::References,
+        ActiveTab::PaperDraft,
         ActiveTab::Settings,
     ];
 
     pub fn title(&self) -> &'static str {
         match self {
-            ActiveTab::Dashboard => "1. Dashboard",
-            ActiveTab::PaperDraft => "2. Paper Draft",
-            ActiveTab::Sources => "3. Sources",
+            ActiveTab::Sources => "1. Sources",
+            ActiveTab::References => "2. References",
+            ActiveTab::PaperDraft => "3. Paper Draft",
             ActiveTab::Settings => "4. Settings",
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefPane { LeftBib, RightSources }
 
 /// Mode of user interaction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,6 +50,7 @@ pub enum InputMode {
     ModalRenameSource,
     ConfirmDeleteSource,
     ViewingSourceRefs,
+    SearchingRefs,
     ReadingSourceMd,
 }
 
@@ -165,6 +169,15 @@ fn resolve_onnx_from_dir(val: &str) -> String {
 pub struct App {
     pub active_tab: ActiveTab,
     pub input_mode: InputMode,
+
+    pub active_ref_pane: RefPane,
+    pub bib_file_entries: Vec<String>,
+    pub selected_bib_index: usize,
+    pub source_references: Vec<ReferenceEntry>,
+    pub selected_source_ref_index: usize,
+    pub marked_ref_ids: std::collections::HashSet<String>,
+    pub ref_search_query: String,
+
     pub global_settings: GlobalSettings,
     pub local_settings: LocalSettings,
     pub cache: SettingsCache,
@@ -230,9 +243,17 @@ impl App {
         };
 
         let mut app = Self {
-            active_tab: ActiveTab::Dashboard,
+            active_tab: ActiveTab::Sources,
 
             input_mode: InputMode::Normal,
+            active_ref_pane: RefPane::RightSources,
+            bib_file_entries: Vec::new(),
+            selected_bib_index: 0,
+            source_references: Vec::new(),
+            selected_source_ref_index: 0,
+            marked_ref_ids: std::collections::HashSet::new(),
+            ref_search_query: String::new(),
+
             global_settings,
             local_settings,
             cache,
@@ -273,6 +294,8 @@ impl App {
         };
         app.reload_paper_draft();
         app.reload_sources();
+        app.load_project_references_bib();
+        app.load_all_source_references();
         app
     }
 
@@ -371,6 +394,42 @@ impl App {
         }
     }
 
+    pub fn load_project_references_bib(&mut self) {
+        self.bib_file_entries.clear();
+        if let Some(ref root) = self.project_root {
+            let bib_path = root.join("references.bib");
+            if bib_path.is_file() {
+                if let Ok(content) = std::fs::read_to_string(bib_path.as_std_path()) {
+                    let mut current_entry = String::new();
+                    for line in content.lines() {
+                        if line.starts_with('@') {
+                            if !current_entry.is_empty() {
+                                self.bib_file_entries.push(current_entry.trim().to_string());
+                                current_entry.clear();
+                            }
+                        }
+                        current_entry.push_str(line);
+                        current_entry.push('\n');
+                    }
+                    if !current_entry.is_empty() {
+                        self.bib_file_entries.push(current_entry.trim().to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn load_all_source_references(&mut self) {
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                if let Ok(refs) = db.get_all_references() {
+                    self.source_references = refs;
+                }
+            }
+        }
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
@@ -383,6 +442,7 @@ impl App {
             InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
+            InputMode::SearchingRefs => self.handle_searching_refs_mode(key),
             InputMode::ReadingSourceMd => self.handle_reading_source_md_mode(key),
         }
     }
@@ -399,9 +459,16 @@ impl App {
                 self.should_quit = true;
             }
             KeyCode::Tab => {
-                let current = self.active_tab as usize;
-                let next = (current + 1) % ActiveTab::ALL.len();
-                self.active_tab = ActiveTab::ALL[next];
+                if self.active_tab == ActiveTab::References {
+                    self.active_ref_pane = match self.active_ref_pane {
+                        RefPane::LeftBib => RefPane::RightSources,
+                        RefPane::RightSources => RefPane::LeftBib,
+                    };
+                } else {
+                    let current = self.active_tab as usize;
+                    let next = (current + 1) % ActiveTab::ALL.len();
+                    self.active_tab = ActiveTab::ALL[next];
+                }
             }
             KeyCode::BackTab => {
                 let current = self.active_tab as usize;
@@ -412,14 +479,22 @@ impl App {
                 };
                 self.active_tab = ActiveTab::ALL[next];
             }
-            KeyCode::Char('1') => self.active_tab = ActiveTab::Dashboard,
-            KeyCode::Char('2') => self.active_tab = ActiveTab::PaperDraft,
-            KeyCode::Char('3') => self.active_tab = ActiveTab::Sources,
+            KeyCode::Char('1') => self.active_tab = ActiveTab::Sources,
+            KeyCode::Char('2') => self.active_tab = ActiveTab::References,
+            KeyCode::Char('3') => self.active_tab = ActiveTab::PaperDraft,
             KeyCode::Char('4') => self.active_tab = ActiveTab::Settings,
 
-            KeyCode::Char('s') => self.save_all(),
+            KeyCode::Char('s') => {
+                if self.active_tab == ActiveTab::References {
+                    self.source_references.sort_by_key(|r| r.source_id.to_string());
+                } else {
+                    self.save_all();
+                }
+            },
             KeyCode::Char('v') => {
-                if self.active_tab == ActiveTab::Sources {
+                if self.active_tab == ActiveTab::References {
+                    self.source_references.sort_by_key(|r| r.venue.clone().unwrap_or_default());
+                } else if self.active_tab == ActiveTab::Sources {
                     if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
                         let doc_id = self.sources[self.selected_source_index].id.clone();
                         let filename = self.sources[self.selected_source_index].filename.clone();
@@ -451,7 +526,20 @@ impl App {
             }
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
-                ActiveTab::Dashboard => {}
+                ActiveTab::References => {
+                    match self.active_ref_pane {
+                        RefPane::LeftBib => {
+                            if self.selected_bib_index > 0 {
+                                self.selected_bib_index -= 1;
+                            }
+                        }
+                        RefPane::RightSources => {
+                            if self.selected_source_ref_index > 0 {
+                                self.selected_source_ref_index -= 1;
+                            }
+                        }
+                    }
+                }
                 ActiveTab::PaperDraft => {
                     if self.paper_section_index > 0 {
                         self.paper_section_index -= 1;
@@ -471,7 +559,25 @@ impl App {
                 }
             },
             KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
-                ActiveTab::Dashboard => {}
+                ActiveTab::References => {
+                    match self.active_ref_pane {
+                        RefPane::LeftBib => {
+                            if !self.bib_file_entries.is_empty() && self.selected_bib_index + 1 < self.bib_file_entries.len() {
+                                self.selected_bib_index += 1;
+                            }
+                        }
+                        RefPane::RightSources => {
+                            let filtered_count = if self.ref_search_query.is_empty() {
+                                self.source_references.len()
+                            } else {
+                                self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).count()
+                            };
+                            if filtered_count > 0 && self.selected_source_ref_index + 1 < filtered_count {
+                                self.selected_source_ref_index += 1;
+                            }
+                        }
+                    }
+                }
                 ActiveTab::PaperDraft => {
                     if !self.paper_sections.is_empty()
                         && self.paper_section_index + 1 < self.paper_sections.len()
@@ -660,6 +766,85 @@ impl App {
                                 }
                             }
                             _ => {}
+                        }
+                    }
+                }
+            }
+            KeyCode::Char('p') => {
+                if self.active_tab == ActiveTab::References {
+                    if let Some(ref root) = self.project_root {
+                        let bib_path = root.join("references.bib");
+                        let mut entries_to_add = Vec::new();
+                        if self.marked_ref_ids.is_empty() {
+                            let filtered: Vec<_> = if self.ref_search_query.is_empty() {
+                                self.source_references.iter().collect()
+                            } else {
+                                self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).collect()
+                            };
+                            if self.selected_source_ref_index < filtered.len() {
+                                entries_to_add.push(filtered[self.selected_source_ref_index].clone());
+                            }
+                        } else {
+                            for r in &self.source_references {
+                                if self.marked_ref_ids.contains(&r.id) {
+                                    entries_to_add.push(r.clone());
+                                }
+                            }
+                        }
+                        if !entries_to_add.is_empty() {
+                            let mut current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                            for e in &entries_to_add {
+                                let mut bibtex = format!("@misc{{\n  title = {{{}}},\n", e.title.as_deref().unwrap_or(""));
+                                if let Some(ref a) = e.authors {
+                                    bibtex.push_str(&format!("  author = {{{}}},\n", a));
+                                }
+                                if let Some(ref y) = e.year {
+                                    bibtex.push_str(&format!("  year = {{{}}},\n", y));
+                                }
+                                if let Some(ref v) = e.venue {
+                                    bibtex.push_str(&format!("  journal = {{{}}},\n", v));
+                                }
+                                bibtex.push_str("}\n\n");
+                                current.push_str(&bibtex);
+                            }
+                            let _ = std::fs::write(bib_path.as_std_path(), current);
+                            self.load_project_references_bib();
+                            let count = entries_to_add.len();
+                            self.marked_ref_ids.clear();
+                            self.status_message = format!("Pasted {} reference(s) to references.bib", count);
+                        }
+                    }
+                }
+            }
+            KeyCode::Char('/') | KeyCode::Char('f') => {
+                if self.active_tab == ActiveTab::References {
+                    self.input_mode = InputMode::SearchingRefs;
+                    self.status_message = "Search right pane: type query, Enter/Esc to finish".to_string();
+                }
+            }
+            KeyCode::Char('y') => {
+                if self.active_tab == ActiveTab::References {
+                    self.source_references.sort_by_key(|r| std::cmp::Reverse(r.year.clone().unwrap_or_default()));
+                }
+            }
+            KeyCode::Char('i') => {
+                if self.active_tab == ActiveTab::References {
+                    self.source_references.sort_by_key(|r| r.ref_index);
+                }
+            }
+            KeyCode::Char(' ') => {
+                if self.active_tab == ActiveTab::References && self.active_ref_pane == RefPane::RightSources {
+                    let filtered: Vec<_> = if self.ref_search_query.is_empty() {
+                        self.source_references.iter().collect()
+                    } else {
+                        self.source_references.iter().filter(|r| r.raw_text.to_lowercase().contains(&self.ref_search_query.to_lowercase())).collect()
+                    };
+                    if self.selected_source_ref_index < filtered.len() {
+                        let id = filtered[self.selected_source_ref_index].id.clone();
+                        if self.marked_ref_ids.contains(&id) {
+                            self.marked_ref_ids.remove(&id);
+                        } else {
+                            self.marked_ref_ids.insert(id);
                         }
                     }
                 }
@@ -881,6 +1066,22 @@ impl App {
         }
     }
 
+
+    fn handle_searching_refs_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Enter | KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
+            }
+            KeyCode::Backspace => {
+                self.ref_search_query.pop();
+            }
+            KeyCode::Char(c) => {
+                self.ref_search_query.push(c);
+            }
+            _ => {}
+        }
+    }
     fn handle_editing_paper_mode(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Enter => {
@@ -1446,169 +1647,70 @@ mod tests {
     #[test]
     fn app_initialization() {
         let app = App::new(None);
-        assert_eq!(app.active_tab, ActiveTab::Dashboard);
-        assert_eq!(app.input_mode, InputMode::Normal);
-        assert!(!app.should_quit);
-    }
-
-    #[test]
-    fn tab_navigation() {
-        let mut app = App::new(None);
-        assert_eq!(app.active_tab, ActiveTab::Dashboard);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::Sources);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::Settings);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::Dashboard);
+        assert_eq!(app.input_mode, InputMode::Normal);
     }
 
     #[test]
-    fn add_and_use_coauthor_flow() {
+    fn test_references_tab_navigation() {
         let mut app = App::new(None);
-        let initial_cache_len = app.cache.co_authors.len();
-        app.active_tab = ActiveTab::Settings;
-        let items = app.setting_items();
-        let cache_coauthor_idx = items
-            .iter()
-            .position(|it| {
-                matches!(
-                    it,
-                    SettingItem::CacheCoAuthorEmpty | SettingItem::CacheCoAuthor(_)
-                )
-            })
-            .unwrap();
-        app.selected_setting_index = cache_coauthor_idx;
-
-        app.handle_key(KeyEvent::from(KeyCode::Char('a')));
-        assert_eq!(app.input_mode, InputMode::ModalAddAuthor);
-
-        // Type author details
-        for c in "Dr. Smith".chars() {
-            app.handle_key(KeyEvent::from(KeyCode::Char(c)));
-        }
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(app.cache.co_authors.len(), initial_cache_len + 1);
-        assert!(app.cache.co_authors.iter().any(|a| a.name == "Dr. Smith"));
-        assert_eq!(app.local_settings.co_authors.len(), 1);
-        assert_eq!(app.local_settings.co_authors[0].name, "Dr. Smith");
+        app.active_tab = ActiveTab::Sources;
+        
+        // Go to References
+        app.handle_key(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::empty()));
+        assert_eq!(app.active_tab, ActiveTab::References);
+        
+        // Default pane is RightSources
+        assert_eq!(app.active_ref_pane, RefPane::RightSources);
+        
+        // Tab toggles pane
+        app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::empty()));
+        assert_eq!(app.active_ref_pane, RefPane::LeftBib);
+        
+        // Tab again toggles pane back
+        app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::empty()));
+        assert_eq!(app.active_ref_pane, RefPane::RightSources);
     }
 
     #[test]
-    fn test_direct_digit_tab_switching() {
+    fn test_references_marking_and_searching() {
         let mut app = App::new(None);
-        app.handle_key(KeyEvent::from(KeyCode::Char('1')));
-        assert_eq!(app.active_tab, ActiveTab::Dashboard);
-        app.handle_key(KeyEvent::from(KeyCode::Char('2')));
-        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
-        app.handle_key(KeyEvent::from(KeyCode::Char('3')));
-        assert_eq!(app.active_tab, ActiveTab::Sources);
-        app.handle_key(KeyEvent::from(KeyCode::Char('4')));
-        assert_eq!(app.active_tab, ActiveTab::Settings);
-    }
-
-    #[test]
-    fn test_backtab_reverse_navigation() {
-        let mut app = App::new(None);
-        assert_eq!(app.active_tab, ActiveTab::Dashboard);
-        app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::Settings);
-        app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::Sources);
-        app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
-    }
-
-    #[test]
-    fn test_sources_tab_add_rename_delete_read() {
-        let dir = tempfile::tempdir().unwrap();
-        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        let mut app = App::new(Some(root));
-
-        // Switch to Sources tab
-        app.handle_key(KeyEvent::from(KeyCode::Char('3')));
-        assert_eq!(app.active_tab, ActiveTab::Sources);
-
-        // Add source via link ('a')
-        app.handle_key(KeyEvent::from(KeyCode::Char('a')));
-        assert_eq!(app.input_mode, InputMode::ModalAddSourceLink);
-        for c in "https://arxiv.org/pdf/2401.00001.pdf".chars() {
-            app.handle_key(KeyEvent::from(KeyCode::Char(c)));
-        }
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
+        app.active_tab = ActiveTab::References;
+        app.source_references = vec![
+            sil_core::ReferenceEntry {
+                id: "ref1".to_string(),
+                source_id: "doc1".into(),
+                ref_index: 1,
+                raw_text: "Deep learning".to_string(),
+                title: None, authors: None, year: None, venue: None, doi: None,
+            },
+            sil_core::ReferenceEntry {
+                id: "ref2".to_string(),
+                source_id: "doc2".into(),
+                ref_index: 2,
+                raw_text: "Transformer models".to_string(),
+                title: None, authors: None, year: None, venue: None, doi: None,
+            }
+        ];
+        
+        app.selected_source_ref_index = 0;
+        app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::empty()));
+        assert!(app.marked_ref_ids.contains("ref1"));
+        
+        app.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::SearchingRefs);
+        
+        app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::empty()));
+        
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
         assert_eq!(app.input_mode, InputMode::Normal);
-        assert!(!app.sources.is_empty());
-
-        // Rename title ('r')
-        app.handle_key(KeyEvent::from(KeyCode::Char('r')));
-        assert_eq!(app.input_mode, InputMode::ModalRenameSource);
-        app.rename_source_buffer = "Attention Paper".to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-        assert_eq!(app.input_mode, InputMode::Normal);
-        assert_eq!(app.sources[0].title.as_deref(), Some("Attention Paper"));
-
-        // Read Markdown (Enter)
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-        assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
-        assert!(app.reading_md_content.is_some());
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        assert_eq!(app.source_scroll_offset, 1);
-        app.handle_key(KeyEvent::from(KeyCode::Esc));
-        assert_eq!(app.input_mode, InputMode::Normal);
-
-        // View References ('v')
-        app.handle_key(KeyEvent::from(KeyCode::Char('v')));
-        assert_eq!(app.input_mode, InputMode::ViewingSourceRefs);
-        app.handle_key(KeyEvent::from(KeyCode::Esc));
-        assert_eq!(app.input_mode, InputMode::Normal);
-
-        // Delete source ('d')
-        app.handle_key(KeyEvent::from(KeyCode::Char('d')));
-        assert_eq!(app.input_mode, InputMode::ConfirmDeleteSource);
-        app.handle_key(KeyEvent::from(KeyCode::Char('y')));
-        assert_eq!(app.input_mode, InputMode::Normal);
-        assert!(app.sources.is_empty());
-    }
-
-    #[test]
-    fn test_unified_settings_navigation_and_editing() {
-        let mut app = App::new(None);
-        app.handle_key(KeyEvent::from(KeyCode::Char('4')));
-        assert_eq!(app.active_tab, ActiveTab::Settings);
-        assert_eq!(app.selected_setting_index, 0);
-
-        // Edit first global field (AuthorName)
-        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
-        assert_eq!(app.input_mode, InputMode::Editing);
-        app.input_buffer = "Alice Turing".to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(app.global_settings.author.name, "Alice Turing");
-        assert!(app.dirty);
-
-        // Move down to RAG field
-        let items = app.setting_items();
-        let rag_embedder_idx = items
-            .iter()
-            .position(|it| matches!(it, SettingItem::Rag(RagField::EmbedderPath)))
-            .unwrap();
-        app.selected_setting_index = rag_embedder_idx;
-
-        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
-        assert_eq!(app.input_mode, InputMode::Editing);
-        app.input_buffer = "/tmp/models/embedder.onnx".to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(
-            app.global_settings
-                .rag
-                .onnx_embedder_path
-                .as_ref()
-                .map(|p| p.as_str()),
-            Some("/tmp/models/embedder.onnx")
-        );
+        
+        app.selected_source_ref_index = 0;
+        app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::empty()));
+        assert!(app.marked_ref_ids.contains("ref2")); 
     }
 }

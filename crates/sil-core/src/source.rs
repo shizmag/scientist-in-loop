@@ -235,6 +235,29 @@ pub struct ReferenceEntry {
     pub doi: Option<String>,
 }
 
+impl ReferenceEntry {
+    /// Format the reference as an `@article` BibTeX string.
+    pub fn to_bibtex(&self) -> String {
+        let title_or_raw = self.title.as_deref().unwrap_or(&self.raw_text);
+        let cite_key = crate::bib::slug_cite_key(title_or_raw);
+        let author = self.authors.as_deref().unwrap_or("Unknown");
+        let journal = self.venue.as_deref().unwrap_or("Unknown");
+        let year = self.year.map(|y| y.to_string()).unwrap_or_else(|| "n.d.".to_string());
+
+        let mut fields = vec![
+            format!("  title={{{}}}", title_or_raw),
+            format!("  author={{{}}}", author),
+            format!("  journal={{{}}}", journal),
+            format!("  year={{{}}}", year),
+        ];
+        if let Some(doi) = &self.doi {
+            fields.push(format!("  doi={{{}}}", doi));
+        }
+        let body = fields.join(",\n");
+        format!("@article{{{}, \n{}\n}}\n", cite_key, body)
+    }
+}
+
 impl SourceDocument {
     /// Create a new unparsed source document from a path.
     pub fn new(path: Utf8PathBuf) -> Self {

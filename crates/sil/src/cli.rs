@@ -61,7 +61,7 @@ pub enum Commands {
     /// Interactive terminal user interfaces (dashboard, settings)
     Tui {
         #[command(subcommand)]
-        action: TuiCmd,
+        action: Option<TuiCmd>,
     },
 }
 
@@ -251,11 +251,10 @@ pub enum GitCmd {
 /// `sil tui` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum TuiCmd {
-    /// Launch interactive TUI command center dashboard
-    #[command(alias = "daily")]
-    Dashboard,
     /// Launch interactive TUI sources manager
     Sources,
+    /// Launch interactive TUI references manager
+    References,
     /// Launch interactive TUI settings manager
     Settings,
 }
