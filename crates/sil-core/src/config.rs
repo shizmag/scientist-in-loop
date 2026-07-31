@@ -96,10 +96,17 @@ pub struct ParsingConfig {
     /// Parsing engine name (MVP: marker).
     #[serde(default = "default_parse_engine")]
     pub engine: String,
+    /// Parsing mode (default: balance).
+    #[serde(default = "default_parse_mode")]
+    pub mode: String,
 }
 
 fn default_parse_engine() -> String {
     "marker".to_string()
+}
+
+fn default_parse_mode() -> String {
+    "balance".to_string()
 }
 
 impl Default for Config {
@@ -122,6 +129,7 @@ impl Default for Config {
             },
             parsing: ParsingConfig {
                 engine: default_parse_engine(),
+                mode: default_parse_mode(),
             },
             settings: LocalSettings::default(),
             rag: None,

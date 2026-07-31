@@ -16,7 +16,11 @@ Previously, `sil parse` relied strictly on locating a Python script `python/pars
    - Upgraded `sil parse` terminal UX to show live spinners during text extraction, Crossref DOI hydration, and reference parsing.
    - Outputs a visual status card summarizing Title, Authors, DOI, Character/Word counts, Reference entry counts, Duration, and SQLite/FTS5 status.
 
+4. **Mode Balance Configuration (`SIL_MARKER_MODE`)**:
+   - Added support for `mode: balance` in `ParsingConfig` (`sil.yaml` under `parsing.mode: balance`) and environment overrides (`SIL_MARKER_MODE` defaulting to `"balance"` and `SIL_MARKER_FLAGS`).
+
 ## Consequences
 - `sil parse` works seamlessly with standard `pip install marker-pdf` CLI installations out-of-the-box.
+- Configurable parsing modes (defaulting to `balance`).
 - No temporary files linger on disk after parsing.
 - Maintains full backwards compatibility for test stubs (`SIL_MARKER_STUB`) and custom Python helper scripts (`SIL_PARSE_SCRIPT`).

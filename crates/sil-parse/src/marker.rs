@@ -70,20 +70,26 @@ impl CliMarkerRunner {
 impl MarkerRunner for CliMarkerRunner {
     fn parse_pdf(&self, pdf: &Utf8Path) -> Result<String, ParseError> {
         let tmp = tempdir().map_err(|e| ParseError::Marker(format!("failed to create temp dir: {e}")))?;
-        let output = Command::new(&self.binary)
-            .arg(pdf.as_str())
+        let mut cmd = Command::new(&self.binary);
+        cmd.arg(pdf.as_str())
             .arg("--output_dir")
             .arg(tmp.path())
             .arg("--output_format")
             .arg("markdown")
-            .arg("--disable_image_extraction")
-            .output()
-            .map_err(|e| {
-                ParseError::Marker(format!(
-                    "failed to spawn {}: {e}",
-                    self.binary
-                ))
-            })?;
+            .arg("--disable_image_extraction");
+
+        if let Ok(flags) = std::env::var("SIL_MARKER_FLAGS") {
+            for flag in flags.split_whitespace() {
+                cmd.arg(flag);
+            }
+        }
+
+        let output = cmd.output().map_err(|e| {
+            ParseError::Marker(format!(
+                "failed to spawn {}: {e}",
+                self.binary
+            ))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

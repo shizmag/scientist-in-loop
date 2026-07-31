@@ -152,6 +152,8 @@ Optional environment:
 | `SIL_NONINTERACTIVE=1` | No spinners/prompts; parse selects all |
 | `SIL_PYTHON` | Python executable (default `python3`) |
 | `SIL_MARKER_BIN` | Path to pre-installed `marker_single` / `marker` CLI binary |
+| `SIL_MARKER_MODE` | Parsing mode for Marker (default `balance`) |
+| `SIL_MARKER_FLAGS` | Custom space-separated CLI flags for `marker_single` |
 | `SIL_PARSE_SCRIPT` | Path to `parse_with_marker.py` fallback helper |
 | `SIL_DOWNLOAD_SCRIPT` | Path to `download_pdf.py` |
 | `SIL_MARKER_STUB` | Test-only: skip Marker, use this text |

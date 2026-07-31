@@ -13,19 +13,22 @@ Prints extracted text to stdout. Exits non-zero on failure.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 
 def parse_with_marker(pdf: Path) -> str:
     """Try Marker converters in order of known APIs."""
+    mode = os.environ.get("SIL_MARKER_MODE", "balance")
     # marker-pdf modern API
     try:
         from marker.converters.pdf import PdfConverter  # type: ignore
         from marker.models import create_model_dict  # type: ignore
         from marker.output import text_from_rendered  # type: ignore
 
-        converter = PdfConverter(artifact_dict=create_model_dict())
+        config = {"mode": mode} if mode else {}
+        converter = PdfConverter(artifact_dict=create_model_dict(), config=config)
         rendered = converter(str(pdf))
         text, _, _ = text_from_rendered(rendered)
         return text
