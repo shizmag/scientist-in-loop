@@ -105,8 +105,12 @@ pub fn is_affiliation_or_noise_line(line: &str) -> bool {
         "university", "department", "school of", "institute of", "faculty of", 
         "laboratory", "lab", "inc.", "corplab", "address", "a r t i c l e i n f o",
         "contents lists", "journal homepage:", "received", "accepted", "available online",
-        "@", "equal contribution", "author to whom", "correspondence", "abstract",
-        "introduction"
+        "@", "equal contribution", "author to whom", "correspondence", "corresponding author",
+        "abstract", "a b s t r a c t", "introduction", "keywords", "index terms", "date:",
+        "code:", "data:", "https://github", "github.com", "huggingface.co", "https://huggingface",
+        "reconstructing", "our contributions", "contributions", "the work was done", "lt;", "gt;",
+        "preliminaries", "methodology", "problem formulation", "background", "related work",
+        "table of contents", "contents"
     ];
     keywords.iter().any(|&k| lower.contains(k))
 }

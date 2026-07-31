@@ -260,21 +260,35 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     if doc.authors.is_none() || doc.authors.as_deref().map_or(false, |a| a.trim().is_empty()) {
         let mut author_lines = Vec::new();
         let mut past_title = false;
-        for line in header_text.lines() {
+        for (i, line) in header_text.lines().enumerate() {
             let clean = sil_regex::strip_html_spans(line).trim().to_string();
-            if clean.starts_with('#') {
-                let heading = clean.trim_start_matches('#').trim().to_lowercase();
-                if heading == "abstract" || heading.starts_with("1 introduction") {
-                    break;
-                }
-                if doc.title.as_deref().map_or(false, |t| clean.contains(t)) {
+            let lower_clean = clean.to_lowercase();
+
+            if lower_clean == "abstract" 
+                || lower_clean.starts_with("1 introduction") 
+                || lower_clean.starts_with("keywords") 
+                || lower_clean.starts_with("index terms") 
+                || lower_clean.contains("date:") 
+                || lower_clean.contains("code:") 
+                || lower_clean.contains("data:") 
+            {
+                break;
+            }
+
+            let is_heading = clean.starts_with('#');
+            let is_title_match = doc.title.as_deref().map_or(false, |t| clean.contains(t) || t.contains(&clean));
+
+            if !past_title {
+                if is_heading || is_title_match || i == 0 {
                     past_title = true;
                     continue;
                 }
-                past_title = true;
-                continue;
             }
+
             if past_title && !clean.is_empty() {
+                if is_heading {
+                    break;
+                }
                 if sil_regex::is_affiliation_or_noise_line(&clean) {
                     continue;
                 }
@@ -314,6 +328,21 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                     .to_string();
 
                 if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
+                    // Reject lines that start with non-author lower-case text
+                    if cleaned_author.chars().next().map_or(false, |c| c.is_lowercase()) {
+                        continue;
+                    }
+
+                    // Validate capitalized words ratio
+                    let words: Vec<&str> = cleaned_author.split_whitespace().collect();
+                    let word_count = words.len();
+                    if word_count > 0 {
+                        let capitalized_count = words.iter().filter(|w| w.chars().next().map_or(false, |c| c.is_uppercase())).count();
+                        if word_count > 15 || (word_count > 3 && capitalized_count < word_count / 2) {
+                            continue;
+                        }
+                    }
+
                     author_lines.push(cleaned_author);
                     // Extracting up to a few lines to avoid getting into noise,
                     // but we can increase if there are many authors.
@@ -391,6 +420,27 @@ Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
         assert_eq!(
             doc.authors.unwrap(),
             "Ushtar Ali, Steven Lynden, Akiyoshi Matono"
+        );
+    }
+
+    #[test]
+    fn test_hydrate_plain_text_authors() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("2026.gem-main.4.pdf"));
+        doc.kind = SourceKind::Pdf;
+        doc.title = Some("Implicit Ensembles of Ensem".to_string());
+        
+        let header = r#"Implicit Ensembles of Ensem
+Sebastian Farquhar, Armen Der Kiureghian
+a Alibaba-NTU Singapore Joint Research Institute
+journal homepage:
+Keywords: something
+Abstract"#;
+
+        hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("2026.gem-main.4.pdf"));
+        
+        assert_eq!(
+            doc.authors.unwrap(),
+            "Sebastian Farquhar, Armen Der Kiureghian"
         );
     }
 }
