@@ -31,7 +31,7 @@ pub use parse::run as parse;
 pub use promote::run as promote;
 pub use propose::run as propose;
 pub use search::run as search;
-pub use source::{fetch as source_fetch, list as source_list, read as source_read, remove as source_remove};
+pub use source::{doctor as source_doctor, fetch as source_fetch, list as source_list, read as source_read, remove as source_remove};
 pub use split::run as split;
 pub use status::run as status;
 pub use structure_cmd::{list as structure_list, set_completion as structure_set};

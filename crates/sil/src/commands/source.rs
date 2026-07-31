@@ -338,3 +338,96 @@ pub fn read(id_or_filename: &str, ui: &dyn SilUi) -> Result<()> {
     Ok(())
 }
 
+/// Heal parsed sources: re-extract references and fetch missing metadata via DOI.
+pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
+    let (_root, _config, paths) = load_project()?;
+    let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let docs = if let Some(target) = id {
+        if let Some((doc, content)) = db.get_source_content(&target)? {
+            vec![(doc, content)]
+        } else {
+            anyhow::bail!("Source '{target}' not found or unparsed in database");
+        }
+    } else {
+        let mut all = Vec::new();
+        for doc in db.list_sources().map_err(|e| anyhow::anyhow!("{e}"))? {
+            if doc.parsed {
+                if let Some((d, c)) = db.get_source_content(doc.id.as_str())? {
+                    all.push((d, c));
+                }
+            }
+        }
+        all
+    };
+
+    if docs.is_empty() {
+        ui.warn("No parsed sources found to heal.");
+        return Ok(());
+    }
+
+    let mut pb = ui.progress(docs.len() as u64, "Doctoring source documents");
+    let mut healed_count = 0;
+
+    for (i, (mut doc, content)) in docs.into_iter().enumerate() {
+        pb.set_message(&doc.filename);
+
+        // 1. Metadata Hydration if missing key metadata
+        let needs_metadata = doc.authors.is_none() || doc.venue.is_none() || doc.abstract_text.is_none();
+        if needs_metadata {
+            let extracted_doi = doc.doi.clone().or_else(|| sil_regex::extract_doi(&content));
+            if let Some(ref doi) = extracted_doi {
+                if let Ok(Some(pub_item)) = sil_parse::journal_digest::fetch_work_by_doi(doi) {
+                    if doc.doi.is_none() && pub_item.doi.is_some() {
+                        doc.doi = pub_item.doi;
+                    }
+                    if doc.title.is_none() && !pub_item.title.is_empty() {
+                        doc.title = Some(pub_item.title);
+                    }
+                    if doc.authors.is_none() && !pub_item.authors.is_empty() {
+                        doc.authors = Some(pub_item.authors);
+                    }
+                    if doc.year.is_none() && pub_item.year.is_some() {
+                        doc.year = pub_item.year.map(|y| y as i32);
+                    }
+                    if doc.venue.is_none() && !pub_item.journal.is_empty() {
+                        doc.venue = Some(pub_item.journal);
+                    }
+                    if doc.abstract_text.is_none() && !pub_item.abstract_text.is_empty() {
+                        doc.abstract_text = Some(pub_item.abstract_text);
+                    }
+                }
+            }
+        }
+
+        // 2. Re-extract references block and entries
+        let refs_block = sil_parse::references::extract_references_block(&content);
+        doc.references_text = refs_block.clone();
+
+        if let Err(e) = db.upsert_parsed(&doc, &content) {
+            ui.warn(&format!("Failed to update database for {}: {e}", doc.filename));
+            continue;
+        }
+
+        if let Err(e) = db.delete_references_for_source(&doc.id) {
+            ui.warn(&format!("Failed to clear old references for {}: {e}", doc.filename));
+        }
+
+        if let Some(ref raw_block) = refs_block {
+            let entries = sil_parse::references::parse_reference_entries(&doc.id, raw_block);
+            if !entries.is_empty() {
+                if let Err(e) = db.save_source_references(&entries) {
+                    ui.warn(&format!("Failed to save references for {}: {e}", doc.filename));
+                }
+            }
+        }
+
+        healed_count += 1;
+        pb.set_position((i as u64) + 1);
+    }
+
+    pb.finish_success(&format!("Healed {healed_count} source document(s)"));
+    Ok(())
+}
+
+

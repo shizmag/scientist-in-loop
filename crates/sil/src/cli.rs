@@ -128,6 +128,11 @@ pub enum SourceCmd {
         /// Source ID, filename, or file path to read
         id: String,
     },
+    /// Heal parsed sources: re-extract references and fetch missing metadata via DOI
+    Doctor {
+        /// Source ID or filename to repair (omit to process all parsed sources)
+        id: Option<String>,
+    },
 }
 
 /// `sil paper` subcommands.

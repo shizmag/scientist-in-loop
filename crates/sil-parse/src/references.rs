@@ -163,6 +163,8 @@ Some content...
             "### Literature Cited",
             "# References and Notes",
             "## 10. References",
+            "## **References**",
+            "# REFERENCES",
         ] {
             let md = format!(
                 "# Intro\nText\n\n{header}\n[1] Author A. \"Title A\" 2021.\n\n# Appendix\nAppendix text"
@@ -174,6 +176,21 @@ Some content...
                 "Failed to terminate on Appendix for header: {header}"
             );
         }
+    }
+
+    #[test]
+    fn test_parse_span_tagged_entries() {
+        let sid = SourceId::new("paper.pdf");
+        let raw = r#"
+- <span id="page-10-0"></span>[1] Patrick Lewis, Ethan Perez, et al. "Retrieval-augmented generation for knowledge-intensive nlp tasks." NeurIPS 2020.
+- <span id="page-10-1"></span>[2] Jiawei Chen, Hongyu Lin, et al. "Benchmarking large language models in retrievalaugmented generation." AAAI 2024.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].ref_index, 1);
+        assert_eq!(entries[0].year, Some(2020));
+        assert_eq!(entries[1].ref_index, 2);
+        assert_eq!(entries[1].year, Some(2024));
     }
 
     #[test]

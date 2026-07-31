@@ -2187,6 +2187,7 @@ dependencies = [
  "sil-latex",
  "sil-mcp",
  "sil-parse",
+ "sil-regex",
  "sil-template",
  "sil-tui",
  "tempfile",

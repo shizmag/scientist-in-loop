@@ -22,6 +22,7 @@ sil-db = { workspace = true }
 sil-git = { workspace = true }
 sil-latex = { workspace = true }
 sil-parse = { workspace = true }
+sil-regex = { workspace = true }
 sil-template = { workspace = true }
 sil-tui = { workspace = true }
 sil-mcp = { workspace = true }

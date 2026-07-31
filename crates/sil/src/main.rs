@@ -46,6 +46,7 @@ fn run() -> Result<()> {
             }
             SourceCmd::Digest { query, limit } => commands::digest(&query, limit, ui.as_ref()),
             SourceCmd::Read { id } => commands::source_read(&id, ui.as_ref()),
+            SourceCmd::Doctor { id } => commands::source_doctor(id, ui.as_ref()),
         },
         Commands::Paper { action } => match action {
             PaperCmd::Build { target, release } => commands::build(target, release, ui.as_ref()),

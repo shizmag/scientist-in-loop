@@ -20,7 +20,7 @@ static QUOTED_TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(references|bibliography|literature cited|works cited|references and notes)\b").unwrap()
+    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(?:\*\*|__)?\s*(references|bibliography|literature cited|works cited|references and notes)(?:\*\*|__)?\b").unwrap()
 });
 
 static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -28,7 +28,7 @@ static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])").unwrap()
+    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|^\s*-\s+|^\s*<span[^>]*>.*?</span>\s*[A-Z]").unwrap()
 });
 
 static LATEX_METADATA_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -162,6 +162,9 @@ mod tests {
         assert!(is_reference_heading("Literature Cited"));
         assert!(is_reference_heading("8. References"));
         assert!(is_reference_heading("## 10. References and Notes"));
+        assert!(is_reference_heading("## **References**"));
+        assert!(is_reference_heading("# REFERENCES"));
+        assert!(is_reference_heading("## REFERENCES"));
         assert!(!is_reference_heading("# Introduction"));
         assert!(!is_reference_heading("Related Work"));
     }
@@ -184,6 +187,10 @@ mod tests {
         assert!(is_reference_entry_start("1. Vaswani et al."));
         assert!(is_reference_entry_start("[Vaswani 2017] Attention is all you need."));
         assert!(is_reference_entry_start("(1) Shannon, C. E."));
+        assert!(is_reference_entry_start("- <span id=\"page-10-0\"></span>[1] Patrick Lewis et al."));
+        assert!(is_reference_entry_start("- <span id=\"page-6-0\"></span>Saurav Kadavath et al."));
+        assert!(is_reference_entry_start("- Asai, A.; Wu, Z.; ..."));
+        assert!(is_reference_entry_start("<span id=\"page-8-4\"></span>Ebtesam Almazrouei et al."));
         assert!(!is_reference_entry_start("Vaswani et al. (2017) Attention is all you need."));
     }
 

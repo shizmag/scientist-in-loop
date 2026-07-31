@@ -180,6 +180,7 @@ Python helpers (`python/`) need a working `python3`. Marker is preferred for par
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil source cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
 | `sil source digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
+| `sil source doctor [id]` | Heal parsed sources: re-extract reference entries and hydrate missing metadata via DOI |
 | `sil paper build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
 | `sil paper template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
 | `sil paper split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |
