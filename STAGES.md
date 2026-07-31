@@ -28,3 +28,6 @@ root README, final e2e suite.
 ## Stage 6 — MCP Server & Local ONNX RAG Integration ✅
 `sil mcp` stdio JSON-RPC server (`crates/sil-mcp`), parent-child section/paragraph chunking, local ONNX embeddings & cross-encoder reranking, BM25+Dense RRF & HyDE hybrid search, structured LaTeX TODO governance, 11 core MCP tool handlers.
 
+## Stage 7 — Interactive TUI Refactoring: Sources & Unified Settings ✅
+Interactive 4-tab Ratatui TUI command center. Dedicated Sources tab (#3) with paginated pretty Markdown reading, auto-fetch link modal, parse status indicators, word/reference statistics, reference viewer, renaming, and deletion confirmation. Unified vertical Settings window (#4) combining Global, RAG, Caches, and Local settings with visual section dividers.
+

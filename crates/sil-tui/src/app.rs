@@ -4,7 +4,7 @@ use camino::Utf8PathBuf;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use sil_core::{
     AuthorDetails, Config, GlobalSettings, GrantDetails, LocalSettings, ProjectPaths,
-    SettingsCache,
+    ReferenceEntry, SettingsCache, SourceDocument,
 };
 
 /// Navigation tabs in the TUI.
@@ -12,37 +12,27 @@ use sil_core::{
 pub enum ActiveTab {
     Dashboard = 0,
     PaperDraft = 1,
-    GlobalSettings = 2,
-    LocalSettings = 3,
-    CoAuthorCache = 4,
-    GrantCache = 5,
-    RagSettings = 6,
+    Sources = 2,
+    Settings = 3,
 }
 
 impl ActiveTab {
-    pub const ALL: [ActiveTab; 7] = [
+    pub const ALL: [ActiveTab; 4] = [
         ActiveTab::Dashboard,
         ActiveTab::PaperDraft,
-        ActiveTab::GlobalSettings,
-        ActiveTab::LocalSettings,
-        ActiveTab::CoAuthorCache,
-        ActiveTab::GrantCache,
-        ActiveTab::RagSettings,
+        ActiveTab::Sources,
+        ActiveTab::Settings,
     ];
 
     pub fn title(&self) -> &'static str {
         match self {
             ActiveTab::Dashboard => "1. Dashboard",
             ActiveTab::PaperDraft => "2. Paper Draft",
-            ActiveTab::GlobalSettings => "3. Global Settings",
-            ActiveTab::LocalSettings => "4. Local Settings",
-            ActiveTab::CoAuthorCache => "5. Co-Authors Cache",
-            ActiveTab::GrantCache => "6. Grants Cache",
-            ActiveTab::RagSettings => "7. RAG Settings",
+            ActiveTab::Sources => "3. Sources",
+            ActiveTab::Settings => "4. Settings",
         }
     }
 }
-
 
 /// Mode of user interaction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,6 +43,28 @@ pub enum InputMode {
     ModalPicker,
     ModalAddAuthor,
     ModalAddGrant,
+    ModalAddSourceLink,
+    ModalRenameSource,
+    ConfirmDeleteSource,
+    ViewingSourceRefs,
+    ReadingSourceMd,
+}
+
+/// Items present in the unified Settings tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingItem {
+    Global(GlobalField),
+    Rag(RagField),
+    CacheCoAuthor(usize),
+    CacheCoAuthorEmpty,
+    CacheGrant(usize),
+    CacheGrantEmpty,
+    LocalTitle,
+    LocalNotes,
+    LocalCoAuthor(usize),
+    LocalCoAuthorEmpty,
+    LocalGrant(usize),
+    LocalGrantEmpty,
 }
 
 /// Currently active input field in forms.
@@ -177,6 +189,18 @@ pub struct App {
     pub paper_scroll_offset: usize,
     pub paper_edit_buffer: String,
     pub pending_external_editor: bool,
+
+    // Sources state
+    pub sources: Vec<SourceDocument>,
+    pub selected_source_index: usize,
+    pub source_scroll_offset: usize,
+    pub reading_md_content: Option<String>,
+    pub selected_source_references: Vec<ReferenceEntry>,
+    pub new_source_link_buffer: String,
+    pub rename_source_buffer: String,
+
+    // Unified settings navigation
+    pub selected_setting_index: usize,
 }
 
 impl App {
@@ -225,9 +249,103 @@ impl App {
             paper_scroll_offset: 0,
             paper_edit_buffer: String::new(),
             pending_external_editor: false,
+
+            sources: Vec::new(),
+            selected_source_index: 0,
+            source_scroll_offset: 0,
+            reading_md_content: None,
+            selected_source_references: Vec::new(),
+            new_source_link_buffer: String::new(),
+            rename_source_buffer: String::new(),
+
+            selected_setting_index: 0,
         };
         app.reload_paper_draft();
+        app.reload_sources();
         app
+    }
+
+    pub fn reload_sources(&mut self) {
+        let mut sources = Vec::new();
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                if let Ok(docs) = db.list_sources() {
+                    sources = docs;
+                }
+            }
+            let sources_dir = root.join("sources");
+            if sources_dir.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(sources_dir.as_std_path()) {
+                    let existing_ids: std::collections::HashSet<_> =
+                        sources.iter().map(|d| d.filename.clone()).collect();
+                    for entry in entries.flatten() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        if name.to_ascii_lowercase().starts_with("readme") {
+                            continue;
+                        }
+                        let path_buf = Utf8PathBuf::from_path_buf(entry.path()).unwrap_or_default();
+                        let ext = path_buf.extension().unwrap_or("");
+                        if matches!(
+                            ext.to_ascii_lowercase().as_str(),
+                            "pdf" | "md" | "markdown" | "txt" | "html" | "htm"
+                        ) && !existing_ids.contains(&name)
+                        {
+                            sources.push(SourceDocument::new(path_buf));
+                        }
+                    }
+                }
+            }
+        }
+        self.sources = sources;
+        if self.selected_source_index >= self.sources.len() && !self.sources.is_empty() {
+            self.selected_source_index = self.sources.len() - 1;
+        }
+    }
+
+    pub fn setting_items(&self) -> Vec<SettingItem> {
+        let mut items = Vec::new();
+        // 1. Global Settings
+        for f in GlobalField::ALL {
+            items.push(SettingItem::Global(f));
+        }
+        // 2. RAG Settings
+        for f in RagField::ALL {
+            items.push(SettingItem::Rag(f));
+        }
+        // 3. Cache section
+        if self.cache.co_authors.is_empty() {
+            items.push(SettingItem::CacheCoAuthorEmpty);
+        } else {
+            for i in 0..self.cache.co_authors.len() {
+                items.push(SettingItem::CacheCoAuthor(i));
+            }
+        }
+        if self.cache.grants.is_empty() {
+            items.push(SettingItem::CacheGrantEmpty);
+        } else {
+            for i in 0..self.cache.grants.len() {
+                items.push(SettingItem::CacheGrant(i));
+            }
+        }
+        // 4. Local Settings
+        items.push(SettingItem::LocalTitle);
+        items.push(SettingItem::LocalNotes);
+        if self.local_settings.co_authors.is_empty() {
+            items.push(SettingItem::LocalCoAuthorEmpty);
+        } else {
+            for i in 0..self.local_settings.co_authors.len() {
+                items.push(SettingItem::LocalCoAuthor(i));
+            }
+        }
+        if self.local_settings.grants.is_empty() {
+            items.push(SettingItem::LocalGrantEmpty);
+        } else {
+            for i in 0..self.local_settings.grants.len() {
+                items.push(SettingItem::LocalGrant(i));
+            }
+        }
+        items
     }
 
     pub fn reload_paper_draft(&mut self) {
@@ -250,6 +368,11 @@ impl App {
             InputMode::ModalPicker => self.handle_modal_picker_mode(key),
             InputMode::ModalAddAuthor => self.handle_modal_add_author_mode(key),
             InputMode::ModalAddGrant => self.handle_modal_add_grant_mode(key),
+            InputMode::ModalAddSourceLink => self.handle_modal_add_source_link_mode(key),
+            InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
+            InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
+            InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
+            InputMode::ReadingSourceMd => self.handle_reading_source_md_mode(key),
         }
     }
 
@@ -280,15 +403,19 @@ impl App {
             }
             KeyCode::Char('1') => self.active_tab = ActiveTab::Dashboard,
             KeyCode::Char('2') => self.active_tab = ActiveTab::PaperDraft,
-            KeyCode::Char('3') => self.active_tab = ActiveTab::GlobalSettings,
-            KeyCode::Char('4') => self.active_tab = ActiveTab::LocalSettings,
-            KeyCode::Char('5') => self.active_tab = ActiveTab::CoAuthorCache,
-            KeyCode::Char('6') => self.active_tab = ActiveTab::GrantCache,
-            KeyCode::Char('7') => self.active_tab = ActiveTab::RagSettings,
+            KeyCode::Char('3') => self.active_tab = ActiveTab::Sources,
+            KeyCode::Char('4') => self.active_tab = ActiveTab::Settings,
 
             KeyCode::Char('s') => self.save_all(),
             KeyCode::Char('v') => {
-                if self.active_tab == ActiveTab::PaperDraft || self.project_root.is_some() {
+                if self.active_tab == ActiveTab::Sources {
+                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                        let doc_id = self.sources[self.selected_source_index].id.clone();
+                        let filename = self.sources[self.selected_source_index].filename.clone();
+                        let ref_text = self.sources[self.selected_source_index].references_text.clone();
+                        self.load_and_view_references(&doc_id, &filename, ref_text.as_deref());
+                    }
+                } else if self.active_tab == ActiveTab::PaperDraft || self.project_root.is_some() {
                     self.pending_external_editor = true;
                     self.status_message = "Launching external editor ($EDITOR / nvim / helix)...".to_string();
                 }
@@ -297,11 +424,15 @@ impl App {
             KeyCode::PageUp => {
                 if self.active_tab == ActiveTab::PaperDraft {
                     self.paper_scroll_offset = self.paper_scroll_offset.saturating_sub(5);
+                } else if self.active_tab == ActiveTab::Sources {
+                    self.source_scroll_offset = self.source_scroll_offset.saturating_sub(5);
                 }
             }
             KeyCode::PageDown => {
                 if self.active_tab == ActiveTab::PaperDraft {
                     self.paper_scroll_offset += 5;
+                } else if self.active_tab == ActiveTab::Sources {
+                    self.source_scroll_offset += 5;
                 }
             }
 
@@ -313,29 +444,15 @@ impl App {
                         self.paper_scroll_offset = 0;
                     }
                 }
-                ActiveTab::GlobalSettings => {
-                    if self.selected_global_field > 0 {
-                        self.selected_global_field -= 1;
+                ActiveTab::Sources => {
+                    if self.selected_source_index > 0 {
+                        self.selected_source_index -= 1;
+                        self.source_scroll_offset = 0;
                     }
                 }
-                ActiveTab::LocalSettings => {
-                    if self.selected_local_field > 0 {
-                        self.selected_local_field -= 1;
-                    }
-                }
-                ActiveTab::CoAuthorCache => {
-                    if self.cache_coauthor_index > 0 {
-                        self.cache_coauthor_index -= 1;
-                    }
-                }
-                ActiveTab::GrantCache => {
-                    if self.cache_grant_index > 0 {
-                        self.cache_grant_index -= 1;
-                    }
-                }
-                ActiveTab::RagSettings => {
-                    if self.selected_rag_field > 0 {
-                        self.selected_rag_field -= 1;
+                ActiveTab::Settings => {
+                    if self.selected_setting_index > 0 {
+                        self.selected_setting_index -= 1;
                     }
                 }
             },
@@ -349,144 +466,253 @@ impl App {
                         self.paper_scroll_offset = 0;
                     }
                 }
-                ActiveTab::GlobalSettings => {
-                    if self.selected_global_field + 1 < GlobalField::ALL.len() {
-                        self.selected_global_field += 1;
-                    }
-                }
-                ActiveTab::LocalSettings => {
-                    if self.selected_local_field + 1 < LocalField::ALL.len() {
-                        self.selected_local_field += 1;
-                    }
-                }
-
-                ActiveTab::CoAuthorCache => {
-                    if !self.cache.co_authors.is_empty()
-                        && self.cache_coauthor_index + 1 < self.cache.co_authors.len()
+                ActiveTab::Sources => {
+                    if !self.sources.is_empty()
+                        && self.selected_source_index + 1 < self.sources.len()
                     {
-                        self.cache_coauthor_index += 1;
+                        self.selected_source_index += 1;
+                        self.source_scroll_offset = 0;
                     }
                 }
-                ActiveTab::GrantCache => {
-                    if !self.cache.grants.is_empty()
-                        && self.cache_grant_index + 1 < self.cache.grants.len()
-                    {
-                        self.cache_grant_index += 1;
-                    }
-                }
-                ActiveTab::RagSettings => {
-                    if self.selected_rag_field + 1 < RagField::ALL.len() {
-                        self.selected_rag_field += 1;
+                ActiveTab::Settings => {
+                    let total = self.setting_items().len();
+                    if total > 0 && self.selected_setting_index + 1 < total {
+                        self.selected_setting_index += 1;
                     }
                 }
             },
-            KeyCode::Enter | KeyCode::Char('e') => self.start_editing_selected_field(),
-
-            // Actions for Co-Authors / Grants
-            KeyCode::Char('a') => match self.active_tab {
-                ActiveTab::LocalSettings => {
-                    if self.selected_local_field == LocalField::CoAuthorsList as usize {
-                        if !self.cache.co_authors.is_empty() {
-                            self.input_mode = InputMode::ModalPicker;
-                            self.status_message = "Select co-author from cache (↑/↓ to navigate, Enter to select, Esc to cancel)".to_string();
-                        } else {
-                            self.new_author = AuthorDetails::default();
-                            self.modal_field_index = 0;
-                            self.input_mode = InputMode::ModalAddAuthor;
-                        }
-                    } else if self.selected_local_field == LocalField::GrantsList as usize {
-                        if !self.cache.grants.is_empty() {
-                            self.input_mode = InputMode::ModalPicker;
-                            self.status_message = "Select grant from cache (↑/↓ to navigate, Enter to select, Esc to cancel)".to_string();
-                        } else {
-                            self.new_grant = GrantDetails::default();
-                            self.modal_field_index = 0;
-                            self.input_mode = InputMode::ModalAddGrant;
-                        }
+            KeyCode::Enter => match self.active_tab {
+                ActiveTab::PaperDraft => self.start_editing_selected_field(),
+                ActiveTab::Sources => {
+                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                        let doc = &self.sources[self.selected_source_index];
+                        let content = self.fetch_source_markdown_content(doc);
+                        self.reading_md_content = Some(content);
+                        self.input_mode = InputMode::ReadingSourceMd;
+                        self.source_scroll_offset = 0;
+                        self.status_message = format!("Reading {}. Press Esc to exit.", doc.filename);
                     }
                 }
-                ActiveTab::CoAuthorCache => {
-                    self.new_author = AuthorDetails::default();
-                    self.modal_field_index = 0;
-                    self.input_mode = InputMode::ModalAddAuthor;
+                ActiveTab::Settings => self.start_editing_selected_field(),
+                _ => {}
+            },
+            KeyCode::Char('e') => self.start_editing_selected_field(),
+
+            // Actions for Sources & Settings
+            KeyCode::Char('a') => match self.active_tab {
+                ActiveTab::Sources => {
+                    self.new_source_link_buffer.clear();
+                    self.input_mode = InputMode::ModalAddSourceLink;
+                    self.status_message =
+                        "Enter URL / DOI / arXiv link to fetch (Enter to submit, Esc to cancel)"
+                            .to_string();
                 }
-                ActiveTab::GrantCache => {
-                    self.new_grant = GrantDetails::default();
-                    self.modal_field_index = 0;
-                    self.input_mode = InputMode::ModalAddGrant;
+                ActiveTab::Settings => {
+                    let items = self.setting_items();
+                    if self.selected_setting_index < items.len() {
+                        match items[self.selected_setting_index] {
+                            SettingItem::CacheCoAuthor(_) | SettingItem::CacheCoAuthorEmpty => {
+                                self.new_author = AuthorDetails::default();
+                                self.modal_field_index = 0;
+                                self.input_mode = InputMode::ModalAddAuthor;
+                            }
+                            SettingItem::CacheGrant(_) | SettingItem::CacheGrantEmpty => {
+                                self.new_grant = GrantDetails::default();
+                                self.modal_field_index = 0;
+                                self.input_mode = InputMode::ModalAddGrant;
+                            }
+                            SettingItem::LocalCoAuthor(_) | SettingItem::LocalCoAuthorEmpty => {
+                                if !self.cache.co_authors.is_empty() {
+                                    self.selected_local_field = LocalField::CoAuthorsList as usize;
+                                    self.input_mode = InputMode::ModalPicker;
+                                    self.status_message = "Select co-author from cache (↑/↓ to navigate, Enter to select, Esc to cancel)".to_string();
+                                } else {
+                                    self.new_author = AuthorDetails::default();
+                                    self.modal_field_index = 0;
+                                    self.input_mode = InputMode::ModalAddAuthor;
+                                }
+                            }
+                            SettingItem::LocalGrant(_) | SettingItem::LocalGrantEmpty => {
+                                if !self.cache.grants.is_empty() {
+                                    self.selected_local_field = LocalField::GrantsList as usize;
+                                    self.input_mode = InputMode::ModalPicker;
+                                    self.status_message = "Select grant from cache (↑/↓ to navigate, Enter to select, Esc to cancel)".to_string();
+                                } else {
+                                    self.new_grant = GrantDetails::default();
+                                    self.modal_field_index = 0;
+                                    self.input_mode = InputMode::ModalAddGrant;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                 }
                 _ => {}
             },
+            KeyCode::Char('r') => {
+                if self.active_tab == ActiveTab::Sources
+                    && !self.sources.is_empty()
+                    && self.selected_source_index < self.sources.len()
+                {
+                    let doc = &self.sources[self.selected_source_index];
+                    self.rename_source_buffer =
+                        doc.title.clone().unwrap_or_else(|| doc.filename.clone());
+                    self.input_mode = InputMode::ModalRenameSource;
+                    self.status_message =
+                        "Enter new title for source (Enter to confirm, Esc to cancel)".to_string();
+                }
+            }
             KeyCode::Char('d') | KeyCode::Delete => match self.active_tab {
-                ActiveTab::LocalSettings => {
-                    if self.selected_local_field == LocalField::CoAuthorsList as usize
-                        && !self.local_settings.co_authors.is_empty()
-                        && self.local_coauthor_index < self.local_settings.co_authors.len()
-                    {
-                        self.local_settings.co_authors.remove(self.local_coauthor_index);
-                        if self.local_coauthor_index > 0 {
-                            self.local_coauthor_index -= 1;
-                        }
-                        self.dirty = true;
-                        self.status_message = "Removed co-author from project local settings.".to_string();
-                    } else if self.selected_local_field == LocalField::GrantsList as usize
-                        && !self.local_settings.grants.is_empty()
-                        && self.local_grant_index < self.local_settings.grants.len()
-                    {
-                        self.local_settings.grants.remove(self.local_grant_index);
-                        if self.local_grant_index > 0 {
-                            self.local_grant_index -= 1;
-                        }
-                        self.dirty = true;
-                        self.status_message = "Removed grant from project local settings.".to_string();
+                ActiveTab::Sources => {
+                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                        self.input_mode = InputMode::ConfirmDeleteSource;
+                        self.status_message = format!(
+                            "Delete source '{}'? Press 'y' or Enter to confirm, 'n' or Esc to cancel.",
+                            self.sources[self.selected_source_index].filename
+                        );
                     }
                 }
-                ActiveTab::CoAuthorCache => {
-                    if !self.cache.co_authors.is_empty()
-                        && self.cache_coauthor_index < self.cache.co_authors.len()
-                    {
-                        self.cache.co_authors.remove(self.cache_coauthor_index);
-                        if self.cache_coauthor_index > 0 {
-                            self.cache_coauthor_index -= 1;
+                ActiveTab::Settings => {
+                    let items = self.setting_items();
+                    if self.selected_setting_index < items.len() {
+                        match items[self.selected_setting_index] {
+                            SettingItem::CacheCoAuthor(idx) => {
+                                if idx < self.cache.co_authors.len() {
+                                    self.cache.co_authors.remove(idx);
+                                    self.dirty = true;
+                                    self.status_message = "Removed co-author from cache.".to_string();
+                                }
+                            }
+                            SettingItem::CacheGrant(idx) => {
+                                if idx < self.cache.grants.len() {
+                                    self.cache.grants.remove(idx);
+                                    self.dirty = true;
+                                    self.status_message = "Removed grant from cache.".to_string();
+                                }
+                            }
+                            SettingItem::LocalCoAuthor(idx) => {
+                                if idx < self.local_settings.co_authors.len() {
+                                    self.local_settings.co_authors.remove(idx);
+                                    self.dirty = true;
+                                    self.status_message = "Removed co-author from local settings.".to_string();
+                                }
+                            }
+                            SettingItem::LocalGrant(idx) => {
+                                if idx < self.local_settings.grants.len() {
+                                    self.local_settings.grants.remove(idx);
+                                    self.dirty = true;
+                                    self.status_message = "Removed grant from local settings.".to_string();
+                                }
+                            }
+                            _ => {}
                         }
-                        self.dirty = true;
-                        self.status_message = "Removed co-author from cache.".to_string();
-                    }
-                }
-                ActiveTab::GrantCache => {
-                    if !self.cache.grants.is_empty()
-                        && self.cache_grant_index < self.cache.grants.len()
-                    {
-                        self.cache.grants.remove(self.cache_grant_index);
-                        if self.cache_grant_index > 0 {
-                            self.cache_grant_index -= 1;
+                        let total = self.setting_items().len();
+                        if self.selected_setting_index >= total && total > 0 {
+                            self.selected_setting_index = total - 1;
                         }
-                        self.dirty = true;
-                        self.status_message = "Removed grant from cache.".to_string();
                     }
                 }
                 _ => {}
             },
             KeyCode::Char('u') => {
-                // Use selected cache item in local settings
-                if self.active_tab == ActiveTab::CoAuthorCache && !self.cache.co_authors.is_empty() {
-                    let author = self.cache.co_authors[self.cache_coauthor_index].clone();
-                    if !self.local_settings.co_authors.contains(&author) {
-                        self.local_settings.co_authors.push(author);
-                        self.dirty = true;
-                        self.status_message = "Added cached co-author to local project!".to_string();
-                    }
-                } else if self.active_tab == ActiveTab::GrantCache && !self.cache.grants.is_empty() {
-                    let grant = self.cache.grants[self.cache_grant_index].clone();
-                    if !self.local_settings.grants.contains(&grant) {
-                        self.local_settings.grants.push(grant);
-                        self.dirty = true;
-                        self.status_message = "Added cached grant to local project!".to_string();
+                if self.active_tab == ActiveTab::Settings {
+                    let items = self.setting_items();
+                    if self.selected_setting_index < items.len() {
+                        match items[self.selected_setting_index] {
+                            SettingItem::CacheCoAuthor(idx) => {
+                                if idx < self.cache.co_authors.len() {
+                                    let author = self.cache.co_authors[idx].clone();
+                                    if !self.local_settings.co_authors.contains(&author) {
+                                        self.local_settings.co_authors.push(author);
+                                        self.dirty = true;
+                                        self.status_message = "Added cached co-author to local project!".to_string();
+                                    }
+                                }
+                            }
+                            SettingItem::CacheGrant(idx) => {
+                                if idx < self.cache.grants.len() {
+                                    let grant = self.cache.grants[idx].clone();
+                                    if !self.local_settings.grants.contains(&grant) {
+                                        self.local_settings.grants.push(grant);
+                                        self.dirty = true;
+                                        self.status_message = "Added cached grant to local project!".to_string();
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
                     }
                 }
             }
             _ => {}
         }
+    }
+
+    fn fetch_source_markdown_content(&self, doc: &SourceDocument) -> String {
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                if let Ok(Some((_, content))) = db.get_source_content(doc.id.as_str()) {
+                    if !content.trim().is_empty() {
+                        return content;
+                    }
+                }
+                if let Ok(Some((_, content))) = db.get_source_content(&doc.filename) {
+                    if !content.trim().is_empty() {
+                        return content;
+                    }
+                }
+            }
+        }
+        if doc.path.is_file() {
+            if let Ok(c) = std::fs::read_to_string(doc.path.as_std_path()) {
+                return c;
+            }
+        }
+        format!(
+            "# {}\n\n{}",
+            doc.title.as_deref().unwrap_or(&doc.filename),
+            doc.abstract_text.as_deref().unwrap_or("No markdown content available for this source.")
+        )
+    }
+
+    fn load_and_view_references(
+        &mut self,
+        doc_id: &sil_core::SourceId,
+        filename: &str,
+        references_text: Option<&str>,
+    ) {
+        let mut refs = Vec::new();
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                if let Ok(r) = db.get_references_for_source(doc_id) {
+                    refs = r;
+                }
+            }
+        }
+        if refs.is_empty() {
+            if let Some(rt) = references_text {
+                for (idx, line) in rt.lines().enumerate() {
+                    let clean = line.trim();
+                    if !clean.is_empty() {
+                        refs.push(ReferenceEntry {
+                            id: format!("{}_ref_{}", filename, idx + 1),
+                            source_id: doc_id.clone(),
+                            ref_index: idx + 1,
+                            raw_text: clean.to_string(),
+                            title: None,
+                            authors: None,
+                            year: None,
+                            doi: None,
+                        });
+                    }
+                }
+            }
+        }
+        self.selected_source_references = refs;
+        self.input_mode = InputMode::ViewingSourceRefs;
+        self.status_message = format!("Viewing references for {filename}. Press Esc to exit.");
     }
 
     fn start_editing_selected_field(&mut self) {
@@ -504,45 +730,52 @@ impl App {
                 self.status_message =
                     "Editing section body. Press Enter to confirm, Esc to cancel.".to_string();
             }
-            ActiveTab::GlobalSettings => {
-                self.input_buffer = match GlobalField::ALL[self.selected_global_field] {
-                    GlobalField::AuthorName => self.global_settings.author.name.clone(),
-                    GlobalField::AuthorEmail => self.global_settings.author.email.clone(),
-                    GlobalField::AuthorAffiliation => self.global_settings.author.affiliation.clone(),
-                    GlobalField::AuthorOrcid => self.global_settings.author.orcid.clone().unwrap_or_default(),
-                    GlobalField::GrantFunder => self.global_settings.default_grant.funder.clone(),
-                    GlobalField::GrantNumber => self.global_settings.default_grant.grant_number.clone(),
-                    GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment.clone(),
-                    GlobalField::Engine => self.global_settings.default_latex_engine.clone(),
-                    GlobalField::Template => self.global_settings.default_template.clone(),
-                };
-                self.input_mode = InputMode::Editing;
-                self.status_message = "Editing field. Press Enter to confirm, Esc to cancel.".to_string();
-            }
-            ActiveTab::LocalSettings => {
-                if self.selected_local_field == LocalField::Title as usize {
-                    self.input_buffer = self.local_settings.title.clone();
-                    self.input_mode = InputMode::Editing;
-                    self.status_message = "Editing project title. Press Enter to confirm, Esc to cancel.".to_string();
-                } else if self.selected_local_field == LocalField::Notes as usize {
-                    self.input_buffer = self.local_settings.notes.clone();
-                    self.input_mode = InputMode::Editing;
-                    self.status_message = "Editing project notes. Press Enter to confirm, Esc to cancel.".to_string();
+            ActiveTab::Settings => {
+                let items = self.setting_items();
+                if self.selected_setting_index < items.len() {
+                    match items[self.selected_setting_index] {
+                        SettingItem::Global(f) => {
+                            self.input_buffer = match f {
+                                GlobalField::AuthorName => self.global_settings.author.name.clone(),
+                                GlobalField::AuthorEmail => self.global_settings.author.email.clone(),
+                                GlobalField::AuthorAffiliation => self.global_settings.author.affiliation.clone(),
+                                GlobalField::AuthorOrcid => self.global_settings.author.orcid.clone().unwrap_or_default(),
+                                GlobalField::GrantFunder => self.global_settings.default_grant.funder.clone(),
+                                GlobalField::GrantNumber => self.global_settings.default_grant.grant_number.clone(),
+                                GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment.clone(),
+                                GlobalField::Engine => self.global_settings.default_latex_engine.clone(),
+                                GlobalField::Template => self.global_settings.default_template.clone(),
+                            };
+                            self.input_mode = InputMode::Editing;
+                            self.status_message = "Editing global setting. Press Enter to confirm, Esc to cancel.".to_string();
+                        }
+                        SettingItem::Rag(f) => {
+                            self.input_buffer = match f {
+                                RagField::EmbedderPath => self.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                                RagField::RerankerPath => self.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                                RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
+                                RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
+                                RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
+                                RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
+                                RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
+                                RagField::ChildChunkSize => self.global_settings.rag.child_chunk_size.to_string(),
+                            };
+                            self.input_mode = InputMode::Editing;
+                            self.status_message = "Editing RAG setting. Press Enter to confirm, Esc to cancel.".to_string();
+                        }
+                        SettingItem::LocalTitle => {
+                            self.input_buffer = self.local_settings.title.clone();
+                            self.input_mode = InputMode::Editing;
+                            self.status_message = "Editing project title. Press Enter to confirm, Esc to cancel.".to_string();
+                        }
+                        SettingItem::LocalNotes => {
+                            self.input_buffer = self.local_settings.notes.clone();
+                            self.input_mode = InputMode::Editing;
+                            self.status_message = "Editing project notes. Press Enter to confirm, Esc to cancel.".to_string();
+                        }
+                        _ => {}
+                    }
                 }
-            }
-            ActiveTab::RagSettings => {
-                self.input_buffer = match RagField::ALL[self.selected_rag_field] {
-                    RagField::EmbedderPath => self.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                    RagField::RerankerPath => self.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                    RagField::ModelsDir => self.global_settings.rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default(),
-                    RagField::CacheDir => self.global_settings.rag.model_cache_dir.to_string(),
-                    RagField::ExecutionProvider => self.global_settings.rag.execution_provider.clone(),
-                    RagField::NumThreads => self.global_settings.rag.num_threads.to_string(),
-                    RagField::ParentChunkSize => self.global_settings.rag.parent_chunk_size.to_string(),
-                    RagField::ChildChunkSize => self.global_settings.rag.child_chunk_size.to_string(),
-                };
-                self.input_mode = InputMode::Editing;
-                self.status_message = "Editing RAG setting. Press Enter to confirm, Esc to cancel.".to_string();
             }
             _ => {}
         }
@@ -617,62 +850,58 @@ impl App {
 
     fn commit_edited_field(&mut self) {
         let val = self.input_buffer.trim().to_string();
-        match self.active_tab {
-            ActiveTab::GlobalSettings => {
-                match GlobalField::ALL[self.selected_global_field] {
-                    GlobalField::AuthorName => self.global_settings.author.name = val,
-                    GlobalField::AuthorEmail => self.global_settings.author.email = val,
-                    GlobalField::AuthorAffiliation => self.global_settings.author.affiliation = val,
-                    GlobalField::AuthorOrcid => {
-                        self.global_settings.author.orcid = if val.is_empty() { None } else { Some(val) }
-                    }
-                    GlobalField::GrantFunder => self.global_settings.default_grant.funder = val,
-                    GlobalField::GrantNumber => self.global_settings.default_grant.grant_number = val,
-                    GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment = val,
-                    GlobalField::Engine => self.global_settings.default_latex_engine = val,
-                    GlobalField::Template => self.global_settings.default_template = val,
+        if self.active_tab == ActiveTab::Settings {
+            let items = self.setting_items();
+            if self.selected_setting_index < items.len() {
+                match items[self.selected_setting_index] {
+                    SettingItem::Global(f) => match f {
+                        GlobalField::AuthorName => self.global_settings.author.name = val,
+                        GlobalField::AuthorEmail => self.global_settings.author.email = val,
+                        GlobalField::AuthorAffiliation => self.global_settings.author.affiliation = val,
+                        GlobalField::AuthorOrcid => {
+                            self.global_settings.author.orcid = if val.is_empty() { None } else { Some(val) }
+                        }
+                        GlobalField::GrantFunder => self.global_settings.default_grant.funder = val,
+                        GlobalField::GrantNumber => self.global_settings.default_grant.grant_number = val,
+                        GlobalField::GrantAck => self.global_settings.default_grant.acknowledgment = val,
+                        GlobalField::Engine => self.global_settings.default_latex_engine = val,
+                        GlobalField::Template => self.global_settings.default_template = val,
+                    },
+                    SettingItem::Rag(f) => match f {
+                        RagField::EmbedderPath => {
+                            let resolved = resolve_onnx_from_dir(&val);
+                            self.global_settings.rag.onnx_embedder_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                        }
+                        RagField::RerankerPath => {
+                            let resolved = resolve_onnx_from_dir(&val);
+                            self.global_settings.rag.onnx_reranker_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
+                        }
+                        RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
+                        RagField::ModelsDir => {
+                            self.global_settings.rag.onnx_models_dir = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
+                        }
+                        RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
+                        RagField::NumThreads => {
+                            if let Ok(n) = val.parse::<usize>() {
+                                self.global_settings.rag.num_threads = n;
+                            }
+                        }
+                        RagField::ParentChunkSize => {
+                            if let Ok(n) = val.parse::<usize>() {
+                                self.global_settings.rag.parent_chunk_size = n;
+                            }
+                        }
+                        RagField::ChildChunkSize => {
+                            if let Ok(n) = val.parse::<usize>() {
+                                self.global_settings.rag.child_chunk_size = n;
+                            }
+                        }
+                    },
+                    SettingItem::LocalTitle => self.local_settings.title = val,
+                    SettingItem::LocalNotes => self.local_settings.notes = val,
+                    _ => {}
                 }
             }
-            ActiveTab::LocalSettings => {
-                if self.selected_local_field == LocalField::Title as usize {
-                    self.local_settings.title = val;
-                } else if self.selected_local_field == LocalField::Notes as usize {
-                    self.local_settings.notes = val;
-                }
-            }
-            ActiveTab::RagSettings => {
-                match RagField::ALL[self.selected_rag_field] {
-                    RagField::EmbedderPath => {
-                        let resolved = resolve_onnx_from_dir(&val);
-                        self.global_settings.rag.onnx_embedder_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
-                    }
-                    RagField::RerankerPath => {
-                        let resolved = resolve_onnx_from_dir(&val);
-                        self.global_settings.rag.onnx_reranker_path = if resolved.is_empty() { None } else { Some(camino::Utf8PathBuf::from(resolved)) };
-                    }
-                    RagField::CacheDir => self.global_settings.rag.model_cache_dir = camino::Utf8PathBuf::from(val),
-                    RagField::ModelsDir => {
-                        self.global_settings.rag.onnx_models_dir = if val.is_empty() { None } else { Some(camino::Utf8PathBuf::from(val)) };
-                    }
-                    RagField::ExecutionProvider => self.global_settings.rag.execution_provider = val,
-                    RagField::NumThreads => {
-                        if let Ok(n) = val.parse::<usize>() {
-                            self.global_settings.rag.num_threads = n;
-                        }
-                    }
-                    RagField::ParentChunkSize => {
-                        if let Ok(n) = val.parse::<usize>() {
-                            self.global_settings.rag.parent_chunk_size = n;
-                        }
-                    }
-                    RagField::ChildChunkSize => {
-                        if let Ok(n) = val.parse::<usize>() {
-                            self.global_settings.rag.child_chunk_size = n;
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
     }
 
@@ -719,7 +948,6 @@ impl App {
                 self.status_message = "Added from cache to local project settings!".to_string();
             }
             KeyCode::Char('n') => {
-                // Switch to manually adding new item
                 if self.selected_local_field == LocalField::CoAuthorsList as usize {
                     self.new_author = AuthorDetails::default();
                     self.modal_field_index = 0;
@@ -750,10 +978,7 @@ impl App {
                 if !self.new_author.name.trim().is_empty() {
                     let author = self.new_author.clone();
                     self.cache.remember_co_author(author.clone());
-                    if (self.active_tab == ActiveTab::LocalSettings
-                        || self.selected_local_field == LocalField::CoAuthorsList as usize)
-                        && !self.local_settings.co_authors.contains(&author)
-                    {
+                    if !self.local_settings.co_authors.contains(&author) {
                         self.local_settings.co_authors.push(author);
                     }
                     self.dirty = true;
@@ -811,10 +1036,7 @@ impl App {
                 if !self.new_grant.funder.trim().is_empty() || !self.new_grant.grant_number.trim().is_empty() {
                     let grant = self.new_grant.clone();
                     self.cache.remember_grant(grant.clone());
-                    if (self.active_tab == ActiveTab::LocalSettings
-                        || self.selected_local_field == LocalField::GrantsList as usize)
-                        && !self.local_settings.grants.contains(&grant)
-                    {
+                    if !self.local_settings.grants.contains(&grant) {
                         self.local_settings.grants.push(grant);
                     }
                     self.dirty = true;
@@ -839,6 +1061,153 @@ impl App {
                     _ => &mut self.new_grant.acknowledgment,
                 };
                 target.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_modal_add_source_link_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Add source cancelled.".to_string();
+            }
+            KeyCode::Enter => {
+                let link = self.new_source_link_buffer.trim().to_string();
+                if !link.is_empty() {
+                    if let Some(ref root) = self.project_root {
+                        let paths = ProjectPaths::new(root);
+                        let sources_dir = root.join("sources");
+                        std::fs::create_dir_all(sources_dir.as_std_path()).ok();
+                        let filename = Utf8PathBuf::from(&link)
+                            .file_name()
+                            .unwrap_or("new_source.md")
+                            .to_string();
+                        let file_path = sources_dir.join(&filename);
+                        if !file_path.exists() {
+                            let _ = std::fs::write(
+                                file_path.as_std_path(),
+                                format!("# Source: {filename}\nLink: {link}\n"),
+                            );
+                        }
+                        let doc = SourceDocument::new(file_path);
+                        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                            let _ = db.upsert_parsed(
+                                &doc,
+                                &format!("# Source: {filename}\nLink: {link}\n"),
+                            );
+                        }
+                    } else {
+                        let doc = SourceDocument::new(Utf8PathBuf::from(&link));
+                        self.sources.push(doc);
+                    }
+                    self.reload_sources();
+                    self.status_message = format!("Added source link: {link}");
+                }
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                self.new_source_link_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.new_source_link_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_modal_rename_source_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Rename cancelled.".to_string();
+            }
+            KeyCode::Enter => {
+                let new_title = self.rename_source_buffer.trim().to_string();
+                if !new_title.is_empty() && self.selected_source_index < self.sources.len() {
+                    let doc = &mut self.sources[self.selected_source_index];
+                    doc.title = Some(new_title.clone());
+                    if let Some(ref root) = self.project_root {
+                        let paths = ProjectPaths::new(root);
+                        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                            let _ = db.update_source_title(&doc.id, &new_title);
+                        }
+                    }
+                    self.dirty = true;
+                    self.status_message = format!("Renamed source title to '{new_title}'.");
+                }
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                self.rename_source_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.rename_source_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_confirm_delete_source_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('y') | KeyCode::Enter => {
+                if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                    let doc = self.sources.remove(self.selected_source_index);
+                    if let Some(ref root) = self.project_root {
+                        let paths = ProjectPaths::new(root);
+                        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                            let _ = db.remove_source(&doc.id);
+                        }
+                        if doc.path.is_file() {
+                            let _ = std::fs::remove_file(doc.path.as_std_path());
+                        }
+                    }
+                    if self.selected_source_index >= self.sources.len() && !self.sources.is_empty()
+                    {
+                        self.selected_source_index = self.sources.len() - 1;
+                    }
+                    self.dirty = true;
+                    self.status_message = format!("Deleted source '{}'.", doc.filename);
+                }
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Char('n') | KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Delete source cancelled.".to_string();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_viewing_source_refs_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.input_mode = InputMode::Normal;
+                self.selected_source_references.clear();
+                self.status_message = "Closed references window.".to_string();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_reading_source_md_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.input_mode = InputMode::Normal;
+                self.reading_md_content = None;
+                self.status_message = "Exited Markdown reader.".to_string();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.source_scroll_offset = self.source_scroll_offset.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.source_scroll_offset += 1;
+            }
+            KeyCode::PageUp => {
+                self.source_scroll_offset = self.source_scroll_offset.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                self.source_scroll_offset += 10;
             }
             _ => {}
         }
@@ -920,15 +1289,9 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::PaperDraft);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        assert_eq!(app.active_tab, ActiveTab::Sources);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::LocalSettings);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::GrantCache);
-        app.handle_key(KeyEvent::from(KeyCode::Tab));
-        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        assert_eq!(app.active_tab, ActiveTab::Settings);
         app.handle_key(KeyEvent::from(KeyCode::Tab));
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
     }
@@ -936,7 +1299,11 @@ mod tests {
     #[test]
     fn add_and_use_coauthor_flow() {
         let mut app = App::new(None);
-        app.active_tab = ActiveTab::CoAuthorCache;
+        app.active_tab = ActiveTab::Settings;
+        let items = app.setting_items();
+        let cache_coauthor_idx = items.iter().position(|it| matches!(it, SettingItem::CacheCoAuthorEmpty | SettingItem::CacheCoAuthor(_))).unwrap();
+        app.selected_setting_index = cache_coauthor_idx;
+
         app.handle_key(KeyEvent::from(KeyCode::Char('a')));
         assert_eq!(app.input_mode, InputMode::ModalAddAuthor);
 
@@ -948,9 +1315,6 @@ mod tests {
 
         assert_eq!(app.cache.co_authors.len(), 1);
         assert_eq!(app.cache.co_authors[0].name, "Dr. Smith");
-
-        // Use in local project
-        app.handle_key(KeyEvent::from(KeyCode::Char('u')));
         assert_eq!(app.local_settings.co_authors.len(), 1);
         assert_eq!(app.local_settings.co_authors[0].name, "Dr. Smith");
     }
@@ -963,15 +1327,9 @@ mod tests {
         app.handle_key(KeyEvent::from(KeyCode::Char('2')));
         assert_eq!(app.active_tab, ActiveTab::PaperDraft);
         app.handle_key(KeyEvent::from(KeyCode::Char('3')));
-        assert_eq!(app.active_tab, ActiveTab::GlobalSettings);
+        assert_eq!(app.active_tab, ActiveTab::Sources);
         app.handle_key(KeyEvent::from(KeyCode::Char('4')));
-        assert_eq!(app.active_tab, ActiveTab::LocalSettings);
-        app.handle_key(KeyEvent::from(KeyCode::Char('5')));
-        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
-        app.handle_key(KeyEvent::from(KeyCode::Char('6')));
-        assert_eq!(app.active_tab, ActiveTab::GrantCache);
-        app.handle_key(KeyEvent::from(KeyCode::Char('7')));
-        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        assert_eq!(app.active_tab, ActiveTab::Settings);
     }
 
     #[test]
@@ -979,125 +1337,94 @@ mod tests {
         let mut app = App::new(None);
         assert_eq!(app.active_tab, ActiveTab::Dashboard);
         app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::RagSettings);
+        assert_eq!(app.active_tab, ActiveTab::Settings);
         app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::GrantCache);
+        assert_eq!(app.active_tab, ActiveTab::Sources);
         app.handle_key(KeyEvent::from(KeyCode::BackTab));
-        assert_eq!(app.active_tab, ActiveTab::CoAuthorCache);
+        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
     }
 
     #[test]
-    fn test_rag_settings_tui_editing() {
-        let mut app = App::new(None);
-        app.handle_key(KeyEvent::from(KeyCode::Char('7')));
-        assert_eq!(app.active_tab, ActiveTab::RagSettings);
-        assert_eq!(app.selected_rag_field, 0);
+    fn test_sources_tab_add_rename_delete_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let mut app = App::new(Some(root));
 
-        // Edit embedder path (field 0)
+        // Switch to Sources tab
+        app.handle_key(KeyEvent::from(KeyCode::Char('3')));
+        assert_eq!(app.active_tab, ActiveTab::Sources);
+
+        // Add source via link ('a')
+        app.handle_key(KeyEvent::from(KeyCode::Char('a')));
+        assert_eq!(app.input_mode, InputMode::ModalAddSourceLink);
+        for c in "https://arxiv.org/pdf/2401.00001.pdf".chars() {
+            app.handle_key(KeyEvent::from(KeyCode::Char(c)));
+        }
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(!app.sources.is_empty());
+
+        // Rename title ('r')
+        app.handle_key(KeyEvent::from(KeyCode::Char('r')));
+        assert_eq!(app.input_mode, InputMode::ModalRenameSource);
+        app.rename_source_buffer = "Attention Paper".to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert_eq!(app.sources[0].title.as_deref(), Some("Attention Paper"));
+
+        // Read Markdown (Enter)
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+        assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+        assert!(app.reading_md_content.is_some());
+        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
+        assert_eq!(app.source_scroll_offset, 1);
+        app.handle_key(KeyEvent::from(KeyCode::Esc));
+        assert_eq!(app.input_mode, InputMode::Normal);
+
+        // View References ('v')
+        app.handle_key(KeyEvent::from(KeyCode::Char('v')));
+        assert_eq!(app.input_mode, InputMode::ViewingSourceRefs);
+        app.handle_key(KeyEvent::from(KeyCode::Esc));
+        assert_eq!(app.input_mode, InputMode::Normal);
+
+        // Delete source ('d')
+        app.handle_key(KeyEvent::from(KeyCode::Char('d')));
+        assert_eq!(app.input_mode, InputMode::ConfirmDeleteSource);
+        app.handle_key(KeyEvent::from(KeyCode::Char('y')));
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(app.sources.is_empty());
+    }
+
+    #[test]
+    fn test_unified_settings_navigation_and_editing() {
+        let mut app = App::new(None);
+        app.handle_key(KeyEvent::from(KeyCode::Char('4')));
+        assert_eq!(app.active_tab, ActiveTab::Settings);
+        assert_eq!(app.selected_setting_index, 0);
+
+        // Edit first global field (AuthorName)
         app.handle_key(KeyEvent::from(KeyCode::Char('e')));
         assert_eq!(app.input_mode, InputMode::Editing);
-        app.input_buffer = "/tmp/my_models/embedder.onnx".to_string();
+        app.input_buffer = "Alice Turing".to_string();
+        app.handle_key(KeyEvent::from(KeyCode::Enter));
+
+        assert_eq!(app.global_settings.author.name, "Alice Turing");
+        assert!(app.dirty);
+
+        // Move down to RAG field
+        let items = app.setting_items();
+        let rag_embedder_idx = items.iter().position(|it| matches!(it, SettingItem::Rag(RagField::EmbedderPath))).unwrap();
+        app.selected_setting_index = rag_embedder_idx;
+
+        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
+        assert_eq!(app.input_mode, InputMode::Editing);
+        app.input_buffer = "/tmp/models/embedder.onnx".to_string();
         app.handle_key(KeyEvent::from(KeyCode::Enter));
 
         assert_eq!(
             app.global_settings.rag.onnx_embedder_path.as_ref().map(|p| p.as_str()),
-            Some("/tmp/my_models/embedder.onnx")
+            Some("/tmp/models/embedder.onnx")
         );
-        assert!(app.dirty);
-
-        // Move to num_threads (field 5 in 8-element list)
-        for _ in 0..5 {
-            app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        }
-        assert_eq!(app.selected_rag_field, RagField::NumThreads as usize);
-
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-        app.input_buffer = "12".to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(app.global_settings.rag.num_threads, 12);
-    }
-
-    #[test]
-    fn test_rag_settings_directory_onnx_resolution() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let model_file = temp_dir.path().join("my_custom_reranker.onnx");
-        std::fs::write(&model_file, b"dummy onnx content").unwrap();
-
-        let mut app = App::new(None);
-        app.active_tab = ActiveTab::RagSettings;
-        app.selected_rag_field = RagField::RerankerPath as usize;
-
-        app.input_mode = InputMode::Editing;
-        app.input_buffer = temp_dir.path().to_string_lossy().to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(
-            app.global_settings.rag.onnx_reranker_path.as_ref().map(|p| p.as_path()),
-            Some(camino::Utf8Path::new(model_file.to_str().unwrap()))
-        );
-    }
-
-    #[test]
-    fn test_dashboard_quit_signal() {
-        let mut app = App::new(None);
-        app.active_tab = ActiveTab::Dashboard;
-        app.handle_key(KeyEvent::from(KeyCode::Char('q')));
-        assert!(app.should_quit);
-    }
-
-    #[test]
-    fn test_paper_draft_reading_and_editing() {
-        let dir = tempfile::tempdir().unwrap();
-        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        let draft_path = root.join("paper_draft.tex");
-
-        let initial_tex = r#"\documentclass{article}
-\begin{document}
-\section{Introduction}
-Intro text here.
-
-% # -- X -- #
-% TODO: add ablation table
-% # -- X -- #
-
-\section{Methods}
-Original methods text.
-\end{document}
-"#;
-        std::fs::write(draft_path.as_std_path(), initial_tex).unwrap();
-
-        let mut app = App::new(Some(root.clone()));
-        assert_eq!(app.paper_sections.len(), 2);
-        assert_eq!(app.paper_sections[0].title, "Introduction");
-        assert_eq!(app.paper_sections[1].title, "Methods");
-
-        // Switch to paper draft tab
-        app.handle_key(KeyEvent::from(KeyCode::Char('2')));
-        assert_eq!(app.active_tab, ActiveTab::PaperDraft);
-
-        // Move to Methods section
-        app.handle_key(KeyEvent::from(KeyCode::Char('j')));
-        assert_eq!(app.paper_section_index, 1);
-
-        // Enter edit mode
-        app.handle_key(KeyEvent::from(KeyCode::Char('e')));
-        assert_eq!(app.input_mode, InputMode::EditingPaper);
-        assert!(app.paper_edit_buffer.contains("Original methods text."));
-
-        // Modify section text
-        app.paper_edit_buffer = "Updated methods text with new algorithm.\n".to_string();
-        app.handle_key(KeyEvent::from(KeyCode::Enter));
-
-        assert_eq!(app.input_mode, InputMode::Normal);
-        assert!(app.paper_draft_content.contains("Updated methods text with new algorithm."));
-
-        // Save app state
-        app.save_all();
-        assert!(!app.dirty);
-
-        let saved = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
-        assert!(saved.contains("Updated methods text with new algorithm."));
     }
 }
 

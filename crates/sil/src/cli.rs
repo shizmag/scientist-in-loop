@@ -249,6 +249,8 @@ pub enum TuiCmd {
     /// Launch interactive TUI command center dashboard
     #[command(alias = "daily")]
     Dashboard,
+    /// Launch interactive TUI sources manager
+    Sources,
     /// Launch interactive TUI settings manager
     Settings,
 }

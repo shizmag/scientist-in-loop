@@ -5,13 +5,12 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, Clear, List, ListItem, Paragraph,
-        Row, Table, Tabs, Wrap,
+        Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Row, Table, Tabs, Wrap,
     },
     Frame,
 };
 
-use crate::app::{ActiveTab, App, GlobalField, InputMode, LocalField, RagField};
+use crate::app::{ActiveTab, App, GlobalField, InputMode, RagField, SettingItem};
 
 /// Main UI draw loop.
 pub fn draw(frame: &mut Frame, app: &mut App) {
@@ -29,13 +28,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     match app.active_tab {
         ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
         ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
-        ActiveTab::GlobalSettings => draw_global_settings(frame, app, chunks[1]),
-        ActiveTab::LocalSettings => draw_local_settings(frame, app, chunks[1]),
-        ActiveTab::CoAuthorCache => draw_coauthor_cache(frame, app, chunks[1]),
-        ActiveTab::GrantCache => draw_grant_cache(frame, app, chunks[1]),
-        ActiveTab::RagSettings => draw_rag_settings(frame, app, chunks[1]),
+        ActiveTab::Sources => draw_sources(frame, app, chunks[1]),
+        ActiveTab::Settings => draw_settings(frame, app, chunks[1]),
     }
-
 
     draw_footer(frame, app, chunks[2]);
 
@@ -46,7 +41,11 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalPicker => draw_modal_picker(frame, app),
         InputMode::ModalAddAuthor => draw_modal_add_author(frame, app),
         InputMode::ModalAddGrant => draw_modal_add_grant(frame, app),
-        InputMode::Normal => {}
+        InputMode::ModalAddSourceLink => draw_modal_add_source_link(frame, app),
+        InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
+        InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
+        InputMode::ViewingSourceRefs => draw_viewing_source_refs(frame, app),
+        InputMode::ReadingSourceMd | InputMode::Normal => {}
     }
 }
 
@@ -78,7 +77,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Color::Blue))
                 .title(Span::styled(
-                    " 🔬 scientist-in-loop Settings ",
+                    " 🔬 scientist-in-loop ",
                     Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                 ))
                 .title_alignment(Alignment::Left)
@@ -93,361 +92,397 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(tabs, area);
 }
 
-fn draw_global_settings(frame: &mut Frame, app: &App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(area);
-
-    // Left Column: Primary Author Details
-    let orcid_str = app.global_settings.author.orcid.clone().unwrap_or_default();
-    let author_fields = [
-        ("Author Name", app.global_settings.author.name.as_str(), GlobalField::AuthorName),
-        ("Email", app.global_settings.author.email.as_str(), GlobalField::AuthorEmail),
-        ("Affiliation", app.global_settings.author.affiliation.as_str(), GlobalField::AuthorAffiliation),
-        ("ORCID iD", orcid_str.as_str(), GlobalField::AuthorOrcid),
-    ];
-
-    let mut left_items = Vec::new();
-    for (label, val, field) in author_fields {
-        let is_selected = app.selected_global_field == field as usize;
-        let prefix = if is_selected { "► " } else { "  " };
-        let style = if is_selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
+    if app.input_mode == InputMode::ReadingSourceMd {
+        let filename = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
+            &app.sources[app.selected_source_index].filename
         } else {
-            Style::default().fg(Color::Reset)
+            "Markdown Document"
         };
-
-        left_items.push(ListItem::new(Line::from(vec![
-            Span::styled(format!("{prefix}{label:<15}: "), style),
-            Span::styled(if val.is_empty() { "<none>" } else { val }, Style::default().fg(Color::Cyan)),
-        ])));
+        let content_text = app
+            .reading_md_content
+            .as_deref()
+            .unwrap_or("No markdown content loaded.");
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default().fg(Color::Cyan))
+            .title(Span::styled(
+                format!(" 📖 Reading Markdown: {filename} (Press Esc / 'q' to exit, j/k/PgUp/PgDn to scroll) "),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            ));
+        let paragraph = Paragraph::new(content_text)
+            .block(block)
+            .wrap(Wrap { trim: false })
+            .scroll((app.source_scroll_offset as u16, 0));
+        frame.render_widget(paragraph, area);
+        return;
     }
 
-    let left_block = Block::default()
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(area);
+
+    // Left column: Sources list
+    let mut items = Vec::new();
+    if app.sources.is_empty() {
+        items.push(ListItem::new(Line::from(Span::styled(
+            " (no sources found — press 'a' to add via link) ",
+            Style::default().fg(Color::DarkGray),
+        ))));
+    } else {
+        for (idx, src) in app.sources.iter().enumerate() {
+            let is_sel = idx == app.selected_source_index;
+            let prefix = if is_sel { "► " } else { "  " };
+            let style = if is_sel {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            let status_span = if src.parsed {
+                Span::styled("[✓ Parsed] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+            } else {
+                Span::styled("[Unparsed] ", Style::default().fg(Color::DarkGray))
+            };
+
+            let kind_span = Span::styled(format!("[{}] ", src.kind), Style::default().fg(Color::Magenta));
+            let name_span = Span::styled(&src.filename, style);
+
+            items.push(ListItem::new(Line::from(vec![
+                Span::styled(prefix, style),
+                status_span,
+                kind_span,
+                name_span,
+            ])));
+        }
+    }
+
+    let list_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(" 👤 Default Author Requisites ");
+        .title(" 📚 Source Documents ('a': Add Link, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
 
-    let left_list = List::new(left_items).block(left_block);
-    frame.render_widget(left_list, chunks[0]);
+    let list = List::new(items).block(list_block);
+    frame.render_widget(list, chunks[0]);
 
-    // Right Column: Default Grant & Article Defaults
-    let right_fields = [
-        ("Grant Funder", app.global_settings.default_grant.funder.as_str(), GlobalField::GrantFunder),
-        ("Grant Number", app.global_settings.default_grant.grant_number.as_str(), GlobalField::GrantNumber),
-        ("Acknowledgment", app.global_settings.default_grant.acknowledgment.as_str(), GlobalField::GrantAck),
-        ("Default Engine", app.global_settings.default_latex_engine.as_str(), GlobalField::Engine),
-        ("Default Template", app.global_settings.default_template.as_str(), GlobalField::Template),
-    ];
+    // Right column: Selected Source Metadata & Stats
+    let detail_lines = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
+        let src = &app.sources[app.selected_source_index];
+        let title_str = src.title.as_deref().unwrap_or("<Untitled>");
+        let authors_str = src.authors.as_deref().unwrap_or("-");
+        let venue_str = src.venue.as_deref().unwrap_or("-");
+        let year_str = src.year.map(|y| y.to_string()).unwrap_or_else(|| "-".to_string());
+        let doi_str = src.doi.as_deref().unwrap_or("-");
+        let abstract_str = src.abstract_text.as_deref().unwrap_or("-");
 
-    let mut right_items = Vec::new();
-    for (label, val, field) in right_fields {
-        let is_selected = app.selected_global_field == field as usize;
-        let prefix = if is_selected { "► " } else { "  " };
-        let style = if is_selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        let ref_count = if let Some(ref refs_text) = src.references_text {
+            refs_text.lines().filter(|l| !l.trim().is_empty()).count()
         } else {
-            Style::default().fg(Color::Reset)
+            0
         };
+        let word_count = abstract_str.split_whitespace().count();
 
-        right_items.push(ListItem::new(Line::from(vec![
-            Span::styled(format!("{prefix}{label:<16}: "), style),
-            Span::styled(if val.is_empty() { "<none>" } else { val }, Style::default().fg(Color::Green)),
-        ])));
-    }
+        vec![
+            Line::from(vec![
+                Span::styled("Title: ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled(title_str, Style::default().fg(Color::Yellow)),
+            ]),
+            Line::from(vec![
+                Span::styled("Filename: ", Style::default().fg(Color::Cyan)),
+                Span::raw(&src.filename),
+            ]),
+            Line::from(vec![
+                Span::styled("Path: ", Style::default().fg(Color::Cyan)),
+                Span::raw(src.path.as_str()),
+            ]),
+            Line::from(vec![
+                Span::styled("Format/Kind: ", Style::default().fg(Color::Cyan)),
+                Span::styled(src.kind.to_string(), Style::default().fg(Color::Magenta)),
+                Span::raw("  |  Status: "),
+                if src.parsed {
+                    Span::styled("[✓ Parsed]", Style::default().fg(Color::Green))
+                } else {
+                    Span::styled("On Disk / Unparsed", Style::default().fg(Color::DarkGray))
+                },
+            ]),
+            Line::from(vec![
+                Span::styled("Authors: ", Style::default().fg(Color::Cyan)),
+                Span::raw(authors_str),
+            ]),
+            Line::from(vec![
+                Span::styled("Venue/Year: ", Style::default().fg(Color::Cyan)),
+                Span::raw(format!("{venue_str} ({year_str})")),
+            ]),
+            Line::from(vec![
+                Span::styled("DOI: ", Style::default().fg(Color::Cyan)),
+                Span::raw(doi_str),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("📊 Document Statistics:", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            ]),
+            Line::from(vec![
+                Span::styled("• Abstract Word Count: ", Style::default().fg(Color::Cyan)),
+                Span::raw(word_count.to_string()),
+            ]),
+            Line::from(vec![
+                Span::styled("• Extracted References Count: ", Style::default().fg(Color::Cyan)),
+                Span::raw(ref_count.to_string()),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Abstract Preview:", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            ]),
+            Line::from(Span::styled(abstract_str, Style::default().fg(Color::Reset))),
+        ]
+    } else {
+        vec![Line::from(Span::styled(
+            "Select a source to view metadata & statistics.",
+            Style::default().fg(Color::DarkGray),
+        ))]
+    };
 
-    let right_block = Block::default()
+    let detail_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Green))
-        .title(" 📜 Grant & Article Defaults ");
+        .title(" 📄 Source Details & Statistics ");
 
-    let right_list = List::new(right_items).block(right_block);
-    frame.render_widget(right_list, chunks[1]);
+    let paragraph = Paragraph::new(detail_lines)
+        .block(detail_block)
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(paragraph, chunks[1]);
 }
 
-fn draw_rag_settings(frame: &mut Frame, app: &App, area: Rect) {
-    let rag = &app.global_settings.rag;
+fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
+    let items = app.setting_items();
+    let mut list_items = Vec::new();
 
-    let num_threads_str = rag.num_threads.to_string();
-    let parent_chunk_str = rag.parent_chunk_size.to_string();
-    let child_chunk_str = rag.child_chunk_size.to_string();
+    let mut current_section = "";
 
-    let models_dir_str = rag.onnx_models_dir.as_ref().map(|p| p.to_string()).unwrap_or_default();
-    let embedder_path_str = rag.onnx_embedder_path.as_ref().map(|p| p.to_string()).unwrap_or_default();
-    let reranker_path_str = rag.onnx_reranker_path.as_ref().map(|p| p.to_string()).unwrap_or_default();
+    let num_threads_str = app.global_settings.rag.num_threads.to_string();
+    let parent_chunk_str = app.global_settings.rag.parent_chunk_size.to_string();
+    let child_chunk_str = app.global_settings.rag.child_chunk_size.to_string();
 
-    let fields = [
-        ("ONNX Embedder Path/Dir", embedder_path_str.as_str(), RagField::EmbedderPath),
-        ("ONNX Reranker Path/Dir", reranker_path_str.as_str(), RagField::RerankerPath),
-        ("Custom ONNX Models Dir", models_dir_str.as_str(), RagField::ModelsDir),
-        ("Model Cache Dir", rag.model_cache_dir.as_str(), RagField::CacheDir),
-        ("Execution Provider", rag.execution_provider.as_str(), RagField::ExecutionProvider),
-        ("Num Threads", num_threads_str.as_str(), RagField::NumThreads),
-        ("Parent Chunk Size", parent_chunk_str.as_str(), RagField::ParentChunkSize),
-        ("Child Chunk Size", child_chunk_str.as_str(), RagField::ChildChunkSize),
-    ];
-
-    let mut items = Vec::new();
-    for (label, val, field) in fields {
-        let is_selected = app.selected_rag_field == field as usize;
-        let prefix = if is_selected { "► " } else { "  " };
-        let style = if is_selected {
+    for (flat_idx, item) in items.iter().enumerate() {
+        let is_sel = app.selected_setting_index == flat_idx;
+        let prefix = if is_sel { "► " } else { "  " };
+        let style = if is_sel {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(Color::Reset)
+            Style::default()
         };
 
-        items.push(ListItem::new(Line::from(vec![
-            Span::styled(format!("{prefix}{label:<22}: "), style),
-            Span::styled(if val.is_empty() { "<none>" } else { val }, Style::default().fg(Color::Magenta)),
-        ])));
-    }
+        let section_name = match item {
+            SettingItem::Global(_) => "Global Settings",
+            SettingItem::Rag(_) => "RAG Settings",
+            SettingItem::CacheCoAuthor(_)
+            | SettingItem::CacheCoAuthorEmpty
+            | SettingItem::CacheGrant(_)
+            | SettingItem::CacheGrantEmpty => "Co-Author & Grant Caches",
+            SettingItem::LocalTitle
+            | SettingItem::LocalNotes
+            | SettingItem::LocalCoAuthor(_)
+            | SettingItem::LocalCoAuthorEmpty
+            | SettingItem::LocalGrant(_)
+            | SettingItem::LocalGrantEmpty => "Local Project Settings",
+        };
 
-    let title_text = if let Some(ref cfg) = app.loaded_config {
-        if cfg.rag.is_some() {
-            " 🤖 ONNX & Local RAG Settings (Active: .sil/config.yaml project override) "
-        } else {
-            " 🤖 ONNX & Local RAG Settings (~/.config/sil/settings.yaml) "
+        if section_name != current_section {
+            current_section = section_name;
+            let icon = match section_name {
+                "Global Settings" => "👤",
+                "RAG Settings" => "🤖",
+                "Co-Author & Grant Caches" => "💾",
+                _ => "📄",
+            };
+            list_items.push(ListItem::new(Line::from(vec![Span::styled(
+                format!(
+                    "━━━ {icon} {section_name} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                ),
+                Style::default()
+                    .fg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+            )])));
         }
-    } else {
-        " 🤖 ONNX & Local RAG Settings (~/.config/sil/settings.yaml) "
-    };
+
+        let line = match item {
+            SettingItem::Global(f) => {
+                let (label, val) = match f {
+                    GlobalField::AuthorName => ("Author Name", app.global_settings.author.name.as_str()),
+                    GlobalField::AuthorEmail => ("Author Email", app.global_settings.author.email.as_str()),
+                    GlobalField::AuthorAffiliation => ("Author Affiliation", app.global_settings.author.affiliation.as_str()),
+                    GlobalField::AuthorOrcid => ("Author ORCID", app.global_settings.author.orcid.as_deref().unwrap_or("")),
+                    GlobalField::GrantFunder => ("Default Grant Funder", app.global_settings.default_grant.funder.as_str()),
+                    GlobalField::GrantNumber => ("Default Grant Number", app.global_settings.default_grant.grant_number.as_str()),
+                    GlobalField::GrantAck => ("Default Grant Ack", app.global_settings.default_grant.acknowledgment.as_str()),
+                    GlobalField::Engine => ("Default LaTeX Engine", app.global_settings.default_latex_engine.as_str()),
+                    GlobalField::Template => ("Default Template", app.global_settings.default_template.as_str()),
+                };
+                Line::from(vec![
+                    Span::styled(format!("{prefix}{label:<24}: "), style),
+                    Span::styled(
+                        if val.is_empty() { "<none>" } else { val },
+                        Style::default().fg(Color::Cyan),
+                    ),
+                ])
+            }
+            SettingItem::Rag(f) => {
+                let (label, val) = match f {
+                    RagField::EmbedderPath => (
+                        "ONNX Embedder Path/Dir",
+                        app.global_settings
+                            .rag
+                            .onnx_embedder_path
+                            .as_ref()
+                            .map(|p| p.as_str())
+                            .unwrap_or(""),
+                    ),
+                    RagField::RerankerPath => (
+                        "ONNX Reranker Path/Dir",
+                        app.global_settings
+                            .rag
+                            .onnx_reranker_path
+                            .as_ref()
+                            .map(|p| p.as_str())
+                            .unwrap_or(""),
+                    ),
+                    RagField::ModelsDir => (
+                        "Custom ONNX Models Dir",
+                        app.global_settings
+                            .rag
+                            .onnx_models_dir
+                            .as_ref()
+                            .map(|p| p.as_str())
+                            .unwrap_or(""),
+                    ),
+                    RagField::CacheDir => (
+                        "Model Cache Dir",
+                        app.global_settings.rag.model_cache_dir.as_str(),
+                    ),
+                    RagField::ExecutionProvider => (
+                        "Execution Provider",
+                        app.global_settings.rag.execution_provider.as_str(),
+                    ),
+                    RagField::NumThreads => ("Num Threads", num_threads_str.as_str()),
+                    RagField::ParentChunkSize => ("Parent Chunk Size", parent_chunk_str.as_str()),
+                    RagField::ChildChunkSize => ("Child Chunk Size", child_chunk_str.as_str()),
+                };
+                Line::from(vec![
+                    Span::styled(format!("{prefix}{label:<24}: "), style),
+                    Span::styled(
+                        if val.is_empty() { "<none>" } else { val },
+                        Style::default().fg(Color::Magenta),
+                    ),
+                ])
+            }
+            SettingItem::CacheCoAuthor(idx) => {
+                let ca = &app.cache.co_authors[*idx];
+                Line::from(vec![
+                    Span::styled(format!("{prefix}Cached Co-Author #{}: ", idx + 1), style),
+                    Span::styled(
+                        format!("{} <{}> ({})", ca.name, ca.email, ca.affiliation),
+                        Style::default().fg(Color::Cyan),
+                    ),
+                ])
+            }
+            SettingItem::CacheCoAuthorEmpty => Line::from(vec![
+                Span::styled(format!("{prefix}Cached Co-Authors: "), style),
+                Span::styled(
+                    "(no cached co-authors — press 'a' to add)",
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]),
+            SettingItem::CacheGrant(idx) => {
+                let g = &app.cache.grants[*idx];
+                Line::from(vec![
+                    Span::styled(format!("{prefix}Cached Grant #{}: ", idx + 1), style),
+                    Span::styled(
+                        format!("{} (#{})", g.funder, g.grant_number),
+                        Style::default().fg(Color::Green),
+                    ),
+                ])
+            }
+            SettingItem::CacheGrantEmpty => Line::from(vec![
+                Span::styled(format!("{prefix}Cached Grants: "), style),
+                Span::styled(
+                    "(no cached grants — press 'a' to add)",
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]),
+            SettingItem::LocalTitle => Line::from(vec![
+                Span::styled(format!("{prefix}Project Title: "), style),
+                Span::styled(
+                    if app.local_settings.title.is_empty() {
+                        "<empty title>"
+                    } else {
+                        &app.local_settings.title
+                    },
+                    Style::default().fg(Color::Cyan),
+                ),
+            ]),
+            SettingItem::LocalNotes => Line::from(vec![
+                Span::styled(format!("{prefix}Project Notes: "), style),
+                Span::styled(
+                    if app.local_settings.notes.is_empty() {
+                        "<no notes>"
+                    } else {
+                        &app.local_settings.notes
+                    },
+                    Style::default().fg(Color::Reset),
+                ),
+            ]),
+            SettingItem::LocalCoAuthor(idx) => {
+                let ca = &app.local_settings.co_authors[*idx];
+                Line::from(vec![
+                    Span::styled(format!("{prefix}Local Co-Author #{}: ", idx + 1), style),
+                    Span::styled(
+                        format!("{} <{}>", ca.name, ca.email),
+                        Style::default().fg(Color::Magenta),
+                    ),
+                ])
+            }
+            SettingItem::LocalCoAuthorEmpty => Line::from(vec![
+                Span::styled(format!("{prefix}Local Co-Authors: "), style),
+                Span::styled(
+                    "(none — press 'a' to pick from cache)",
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]),
+            SettingItem::LocalGrant(idx) => {
+                let g = &app.local_settings.grants[*idx];
+                Line::from(vec![
+                    Span::styled(format!("{prefix}Local Grant #{}: ", idx + 1), style),
+                    Span::styled(
+                        format!("{} (#{})", g.funder, g.grant_number),
+                        Style::default().fg(Color::Green),
+                    ),
+                ])
+            }
+            SettingItem::LocalGrantEmpty => Line::from(vec![
+                Span::styled(format!("{prefix}Local Grants: "), style),
+                Span::styled(
+                    "(none — press 'a' to pick from cache)",
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]),
+        };
+
+        list_items.push(ListItem::new(line));
+    }
 
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::Magenta))
-        .title(title_text);
-
-    let list = List::new(items).block(block);
-    frame.render_widget(list, area);
-}
-
-fn draw_local_settings(frame: &mut Frame, app: &App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(5),  // Title & Notes
-            Constraint::Percentage(50), // Co-authors list
-            Constraint::Percentage(50), // Grants list
-        ])
-        .split(area);
-
-    // 1. Article Title & Notes
-    let is_title_sel = app.selected_local_field == LocalField::Title as usize;
-    let is_notes_sel = app.selected_local_field == LocalField::Notes as usize;
-
-    let info_text = vec![
-        Line::from(vec![
-            Span::styled(if is_title_sel { "► Title: " } else { "  Title: " }, if is_title_sel { Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD) } else { Style::default() }),
-            Span::styled(if app.local_settings.title.is_empty() { "<empty title>" } else { &app.local_settings.title }, Style::default().fg(Color::Cyan)),
-        ]),
-        Line::from(vec![
-            Span::styled(if is_notes_sel { "► Notes: " } else { "  Notes: " }, if is_notes_sel { Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD) } else { Style::default() }),
-            Span::styled(if app.local_settings.notes.is_empty() { "<no notes>" } else { &app.local_settings.notes }, Style::default().fg(Color::Reset)),
-        ]),
-    ];
-
-    let info_block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(" 📄 Article Particulars ");
+        .title(" ⚙️ Unified Settings (Global | RAG | Caches | Local Project) — Enter/'e': Edit, 'a': Add, 'd': Delete, 'u': Use Cache ");
 
-    frame.render_widget(Paragraph::new(info_text).block(info_block), chunks[0]);
-
-    // 2. Co-authors List
-    let is_ca_sel = app.selected_local_field == LocalField::CoAuthorsList as usize;
-    let ca_border_style = if is_ca_sel {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::Magenta)
-    };
-
-    let coauthor_rows: Vec<Row> = app
-        .local_settings
-        .co_authors
-        .iter()
-        .enumerate()
-        .map(|(idx, ca)| {
-            let style = if is_ca_sel && idx == app.local_coauthor_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            Row::new(vec![
-                Span::styled(&ca.name, style),
-                Span::raw(&ca.email),
-                Span::raw(&ca.affiliation),
-                Span::raw(ca.orcid.as_deref().unwrap_or("")),
-            ])
-        })
-        .collect();
-
-    let ca_table = Table::new(
-        coauthor_rows,
-        [
-            Constraint::Percentage(25),
-            Constraint::Percentage(25),
-            Constraint::Percentage(30),
-            Constraint::Percentage(20),
-        ],
-    )
-    .header(
-        Row::new(vec!["Co-Author Name", "Email", "Affiliation", "ORCID"])
-            .style(Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(ca_border_style)
-            .title(" 👥 Co-Authors on this Work (Press 'a' to pick from cache, 'd' to delete) "),
-    );
-
-    frame.render_widget(ca_table, chunks[1]);
-
-    // 3. Article Grants List
-    let is_gr_sel = app.selected_local_field == LocalField::GrantsList as usize;
-    let gr_border_style = if is_gr_sel {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::Green)
-    };
-
-    let grant_rows: Vec<Row> = app
-        .local_settings
-        .grants
-        .iter()
-        .enumerate()
-        .map(|(idx, g)| {
-            let style = if is_gr_sel && idx == app.local_grant_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            Row::new(vec![
-                Span::styled(&g.funder, style),
-                Span::raw(&g.grant_number),
-                Span::raw(&g.acknowledgment),
-            ])
-        })
-        .collect();
-
-    let gr_table = Table::new(
-        grant_rows,
-        [
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(40),
-        ],
-    )
-    .header(
-        Row::new(vec!["Funder", "Grant Number", "Acknowledgment"])
-            .style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(gr_border_style)
-            .title(" 💰 Grants for this Work (Press 'a' to pick from cache, 'd' to delete) "),
-    );
-
-    frame.render_widget(gr_table, chunks[2]);
-}
-
-fn draw_coauthor_cache(frame: &mut Frame, app: &App, area: Rect) {
-    let rows: Vec<Row> = app
-        .cache
-        .co_authors
-        .iter()
-        .enumerate()
-        .map(|(idx, ca)| {
-            let is_sel = idx == app.cache_coauthor_index;
-            let style = if is_sel {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            Row::new(vec![
-                Span::styled(if is_sel { format!("► {}", ca.name) } else { format!("  {}", ca.name) }, style),
-                Span::raw(&ca.email),
-                Span::raw(&ca.affiliation),
-                Span::raw(ca.orcid.as_deref().unwrap_or("-")),
-            ])
-        })
-        .collect();
-
-    let table = Table::new(
-        rows,
-        [
-            Constraint::Percentage(25),
-            Constraint::Percentage(25),
-            Constraint::Percentage(30),
-            Constraint::Percentage(20),
-        ],
-    )
-    .header(
-        Row::new(vec!["Cached Author Name", "Email", "Affiliation", "ORCID"])
-            .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(Color::Cyan))
-            .title(" 💾 Historical Co-Authors Cache (Press 'u' to use in local project, 'a' to add new, 'd' to delete) "),
-    );
-
-    frame.render_widget(table, area);
-}
-
-fn draw_grant_cache(frame: &mut Frame, app: &App, area: Rect) {
-    let rows: Vec<Row> = app
-        .cache
-        .grants
-        .iter()
-        .enumerate()
-        .map(|(idx, g)| {
-            let is_sel = idx == app.cache_grant_index;
-            let style = if is_sel {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            Row::new(vec![
-                Span::styled(if is_sel { format!("► {}", g.funder) } else { format!("  {}", g.funder) }, style),
-                Span::raw(&g.grant_number),
-                Span::raw(&g.acknowledgment),
-            ])
-        })
-        .collect();
-
-    let table = Table::new(
-        rows,
-        [
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(40),
-        ],
-    )
-    .header(
-        Row::new(vec!["Funder", "Grant Number", "Acknowledgment"])
-            .style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(Color::Green))
-            .title(" 💵 Historical Grants Cache (Press 'u' to use in local project, 'a' to add new, 'd' to delete) "),
-    );
-
-    frame.render_widget(table, area);
+    let list = List::new(list_items).block(block);
+    frame.render_widget(list, area);
 }
 
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
@@ -455,7 +490,10 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
 
     let msg_style = if app.status_message.contains("saved") || app.status_message.starts_with('✓') {
         Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
-    } else if app.status_message.contains("cannot") || app.status_message.contains("Error") || app.status_message.contains("failed") {
+    } else if app.status_message.contains("cannot")
+        || app.status_message.contains("Error")
+        || app.status_message.contains("failed")
+    {
         Style::default().fg(Color::LightRed).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
@@ -463,7 +501,10 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
 
     let footer_text = Paragraph::new(Line::from(vec![
         Span::styled(&app.status_message, msg_style),
-        Span::styled(dirty_indicator, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            dirty_indicator,
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ),
     ]))
     .block(
         Block::default()
@@ -497,61 +538,32 @@ fn draw_modal_picker(frame: &mut Frame, app: &App) {
     let area = centered_rect(70, 60, frame.area());
     frame.render_widget(Clear, area);
 
-    if app.selected_local_field == LocalField::CoAuthorsList as usize {
-        let items: Vec<ListItem> = app
-            .cache
-            .co_authors
-            .iter()
-            .enumerate()
-            .map(|(idx, ca)| {
-                let style = if idx == app.cache_coauthor_index {
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-                ListItem::new(format!("{} <{}> - {}", ca.name, ca.email, ca.affiliation)).style(style)
-            })
-            .collect();
+    let items: Vec<ListItem> = app
+        .cache
+        .co_authors
+        .iter()
+        .enumerate()
+        .map(|(idx, ca)| {
+            let style = if idx == app.cache_coauthor_index {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(format!("{} <{}> - {}", ca.name, ca.email, ca.affiliation)).style(style)
+        })
+        .collect();
 
-        let list = List::new(items)
-            .block(
-                Block::default()
-                    .title(" Select Co-Author from Cache (Enter: Select, 'n': Add New, Esc: Cancel) ")
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Double)
-                    .border_style(Style::default().fg(Color::Cyan)),
-            )
-            .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(" Select Co-Author from Cache (Enter: Select, 'n': Add New, Esc: Cancel) ")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
+        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
 
-        frame.render_widget(list, area);
-    } else {
-        let items: Vec<ListItem> = app
-            .cache
-            .grants
-            .iter()
-            .enumerate()
-            .map(|(idx, g)| {
-                let style = if idx == app.cache_grant_index {
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-                ListItem::new(format!("{} (#{})", g.funder, g.grant_number)).style(style)
-            })
-            .collect();
-
-        let list = List::new(items)
-            .block(
-                Block::default()
-                    .title(" Select Grant from Cache (Enter: Select, 'n': Add New, Esc: Cancel) ")
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Double)
-                    .border_style(Style::default().fg(Color::Green)),
-            )
-            .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
-
-        frame.render_widget(list, area);
-    }
+    frame.render_widget(list, area);
 }
 
 fn draw_modal_add_author(frame: &mut Frame, app: &App) {
@@ -624,6 +636,124 @@ fn draw_modal_add_grant(frame: &mut Frame, app: &App) {
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
+fn draw_modal_add_source_link(frame: &mut Frame, app: &App) {
+    let area = centered_rect(65, 25, frame.area());
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .title(" Add Source via Link / DOI / arXiv (Enter to fetch, Esc to cancel) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let paragraph = Paragraph::new(app.new_source_link_buffer.as_str())
+        .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .block(block);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_modal_rename_source(frame: &mut Frame, app: &App) {
+    let area = centered_rect(65, 25, frame.area());
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .title(" Rename Source Title (Enter to save, Esc to cancel) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(app.rename_source_buffer.as_str())
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(block);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
+    let area = centered_rect(60, 25, frame.area());
+    frame.render_widget(Clear, area);
+
+    let filename = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
+        &app.sources[app.selected_source_index].filename
+    } else {
+        "selected source"
+    };
+
+    let text = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Are you sure you want to delete source '", Style::default().fg(Color::White)),
+            Span::styled(filename, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled("'?", Style::default().fg(Color::White)),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled("Press 'y' or Enter to confirm, 'n' or Esc to cancel.", Style::default().fg(Color::Yellow))),
+    ];
+
+    let block = Block::default()
+        .title(" ⚠️ Confirm Delete Source ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Red));
+
+    let paragraph = Paragraph::new(text).block(block).alignment(Alignment::Center);
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
+    let area = centered_rect(80, 70, frame.area());
+    frame.render_widget(Clear, area);
+
+    let filename = if !app.sources.is_empty() && app.selected_source_index < app.sources.len() {
+        &app.sources[app.selected_source_index].filename
+    } else {
+        "Source"
+    };
+
+    let rows: Vec<Row> = if app.selected_source_references.is_empty() {
+        vec![Row::new(vec!["-", "No extracted references found for this source.", "-", "-"])]
+    } else {
+        app.selected_source_references
+            .iter()
+            .map(|r| {
+                Row::new(vec![
+                    Span::styled(format!("[{}]", r.ref_index), Style::default().fg(Color::Cyan)),
+                    Span::raw(r.authors.as_deref().unwrap_or("-")),
+                    Span::raw(r.title.as_deref().unwrap_or(&r.raw_text)),
+                    Span::raw(r.year.map(|y| y.to_string()).unwrap_or_else(|| "-".to_string())),
+                ])
+            })
+            .collect()
+    };
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(6),
+            Constraint::Percentage(30),
+            Constraint::Percentage(54),
+            Constraint::Percentage(10),
+        ],
+    )
+    .header(
+        Row::new(vec!["#", "Authors", "Title / Raw Text", "Year"])
+            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::default().fg(Color::Cyan))
+            .title(Span::styled(
+                format!(" 📚 References for {filename} (Press Esc / 'q' to close) "),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            )),
+    );
+
+    frame.render_widget(table, area);
+}
+
 /// Helper function to create a centered Rect for modals/popups.
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
@@ -663,7 +793,6 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
 
     // 1. Manuscript Progress & Health Audit
     let health_lines = vec![
-
         Line::from(vec![
             Span::styled("Manuscript Health & Progress Status", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
         ]),
@@ -761,7 +890,7 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::styled("  Switch between Dashboard & Paper Draft & Settings tabs", Style::default().fg(Color::Reset)),
+            Span::styled("  Switch between Dashboard, Paper Draft, Sources, and Settings", Style::default().fg(Color::Reset)),
         ]),
         Line::from(vec![
             Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
@@ -899,4 +1028,3 @@ fn draw_editing_paper_popup(frame: &mut Frame, app: &App) {
 
     frame.render_widget(paragraph, area);
 }
-

@@ -107,6 +107,7 @@ fn run() -> Result<()> {
         },
         Commands::Tui { action } => match action {
             TuiCmd::Dashboard => commands::settings(),
+            TuiCmd::Sources => commands::settings(),
             TuiCmd::Settings => commands::settings(),
         },
     }

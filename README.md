@@ -205,33 +205,36 @@ Sci-Action: fetch-source
 
 ---
 
-## Settings & Co-Author Cache TUI (`sil settings`)
+## Interactive TUI Command Center & Settings (`sil tui` / `sil settings`)
 
-`sil settings` (or `sil tui`) opens an interactive Ratatui interface for managing:
+`sil tui` (or `sil settings`) opens a 4-tab Ratatui interface:
 
-1. **Global Settings (`~/.config/sil/settings.yaml`)**:
-   - Primary Author Name, Email, Affiliation, and ORCID iD.
-   - Default Grant Funder, Grant Number, and Acknowledgment prose.
-   - Default LaTeX engine and default target template.
-2. **Local Project Settings (`.sil/config.yaml`)**:
-   - Article title, active co-authors list, active grant requisites, and project notes.
-3. **Co-Authors & Grants Cache (`~/.config/sil/cache.yaml`)**:
-   - History of all co-authors and grants encountered across previous works.
-   - One-key import into local project settings (`u`), fast picker modal (`a`), and deduplication.
-4. **ONNX & Local RAG Settings Tab (`7`)**:
-   - Manage model paths, thread allocation, chunk sizes, and execution providers.
-   - Paste a directory containing `*.onnx` models into the Embedder or Reranker path fields to automatically discover and link the `.onnx` model inside.
+1. **Dashboard (`1`)**: High-level overview of project status, draft progress, source counts, and recent commits.
+2. **Paper Draft (`2`)**: Interactive section-by-section LaTeX manuscript viewer & editor with `$EDITOR` integration.
+3. **Sources (`3`)**: Comprehensive literature manager for registered documents in `sources/`:
+   - Paginated pretty Markdown reader (`Enter`, `j`/`k`, `PageUp`/`PageDown`).
+   - Adding new works via links (`a`).
+   - Real-time parse status indicator (`[✓ Parsed]` / `[  Not Parsed]`).
+   - Source statistics (word count, extracted reference count).
+   - Extracted references pop-up window per source document (`v`).
+   - Deleting sources with confirmation (`d`) and renaming titles (`r`).
+4. **Settings (`4`)**: Unified settings window with distinct vertical section dividers:
+   - **Global Settings**: Default author requisites, default grant, engine, and template defaults (`~/.config/sil/settings.yaml`).
+   - **ONNX & Local RAG Settings**: Model paths, thread allocation, chunk sizes, and execution providers.
+   - **Co-Author & Grant Caches**: Fast import/export alias for cached authors and grants (`~/.config/sil/cache.yaml`).
+   - **Local Project Settings**: Article title, co-authors list, active grant requisites, and project notes (`.sil/config.yaml`).
 
 ### Keybindings in TUI
 
-- `1`-`7` or `Tab` / `Shift+Tab`: Switch tabs (Global, Local, Co-Author Cache, Grant Cache, Dashboard, Paper Draft, RAG Settings).
-- `↑`/`↓` or `j`/`k`: Navigate fields or lists.
-- `e` or `Enter`: Edit selected field value.
-- `a`: Add new item or select from cache modal.
-- `d` / `Delete`: Remove item from local project or cache.
-- `u`: Use selected cached item in active local project settings.
-- `s` or `Ctrl+S`: Save global settings, local settings, and cache.
-- `q` or `Esc`: Quit settings TUI.
+- `1`-`4` or `Tab` / `Shift+Tab`: Switch tabs (Dashboard, Paper Draft, Sources, Settings).
+- `↑`/`↓` or `j`/`k`: Navigate sources, fields, or sections.
+- `Enter` / `e`: Edit selected field or read source Markdown.
+- `a`: Add new source link or add co-author / grant.
+- `r`: Rename source title.
+- `d` / `Delete`: Remove source (with confirmation) or remove co-author/grant item.
+- `v`: View extracted references for selected source (in Sources tab) or launch external `$EDITOR` (in Paper Draft tab).
+- `s` or `Ctrl+S`: Save all global, local, and cache settings.
+- `q` or `Esc`: Quit TUI / close open modal.
 
 ---
 
