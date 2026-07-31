@@ -24,11 +24,11 @@ static REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(appendix|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary)\b").unwrap()
+    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(appendix|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary|supplemental|ethics statement|declarations|competing interests|conflict of interest|about the authors|biography)\b").unwrap()
 });
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|^\s*(?:-\s+)?[A-Z][a-z]+,\s+[A-Z]").unwrap()
+    Regex::new(r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:(?:\[\d+\]|\(\d+\)|\d+\.|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\])|[A-Z][a-z]+(?:,\s+[A-Z]|\s+[A-Z][a-z]+))").unwrap()
 });
 
 static LATEX_METADATA_REGEX: LazyLock<Regex> =
@@ -37,9 +37,78 @@ static LATEX_METADATA_REGEX: LazyLock<Regex> =
 static HTML_SPAN_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap());
 
+static A_TAG_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<a[^>]*>|</a>").unwrap());
+
+static MD_LINK_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\([^)]+\)").unwrap());
+
+static MD_LINK_WITH_URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap());
+
+static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap()
+});
+
 /// Strip HTML `<span...>` and `</span>` tags from text.
 pub fn strip_html_spans(text: &str) -> String {
     HTML_SPAN_REGEX.replace_all(text, "").to_string()
+}
+
+/// Strip markdown links like `[Name](#page-1-0)` to `Name`.
+pub fn strip_markdown_links(text: &str) -> String {
+    MD_LINK_REGEX.replace_all(text, "$1").to_string()
+}
+
+/// Strip author footnote markers like `<sup>...</sup>`, `[\*1]`, `[a]`, `\*`, `†`, etc.
+pub fn strip_author_footnote_markers(text: &str) -> String {
+    AUTHOR_FOOTNOTE_REGEX.replace_all(text, "").to_string()
+}
+
+/// Clean reference text: strips HTML span/a tags, markdown links (except DOI/arXiv), normalizes spaces, trims list prefixes.
+pub fn clean_reference_text(text: &str) -> String {
+    let mut cleaned = HTML_SPAN_REGEX.replace_all(text, "").to_string();
+    cleaned = A_TAG_REGEX.replace_all(&cleaned, "").to_string();
+    
+    cleaned = MD_LINK_WITH_URL_REGEX.replace_all(&cleaned, |caps: &regex::Captures| {
+        let text_content = &caps[1];
+        let url = &caps[2];
+        if url.contains("10.") || url.contains("arxiv") || extract_arxiv_id(url).is_some() {
+            caps[0].to_string()
+        } else {
+            text_content.to_string()
+        }
+    }).to_string();
+
+    static MULTI_SPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s{2,}").unwrap());
+    cleaned = MULTI_SPACE_REGEX.replace_all(&cleaned, " ").to_string();
+
+    let mut trimmed = cleaned.trim();
+    if let Some(idx) = trimmed.find(']') {
+        if trimmed.starts_with('[') || trimmed.starts_with("- [") {
+            trimmed = &trimmed[idx + 1..];
+        }
+    } else if let Some(pos) = trimmed.find(". ") {
+        let prefix = &trimmed[..pos];
+        let num_prefix = prefix.trim_start_matches('-');
+        if num_prefix.trim().chars().all(|c| c.is_ascii_digit()) {
+            trimmed = &trimmed[pos + 2..];
+        }
+    }
+    trimmed.trim_start_matches('-').trim().to_string()
+}
+
+/// Check if line contains affiliation or noise keywords
+pub fn is_affiliation_or_noise_line(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    let keywords = [
+        "university", "department", "school of", "institute of", "faculty of", 
+        "laboratory", "lab", "inc.", "corplab", "address", "a r t i c l e i n f o",
+        "contents lists", "journal homepage:", "received", "accepted", "available online",
+        "@", "equal contribution", "author to whom", "correspondence", "abstract",
+        "introduction"
+    ];
+    keywords.iter().any(|&k| lower.contains(k))
 }
 
 /// Extract a DOI (Digital Object Identifier) from text.
@@ -154,6 +223,36 @@ pub fn extract_reference_venue(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_strip_markdown_links() {
+        assert_eq!(
+            strip_markdown_links("[Sebastian Farquhar](#page-1-0)"),
+            "Sebastian Farquhar"
+        );
+        assert_eq!(
+            strip_markdown_links("[Name 1](#link1), [Name 2](http://link2)"),
+            "Name 1, Name 2"
+        );
+    }
+
+    #[test]
+    fn test_strip_author_footnote_markers() {
+        assert_eq!(strip_author_footnote_markers("Name<sup>1</sup>"), "Name");
+        assert_eq!(strip_author_footnote_markers("Name [\\*1]"), "Name ");
+        assert_eq!(strip_author_footnote_markers("Name [a]"), "Name ");
+        assert_eq!(strip_author_footnote_markers("Name \\*"), "Name ");
+        assert_eq!(strip_author_footnote_markers("Name †"), "Name ");
+        assert_eq!(strip_author_footnote_markers("Name‡"), "Name");
+    }
+
+    #[test]
+    fn test_is_affiliation_or_noise_line() {
+        assert!(is_affiliation_or_noise_line("1 University of Oxford"));
+        assert!(is_affiliation_or_noise_line("Department of Computer Science"));
+        assert!(is_affiliation_or_noise_line("foo@bar.com"));
+        assert!(!is_affiliation_or_noise_line("Sebastian Farquhar, Jannik Kossen"));
+    }
 
     #[test]
     fn test_extract_doi() {

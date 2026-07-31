@@ -275,22 +275,10 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                 continue;
             }
             if past_title && !clean.is_empty() {
-                let lower = clean.to_lowercase();
-                if lower.starts_with("abstract")
-                    || lower.starts_with("contents")
-                    || lower.starts_with("keywords")
-                    || lower.starts_with("index terms")
-                    || lower.starts_with("department")
-                    || lower.starts_with("school of")
-                    || lower.starts_with("faculty of")
-                    || lower.starts_with("university")
-                    || lower.starts_with("college of")
-                    || lower.starts_with("date:")
-                    || lower.contains("http")
-                    || lower.contains("@")
-                {
+                if sil_regex::is_affiliation_or_noise_line(&clean) {
                     continue;
                 }
+                let lower = clean.to_lowercase();
                 if lower.starts_with("january")
                     || lower.starts_with("february")
                     || lower.starts_with("march")
@@ -307,27 +295,29 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                     continue;
                 }
 
-                // Remove page links like [\\1](#page-0-0) or [1](#page-0-0)
-                let mut cleaned_author = clean.clone();
-                while let Some(sp) = cleaned_author.find("[") {
-                    if let Some(ep) = cleaned_author[sp..].find(")") {
-                        cleaned_author.replace_range(sp..sp + ep + 1, "");
-                    } else {
-                        break;
-                    }
-                }
+                let cleaned_author = sil_regex::strip_markdown_links(&clean);
+                let cleaned_author = sil_regex::strip_author_footnote_markers(&cleaned_author);
 
                 let cleaned_author = cleaned_author
-                    .replace(['*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', 'ⁿ', '՞', 'ã', 'ゥ'], "")
-                    .replace("<sup>", "")
-                    .replace("</sup>", "")
+                    .replace(['*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], "")
                     .trim_start_matches('-')
-                    .trim()
+                    .trim_matches(|c: char| c.is_ascii_punctuation() || c.is_whitespace())
+                    .to_string();
+
+                // Collapse multiple spaces and trim commas
+                let cleaned_author = cleaned_author
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .replace(" ,", ",")
+                    .trim_matches(|c: char| c == ',' || c.is_whitespace())
                     .to_string();
 
                 if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
                     author_lines.push(cleaned_author);
-                    if author_lines.len() >= 2 {
+                    // Extracting up to a few lines to avoid getting into noise,
+                    // but we can increase if there are many authors.
+                    if author_lines.len() >= 3 {
                         break;
                     }
                 }
@@ -356,5 +346,51 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use camino::{Utf8Path, Utf8PathBuf};
+    use sil_core::{SourceDocument, SourceKind};
+
+    #[test]
+    fn test_hydrate_author_metadata_clean() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("test.pdf"));
+        doc.kind = SourceKind::Pdf;
+        doc.title = Some("Test Title".to_string());
+        
+        let header = r#"# Test Title
+[Sebastian Farquhar](#page-1-0)1, [Jannik Kossen](#page-1-0)1 2, [Lorenz Kuhn](#page-1-0)1, [Yarin Gal](#page-1-0)1
+1 University of Oxford 2 OATML
+Abstract"#;
+
+        hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("test.pdf"));
+        
+        assert_eq!(
+            doc.authors.unwrap(),
+            "Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, Yarin Gal"
+        );
+    }
+
+    #[test]
+    fn test_hydrate_author_with_footnote_noise() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("test2.pdf"));
+        doc.kind = SourceKind::Pdf;
+        doc.title = Some("Another Paper".to_string());
+        
+        let header = r#"# Another Paper
+Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
+<sup>a</sup> Some University Address
+<sup>b</sup> Another Department Address
+1 Introduction"#;
+
+        hydrate_source_document_metadata(&mut doc, header, Utf8Path::new("test2.pdf"));
+        
+        assert_eq!(
+            doc.authors.unwrap(),
+            "Ushtar Ali, Steven Lynden, Akiyoshi Matono"
+        );
     }
 }

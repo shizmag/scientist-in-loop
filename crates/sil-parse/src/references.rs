@@ -69,7 +69,15 @@ fn split_raw_entries(block: &str) -> Vec<String> {
         .lines()
         .map(|l| clean_spans(l))
         .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l))
+        .filter(|l| {
+            !l.is_empty()
+                && l != "-"
+                && !is_noise_line(l)
+                && !l.contains("$$")
+                && !l.contains("\\mid")
+                && !l.contains("\\mathbf")
+                && !l.contains("\\mathcal")
+        })
         .collect();
 
     if raw_lines.is_empty() {
@@ -98,7 +106,34 @@ fn split_raw_entries(block: &str) -> Vec<String> {
         entries.push(current.trim().to_string());
     }
 
-    entries
+    let mut cleaned_entries = Vec::new();
+    for entry in entries {
+        if entry.contains("$$") || entry.contains("\\mid") || entry.contains("\\mathbf") || entry.contains("\\mathcal") {
+            continue;
+        }
+
+        let year = extract_year(&entry);
+        let doi = sil_regex::extract_doi(&entry);
+        let arxiv = sil_regex::extract_arxiv_id(&entry);
+        let venue = sil_regex::extract_reference_venue(&entry);
+        let lower = entry.to_lowercase();
+        let has_et_al = lower.contains("et al");
+        let has_author_comma = entry.contains(".,") || entry.matches(',').count() > 1;
+        
+        let has_citation_indicators = year.is_some() || doi.is_some() || arxiv.is_some() || venue.is_some() || has_et_al || has_author_comma;
+
+        if !has_citation_indicators {
+            continue;
+        }
+
+        let cleaned = sil_regex::clean_reference_text(&entry);
+        if cleaned.is_empty() {
+            continue;
+        }
+        cleaned_entries.push(cleaned);
+    }
+
+    cleaned_entries
 }
 
 /// Check if line is header/footer/page noise.
@@ -126,22 +161,11 @@ fn parse_entry_metadata(
     (authors, year, title, venue, doi)
 }
 
-/// Try to extract an unquoted title from academic citation format (`[N] Authors. Title. Venue, Year`).
 fn extract_unquoted_title(text: &str) -> Option<String> {
     let clean = text.trim();
-    // Strip leading list prefix like "- ", "[1] ", "1. "
-    let content = if let Some(idx) = clean.find(']') {
-        clean[idx + 1..].trim()
-    } else if let Some(pos) = clean.find(". ") {
-        let first = &clean[..pos];
-        if first.chars().all(|c| c.is_ascii_digit()) {
-            clean[pos + 2..].trim()
-        } else {
-            clean
-        }
-    } else {
-        clean.trim_start_matches('-').trim()
-    };
+    // Since we now use clean_reference_text, the list prefixes ([1], 1.) are already stripped,
+    // so we can just look at the remaining text.
+    let content = clean;
 
     let parts: Vec<&str> = content.split(". ").collect();
     if parts.len() >= 2 {
@@ -173,13 +197,7 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
     if let Some(t) = title
         && let Some(pos) = clean.find(t)
     {
-        let candidate = clean[..pos].trim_start_matches('-').trim();
-        // Strip leading [N] or N.
-        let candidate = if let Some(idx) = candidate.find(']') {
-            candidate[idx + 1..].trim()
-        } else {
-            candidate
-        };
+        let candidate = clean[..pos].trim();
         let candidate = candidate
             .trim_end_matches(&[' ', '"', '“', ',', '.'][..])
             .trim();
@@ -191,12 +209,7 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
     if let Some(y) = year {
         let year_str = y.to_string();
         if let Some(pos) = clean.find(&year_str) {
-            let candidate = clean[..pos].trim_start_matches('-').trim();
-            let candidate = if let Some(idx) = candidate.find(']') {
-                candidate[idx + 1..].trim()
-            } else {
-                candidate
-            };
+            let candidate = clean[..pos].trim();
             let candidate = candidate
                 .trim_end_matches(&[' ', '(', ')', ',', '.'][..])
                 .trim();
@@ -355,5 +368,79 @@ Mind, 59, 433-460, 1950.
             extract_doi(text2).as_deref(),
             Some("10.1016/j.cell.2021.01.001")
         );
+    }
+
+    #[test]
+    fn test_filtering_math_equations() {
+        let sid = SourceId::new("math.pdf");
+        let raw = r#"
+[1] Vaswani et al. 2017. Attention.
+$$ I[Y; M] = \sum_x ... $$
+[2] Devlin et al. 2019. BERT.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].ref_index, 1);
+        assert_eq!(entries[1].ref_index, 2);
+        assert!(entries.iter().all(|e| !e.raw_text.contains("$$")));
+    }
+
+    #[test]
+    fn test_filtering_body_step_lists() {
+        let sid = SourceId::new("steps.pdf");
+        let raw = r#"
+1. For each input, we compute the logits.
+2. We calculate the cross-entropy loss.
+[3] Turing, A. M. (1950). Computing Machinery.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        // The first two steps lack citation indicators (year, doi, venue, etc) and should be filtered out.
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(1950));
+        assert!(entries[0].raw_text.contains("Computing Machinery"));
+    }
+
+    #[test]
+    fn test_parsing_marker_span_tagged_references() {
+        let sid = SourceId::new("marker.pdf");
+        let raw = r#"
+- <span id="page-10-0"></span>[1] Vaswani et al. "Attention is all you need." NeurIPS, 2017.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(2017));
+        assert_eq!(entries[0].title.as_deref(), Some("Attention is all you need."));
+        // The raw_text in entry might still contain some things based on how clean_reference_text works,
+        // but it should strip the span tag. Let's verify the span tag is stripped from authors/title parsing.
+        assert!(!entries[0].authors.as_deref().unwrap_or("").contains("span"));
+    }
+
+    #[test]
+    fn test_parsing_apa_citations() {
+        let sid = SourceId::new("apa.pdf");
+        let raw = r#"
+- Farquhar, S., Kossen, J., Kuhn, L., & Gal, Y. (2024). Detecting hallucinations... Nature, 630.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(2024));
+        assert_eq!(entries[0].venue.as_deref(), Some("Nature"));
+    }
+
+    #[test]
+    fn test_parsing_elsevier_refhub_links() {
+        let sid = SourceId::new("elsevier.pdf");
+        let raw = r#"
+[2] [X. Guan](#refhub), [Y. Wang](#refhub), via autonomous knowledge graph-based retrofitting, in: Proceedings of the AAAI, 2021.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(2021));
+        assert_eq!(entries[0].venue.as_deref(), Some("AAAI"));
+        // Markdown links to internal anchors like #refhub should be stripped in clean_reference_text,
+        // so authors should be clean: "X. Guan, Y. Wang" or similar.
+        let cleaned_raw = &entries[0].raw_text;
+        assert!(!cleaned_raw.contains("(#refhub)"));
+        assert!(cleaned_raw.contains("X. Guan"));
     }
 }
