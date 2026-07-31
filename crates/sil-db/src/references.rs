@@ -114,3 +114,64 @@ pub fn delete_references_for_source(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sil_core::{DocumentStatus, SourceDocument};
+
+    #[test]
+    fn test_references_crud_and_fts() {
+        let db = crate::SilDb::open_in_memory().unwrap();
+        let sid = SourceId::new("transformer.pdf");
+        let mut doc = SourceDocument::new("transformer.pdf".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "Body text").unwrap();
+
+        let entries = vec![
+            ReferenceEntry {
+                id: "transformer.pdf_ref_1".into(),
+                source_id: sid.clone(),
+                ref_index: 1,
+                raw_text: "[1] Vaswani et al. \"Attention is all you need.\" 2017.".into(),
+                title: Some("Attention is all you need.".into()),
+                authors: Some("Vaswani et al.".into()),
+                year: Some(2017),
+                doi: None,
+            },
+            ReferenceEntry {
+                id: "transformer.pdf_ref_2".into(),
+                source_id: sid.clone(),
+                ref_index: 2,
+                raw_text: "[2] Devlin et al. \"BERT: Pre-training of Deep Bidirectional Transformers.\" 2019.".into(),
+                title: Some("BERT: Pre-training of Deep Bidirectional Transformers.".into()),
+                authors: Some("Devlin et al.".into()),
+                year: Some(2019),
+                doi: None,
+            },
+        ];
+
+        // Save
+        db.save_source_references(&entries).unwrap();
+
+        // Get by source_id
+        let fetched = db.get_references_for_source(&sid).unwrap();
+        assert_eq!(fetched.len(), 2);
+        assert_eq!(fetched[0].ref_index, 1);
+        assert_eq!(fetched[1].year, Some(2019));
+
+        // FTS Search
+        let hits = db.search_references("Attention", 10).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].id, "transformer.pdf_ref_1");
+
+        let hits_bert = db.search_references("Transformers", 10).unwrap();
+        assert_eq!(hits_bert.len(), 1);
+        assert_eq!(hits_bert[0].id, "transformer.pdf_ref_2");
+
+        // Delete
+        db.delete_references_for_source(&sid).unwrap();
+        let fetched_after = db.get_references_for_source(&sid).unwrap();
+        assert!(fetched_after.is_empty());
+    }
+}

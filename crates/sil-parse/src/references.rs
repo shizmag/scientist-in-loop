@@ -249,6 +249,18 @@ Some content...
     }
 
     #[test]
+    fn test_heading_variations_and_appendix_termination() {
+        for header in ["# Bibliography", "## Works Cited", "### Literature Cited", "# References and Notes", "## 10. References"] {
+            let md = format!(
+                "# Intro\nText\n\n{header}\n[1] Author A. \"Title A\" 2021.\n\n# Appendix\nAppendix text"
+            );
+            let refs = extract_references_block(&md).unwrap();
+            assert!(refs.contains("Author A"), "Failed for header: {header}");
+            assert!(!refs.contains("Appendix text"), "Failed to terminate on Appendix for header: {header}");
+        }
+    }
+
+    #[test]
     fn test_parse_reference_entries() {
         let sid = SourceId::new("paper.pdf");
         let raw = r#"
@@ -265,5 +277,38 @@ Some content...
             entries[1].title.as_deref(),
             Some("BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.")
         );
+    }
+
+    #[test]
+    fn test_multiline_and_numbered_dot_format() {
+        let sid = SourceId::new("doc2.pdf");
+        let raw = r#"
+1. Shannon, C. E. (1948). A mathematical theory of
+communication. Bell System Technical Journal, 27, 379-423.
+Page 400
+2. Turing, A. M. "Computing Machinery and Intelligence."
+Mind, 59, 433-460, 1950.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].ref_index, 1);
+        assert_eq!(entries[0].year, Some(1948));
+        assert!(entries[0].raw_text.contains("communication"));
+        // Noise line "Page 400" filtered out
+        assert!(!entries[0].raw_text.contains("Page 400"));
+        assert!(!entries[1].raw_text.contains("Page 400"));
+
+        assert_eq!(entries[1].ref_index, 2);
+        assert_eq!(entries[1].year, Some(1950));
+        assert_eq!(entries[1].title.as_deref(), Some("Computing Machinery and Intelligence."));
+    }
+
+    #[test]
+    fn test_doi_extraction_variations() {
+        let text1 = "[1] Smith et al. 2020. doi:10.1038/s41586-020-1234-y";
+        let text2 = "[2] Jones et al. 2021. https://doi.org/10.1016/j.cell.2021.01.001";
+
+        assert_eq!(extract_doi(text1).as_deref(), Some("10.1038/s41586-020-1234-y"));
+        assert_eq!(extract_doi(text2).as_deref(), Some("10.1016/j.cell.2021.01.001"));
     }
 }
