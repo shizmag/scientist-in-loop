@@ -1,14 +1,14 @@
 //! Single- and multi-PDF parse orchestration.
 
 use camino::{Utf8Path, Utf8PathBuf};
-use sil_core::{DocumentStatus, SilUi, SourceDocument};
+use sil_core::{DocumentStatus, SilUi, SourceDocument, SourceKind};
 use sil_db::SilDb;
 
 use crate::error::ParseError;
 use crate::marker::MarkerRunner;
 use crate::validate::validate_for_parse;
 
-/// Result of parsing one PDF.
+/// Result of parsing one source document.
 #[derive(Debug, Clone)]
 pub struct ParseResult {
     /// Source document metadata.
@@ -17,7 +17,29 @@ pub struct ParseResult {
     pub content: String,
 }
 
-/// Parse one PDF and write into the database.
+fn extract_heading_title(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(h1) = trimmed.strip_prefix("# ") {
+            let t = h1.trim();
+            if !t.is_empty() {
+                return Some(t.to_string());
+            }
+        }
+    }
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') {
+            let heading = trimmed.trim_start_matches('#').trim();
+            if !heading.is_empty() {
+                return Some(heading.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Parse one source document and write into the database.
 pub fn parse_one(
     path: &Utf8Path,
     db: &SilDb,
@@ -26,7 +48,9 @@ pub fn parse_one(
 ) -> Result<ParseResult, ParseError> {
     let (status, mut doc) = validate_for_parse(path, db)?;
     match status {
-        DocumentStatus::Valid(_) => {}
+        DocumentStatus::Valid(kind) => {
+            doc.kind = kind;
+        }
         DocumentStatus::NotFound => {
             return Err(ParseError::InvalidDocument(format!(
                 "file not found: {path}"
@@ -44,7 +68,7 @@ pub fn parse_one(
         }
         DocumentStatus::Corrupted => {
             return Err(ParseError::InvalidDocument(format!(
-                "corrupted or unreadable PDF: {path}"
+                "corrupted or unreadable document: {path}"
             )));
         }
         DocumentStatus::AlreadyParsed => {
@@ -56,14 +80,17 @@ pub fn parse_one(
     }
 
     ui.info(&format!("Parsing {}", doc.filename));
-    let content = runner.parse_pdf(path)?;
-    doc.title = content.lines().find_map(|l| {
-        let t = l.trim();
-        t.strip_prefix("# ").map(str::to_string)
-    });
+    let content = match doc.kind {
+        SourceKind::Pdf => runner.parse_pdf(path)?,
+        _ => std::fs::read_to_string(path).map_err(|e| {
+            ParseError::InvalidDocument(format!("failed to read text content of {path}: {e}"))
+        })?,
+    };
+
+    doc.title = extract_heading_title(&content).or_else(|| path.file_stem().map(|s| s.to_string()));
     doc.references_text = crate::references::extract_references_block(&content);
     doc.parsed = true;
-    doc.status = Some(DocumentStatus::ValidPdf);
+    doc.status = Some(DocumentStatus::Valid(doc.kind));
 
     db.upsert_parsed(&doc, &content)
         .map_err(|e| ParseError::Db(e.to_string()))?;

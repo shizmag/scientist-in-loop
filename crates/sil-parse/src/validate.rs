@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use sil_core::{DocumentStatus, SourceDocument, SourceId, validate_pdf_path};
+use sil_core::{DocumentStatus, SourceDocument, SourceId};
 use sil_db::SilDb;
 
 use crate::error::ParseError;
@@ -13,7 +13,7 @@ pub fn validate_for_parse(
     path: &Utf8Path,
     db: &SilDb,
 ) -> Result<(DocumentStatus, SourceDocument), ParseError> {
-    let status = validate_pdf_path(path).map_err(|e| ParseError::InvalidDocument(e.to_string()))?;
+    let status = sil_core::probe_source(path).map_err(|e| ParseError::InvalidDocument(e.to_string()))?;
     let filename = path
         .file_name()
         .map(str::to_string)
@@ -22,16 +22,22 @@ pub fn validate_for_parse(
     if status.is_parseable() && db.is_parsed(&id).unwrap_or(false) {
         let mut doc = SourceDocument::new(path.to_path_buf());
         doc.id = id;
+        if let DocumentStatus::Valid(kind) = status {
+            doc.kind = kind;
+        }
         doc.status = Some(DocumentStatus::AlreadyParsed);
         return Ok((DocumentStatus::AlreadyParsed, doc));
     }
     let mut doc = SourceDocument::new(path.to_path_buf());
     doc.id = id;
+    if let DocumentStatus::Valid(kind) = status {
+        doc.kind = kind;
+    }
     doc.status = Some(status);
     Ok((status, doc))
 }
 
-/// List PDF files under `sources_dir` that are not yet parsed.
+/// List files under `sources_dir` that are not yet parsed.
 pub fn list_unparsed_pdfs(
     sources_dir: &Utf8Path,
     db: &SilDb,
@@ -48,12 +54,23 @@ pub fn list_unparsed_pdfs(
         if !path.is_file() {
             continue;
         }
-        let is_pdf = path
+        let name_lower = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_ascii_lowercase())
+            .unwrap_or_default();
+        if name_lower.starts_with("readme") {
+            continue;
+        }
+        let is_supported = path
             .extension()
             .and_then(|e| e.to_str())
-            .map(|e| e.eq_ignore_ascii_case("pdf"))
+            .map(|e| {
+                let lower = e.to_ascii_lowercase();
+                matches!(lower.as_str(), "pdf" | "md" | "markdown" | "txt" | "html" | "htm")
+            })
             .unwrap_or(false);
-        if !is_pdf {
+        if !is_supported {
             continue;
         }
         let utf = Utf8PathBuf::from_path_buf(path)

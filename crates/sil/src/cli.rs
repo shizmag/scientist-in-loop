@@ -212,9 +212,13 @@ pub enum TemplateCmd {
 /// `sil source` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum SourceCmd {
-    /// Download a PDF by DOI, arXiv id, or URL into sources/
+    /// Download a scientific paper or source file into sources/
     Fetch {
-        /// DOI, arXiv identifier, or direct URL
+        /// Target identifier, URL, or file path. Supported target protocols and formats:
+        /// - 10.xxxx/... (DOI): Resolves paper metadata & PDF/landing page. Advantage: Fast, authoritative, structured metadata extraction.
+        /// - arxiv:XXXX.YYYY or XXXX.YYYY (arXiv ID): Downloads PDF/HTML paper from arXiv. Advantage: Direct access to latest scientific preprints.
+        /// - https://... (Direct URL): Downloads PDF, HTML, or Markdown source. Advantage: Flexible web ingestion for articles and blog posts.
+        /// - Local files (sources/*.pdf, sources/*.md, sources/*.txt, sources/*.html): Multi-format scientific source verification and parsing. Advantage: Native offline ingestion and metadata tracking.
         target: String,
         /// Skip interactive parse offer after download
         #[arg(long)]

@@ -73,7 +73,7 @@ pub fn search_references(
     }
 
     // Escape FTS query
-    let fts_query = clean.replace('"', "").replace('\'', "");
+    let fts_query = clean.replace(['"', '\''], "");
     let mut stmt = conn.prepare(
         "SELECT r.id, r.source_id, r.ref_index, r.raw_text, r.title, r.authors, r.year, r.doi
          FROM source_references r

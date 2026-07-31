@@ -87,13 +87,13 @@ mod tests {
     }
 
     #[test]
-    fn list_unparsed_skips_parsed_and_non_pdf() {
+    fn list_unparsed_skips_parsed_and_unsupported_format() {
         let dir = tempfile::tempdir().unwrap();
         let sources = Utf8PathBuf::from_path_buf(dir.path().join("sources")).unwrap();
         std::fs::create_dir_all(sources.as_str()).unwrap();
         write_fixture_pdf(sources.join("keep.pdf").as_std_path()).unwrap();
         write_fixture_pdf(sources.join("done.pdf").as_std_path()).unwrap();
-        std::fs::write(sources.join("notes.txt").as_str(), "x").unwrap();
+        std::fs::write(sources.join("data.unsupported").as_str(), "x").unwrap();
 
         let db = SilDb::open_in_memory().unwrap();
         let ui = NullUi::new();
@@ -362,4 +362,41 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("exit") || msg.contains("Marker") || msg.contains("2"), "{msg}");
     }
+
+    #[test]
+    fn parse_markdown_natively() {
+        let dir = tempfile::tempdir().unwrap();
+        let md_file = dir.path().join("notes.md");
+        std::fs::write(&md_file, "# Markdown Title\nThis is native markdown content.").unwrap();
+        let path = Utf8PathBuf::from_path_buf(md_file).unwrap();
+        let db = SilDb::open_in_memory().unwrap();
+        let ui = NullUi::new();
+        let runner = StubMarkerRunner {
+            content: "should not be called".into(),
+        };
+        let result = parse_one(&path, &db, &runner, &ui).unwrap();
+        assert!(result.document.parsed);
+        assert_eq!(result.document.kind, sil_core::SourceKind::Markdown);
+        assert_eq!(result.document.title.as_deref(), Some("Markdown Title"));
+        assert!(db.is_parsed(&result.document.id).unwrap());
+    }
+
+    #[test]
+    fn parse_text_natively() {
+        let dir = tempfile::tempdir().unwrap();
+        let txt_file = dir.path().join("abstract.txt");
+        std::fs::write(&txt_file, "Plain text content without headings.").unwrap();
+        let path = Utf8PathBuf::from_path_buf(txt_file).unwrap();
+        let db = SilDb::open_in_memory().unwrap();
+        let ui = NullUi::new();
+        let runner = StubMarkerRunner {
+            content: "should not be called".into(),
+        };
+        let result = parse_one(&path, &db, &runner, &ui).unwrap();
+        assert!(result.document.parsed);
+        assert_eq!(result.document.kind, sil_core::SourceKind::Text);
+        assert_eq!(result.document.title.as_deref(), Some("abstract"));
+        assert!(db.is_parsed(&result.document.id).unwrap());
+    }
 }
+

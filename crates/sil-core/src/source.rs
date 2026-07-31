@@ -94,6 +94,35 @@ impl fmt::Display for SourceKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseSourceKindError;
+
+impl fmt::Display for ParseSourceKindError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid source kind")
+    }
+}
+
+impl std::error::Error for ParseSourceKindError {}
+
+impl std::str::FromStr for SourceKind {
+    type Err = ParseSourceKindError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "pdf" => Ok(Self::Pdf),
+            "html" | "htm" => Ok(Self::Html),
+            "markdown" | "md" => Ok(Self::Markdown),
+            "text" | "txt" => Ok(Self::Text),
+            "code" => Ok(Self::Code),
+            "dataset" => Ok(Self::Dataset),
+            "unknown" => Ok(Self::Unknown),
+            _ => Err(ParseSourceKindError),
+        }
+    }
+}
+
+
 /// Validation / processing status of a document candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

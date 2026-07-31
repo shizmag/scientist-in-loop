@@ -11,6 +11,10 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
     let (_root, _config, paths) = load_project()?;
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
 
+    let is_filename_target = [".pdf", ".md", ".markdown", ".txt", ".html", ".htm"]
+        .iter()
+        .any(|ext| target.to_ascii_lowercase().ends_with(ext));
+
     let suggestion = if let Some(doc) = db
         .list_sources()
         .map_err(|e| anyhow::anyhow!("{e}"))?
@@ -20,7 +24,7 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
         suggest_from_source(&doc)
     } else if let Ok(ref_hits) = db.search_references(target, 1) && let Some(ref_entry) = ref_hits.first() {
         sil_core::suggest_from_reference_entry(ref_entry)
-    } else if target.contains(' ') || !target.ends_with(".pdf") {
+    } else if target.contains(' ') || !is_filename_target {
         // Free-text / search-style query
         suggest_from_query(target)
     } else {

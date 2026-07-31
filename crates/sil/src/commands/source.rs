@@ -14,7 +14,7 @@ use sil_parse::parse_one;
 
 use crate::util::{load_project, marker_runner, print_proposal};
 
-/// One row in `sil source list` (parsed DB + on-disk PDFs).
+/// One row in `sil source list` (parsed DB + on-disk sources).
 #[derive(Debug, Clone, Serialize)]
 pub struct SourceListEntry {
     /// Stable source id (usually filename).
@@ -23,9 +23,11 @@ pub struct SourceListEntry {
     pub filename: String,
     /// Path relative to project or absolute.
     pub path: String,
+    /// Kind of source document (pdf, markdown, html, text, etc.).
+    pub kind: String,
     /// Whether content is in the FTS database.
     pub parsed: bool,
-    /// Whether a PDF file exists on disk under sources/.
+    /// Whether a source file exists on disk under sources/.
     pub on_disk: bool,
     /// Optional title from parse metadata.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,6 +102,18 @@ pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
     Ok(())
 }
 
+fn kind_tag(kind: &str) -> &'static str {
+    match kind.to_ascii_lowercase().as_str() {
+        "pdf" => "pdf",
+        "markdown" | "md" => "md",
+        "html" | "htm" => "html",
+        "text" | "txt" => "txt",
+        "code" => "code",
+        "dataset" => "data",
+        _ => "unk",
+    }
+}
+
 /// List sources with parsed vs unparsed (and on-disk) visibility.
 pub fn list(json: bool, ui: &dyn SilUi) -> Result<()> {
     let entries = collect_source_entries()?;
@@ -120,11 +134,12 @@ pub fn list(json: bool, ui: &dyn SilUi) -> Result<()> {
     ));
     ui.println("");
     for e in &entries {
+        let tag = kind_tag(&e.kind);
         let flag = if e.parsed { "parsed" } else { "unparsed" };
         let disk = if e.on_disk { "on-disk" } else { "missing-file" };
         let title = e.title.as_deref().unwrap_or("");
         ui.println(&format!(
-            "  [{flag}/{disk}] {} {}",
+            "  [{tag}/{flag}/{disk}] {} {}",
             e.filename,
             if title.is_empty() {
                 String::new()
@@ -187,7 +202,7 @@ pub fn remove(id_or_filename: &str, delete_file: bool, ui: &dyn SilUi) -> Result
     Ok(())
 }
 
-/// Collect merged view of DB rows + on-disk PDFs under sources/.
+/// Collect merged view of DB rows + on-disk files under sources/.
 pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
     let (_root, config, paths) = load_project()?;
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -206,6 +221,7 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
                 id: doc.id.as_str().to_string(),
                 filename: doc.filename.clone(),
                 path: doc.path.to_string(),
+                kind: doc.kind.to_string(),
                 parsed: doc.parsed,
                 on_disk,
                 title: doc.title.clone(),
@@ -213,7 +229,7 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
         );
     }
 
-    // Scan sources/ for PDFs not yet in DB
+    // Scan sources/ for source files not yet in DB
     if sources_dir.is_dir() {
         for entry in fs::read_dir(sources_dir.as_str())
             .with_context(|| format!("read {sources_dir}"))?
@@ -221,13 +237,25 @@ pub fn collect_source_entries() -> Result<Vec<SourceListEntry>> {
             let entry = entry?;
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
-            if !name.to_ascii_lowercase().ends_with(".pdf") {
+            let name_lower = name.to_ascii_lowercase();
+            if name_lower.starts_with("readme") {
                 continue;
             }
+            let path_buf = Utf8Path::new(&name);
+            let ext = path_buf.extension().unwrap_or("");
+            let is_supported = matches!(
+                ext.to_ascii_lowercase().as_str(),
+                "pdf" | "md" | "markdown" | "txt" | "html" | "htm"
+            );
+            if !is_supported {
+                continue;
+            }
+            let kind = sil_core::SourceKind::from_path(path_buf);
             by_name.entry(name.clone()).or_insert(SourceListEntry {
                 id: name.clone(),
                 filename: name.clone(),
                 path: format!("sources/{name}"),
+                kind: kind.to_string(),
                 parsed: false,
                 on_disk: path.is_file(),
                 title: None,

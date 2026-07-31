@@ -19,6 +19,12 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             status      TEXT,
             content     TEXT,
             references_text TEXT,
+            authors     TEXT,
+            abstract_text TEXT,
+            doi         TEXT,
+            year        INTEGER,
+            venue       TEXT,
+            kind        TEXT,
             created_at  TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -165,11 +171,23 @@ fn migrate_sources_columns(conn: &Connection) -> Result<(), DbError> {
         .query_map([], |row| row.get(1))?
         .collect::<Result<_, _>>()?;
 
-    if !columns.iter().any(|c| c == "references_text") {
-        conn.execute(
-            "ALTER TABLE sources ADD COLUMN references_text TEXT",
-            [],
-        )?;
+    let new_cols = [
+        ("references_text", "TEXT"),
+        ("authors", "TEXT"),
+        ("abstract_text", "TEXT"),
+        ("doi", "TEXT"),
+        ("year", "INTEGER"),
+        ("venue", "TEXT"),
+        ("kind", "TEXT"),
+    ];
+
+    for (col_name, col_type) in new_cols {
+        if !columns.iter().any(|c| c == col_name) {
+            conn.execute(
+                &format!("ALTER TABLE sources ADD COLUMN {col_name} {col_type}"),
+                [],
+            )?;
+        }
     }
 
     Ok(())

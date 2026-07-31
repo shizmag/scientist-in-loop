@@ -129,22 +129,22 @@ fn is_noise_line(line: &str) -> bool {
 /// Determine if a line starts a new citation entry (e.g. `[1]`, `1.`, `[Vaswani 2017]`).
 fn is_new_entry_start(line: &str) -> bool {
     // [1], [12], [Vaswani2017]
-    if line.starts_with('[') {
-        if let Some(close_pos) = line.find(']') {
-            let inside = &line[1..close_pos];
-            if inside.chars().all(|c| c.is_numeric()) || inside.contains("et al") || inside.contains(',') || inside.len() < 30 {
-                return true;
-            }
+    if line.starts_with('[')
+        && let Some(close_pos) = line.find(']')
+    {
+        let inside = &line[1..close_pos];
+        if inside.chars().all(|c| c.is_numeric()) || inside.contains("et al") || inside.contains(',') || inside.len() < 30 {
+            return true;
         }
     }
 
     // 1. Author..., 12. Author...
     let first_word = line.split_whitespace().next().unwrap_or("");
-    if first_word.ends_with('.') {
-        let num_part = &first_word[..first_word.len() - 1];
-        if !num_part.is_empty() && num_part.chars().all(|c| c.is_numeric()) {
-            return true;
-        }
+    if let Some(num_part) = first_word.strip_suffix('.')
+        && !num_part.is_empty()
+        && num_part.chars().all(|c| c.is_numeric())
+    {
+        return true;
     }
 
     false
@@ -155,7 +155,7 @@ fn parse_entry_metadata(text: &str) -> (Option<String>, Option<i32>, Option<Stri
     let doi = extract_doi(text);
     let year = extract_year(text);
     let title = extract_title(text);
-    let authors = extract_authors(text, year, &title);
+    let authors = extract_authors(text, year, title.as_deref());
 
     (authors, year, title, doi)
 }
@@ -176,10 +176,26 @@ fn extract_doi(text: &str) -> Option<String> {
 
 fn extract_year(text: &str) -> Option<i32> {
     for word in text.split(&[' ', '(', ')', ',', '.', '[', ']'][..]) {
-        if word.len() == 4 && word.chars().all(|c| c.is_numeric()) {
-            if let Ok(y) = word.parse::<i32>() {
-                if (1800..=2030).contains(&y) {
-                    return Some(y);
+        if word.len() == 4
+            && word.chars().all(|c| c.is_numeric())
+            && let Ok(y) = word.parse::<i32>()
+            && (1800..=2030).contains(&y)
+        {
+            return Some(y);
+        }
+    }
+    None
+}
+
+fn extract_title(text: &str) -> Option<String> {
+    // 1) Look for quoted title: "Title..." or “Title...”
+    for (start_quote, end_quote) in [('"', '"'), ('“', '”')] {
+        if let Some(start) = text.find(start_quote) {
+            let rest = &text[start + start_quote.len_utf8()..];
+            if let Some(end) = rest.find(end_quote) {
+                let title = rest[..end].trim();
+                if title.len() >= 4 {
+                    return Some(title.to_string());
                 }
             }
         }
@@ -187,42 +203,26 @@ fn extract_year(text: &str) -> Option<i32> {
     None
 }
 
-fn extract_title(text: &str) -> Option<String> {
-    // Quoted title: "Title Here" or “Title Here”
-    if let Some(start) = text.find('"').or_else(|| text.find('“')) {
-        let rest = &text[start + 1..];
-        if let Some(end) = rest.find('"').or_else(|| rest.find('”')) {
-            let t = rest[..end].trim();
-            if !t.is_empty() {
-                return Some(t.to_string());
-            }
-        }
-    }
-    None
-}
-
-fn extract_authors(text: &str, year: Option<i32>, title: &Option<String>) -> Option<String> {
-    // Strip leading item number [1] or 1.
-    let clean = text
-        .trim_start_matches(|c: char| c == '[' || c.is_numeric() || c == ']' || c == '.' || c == ' ')
-        .trim();
-
+fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
+    let clean = text.trim();
     if let Some(y) = year {
         let year_str = y.to_string();
         if let Some(pos) = clean.find(&year_str) {
-            let candidate = clean[..pos].trim_end_matches(&[' ', '(', ',', '.'][..]).trim();
+            let candidate = clean[..pos]
+                .trim_end_matches(&[' ', '(', ')', ',', '.'][..])
+                .trim();
             if !candidate.is_empty() && candidate.len() < 120 {
                 return Some(candidate.to_string());
             }
         }
     }
 
-    if let Some(t) = title {
-        if let Some(pos) = clean.find(t) {
-            let candidate = clean[..pos].trim_end_matches(&[' ', '"', '“', ',', '.'][..]).trim();
-            if !candidate.is_empty() && candidate.len() < 120 {
-                return Some(candidate.to_string());
-            }
+    if let Some(t) = title
+        && let Some(pos) = clean.find(t)
+    {
+        let candidate = clean[..pos].trim_end_matches(&[' ', '"', '“', ',', '.'][..]).trim();
+        if !candidate.is_empty() && candidate.len() < 120 {
+            return Some(candidate.to_string());
         }
     }
 
