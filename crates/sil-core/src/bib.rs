@@ -447,6 +447,126 @@ mod tests {
     }
 
     #[test]
+    fn test_citation_exists_by_doi_case_insensitive() {
+        let existing = r#"@article{old_key,
+  title={Quantum Supremacy Using a Programmable Superconducting Processor},
+  doi={10.1038/s41586-019-1666-5},
+  year={2019}
+}
+"#;
+        let new_entry = r#"@article{arute2019quantum,
+  title={Quantum supremacy using a programmable superconducting processor},
+  author={Arute, Frank and Arya, Kapil and others},
+  journal={Nature},
+  volume={574},
+  doi={10.1038/S41586-019-1666-5},
+  year={2019}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("@article{arute2019quantum,"));
+        assert!(!updated.contains("old_key"));
+    }
+
+    #[test]
+    fn test_citation_exists_by_arxiv_id_formatting() {
+        let existing = r#"% [status: unproved, incomplete]
+@misc{attention_raw,
+  title={Attention is all you need},
+  eprint={arXiv:1706.03762v7},
+  note={unproved, incomplete}
+}
+"#;
+        let new_entry = r#"@article{vaswani2017attention,
+  title={Attention Is All You Need},
+  author={Vaswani, Ashish and Shazeer, Noam},
+  eprint={1706.03762},
+  archivePrefix={arXiv},
+  year={2017}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("@article{vaswani2017attention,"));
+        assert!(!updated.contains("attention_raw"));
+    }
+
+    #[test]
+    fn test_citation_exists_by_title_normalization() {
+        let existing = r#"% [status: unproved, incomplete]
+@article{he2016deep,
+  title={Deep Residual Learning for Image Recognition!},
+  author={Unknown},
+  note={unproved, incomplete}
+}
+"#;
+        let new_entry = r#"@article{he2016deep_official,
+  title={Deep residual learning for image recognition},
+  author={He, Kaiming and Zhang, Xiangyu},
+  journal={CVPR},
+  year={2016}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("@article{he2016deep_official,"));
+        assert!(!updated.contains("note={unproved, incomplete}"));
+    }
+
+    #[test]
+    fn test_citation_does_not_exist_appends_new() {
+        let existing = r#"@article{paper1,
+  title={Attention is All You Need},
+  year={2017}
+}
+"#;
+        let new_entry = r#"@article{paper2,
+  title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author={Devlin, Jacob},
+  year={2019}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(!replaced);
+        assert!(updated.contains("paper1"));
+        assert!(updated.contains("paper2"));
+    }
+
+    #[test]
+    fn test_upsert_multiple_entries_preserves_unrelated() {
+        let existing = r#"@article{paper1,
+  title={Paper One},
+  year={2020}
+}
+
+% [status: unproved, incomplete]
+@misc{paper2_raw,
+  title={Paper Two: A Survey},
+  note={unproved, incomplete}
+}
+
+@article{paper3,
+  title={Paper Three},
+  year={2022}
+}
+"#;
+        let new_entry = r#"@article{paper2_official,
+  title={Paper Two: A Survey},
+  author={Smith, Alice},
+  journal={IEEE},
+  year={2021}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("paper1"));
+        assert!(updated.contains("paper2_official"));
+        assert!(updated.contains("paper3"));
+        assert!(!updated.contains("paper2_raw"));
+    }
+
+    #[test]
     fn suggest_from_source_misc_without_venue() {
         let mut doc = SourceDocument::new("dataset.csv".into());
         doc.title = Some("Dataset Title".into());
