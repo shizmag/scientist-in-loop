@@ -429,16 +429,24 @@ impl App {
                 if let Ok(content) = std::fs::read_to_string(bib_path.as_std_path()) {
                     let mut current_entry = String::new();
                     for line in content.lines() {
-                        if line.starts_with('@') {
-                            if !current_entry.is_empty() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with('#') || trimmed.starts_with('%') {
+                            if current_entry.trim().is_empty() {
+                                continue;
+                            }
+                        }
+                        if trimmed.starts_with('@') {
+                            if !current_entry.trim().is_empty() {
                                 self.bib_file_entries.push(current_entry.trim().to_string());
                                 current_entry.clear();
                             }
                         }
-                        current_entry.push_str(line);
-                        current_entry.push('\n');
+                        if !current_entry.is_empty() || trimmed.starts_with('@') {
+                            current_entry.push_str(line);
+                            current_entry.push('\n');
+                        }
                     }
-                    if !current_entry.is_empty() {
+                    if !current_entry.trim().is_empty() {
                         self.bib_file_entries.push(current_entry.trim().to_string());
                     }
                 }
@@ -2775,5 +2783,28 @@ mod tests {
         let updated_bib = std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
         assert!(updated_bib.is_empty());
         assert_eq!(app.bib_file_entries.len(), 0);
+    }
+
+    #[test]
+    fn test_load_bib_entries_with_comments_and_indentation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_path = Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf()).unwrap();
+        let bib_text = r#"
+# Top level comment
+@article{entry1,
+  title={Paper 1}
+}
+
+  @inproceedings{entry2,
+  title={Paper 2}
+}
+"#;
+        std::fs::write(project_path.join("references.bib").as_std_path(), bib_text).unwrap();
+
+        let mut app = App::new(Some(project_path));
+        app.load_project_references_bib();
+        assert_eq!(app.bib_file_entries.len(), 2);
+        assert!(app.bib_file_entries[0].contains("entry1"));
+        assert!(app.bib_file_entries[1].contains("entry2"));
     }
 }
