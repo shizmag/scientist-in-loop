@@ -107,17 +107,46 @@ fn first_line(s: &str) -> &str {
 
 fn extract_bib_keys(bib_text: &str) -> HashSet<String> {
     let mut keys = HashSet::new();
+    let mut pending_key = false;
+
     for line in bib_text.lines() {
         let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('%') || trimmed.starts_with('#') {
+            continue;
+        }
+
         if trimmed.starts_with('@') {
-            if let (Some(brace), Some(comma)) = (trimmed.find('{'), trimmed.find(',')) {
-                if brace < comma {
-                    let key = trimmed[brace + 1..comma].trim().to_string();
+            if let Some(brace) = trimmed.find('{') {
+                let rest = &trimmed[brace + 1..];
+                if let Some(comma) = rest.find(',') {
+                    let key = rest[..comma].trim().to_string();
                     if !key.is_empty() {
                         keys.insert(key);
                     }
+                    pending_key = false;
+                } else {
+                    let candidate = rest.trim();
+                    if !candidate.is_empty() {
+                        keys.insert(candidate.to_string());
+                        pending_key = false;
+                    } else {
+                        pending_key = true;
+                    }
                 }
             }
+        } else if pending_key {
+            if let Some(comma) = trimmed.find(',') {
+                let key = trimmed[..comma].trim().to_string();
+                if !key.is_empty() {
+                    keys.insert(key);
+                }
+            } else {
+                let key = trimmed.trim().to_string();
+                if !key.is_empty() {
+                    keys.insert(key);
+                }
+            }
+            pending_key = false;
         }
     }
     keys
@@ -288,5 +317,26 @@ Figure~\ref{fig:unref} is here.
         let path = camino::Utf8Path::new("/nonexistent/path/paper_draft.tex");
         let err = audit_manuscript(path, None).unwrap_err();
         assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_extract_bib_keys_multiline() {
+        let bib = r#"
+# Some comment
+@inproceedings{
+  wang2025beyond,
+  title={Beyond Prompts},
+}
+@article{ farquhar2024detecting,
+  author={Farquhar et al.},
+}
+@misc{
+  mccabe2026estimating
+}
+"#;
+        let keys = extract_bib_keys(bib);
+        assert!(keys.contains("wang2025beyond"));
+        assert!(keys.contains("farquhar2024detecting"));
+        assert!(keys.contains("mccabe2026estimating"));
     }
 }
