@@ -8,8 +8,8 @@ use crate::error::DbError;
 /// Save a batch of reference entries for a source document.
 pub fn save_source_references(conn: &Connection, refs: &[ReferenceEntry]) -> Result<(), DbError> {
     let mut stmt = conn.prepare(
-        "INSERT OR REPLACE INTO source_references (id, source_id, ref_index, raw_text, title, authors, year, venue, doi)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT OR REPLACE INTO source_references (id, source_id, ref_index, raw_text, title, authors, year, venue, doi, arxiv_id, url)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
     )?;
 
     for entry in refs {
@@ -23,6 +23,8 @@ pub fn save_source_references(conn: &Connection, refs: &[ReferenceEntry]) -> Res
             entry.year,
             entry.venue,
             entry.doi,
+            entry.arxiv_id,
+            entry.url,
         ])?;
     }
 
@@ -35,7 +37,7 @@ pub fn get_references_for_source(
     source_id: &SourceId,
 ) -> Result<Vec<ReferenceEntry>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi
+        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi, arxiv_id, url
          FROM source_references
          WHERE source_id = ?1
          ORDER BY ref_index ASC",
@@ -53,6 +55,8 @@ pub fn get_references_for_source(
             year: row.get(6)?,
             venue: row.get(7)?,
             doi: row.get(8)?,
+            arxiv_id: row.get(9)?,
+            url: row.get(10)?,
         })
     })?;
 
@@ -66,7 +70,7 @@ pub fn get_references_for_source(
 /// Get all reference entries across all source documents.
 pub fn get_all_references(conn: &Connection) -> Result<Vec<ReferenceEntry>, DbError> {
     let mut stmt = conn.prepare(
-        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi
+        "SELECT id, source_id, ref_index, raw_text, title, authors, year, venue, doi, arxiv_id, url
          FROM source_references
          ORDER BY source_id ASC, ref_index ASC",
     )?;
@@ -83,6 +87,8 @@ pub fn get_all_references(conn: &Connection) -> Result<Vec<ReferenceEntry>, DbEr
             year: row.get(6)?,
             venue: row.get(7)?,
             doi: row.get(8)?,
+            arxiv_id: row.get(9)?,
+            url: row.get(10)?,
         })
     })?;
 
@@ -107,7 +113,7 @@ pub fn search_references(
     // Escape FTS query
     let fts_query = clean.replace(['"', '\''], "");
     let mut stmt = conn.prepare(
-        "SELECT r.id, r.source_id, r.ref_index, r.raw_text, r.title, r.authors, r.year, r.venue, r.doi
+        "SELECT r.id, r.source_id, r.ref_index, r.raw_text, r.title, r.authors, r.year, r.venue, r.doi, r.arxiv_id, r.url
          FROM source_references r
          JOIN source_references_fts f ON r.rowid = f.rowid
          WHERE source_references_fts MATCH ?1
@@ -126,6 +132,8 @@ pub fn search_references(
             year: row.get(6)?,
             venue: row.get(7)?,
             doi: row.get(8)?,
+            arxiv_id: row.get(9)?,
+            url: row.get(10)?,
         })
     })?;
 
@@ -172,6 +180,8 @@ mod tests {
                 year: Some(2017),
                 venue: Some("NeurIPS".into()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
             ReferenceEntry {
                 id: "transformer.pdf_ref_2".into(),
@@ -181,8 +191,10 @@ mod tests {
                 title: Some("BERT: Pre-training of Deep Bidirectional Transformers.".into()),
                 authors: Some("Devlin et al.".into()),
                 year: Some(2019),
-                venue: None,
+                venue: Some("NAACL".into()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
         ];
 
@@ -231,6 +243,8 @@ mod tests {
             year: None,
             venue: None,
             doi: None,
+            arxiv_id: None,
+            url: None,
         };
 
         let ref2 = ReferenceEntry {
@@ -243,6 +257,8 @@ mod tests {
             year: None,
             venue: None,
             doi: None,
+            arxiv_id: None,
+            url: None,
         };
 
         db.save_source_references(&[ref1, ref2]).unwrap();

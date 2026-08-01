@@ -1190,7 +1190,23 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
                     Style::default().fg(Color::DarkGray)
                 };
 
-                let doi_badge = if r.doi.is_some() { "[DOI]" } else { "" };
+                let id_badge = {
+                    let mut badges = Vec::new();
+                    if r.doi.is_some() {
+                        badges.push("DOI");
+                    }
+                    if r.arxiv_id.is_some() {
+                        badges.push("arXiv");
+                    }
+                    if r.url.is_some() {
+                        badges.push("URL");
+                    }
+                    if badges.is_empty() {
+                        String::new()
+                    } else {
+                        format!("[{}]", badges.join("|"))
+                    }
+                };
 
                 Row::new(vec![
                     Span::styled(prefix, style),
@@ -1207,7 +1223,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
                             .unwrap_or_else(|| "-".to_string()),
                         style,
                     ),
-                    Span::styled(doi_badge, Style::default().fg(Color::LightBlue)),
+                    Span::styled(id_badge, Style::default().fg(Color::LightBlue)),
                 ])
                 .style(if is_sel {
                     Style::default().bg(Color::Rgb(30, 40, 60))
@@ -1226,7 +1242,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
             Constraint::Percentage(42),
             Constraint::Percentage(16),
             Constraint::Length(6),
-            Constraint::Length(6),
+            Constraint::Length(15),
         ],
     )
     .header(
@@ -1236,7 +1252,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
             "Title / Citation Text",
             "Venue",
             "Year",
-            "DOI",
+            "IDs",
         ])
         .style(
             Style::default()
@@ -1309,6 +1325,8 @@ fn draw_reference_inspector_card(frame: &mut Frame, entry: &sil_core::ReferenceE
         .map(|y| y.to_string())
         .unwrap_or_else(|| "n.d.".to_string());
     let doi_str = entry.doi.as_deref().unwrap_or("None");
+    let arxiv_str = entry.arxiv_id.as_deref().unwrap_or("None");
+    let url_str = entry.url.as_deref().unwrap_or("None");
 
     let text_lines = vec![
         Line::from(vec![
@@ -1340,6 +1358,12 @@ fn draw_reference_inspector_card(frame: &mut Frame, entry: &sil_core::ReferenceE
                     .fg(Color::LightBlue)
                     .add_modifier(Modifier::UNDERLINED),
             ),
+            Span::styled("  🆔 arXiv: ", Style::default().fg(Color::LightYellow)),
+            Span::styled(arxiv_str, Style::default().fg(Color::LightYellow)),
+        ]),
+        Line::from(vec![
+            Span::styled("🌐 URL: ", Style::default().fg(Color::LightGreen)),
+            Span::styled(url_str, Style::default().fg(Color::LightGreen)),
         ]),
         Line::from(vec![
             Span::styled("📄 Raw: ", Style::default().fg(Color::DarkGray)),
@@ -1836,6 +1860,8 @@ mod tests {
             year: Some(2024),
             venue: Some("JMLR".to_string()),
             doi: None,
+            arxiv_id: None,
+            url: None,
         }];
         app.marked_ref_ids.insert("r1".to_string());
         render_to_terminal(&mut app);

@@ -128,6 +128,8 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             year        INTEGER,
             venue       TEXT,
             doi         TEXT,
+            arxiv_id    TEXT,
+            url         TEXT,
             created_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
 

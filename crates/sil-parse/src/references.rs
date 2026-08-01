@@ -38,7 +38,7 @@ pub fn parse_reference_entries(source_id: &SourceId, raw_block: &str) -> Vec<Ref
     let mut results = Vec::new();
 
     for (idx, raw_text) in raw_entries.into_iter().enumerate() {
-        let (authors, year, title, venue, doi) = parse_entry_metadata(&raw_text);
+        let (authors, year, title, venue, doi, arxiv_id, url) = parse_entry_metadata(&raw_text);
         let id = format!("{}_ref_{}", source_id.as_str(), idx + 1);
 
         results.push(ReferenceEntry {
@@ -51,6 +51,8 @@ pub fn parse_reference_entries(source_id: &SourceId, raw_block: &str) -> Vec<Ref
             year,
             venue,
             doi,
+            arxiv_id,
+            url,
         });
     }
 
@@ -303,7 +305,7 @@ fn is_noise_line(line: &str) -> bool {
     lower.starts_with("page ") || lower.starts_with("arxiv:") && lower.contains("[cs.")
 }
 
-/// Extract metadata fields (authors, year, title, venue, doi) from a raw citation string.
+/// Extract metadata fields (authors, year, title, venue, doi, arxiv_id, url) from a raw citation string.
 #[allow(clippy::type_complexity)]
 fn parse_entry_metadata(
     text: &str,
@@ -313,14 +315,18 @@ fn parse_entry_metadata(
     Option<String>,
     Option<String>,
     Option<String>,
+    Option<String>,
+    Option<String>,
 ) {
     let doi = extract_doi(text);
+    let arxiv_id = sil_regex::extract_arxiv_id(text);
+    let url = sil_regex::extract_url(text);
     let year = extract_year(text);
     let title = extract_quoted_title(text).or_else(|| extract_unquoted_title(text));
     let authors = extract_authors(text, year, title.as_deref());
     let venue = sil_regex::extract_reference_venue(text);
 
-    (authors, year, title, venue, doi)
+    (authors, year, title, venue, doi, arxiv_id, url)
 }
 
 fn extract_unquoted_title(text: &str) -> Option<String> {
@@ -658,7 +664,7 @@ This is not a reference, it's trailing text from the paper.
     #[test]
     fn test_extract_unquoted_title_and_authors() {
         let text = "Smith, J. Quantum Computing Foundations. Journal of Physics, 2020.";
-        let (authors, year, title, venue, doi) = parse_entry_metadata(text);
+        let (authors, year, title, venue, doi, _, _) = parse_entry_metadata(text);
         assert_eq!(year, Some(2020));
         assert_eq!(title.as_deref(), Some("Quantum Computing Foundations"));
         assert_eq!(authors.as_deref(), Some("Smith, J"));
@@ -681,7 +687,7 @@ This is not a reference, it's trailing text from the paper.
     #[test]
     fn test_extract_unquoted_title_with_author_initials() {
         let text = "J. Kossen, L. Kuhn, Y. Gal. Detecting hallucinations in LLMs. Nature, 2024.";
-        let (authors, year, title, venue, doi) = parse_entry_metadata(text);
+        let (authors, year, title, venue, doi, _, _) = parse_entry_metadata(text);
         assert_eq!(title.as_deref(), Some("Detecting hallucinations in LLMs"));
         assert_eq!(authors.as_deref(), Some("J. Kossen, L. Kuhn, Y. Gal"));
         assert_eq!(year, Some(2024));
@@ -728,20 +734,20 @@ This is not a reference, it's trailing text from the paper.
     fn test_author_list_not_extracted_as_title() {
         // Case 1: Ref #11
         let text1 = "Ananya Kumar, Percy S Liang, and Tengyu Ma. Verified uncertainty calibration. In Advances in Neural Information Processing Systems, 2019.";
-        let (authors1, year1, title1, _, _) = parse_entry_metadata(text1);
+        let (authors1, year1, title1, ..) = parse_entry_metadata(text1);
         assert_eq!(title1.as_deref(), Some("Verified uncertainty calibration"));
         assert_eq!(authors1.as_deref(), Some("Ananya Kumar, Percy S Liang, and Tengyu Ma"));
         assert_eq!(year1, Some(2019));
 
         // Case 2: Ref #12
         let text2 = "Benjamin Lefaudeux, Francisco Massa, Diana Liskovich, Wenhan Xiong, Vittorio Caggiano, Sean Naren, Min Xu, Jieru Hu, Marta Tintore, Susan Zhang, Patrick Labatut, Daniel Haziza, Luca Wehrstedt, Jeremy Reizenstein, and Grigory Sizov. xformers: A modular and hackable transformer modelling library. 2022.";
-        let (_, year2, title2, _, _) = parse_entry_metadata(text2);
+        let (_, year2, title2, ..) = parse_entry_metadata(text2);
         assert_eq!(title2.as_deref(), Some("xformers: A modular and hackable transformer modelling library"));
         assert_eq!(year2, Some(2022));
 
         // Case 3: Ref #13 with initial J. in middle of long author list
         let text3 = "Yujia Li, David Choi, Junyoung Chung, Nate Kushman, Julian Schrittwieser, Remi Leblond, Tom Eccles, James Keeling, Felix Gimeno, Agustin Dal Lago, Thomas Hubert, Peter Choy, Cyprien de Masson d'Autume, Igor Babuschkin, Xinyun Chen, Po-Sen Huang, Johannes Welbl, Sven Gowal, Alexey Cherepanov, James Molloy, Daniel J. Mankowitz, Esme Sutherland Robson, Pushmeet Kohli, Nando de Freitas, Koray Kavukcuoglu, and Oriol Vinyals. Competition-level code generation with alphacode. Science, 2022. doi: 10.1126/science.abq1158.";
-        let (authors3, year3, title3, venue3, doi3) = parse_entry_metadata(text3);
+        let (authors3, year3, title3, venue3, doi3, _, _) = parse_entry_metadata(text3);
         assert_eq!(title3.as_deref(), Some("Competition-level code generation with alphacode"));
         assert!(authors3.as_deref().unwrap_or("").contains("Oriol Vinyals"));
         assert_eq!(year3, Some(2022));
@@ -753,21 +759,23 @@ This is not a reference, it's trailing text from the paper.
     fn test_apa_and_org_author_title_extraction() {
         // APA style with (2025)
         let apa = "Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F. (2025). EasyEA: Large language model is all you need in entity alignment between knowledge graphs. In Findings of ACL 2025.";
-        let (authors_apa, year_apa, title_apa, venue_apa, _) = parse_entry_metadata(apa);
+        let (authors_apa, year_apa, title_apa, venue_apa, ..) = parse_entry_metadata(apa);
         assert_eq!(title_apa.as_deref(), Some("EasyEA: Large language model is all you need in entity alignment between knowledge graphs"));
         assert_eq!(authors_apa.as_deref(), Some("Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F"));
         assert_eq!(year_apa, Some(2025));
         assert_eq!(venue_apa.as_deref(), Some("Findings of ACL"));
 
-        // Org / Team authors
+        // Org / Team authors with arXiv ID & URL
         let deepseek = "DeepSeek-AI. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning, 2025. URL https://arxiv.org/abs/2501.12948.";
-        let (authors_ds, year_ds, title_ds, _, _) = parse_entry_metadata(deepseek);
+        let (authors_ds, year_ds, title_ds, _venue_ds, _doi_ds, arxiv_ds, url_ds) = parse_entry_metadata(deepseek);
         assert_eq!(title_ds.as_deref(), Some("Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"));
         assert_eq!(authors_ds.as_deref(), Some("DeepSeek-AI"));
         assert_eq!(year_ds, Some(2025));
+        assert_eq!(arxiv_ds.as_deref(), Some("2501.12948"));
+        assert_eq!(url_ds.as_deref(), Some("https://arxiv.org/abs/2501.12948"));
 
         let qwen = "Qwen Team. Qwen3 technical report, 2025. URL https://arxiv.org/abs/2505.09388.";
-        let (authors_qw, year_qw, title_qw, _, _) = parse_entry_metadata(qwen);
+        let (authors_qw, year_qw, title_qw, ..) = parse_entry_metadata(qwen);
         assert_eq!(title_qw.as_deref(), Some("Qwen3 technical report"));
         assert_eq!(authors_qw.as_deref(), Some("Qwen Team"));
         assert_eq!(year_qw, Some(2025));

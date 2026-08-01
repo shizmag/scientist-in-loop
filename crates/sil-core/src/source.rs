@@ -233,10 +233,14 @@ pub struct ReferenceEntry {
     pub venue: Option<String>,
     /// Parsed DOI if extracted.
     pub doi: Option<String>,
+    /// Parsed arXiv ID if extracted.
+    pub arxiv_id: Option<String>,
+    /// Parsed URL if extracted.
+    pub url: Option<String>,
 }
 
 impl ReferenceEntry {
-    /// Format the reference as an `@article` BibTeX string.
+    /// Format the reference as an `@article` or `@misc` BibTeX string.
     pub fn to_bibtex(&self) -> String {
         let title_or_raw = self.title.as_deref().unwrap_or(&self.raw_text);
         let cite_key = crate::bib::slug_cite_key(title_or_raw);
@@ -247,6 +251,12 @@ impl ReferenceEntry {
             .map(|y| y.to_string())
             .unwrap_or_else(|| "n.d.".to_string());
 
+        let entry_type = if self.venue.is_none() && (self.arxiv_id.is_some() || self.url.is_some()) {
+            "@misc"
+        } else {
+            "@article"
+        };
+
         let mut fields = vec![
             format!("  title={{{}}}", title_or_raw),
             format!("  author={{{}}}", author),
@@ -256,8 +266,15 @@ impl ReferenceEntry {
         if let Some(doi) = &self.doi {
             fields.push(format!("  doi={{{}}}", doi));
         }
+        if let Some(arxiv_id) = &self.arxiv_id {
+            fields.push(format!("  eprint={{{}}}", arxiv_id));
+            fields.push("  archivePrefix={arXiv}".to_string());
+        }
+        if let Some(url) = &self.url {
+            fields.push(format!("  url={{{}}}", url));
+        }
         let body = fields.join(",\n");
-        format!("@article{{{}, \n{}\n}}\n", cite_key, body)
+        format!("{entry_type}{{{cite_key}, \n{body}\n}}\n")
     }
 }
 

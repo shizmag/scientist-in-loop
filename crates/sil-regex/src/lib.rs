@@ -278,6 +278,10 @@ pub fn extract_doi(text: &str) -> Option<String> {
     })
 }
 
+static GENERIC_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\bhttps?://[^\s<>]+|\bURL\s*<([^>]+)>").unwrap()
+});
+
 /// Extract an arXiv identifier from text (e.g. `1706.03762` or `arxiv:1706.03762v1`).
 pub fn extract_arxiv_id(text: &str) -> Option<String> {
     ARXIV_REGEX.find(text).map(|m| {
@@ -285,6 +289,19 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
             .trim_end_matches(&['.', ',', ';', ')', ']'][..])
             .to_string()
     })
+}
+
+/// Extract any URL (e.g. `https://github.com/facebookresearch/xformers` or `https://arxiv.org/abs/2501.12948`) from text.
+pub fn extract_url(text: &str) -> Option<String> {
+    if let Some(caps) = GENERIC_URL_REGEX.captures(text) {
+        if let Some(group1) = caps.get(1) {
+            return Some(group1.as_str().trim_matches(&[' ', '>', '<', '.', ','][..]).to_string());
+        }
+        if let Some(m) = caps.get(0) {
+            return Some(m.as_str().trim_matches(&[' ', '>', '<', '.', ',', ')', ']'][..]).to_string());
+        }
+    }
+    None
 }
 
 /// Extract a 4-digit publication year between 1800 and 2030 from text.

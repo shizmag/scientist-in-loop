@@ -290,6 +290,8 @@ mod tests {
             year: Some(2023),
             venue: Some("Journal of Testing".into()),
             doi: Some("10.1234/test".into()),
+            arxiv_id: None,
+            url: None,
         };
         let bib = entry.to_bibtex();
         assert!(bib.contains("@article{a_novel_approach,"));

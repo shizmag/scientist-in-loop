@@ -340,8 +340,49 @@ pub fn lookup_doi_by_title(title: &str, authors: Option<&str>) -> Result<Option<
     Ok(None)
 }
 
-/// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation & Crossref API lookup,
-/// falling back to local `entry.to_bibtex()` if network is unavailable or no DOI matches.
+/// Fetch official BibTeX string directly from arXiv API (`https://arxiv.org/bibtex/{clean_id}`).
+pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseError> {
+    enforce_api_ratelimit();
+    let clean_id = arxiv_id
+        .trim_start_matches("arxiv:")
+        .trim_start_matches("arXiv:")
+        .trim();
+
+    if clean_id.is_empty() {
+        return Ok(None);
+    }
+    let url = format!("https://arxiv.org/bibtex/{clean_id}");
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(std::time::Duration::from_secs(8))
+        .build();
+
+    let response = match agent
+        .get(&url)
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
+        .call()
+    {
+        Ok(res) => res,
+        Err(_) => return Ok(None),
+    };
+
+    let body = response
+        .into_string()
+        .map_err(|e| ParseError::Message(format!("Failed to read arXiv BibTeX: {e}")))?;
+
+    let trimmed = body.trim();
+    if trimmed.starts_with('@') {
+        Ok(Some(trimmed.to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup,
+/// falling back to local `entry.to_bibtex()` if network is unavailable or no match is found.
 pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
     // 1. Try fetching via existing entry.doi
     if let Some(ref doi) = entry.doi {
@@ -350,7 +391,14 @@ pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
         }
     }
 
-    // 2. If no DOI, try Crossref lookup by title & authors to find DOI
+    // 2. Try fetching via existing entry.arxiv_id
+    if let Some(ref arxiv_id) = entry.arxiv_id {
+        if let Ok(Some(bib)) = fetch_bibtex_by_arxiv_id(arxiv_id) {
+            return bib;
+        }
+    }
+
+    // 3. If no DOI/arXiv ID, try Crossref lookup by title & authors to find DOI
     if let Some(ref title) = entry.title {
         if let Ok(Some(doi)) = lookup_doi_by_title(title, entry.authors.as_deref()) {
             if let Ok(Some(bib)) = fetch_bibtex_by_doi(&doi) {
@@ -359,7 +407,7 @@ pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
         }
     }
 
-    // 3. Fallback to entry.to_bibtex()
+    // 4. Fallback to entry.to_bibtex()
     entry.to_bibtex()
 }
 
@@ -741,6 +789,8 @@ print(json.dumps([
             year: Some(2017),
             venue: None,
             doi: None,
+            arxiv_id: None,
+            url: None,
         };
         let bib = resolve_official_bibtex(&entry);
         assert!(bib.contains("@article{"));

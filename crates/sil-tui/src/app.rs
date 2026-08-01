@@ -1171,6 +1171,8 @@ impl App {
                             year: None,
                             venue: None,
                             doi: None,
+                            arxiv_id: None,
+                            url: None,
                         });
                     }
                 }
@@ -2078,6 +2080,8 @@ mod tests {
                 year: None,
                 venue: None,
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
             sil_core::ReferenceEntry {
                 id: "ref2".to_string(),
@@ -2089,6 +2093,8 @@ mod tests {
                 year: None,
                 venue: None,
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
         ];
 
@@ -2492,6 +2498,8 @@ mod tests {
                 year: Some(2020),
                 venue: Some("NeurIPS".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
             ReferenceEntry {
                 id: "2".to_string(),
@@ -2503,6 +2511,8 @@ mod tests {
                 year: Some(2024),
                 venue: Some("ICML".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
         ];
 
@@ -2615,6 +2625,8 @@ mod tests {
                 year: Some(2020),
                 venue: Some("NeurIPS".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
             ReferenceEntry {
                 id: "ref_b".to_string(),
@@ -2626,6 +2638,8 @@ mod tests {
                 year: Some(2024),
                 venue: Some("ICML".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
         ];
 
@@ -2661,6 +2675,8 @@ mod tests {
                 year: Some(2010 + idx as i32),
                 venue: Some("Conf".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             })
             .collect();
         app.selected_viewing_ref_index = 0;
@@ -2706,6 +2722,8 @@ mod tests {
                 year: Some(2017),
                 venue: Some("NeurIPS".to_string()),
                 doi: Some("10.1000/1".to_string()),
+                arxiv_id: None,
+                url: None,
             },
             ReferenceEntry {
                 id: "ref_2".to_string(),
@@ -2717,6 +2735,8 @@ mod tests {
                 year: Some(2016),
                 venue: Some("CVPR".to_string()),
                 doi: None,
+                arxiv_id: None,
+                url: None,
             },
         ];
 
@@ -2767,6 +2787,8 @@ mod tests {
             year: Some(2017),
             venue: Some("NeurIPS".to_string()),
             doi: None,
+            arxiv_id: None,
+            url: None,
         }];
         app.selected_viewing_ref_index = 0;
 

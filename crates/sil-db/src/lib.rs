@@ -896,6 +896,8 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
             year: None,
             venue: None,
             doi: None,
+            arxiv_id: None,
+            url: None,
         };
         db.save_source_references(&[ref_entry]).unwrap();
 
