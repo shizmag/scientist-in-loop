@@ -79,6 +79,33 @@ pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
             }
         }
     }
+
+    // Attempt to resolve official BibTeX for the fetched target and update references.bib
+    let bib_path = root.join("references.bib");
+    let official_bib = if let Some(doi) = sil_regex::extract_doi(target) {
+        sil_parse::journal_digest::fetch_bibtex_by_doi(&doi).ok().flatten()
+    } else if let Some(arxiv) = sil_regex::extract_arxiv_id(target) {
+        sil_parse::journal_digest::fetch_bibtex_by_arxiv_id(&arxiv).ok().flatten()
+    } else {
+        None
+    };
+
+    if let Some(official_bib) = official_bib {
+        let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+        let (updated, replaced) = sil_core::bib::upsert_bib_entry(&current, &official_bib);
+        if std::fs::write(bib_path.as_std_path(), updated).is_ok() {
+            if replaced {
+                ui.success(&format!(
+                    "✓ Replaced incomplete entry in references.bib with official metadata for {target}"
+                ));
+            } else {
+                ui.success(&format!(
+                    "✓ Added official metadata for {target} to references.bib"
+                ));
+            }
+        }
+    }
+
     Ok(())
 }
 

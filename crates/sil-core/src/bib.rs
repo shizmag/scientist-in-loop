@@ -188,6 +188,173 @@ pub fn suggest_from_reference_entry(entry: &crate::ReferenceEntry) -> BibSuggest
     }
 }
 
+/// Parsed information about a single BibTeX entry block used for matching and deduplication.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BibEntryInfo {
+    /// Cite key in `@type{cite_key,`.
+    pub cite_key: Option<String>,
+    /// Extracted title field.
+    pub title: Option<String>,
+    /// Extracted DOI field.
+    pub doi: Option<String>,
+    /// Extracted arXiv ID / eprint field.
+    pub arxiv_id: Option<String>,
+    /// True if entry is marked as `unproved, incomplete`.
+    pub is_incomplete: bool,
+}
+
+/// Extract metadata fields and status from a BibTeX entry block string.
+pub fn extract_bib_entry_info(entry_str: &str) -> BibEntryInfo {
+    let mut info = BibEntryInfo::default();
+
+    let lower = entry_str.to_lowercase();
+    info.is_incomplete = lower.contains("unproved, incomplete")
+        || lower.contains("status: unproved")
+        || lower.contains("journal={unknown}")
+        || lower.contains("author={unknown}");
+
+    for line in entry_str.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('@') && trimmed.contains('{') {
+            if let Some(start) = trimmed.find('{') {
+                let key_part = trimmed[start + 1..].trim();
+                let key = key_part.trim_end_matches(',').trim().to_string();
+                if !key.is_empty() {
+                    info.cite_key = Some(key);
+                }
+            }
+        } else if let Some(eq_pos) = trimmed.find('=') {
+            let key = trimmed[..eq_pos].trim().to_lowercase();
+            let val = trimmed[eq_pos + 1..]
+                .trim()
+                .trim_end_matches(',')
+                .trim_matches('{')
+                .trim_matches('}')
+                .trim_matches('"')
+                .trim();
+            match key.as_str() {
+                "title" => info.title = Some(val.to_string()),
+                "doi" => info.doi = Some(val.to_string()),
+                "eprint" | "arxiv" | "arxiv_id" => info.arxiv_id = Some(val.to_string()),
+                _ => {}
+            }
+        }
+    }
+
+    info
+}
+
+fn normalize_title(title: &str) -> String {
+    title
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Check if two BibTeX entries refer to the same paper.
+pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
+    if let (Some(k1), Some(k2)) = (&a.cite_key, &b.cite_key) {
+        if k1.to_lowercase() == k2.to_lowercase() && k1 != "unknown" {
+            return true;
+        }
+    }
+    if let (Some(d1), Some(d2)) = (&a.doi, &b.doi) {
+        if !d1.is_empty() && d1.to_lowercase() == d2.to_lowercase() {
+            return true;
+        }
+    }
+    if let (Some(x1), Some(x2)) = (&a.arxiv_id, &b.arxiv_id) {
+        let clean1 = x1
+            .trim_start_matches("arxiv:")
+            .trim_start_matches("arXiv:")
+            .trim();
+        let clean2 = x2
+            .trim_start_matches("arxiv:")
+            .trim_start_matches("arXiv:")
+            .trim();
+        if !clean1.is_empty() && clean1.to_lowercase() == clean2.to_lowercase() {
+            return true;
+        }
+    }
+    if let (Some(t1), Some(t2)) = (&a.title, &b.title) {
+        let norm1 = normalize_title(t1);
+        let norm2 = normalize_title(t2);
+        if !norm1.is_empty() && !norm2.is_empty() {
+            if norm1 == norm2 {
+                return true;
+            }
+            if norm1.len() > 15
+                && norm2.len() > 15
+                && (norm1.contains(&norm2) || norm2.contains(&norm1))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Split a BibTeX file content into individual entry blocks, preserving associated comments.
+pub fn parse_bib_blocks(content: &str) -> Vec<String> {
+    let mut blocks = Vec::new();
+    let mut current_block = String::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('@') && !current_block.trim().is_empty() {
+            if current_block.contains('@') {
+                blocks.push(current_block.trim().to_string());
+                current_block.clear();
+            }
+        }
+        current_block.push_str(line);
+        current_block.push('\n');
+    }
+    if !current_block.trim().is_empty() {
+        blocks.push(current_block.trim().to_string());
+    }
+
+    blocks
+}
+
+/// Upsert a BibTeX entry into an existing `references.bib` string content.
+///
+/// If an entry for the same paper already exists:
+/// - Replaces the existing entry block with `new_entry` if existing is incomplete or `new_entry` is complete.
+/// - Returns `(updated_bib_content, was_replaced)`.
+///
+/// If no matching entry exists, appends `new_entry` to the end.
+pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String, bool) {
+    let new_info = extract_bib_entry_info(new_entry);
+    let mut blocks = parse_bib_blocks(existing_bib_content);
+
+    let mut replaced_idx = None;
+    for (idx, block) in blocks.iter().enumerate() {
+        let existing_info = extract_bib_entry_info(block);
+        if is_same_paper(&existing_info, &new_info) {
+            replaced_idx = Some(idx);
+            break;
+        }
+    }
+
+    if let Some(idx) = replaced_idx {
+        blocks[idx] = new_entry.trim().to_string();
+        (blocks.join("\n\n") + "\n", true)
+    } else {
+        let mut out = existing_bib_content.trim().to_string();
+        if !out.is_empty() {
+            out.push_str("\n\n");
+        }
+        out.push_str(new_entry.trim());
+        out.push('\n');
+        (out, false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +417,36 @@ mod tests {
     }
 
     #[test]
+    fn test_upsert_bib_entry_replaces_incomplete_entry() {
+        let unproved_bib = r#"% [status: unproved, incomplete]
+@misc{deepseek_ai_deepseek_r1,
+  title={Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning},
+  author={DeepSeek-AI},
+  journal={Unknown},
+  year={2025},
+  note={unproved, incomplete},
+  url={https://arxiv.org/abs/2501.12948}
+}
+"#;
+
+        let official_bib = r#"@misc{deepseek2025deepseekr1,
+  title={Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning},
+  author={DeepSeek-AI and Daya Guo and Dejian Yang},
+  year={2025},
+  eprint={2501.12948},
+  archivePrefix={arXiv},
+  url={https://arxiv.org/abs/2501.12948}
+}
+"#;
+
+        let (updated, replaced) = upsert_bib_entry(unproved_bib, official_bib);
+        assert!(replaced);
+        assert!(updated.contains("@misc{deepseek2025deepseekr1,"));
+        assert!(updated.contains("author={DeepSeek-AI and Daya Guo and Dejian Yang}"));
+        assert!(!updated.contains("note={unproved, incomplete}"));
+    }
+
+    #[test]
     fn suggest_from_source_misc_without_venue() {
         let mut doc = SourceDocument::new("dataset.csv".into());
         doc.title = Some("Dataset Title".into());
@@ -300,6 +497,8 @@ mod tests {
         assert!(bib.contains("journal={Journal of Testing}"));
         assert!(bib.contains("year={2023}"));
         assert!(bib.contains("doi={10.1234/test}"));
+        assert!(bib.contains("note={unproved, incomplete}"));
+        assert!(bib.contains("% [status: unproved, incomplete]"));
 
         entry.title = None;
         entry.authors = None;
@@ -313,5 +512,6 @@ mod tests {
         assert!(bib_fallback.contains("journal={Unknown}"));
         assert!(bib_fallback.contains("year={n.d.}"));
         assert!(!bib_fallback.contains("doi="));
+        assert!(bib_fallback.contains("note={unproved, incomplete}"));
     }
 }

@@ -4,7 +4,8 @@
 
 #![deny(missing_docs)]
 
-mod bib;
+/// Bibliography & BibTeX utilities.
+pub mod bib;
 mod config;
 mod error;
 /// Project path constants and helpers.
@@ -24,9 +25,10 @@ pub mod health;
 pub mod todo;
 
 pub use bib::{
-    BibSuggestion, format_bibtex_article, format_cite_command, slug_cite_key,
+    BibEntryInfo, BibSuggestion, extract_bib_entry_info, format_bibtex_article,
+    format_cite_command, is_same_paper, parse_bib_blocks, slug_cite_key,
     suggest_from_filename_title, suggest_from_query, suggest_from_reference_entry,
-    suggest_from_source,
+    suggest_from_source, upsert_bib_entry,
 };
 pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
 pub use digest::JournalPublication;

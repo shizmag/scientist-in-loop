@@ -48,28 +48,18 @@ pub fn run(target: &str, append: bool, json: bool, ui: &dyn SilUi) -> Result<()>
 
     if append {
         let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
-        let mut existing = if bib_path.is_file() {
+        let existing = if bib_path.is_file() {
             std::fs::read_to_string(bib_path.as_str())?
         } else {
             String::new()
         };
-        let key_marker = format!("{{{key},", key = suggestion.cite_key);
-        if existing.contains(&key_marker) {
-            ui.warn(&format!(
-                "key '{}' already appears in {}; not appending",
-                suggestion.cite_key, bib_path
-            ));
-            return Ok(());
+        let (updated, replaced) = sil_core::bib::upsert_bib_entry(&existing, &suggestion.bibtex);
+        std::fs::write(bib_path.as_str(), updated)?;
+        if replaced {
+            ui.success(&format!("Updated existing entry in {bib_path}"));
+        } else {
+            ui.success(&format!("Appended entry to {bib_path}"));
         }
-        if !existing.ends_with('\n') && !existing.is_empty() {
-            existing.push('\n');
-        }
-        existing.push_str(&suggestion.bibtex);
-        if !existing.ends_with('\n') {
-            existing.push('\n');
-        }
-        std::fs::write(bib_path.as_str(), existing)?;
-        ui.success(&format!("Appended stub to {bib_path}"));
     }
 
     if suggestion.cite_key.is_empty() || suggestion.bibtex.trim().is_empty() {

@@ -262,6 +262,7 @@ impl ReferenceEntry {
             format!("  author={{{}}}", author),
             format!("  journal={{{}}}", journal),
             format!("  year={{{}}}", year),
+            "  note={unproved, incomplete}".to_string(),
         ];
         if let Some(doi) = &self.doi {
             fields.push(format!("  doi={{{}}}", doi));
@@ -274,7 +275,7 @@ impl ReferenceEntry {
             fields.push(format!("  url={{{}}}", url));
         }
         let body = fields.join(",\n");
-        format!("{entry_type}{{{cite_key}, \n{body}\n}}\n")
+        format!("% [status: unproved, incomplete]\n{entry_type}{{{cite_key},\n{body}\n}}\n")
     }
 }
 

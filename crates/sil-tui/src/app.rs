@@ -580,14 +580,14 @@ impl App {
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
                     let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    current.push_str(&bib_str);
-                    current.push('\n');
+                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &bib_str);
+                    current = updated;
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
                 let count = entries_to_add.len();
                 self.marked_ref_ids.clear();
                 self.load_project_references_bib();
-                self.status_message = format!("✓ Added {count} reference(s) to references.bib");
+                self.status_message = format!("✓ Updated/added {count} reference(s) to references.bib");
             }
         }
     }
@@ -605,13 +605,13 @@ impl App {
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
                     let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    current.push_str(&bib_str);
-                    current.push('\n');
+                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &bib_str);
+                    current = updated;
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
                 let count = entries_to_add.len();
                 self.load_project_references_bib();
-                self.status_message = format!("✓ Added ALL {count} reference(s) to references.bib");
+                self.status_message = format!("✓ Updated/added ALL {count} reference(s) to references.bib");
             }
         }
     }
