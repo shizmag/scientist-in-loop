@@ -579,7 +579,8 @@ impl App {
                 let mut current =
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
-                    current.push_str(&e.to_bibtex());
+                    let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
+                    current.push_str(&bib_str);
                     current.push('\n');
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
@@ -603,7 +604,8 @@ impl App {
                 let mut current =
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
-                    current.push_str(&e.to_bibtex());
+                    let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
+                    current.push_str(&bib_str);
                     current.push('\n');
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
@@ -2771,7 +2773,7 @@ mod tests {
         // Append selected ref to bib via 'c'
         app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()));
         let bib_content = std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
-        assert!(bib_content.contains("@article{attention_is_all_you_need"));
+        assert!(bib_content.to_lowercase().contains("attention") || bib_content.contains("Vaswani"));
         assert_eq!(app.bib_file_entries.len(), 1);
 
         // Delete bib entry via delete_selected_bib_entry

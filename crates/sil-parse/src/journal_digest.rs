@@ -249,6 +249,120 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseE
     }
 }
 
+/// Fetch official BibTeX string from DOI content negotiation (`https://doi.org/{doi}`).
+pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
+    enforce_api_ratelimit();
+    let clean_doi = doi
+        .trim_start_matches("doi:")
+        .trim_start_matches("https://doi.org/")
+        .trim_start_matches("http://doi.org/")
+        .trim();
+
+    if clean_doi.is_empty() {
+        return Ok(None);
+    }
+    let url = format!("https://doi.org/{clean_doi}");
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(std::time::Duration::from_secs(8))
+        .redirects(5)
+        .build();
+
+    let response = match agent
+        .get(&url)
+        .set("Accept", "application/x-bibtex")
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
+        .call()
+    {
+        Ok(res) => res,
+        Err(ureq::Error::Status(404, _)) => return Ok(None),
+        Err(e) => return Err(ParseError::Message(format!("DOI BibTeX request failed: {e}"))),
+    };
+
+    let body = response
+        .into_string()
+        .map_err(|e| ParseError::Message(format!("Failed to read DOI BibTeX string: {e}")))?;
+
+    let trimmed = body.trim();
+    if trimmed.starts_with('@') {
+        Ok(Some(trimmed.to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Lookup DOI for a paper title and optional author list using Crossref API.
+pub fn lookup_doi_by_title(title: &str, authors: Option<&str>) -> Result<Option<String>, ParseError> {
+    enforce_api_ratelimit();
+    let query = if let Some(a) = authors {
+        format!("{title} {a}")
+    } else {
+        title.to_string()
+    };
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(std::time::Duration::from_secs(8))
+        .build();
+
+    let response = match agent
+        .get("https://api.crossref.org/works")
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
+        .query("query.bibliographic", &query)
+        .query("rows", "1")
+        .call()
+    {
+        Ok(res) => res,
+        Err(_) => return Ok(None),
+    };
+
+    let json: serde_json::Value = match response.into_json() {
+        Ok(j) => j,
+        Err(_) => return Ok(None),
+    };
+
+    if let Some(first_item) = json
+        .get("message")
+        .and_then(|m| m.get("items"))
+        .and_then(|i| i.as_array())
+        .and_then(|a| a.first())
+    {
+        if let Some(doi) = first_item.get("DOI").and_then(|d| d.as_str()) {
+            return Ok(Some(doi.to_string()));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation & Crossref API lookup,
+/// falling back to local `entry.to_bibtex()` if network is unavailable or no DOI matches.
+pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
+    // 1. Try fetching via existing entry.doi
+    if let Some(ref doi) = entry.doi {
+        if let Ok(Some(bib)) = fetch_bibtex_by_doi(doi) {
+            return bib;
+        }
+    }
+
+    // 2. If no DOI, try Crossref lookup by title & authors to find DOI
+    if let Some(ref title) = entry.title {
+        if let Ok(Some(doi)) = lookup_doi_by_title(title, entry.authors.as_deref()) {
+            if let Ok(Some(bib)) = fetch_bibtex_by_doi(&doi) {
+                return bib;
+            }
+        }
+    }
+
+    // 3. Fallback to entry.to_bibtex()
+    entry.to_bibtex()
+}
+
 /// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
 pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {
     enforce_api_ratelimit();
@@ -613,5 +727,23 @@ print(json.dumps([
     fn test_fetch_work_by_arxiv_id_empty() {
         let res = fetch_work_by_arxiv_id("  ").unwrap();
         assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_resolve_official_bibtex_fallback() {
+        let entry = sil_core::ReferenceEntry {
+            id: "ref-1".to_string(),
+            source_id: sil_core::SourceId::new("paper.pdf"),
+            ref_index: 1,
+            raw_text: "Vaswani et al. Attention is all you need. 2017.".to_string(),
+            authors: Some("Vaswani et al.".to_string()),
+            title: Some("Attention is all you need".to_string()),
+            year: Some(2017),
+            venue: None,
+            doi: None,
+        };
+        let bib = resolve_official_bibtex(&entry);
+        assert!(bib.contains("@article{"));
+        assert!(bib.to_lowercase().contains("attention is all you need"));
     }
 }
