@@ -351,6 +351,9 @@ fn is_valid_title(candidate: &str) -> bool {
             return false;
         }
     }
+    if sil_regex::is_author_list(t) {
+        return false;
+    }
     true
 }
 
@@ -364,7 +367,7 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
         let candidate = candidate
             .trim_end_matches(&[' ', '"', '“', ',', '.'][..])
             .trim();
-        if !candidate.is_empty() && candidate.len() < 150 {
+        if !candidate.is_empty() && candidate.len() < 1500 {
             return Some(candidate.to_string());
         }
     }
@@ -376,7 +379,7 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
             let candidate = candidate
                 .trim_end_matches(&[' ', '(', ')', ',', '.'][..])
                 .trim();
-            if !candidate.is_empty() && candidate.len() < 150 {
+            if !candidate.is_empty() && candidate.len() < 1500 {
                 return Some(candidate.to_string());
             }
         }
@@ -688,5 +691,30 @@ This is not a reference, it's trailing text from the paper.
         assert_eq!(entries[0].year, Some(2021));
         assert_eq!(entries[1].year, Some(2020));
         assert_eq!(entries[2].year, Some(2020));
+    }
+
+    #[test]
+    fn test_author_list_not_extracted_as_title() {
+        // Case 1: Ref #11
+        let text1 = "Ananya Kumar, Percy S Liang, and Tengyu Ma. Verified uncertainty calibration. In Advances in Neural Information Processing Systems, 2019.";
+        let (authors1, year1, title1, _, _) = parse_entry_metadata(text1);
+        assert_eq!(title1.as_deref(), Some("Verified uncertainty calibration"));
+        assert_eq!(authors1.as_deref(), Some("Ananya Kumar, Percy S Liang, and Tengyu Ma"));
+        assert_eq!(year1, Some(2019));
+
+        // Case 2: Ref #12
+        let text2 = "Benjamin Lefaudeux, Francisco Massa, Diana Liskovich, Wenhan Xiong, Vittorio Caggiano, Sean Naren, Min Xu, Jieru Hu, Marta Tintore, Susan Zhang, Patrick Labatut, Daniel Haziza, Luca Wehrstedt, Jeremy Reizenstein, and Grigory Sizov. xformers: A modular and hackable transformer modelling library. 2022.";
+        let (_, year2, title2, _, _) = parse_entry_metadata(text2);
+        assert_eq!(title2.as_deref(), Some("xformers: A modular and hackable transformer modelling library"));
+        assert_eq!(year2, Some(2022));
+
+        // Case 3: Ref #13 with initial J. in middle of long author list
+        let text3 = "Yujia Li, David Choi, Junyoung Chung, Nate Kushman, Julian Schrittwieser, Remi Leblond, Tom Eccles, James Keeling, Felix Gimeno, Agustin Dal Lago, Thomas Hubert, Peter Choy, Cyprien de Masson d'Autume, Igor Babuschkin, Xinyun Chen, Po-Sen Huang, Johannes Welbl, Sven Gowal, Alexey Cherepanov, James Molloy, Daniel J. Mankowitz, Esme Sutherland Robson, Pushmeet Kohli, Nando de Freitas, Koray Kavukcuoglu, and Oriol Vinyals. Competition-level code generation with alphacode. Science, 2022. doi: 10.1126/science.abq1158.";
+        let (authors3, year3, title3, venue3, doi3) = parse_entry_metadata(text3);
+        assert_eq!(title3.as_deref(), Some("Competition-level code generation with alphacode"));
+        assert!(authors3.as_deref().unwrap_or("").contains("Oriol Vinyals"));
+        assert_eq!(year3, Some(2022));
+        assert_eq!(venue3.as_deref(), Some("Science"));
+        assert_eq!(doi3.as_deref(), Some("10.1126/science.abq1158"));
     }
 }

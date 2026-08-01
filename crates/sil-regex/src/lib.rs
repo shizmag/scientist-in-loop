@@ -58,9 +58,52 @@ static INLINE_BULLET_SEP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(\.|\b)\s+[\-*•]\s+([A-Z])").unwrap()
 });
 
+static AND_AUTHOR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b(?:and|&)\s+[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z][a-zA-Za-z\-']+)?$").unwrap()
+});
+
 /// Expand inline bullet separators (e.g. `. - Author`) into newlines.
 pub fn expand_inline_bullet_references(text: &str) -> String {
     INLINE_BULLET_SEP_REGEX.replace_all(text, "$1\n- $2").to_string()
+}
+
+/// Check if a text candidate matches author list patterns (e.g. "Author 1, Author 2, and Author 3").
+pub fn is_author_list(candidate: &str) -> bool {
+    let t = candidate.trim();
+    if t.is_empty() {
+        return false;
+    }
+
+    if AND_AUTHOR_REGEX.is_match(t) {
+        return true;
+    }
+
+    let comma_parts: Vec<&str> = t.split(',').map(|s| s.trim()).collect();
+    if comma_parts.len() >= 2 {
+        let mut name_like_parts = 0;
+        for part in &comma_parts {
+            let words: Vec<&str> = part.split_whitespace().collect();
+            if !words.is_empty() && words.len() <= 4 {
+                let all_capitalized = words.iter().all(|w| {
+                    w.chars().next().map_or(false, |c| c.is_uppercase())
+                        || *w == "and"
+                        || *w == "&"
+                        || *w == "de"
+                        || *w == "van"
+                        || *w == "von"
+                        || *w == "der"
+                });
+                if all_capitalized {
+                    name_like_parts += 1;
+                }
+            }
+        }
+        if name_like_parts >= comma_parts.len() - 1 && name_like_parts >= 2 {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Strip HTML `<span...>` and `</span>` tags from text.
