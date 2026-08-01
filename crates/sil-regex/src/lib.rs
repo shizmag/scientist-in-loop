@@ -54,9 +54,8 @@ static MD_LINK_WITH_URL_REGEX: LazyLock<Regex> =
 static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap());
 
-static INLINE_BULLET_SEP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\.|\b)\s+[\-*•]\s+([A-Z])").unwrap()
-});
+static INLINE_BULLET_SEP_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\.|\b)\s+[\-*•]\s+([A-Z])").unwrap());
 
 static AND_AUTHOR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)\b(?:and|&)\s+[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z][a-zA-Za-z\-']+)?$").unwrap()
@@ -64,7 +63,9 @@ static AND_AUTHOR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Expand inline bullet separators (e.g. `. - Author`) into newlines.
 pub fn expand_inline_bullet_references(text: &str) -> String {
-    INLINE_BULLET_SEP_REGEX.replace_all(text, "$1\n- $2").to_string()
+    INLINE_BULLET_SEP_REGEX
+        .replace_all(text, "$1\n- $2")
+        .to_string()
 }
 
 /// Check if a text candidate matches author list patterns (e.g. "Author 1, Author 2, and Author 3").
@@ -85,7 +86,7 @@ pub fn is_author_list(candidate: &str) -> bool {
             let words: Vec<&str> = part.split_whitespace().collect();
             if !words.is_empty() && words.len() <= 4 {
                 let all_capitalized = words.iter().all(|w| {
-                    w.chars().next().map_or(false, |c| c.is_uppercase())
+                    w.chars().next().is_some_and(|c| c.is_uppercase())
                         || *w == "and"
                         || *w == "&"
                         || *w == "de"
@@ -278,9 +279,8 @@ pub fn extract_doi(text: &str) -> Option<String> {
     })
 }
 
-static GENERIC_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\bhttps?://[^\s<>]+|\bURL\s*<([^>]+)>").unwrap()
-});
+static GENERIC_URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)\bhttps?://[^\s<>]+|\bURL\s*<([^>]+)>").unwrap());
 
 /// Extract an arXiv identifier from text (e.g. `1706.03762` or `arxiv:1706.03762v1`).
 pub fn extract_arxiv_id(text: &str) -> Option<String> {
@@ -295,10 +295,19 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
 pub fn extract_url(text: &str) -> Option<String> {
     if let Some(caps) = GENERIC_URL_REGEX.captures(text) {
         if let Some(group1) = caps.get(1) {
-            return Some(group1.as_str().trim_matches(&[' ', '>', '<', '.', ','][..]).to_string());
+            return Some(
+                group1
+                    .as_str()
+                    .trim_matches(&[' ', '>', '<', '.', ','][..])
+                    .to_string(),
+            );
         }
         if let Some(m) = caps.get(0) {
-            return Some(m.as_str().trim_matches(&[' ', '>', '<', '.', ',', ')', ']'][..]).to_string());
+            return Some(
+                m.as_str()
+                    .trim_matches(&[' ', '>', '<', '.', ',', ')', ']'][..])
+                    .to_string(),
+            );
         }
     }
     None

@@ -939,8 +939,14 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
 
         schema::migrate(&conn).unwrap();
 
-        let mut stmt = conn.prepare("PRAGMA table_info(source_references)").unwrap();
-        let cols: Vec<String> = stmt.query_map([], |row| row.get(1)).unwrap().collect::<Result<_, _>>().unwrap();
+        let mut stmt = conn
+            .prepare("PRAGMA table_info(source_references)")
+            .unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |row| row.get(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
 
         assert!(cols.contains(&"arxiv_id".to_string()));
         assert!(cols.contains(&"url".to_string()));

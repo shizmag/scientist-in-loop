@@ -155,8 +155,7 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_stateful_widget(left_list, chunks[0], &mut left_state);
 
     if count_bib > 0 {
-        let mut scrollbar_state =
-            ScrollbarState::new(count_bib).position(app.selected_bib_index);
+        let mut scrollbar_state = ScrollbarState::new(count_bib).position(app.selected_bib_index);
         let scrollbar = Scrollbar::default()
             .orientation(ScrollbarOrientation::VerticalRight)
             .begin_symbol(Some("▲"))
@@ -190,7 +189,9 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             app.ref_search_query
         )
     } else {
-        format!(" Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle ")
+        format!(
+            " Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle "
+        )
     };
 
     let right_width = chunks[1].width.saturating_sub(4) as usize;

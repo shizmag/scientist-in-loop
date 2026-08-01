@@ -83,9 +83,13 @@ pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
     // Attempt to resolve official BibTeX for the fetched target and update references.bib
     let bib_path = root.join("references.bib");
     let official_bib = if let Some(doi) = sil_regex::extract_doi(target) {
-        sil_parse::journal_digest::fetch_bibtex_by_doi(&doi).ok().flatten()
+        sil_parse::journal_digest::fetch_bibtex_by_doi(&doi)
+            .ok()
+            .flatten()
     } else if let Some(arxiv) = sil_regex::extract_arxiv_id(target) {
-        sil_parse::journal_digest::fetch_bibtex_by_arxiv_id(&arxiv).ok().flatten()
+        sil_parse::journal_digest::fetch_bibtex_by_arxiv_id(&arxiv)
+            .ok()
+            .flatten()
     } else {
         None
     };
@@ -421,11 +425,12 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
             } else {
                 sources_dir.join(&doc.filename)
             };
-            
+
             if full_path.exists() {
                 pb.set_message(&format!("{} (xberg metadata)", doc.filename));
                 if let Ok(rt) = tokio::runtime::Runtime::new() {
-                    match rt.block_on(sil_parse::xberg_metadata::extract_metadata_utf8(&full_path)) {
+                    match rt.block_on(sil_parse::xberg_metadata::extract_metadata_utf8(&full_path))
+                    {
                         Ok(meta) => {
                             if !meta.title.is_empty() {
                                 doc.title = Some(meta.title);
@@ -437,7 +442,10 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
                         Err(e) => {
                             let msg = e.to_string();
                             let first_line = msg.lines().next().unwrap_or(&msg);
-                            warnings.push(format!("{}: xberg metadata skipped: {first_line}", doc.filename));
+                            warnings.push(format!(
+                                "{}: xberg metadata skipped: {first_line}",
+                                doc.filename
+                            ));
                         }
                     }
                 }

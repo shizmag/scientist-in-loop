@@ -4,9 +4,9 @@ use camino::Utf8Path;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use xberg::{ExtractInput, ExtractionConfig, extract};
-use xberg::core::config::ner::{NerConfig, NerBackendKind};
+use xberg::core::config::ner::{NerBackendKind, NerConfig};
 use xberg::types::entity::EntityCategory;
+use xberg::{ExtractInput, ExtractionConfig, extract};
 
 /// Strongly typed target struct for xberg metadata extraction.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -41,7 +41,11 @@ pub async fn extract_metadata(
     let config = ExtractionConfig {
         ner: Some(NerConfig {
             backend: NerBackendKind::Onnx,
-            custom_labels: vec!["title".to_string(), "author".to_string(), "citation".to_string()],
+            custom_labels: vec![
+                "title".to_string(),
+                "author".to_string(),
+                "citation".to_string(),
+            ],
             ..Default::default()
         }),
         ..Default::default()

@@ -251,7 +251,8 @@ impl ReferenceEntry {
             .map(|y| y.to_string())
             .unwrap_or_else(|| "n.d.".to_string());
 
-        let entry_type = if self.venue.is_none() && (self.arxiv_id.is_some() || self.url.is_some()) {
+        let entry_type = if self.venue.is_none() && (self.arxiv_id.is_some() || self.url.is_some())
+        {
             "@misc"
         } else {
             "@article"

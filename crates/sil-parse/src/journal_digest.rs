@@ -279,7 +279,11 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
     {
         Ok(res) => res,
         Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(e) => return Err(ParseError::Message(format!("DOI BibTeX request failed: {e}"))),
+        Err(e) => {
+            return Err(ParseError::Message(format!(
+                "DOI BibTeX request failed: {e}"
+            )));
+        }
     };
 
     let body = response
@@ -295,7 +299,10 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
 }
 
 /// Lookup DOI for a paper title and optional author list using Crossref API.
-pub fn lookup_doi_by_title(title: &str, authors: Option<&str>) -> Result<Option<String>, ParseError> {
+pub fn lookup_doi_by_title(
+    title: &str,
+    authors: Option<&str>,
+) -> Result<Option<String>, ParseError> {
     enforce_api_ratelimit();
     let query = if let Some(a) = authors {
         format!("{title} {a}")
@@ -331,10 +338,9 @@ pub fn lookup_doi_by_title(title: &str, authors: Option<&str>) -> Result<Option<
         .and_then(|m| m.get("items"))
         .and_then(|i| i.as_array())
         .and_then(|a| a.first())
+        && let Some(doi) = first_item.get("DOI").and_then(|d| d.as_str())
     {
-        if let Some(doi) = first_item.get("DOI").and_then(|d| d.as_str()) {
-            return Ok(Some(doi.to_string()));
-        }
+        return Ok(Some(doi.to_string()));
     }
 
     Ok(None)
@@ -385,26 +391,25 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseE
 /// falling back to local `entry.to_bibtex()` if network is unavailable or no match is found.
 pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
     // 1. Try fetching via existing entry.doi
-    if let Some(ref doi) = entry.doi {
-        if let Ok(Some(bib)) = fetch_bibtex_by_doi(doi) {
-            return bib;
-        }
+    if let Some(ref doi) = entry.doi
+        && let Ok(Some(bib)) = fetch_bibtex_by_doi(doi)
+    {
+        return bib;
     }
 
     // 2. Try fetching via existing entry.arxiv_id
-    if let Some(ref arxiv_id) = entry.arxiv_id {
-        if let Ok(Some(bib)) = fetch_bibtex_by_arxiv_id(arxiv_id) {
-            return bib;
-        }
+    if let Some(ref arxiv_id) = entry.arxiv_id
+        && let Ok(Some(bib)) = fetch_bibtex_by_arxiv_id(arxiv_id)
+    {
+        return bib;
     }
 
     // 3. If no DOI/arXiv ID, try Crossref lookup by title & authors to find DOI
-    if let Some(ref title) = entry.title {
-        if let Ok(Some(doi)) = lookup_doi_by_title(title, entry.authors.as_deref()) {
-            if let Ok(Some(bib)) = fetch_bibtex_by_doi(&doi) {
-                return bib;
-            }
-        }
+    if let Some(ref title) = entry.title
+        && let Ok(Some(doi)) = lookup_doi_by_title(title, entry.authors.as_deref())
+        && let Ok(Some(bib)) = fetch_bibtex_by_doi(&doi)
+    {
+        return bib;
     }
 
     // 4. Fallback to entry.to_bibtex()

@@ -587,7 +587,8 @@ impl App {
                 let count = entries_to_add.len();
                 self.marked_ref_ids.clear();
                 self.load_project_references_bib();
-                self.status_message = format!("✓ Updated/added {count} reference(s) to references.bib");
+                self.status_message =
+                    format!("✓ Updated/added {count} reference(s) to references.bib");
             }
         }
     }
@@ -611,7 +612,8 @@ impl App {
                 let _ = std::fs::write(bib_path.as_std_path(), current);
                 let count = entries_to_add.len();
                 self.load_project_references_bib();
-                self.status_message = format!("✓ Updated/added ALL {count} reference(s) to references.bib");
+                self.status_message =
+                    format!("✓ Updated/added ALL {count} reference(s) to references.bib");
             }
         }
     }
@@ -1830,8 +1832,7 @@ impl App {
                 }
             }
             KeyCode::PageUp => {
-                self.selected_viewing_ref_index =
-                    self.selected_viewing_ref_index.saturating_sub(5);
+                self.selected_viewing_ref_index = self.selected_viewing_ref_index.saturating_sub(5);
             }
             KeyCode::PageDown => {
                 if count > 0 {
@@ -2760,7 +2761,9 @@ mod tests {
         app.handle_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()));
         assert_eq!(app.filtered_viewing_source_references().len(), 1);
         assert_eq!(
-            app.filtered_viewing_source_references()[0].authors.as_deref(),
+            app.filtered_viewing_source_references()[0]
+                .authors
+                .as_deref(),
             Some("He")
         );
 
@@ -2794,8 +2797,11 @@ mod tests {
 
         // Append selected ref to bib via 'c'
         app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()));
-        let bib_content = std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
-        assert!(bib_content.to_lowercase().contains("attention") || bib_content.contains("Vaswani"));
+        let bib_content =
+            std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
+        assert!(
+            bib_content.to_lowercase().contains("attention") || bib_content.contains("Vaswani")
+        );
         assert_eq!(app.bib_file_entries.len(), 1);
 
         // Delete bib entry via delete_selected_bib_entry
@@ -2804,7 +2810,8 @@ mod tests {
         app.selected_bib_index = 0;
         app.delete_selected_bib_entry();
 
-        let updated_bib = std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
+        let updated_bib =
+            std::fs::read_to_string(project_path.join("references.bib").as_std_path()).unwrap();
         assert!(updated_bib.is_empty());
         assert_eq!(app.bib_file_entries.len(), 0);
     }

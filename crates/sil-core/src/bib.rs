@@ -257,15 +257,17 @@ fn normalize_title(title: &str) -> String {
 
 /// Check if two BibTeX entries refer to the same paper.
 pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
-    if let (Some(k1), Some(k2)) = (&a.cite_key, &b.cite_key) {
-        if k1.to_lowercase() == k2.to_lowercase() && k1 != "unknown" {
-            return true;
-        }
+    if let (Some(k1), Some(k2)) = (&a.cite_key, &b.cite_key)
+        && k1.to_lowercase() == k2.to_lowercase()
+        && k1 != "unknown"
+    {
+        return true;
     }
-    if let (Some(d1), Some(d2)) = (&a.doi, &b.doi) {
-        if !d1.is_empty() && d1.to_lowercase() == d2.to_lowercase() {
-            return true;
-        }
+    if let (Some(d1), Some(d2)) = (&a.doi, &b.doi)
+        && !d1.is_empty()
+        && d1.to_lowercase() == d2.to_lowercase()
+    {
+        return true;
     }
     if let (Some(x1), Some(x2)) = (&a.arxiv_id, &b.arxiv_id) {
         let clean1 = x1
@@ -305,11 +307,12 @@ pub fn parse_bib_blocks(content: &str) -> Vec<String> {
 
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with('@') && !current_block.trim().is_empty() {
-            if current_block.contains('@') {
-                blocks.push(current_block.trim().to_string());
-                current_block.clear();
-            }
+        if trimmed.starts_with('@')
+            && !current_block.trim().is_empty()
+            && current_block.contains('@')
+        {
+            blocks.push(current_block.trim().to_string());
+            current_block.clear();
         }
         current_block.push_str(line);
         current_block.push('\n');

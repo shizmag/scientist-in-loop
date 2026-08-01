@@ -90,34 +90,31 @@ impl RefNumberFormat {
 fn detect_number_format(line: &str) -> Option<(RefNumberFormat, usize)> {
     let t = line.trim_start_matches('-').trim();
     // [N]
-    if t.starts_with('[') {
-        if let Some(end) = t.find(']') {
-            if let Ok(n) = t[1..end].parse::<usize>() {
-                return Some((RefNumberFormat::Bracketed, n));
-            }
-        }
+    if t.starts_with('[')
+        && let Some(end) = t.find(']')
+        && let Ok(n) = t[1..end].parse::<usize>()
+    {
+        return Some((RefNumberFormat::Bracketed, n));
     }
     // (N) — but only small numbers to avoid matching "(2024)" year patterns
-    if t.starts_with('(') {
-        if let Some(end) = t.find(')') {
-            if let Ok(n) = t[1..end].parse::<usize>() {
-                if n < 500 {
-                    // Check that after ')' there is a space and then text (not a year-like pattern)
-                    let rest = t[end + 1..].trim_start();
-                    if !rest.is_empty() && rest.starts_with(|c: char| c.is_alphabetic()) {
-                        return Some((RefNumberFormat::Parenthesized, n));
-                    }
-                }
-            }
+    if t.starts_with('(')
+        && let Some(end) = t.find(')')
+        && let Ok(n) = t[1..end].parse::<usize>()
+        && n < 500
+    {
+        // Check that after ')' there is a space and then text (not a year-like pattern)
+        let rest = t[end + 1..].trim_start();
+        if !rest.is_empty() && rest.starts_with(|c: char| c.is_alphabetic()) {
+            return Some((RefNumberFormat::Parenthesized, n));
         }
     }
     // N. (only at start, followed by space and alphabetic)
     if let Some(dot_pos) = t.find(". ") {
         let prefix = &t[..dot_pos];
-        if let Ok(n) = prefix.parse::<usize>() {
-            if n < 500 {
-                return Some((RefNumberFormat::DotNumbered, n));
-            }
+        if let Ok(n) = prefix.parse::<usize>()
+            && n < 500
+        {
+            return Some((RefNumberFormat::DotNumbered, n));
         }
     }
     None
@@ -351,7 +348,9 @@ fn extract_unquoted_title(text: &str) -> Option<String> {
 }
 
 fn is_valid_title(candidate: &str) -> bool {
-    let t = candidate.trim().trim_matches(&['(', ')', '[', ']', '.', ' ', '"', '“', '”'][..]);
+    let t = candidate
+        .trim()
+        .trim_matches(&['(', ')', '[', ']', '.', ' ', '"', '“', '”'][..]);
 
     if t.len() < 5 || t.len() > 200 || t.contains("http") || t.contains("doi:") {
         return false;
@@ -362,9 +361,9 @@ fn is_valid_title(candidate: &str) -> bool {
     if t.ends_with("et al") || t.ends_with("et al.") {
         return false;
     }
-    if let Some(last_comma) = t.split(',').last() {
+    if let Some(last_comma) = t.split(',').next_back() {
         let s = last_comma.trim();
-        if s.len() == 1 && s.chars().next().map_or(false, |c| c.is_uppercase()) {
+        if s.len() == 1 && s.chars().next().is_some_and(|c| c.is_uppercase()) {
             return false;
         }
     }
@@ -380,10 +379,23 @@ fn is_valid_title(candidate: &str) -> bool {
 fn is_org_author(candidate: &str) -> bool {
     let lower = candidate.to_lowercase();
     let org_keywords = [
-        " team", "-ai", " ai", " research", " lab", " labs", " group",
-        "openai", "deepseek", "anthropic", "meta ai", "google", "microsoft",
+        " team",
+        "-ai",
+        " ai",
+        " research",
+        " lab",
+        " labs",
+        " group",
+        "openai",
+        "deepseek",
+        "anthropic",
+        "meta ai",
+        "google",
+        "microsoft",
     ];
-    org_keywords.iter().any(|&k| lower.contains(k)) && candidate.len() < 30 && !candidate.contains(':')
+    org_keywords.iter().any(|&k| lower.contains(k))
+        && candidate.len() < 30
+        && !candidate.contains(':')
 }
 
 fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
@@ -400,7 +412,10 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
         if let Some(open) = candidate.rfind('(') {
             let inside = candidate[open..].trim_matches(&['(', ')', ' ', '.'][..]);
             if inside.chars().all(|c| c.is_ascii_digit()) && inside.len() == 4 {
-                candidate = candidate[..open].trim().trim_end_matches(&[' ', '.', ','][..]).trim();
+                candidate = candidate[..open]
+                    .trim()
+                    .trim_end_matches(&[' ', '.', ','][..])
+                    .trim();
             }
         }
 
@@ -736,19 +751,28 @@ This is not a reference, it's trailing text from the paper.
         let text1 = "Ananya Kumar, Percy S Liang, and Tengyu Ma. Verified uncertainty calibration. In Advances in Neural Information Processing Systems, 2019.";
         let (authors1, year1, title1, ..) = parse_entry_metadata(text1);
         assert_eq!(title1.as_deref(), Some("Verified uncertainty calibration"));
-        assert_eq!(authors1.as_deref(), Some("Ananya Kumar, Percy S Liang, and Tengyu Ma"));
+        assert_eq!(
+            authors1.as_deref(),
+            Some("Ananya Kumar, Percy S Liang, and Tengyu Ma")
+        );
         assert_eq!(year1, Some(2019));
 
         // Case 2: Ref #12
         let text2 = "Benjamin Lefaudeux, Francisco Massa, Diana Liskovich, Wenhan Xiong, Vittorio Caggiano, Sean Naren, Min Xu, Jieru Hu, Marta Tintore, Susan Zhang, Patrick Labatut, Daniel Haziza, Luca Wehrstedt, Jeremy Reizenstein, and Grigory Sizov. xformers: A modular and hackable transformer modelling library. 2022.";
         let (_, year2, title2, ..) = parse_entry_metadata(text2);
-        assert_eq!(title2.as_deref(), Some("xformers: A modular and hackable transformer modelling library"));
+        assert_eq!(
+            title2.as_deref(),
+            Some("xformers: A modular and hackable transformer modelling library")
+        );
         assert_eq!(year2, Some(2022));
 
         // Case 3: Ref #13 with initial J. in middle of long author list
         let text3 = "Yujia Li, David Choi, Junyoung Chung, Nate Kushman, Julian Schrittwieser, Remi Leblond, Tom Eccles, James Keeling, Felix Gimeno, Agustin Dal Lago, Thomas Hubert, Peter Choy, Cyprien de Masson d'Autume, Igor Babuschkin, Xinyun Chen, Po-Sen Huang, Johannes Welbl, Sven Gowal, Alexey Cherepanov, James Molloy, Daniel J. Mankowitz, Esme Sutherland Robson, Pushmeet Kohli, Nando de Freitas, Koray Kavukcuoglu, and Oriol Vinyals. Competition-level code generation with alphacode. Science, 2022. doi: 10.1126/science.abq1158.";
         let (authors3, year3, title3, venue3, doi3, _, _) = parse_entry_metadata(text3);
-        assert_eq!(title3.as_deref(), Some("Competition-level code generation with alphacode"));
+        assert_eq!(
+            title3.as_deref(),
+            Some("Competition-level code generation with alphacode")
+        );
         assert!(authors3.as_deref().unwrap_or("").contains("Oriol Vinyals"));
         assert_eq!(year3, Some(2022));
         assert_eq!(venue3.as_deref(), Some("Science"));
@@ -760,15 +784,29 @@ This is not a reference, it's trailing text from the paper.
         // APA style with (2025)
         let apa = "Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F. (2025). EasyEA: Large language model is all you need in entity alignment between knowledge graphs. In Findings of ACL 2025.";
         let (authors_apa, year_apa, title_apa, venue_apa, ..) = parse_entry_metadata(apa);
-        assert_eq!(title_apa.as_deref(), Some("EasyEA: Large language model is all you need in entity alignment between knowledge graphs"));
-        assert_eq!(authors_apa.as_deref(), Some("Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F"));
+        assert_eq!(
+            title_apa.as_deref(),
+            Some(
+                "EasyEA: Large language model is all you need in entity alignment between knowledge graphs"
+            )
+        );
+        assert_eq!(
+            authors_apa.as_deref(),
+            Some("Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F")
+        );
         assert_eq!(year_apa, Some(2025));
         assert_eq!(venue_apa.as_deref(), Some("Findings of ACL"));
 
         // Org / Team authors with arXiv ID & URL
         let deepseek = "DeepSeek-AI. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning, 2025. URL https://arxiv.org/abs/2501.12948.";
-        let (authors_ds, year_ds, title_ds, _venue_ds, _doi_ds, arxiv_ds, url_ds) = parse_entry_metadata(deepseek);
-        assert_eq!(title_ds.as_deref(), Some("Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"));
+        let (authors_ds, year_ds, title_ds, _venue_ds, _doi_ds, arxiv_ds, url_ds) =
+            parse_entry_metadata(deepseek);
+        assert_eq!(
+            title_ds.as_deref(),
+            Some(
+                "Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"
+            )
+        );
         assert_eq!(authors_ds.as_deref(), Some("DeepSeek-AI"));
         assert_eq!(year_ds, Some(2025));
         assert_eq!(arxiv_ds.as_deref(), Some("2501.12948"));
