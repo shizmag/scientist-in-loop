@@ -26,11 +26,13 @@ After `sil init`, you can hand a goal to an agent and it will understand the lay
 Scientific writing with AI assistants often devolves into ad-hoc folders, lost provenance, and opaque agent context. `sil` enforces a small, boring, reliable layout:
 
 1. Original literature sources (PDFs, Markdown `.md`, Plain Text `.txt`, HTML `.html`) live in `sources/`.  
-2. Parsed text and explicit bibliographic metadata (`authors`, `year`, `venue`, `doi`, `abstract`) are indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
-3. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
-4. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
-5. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
-6. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.
+2. Parsed text and explicit bibliographic metadata (`authors`, `year`, `venue`, `doi`, `arxiv_id`, `url`, `abstract`) are indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
+3. Extracted references from documents are auto-tagged with `% [status: unproved, incomplete]` and `note={unproved, incomplete}` until officially verified.  
+4. Fetching official papers (`sil source fetch <doi|arxiv|url>`) automatically upgrades and replaces incomplete `references.bib` entries via smart deduplication (DOI, arXiv ID, title similarity).  
+5. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
+6. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
+7. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
+8. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.  
 
 ---
 
@@ -53,8 +55,8 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | `sil init` / structure / SQLite | Needs **git** + built `sil` |
 | `sil settings` / `sil tui` | Terminal TUI built into `sil` (powered by Ratatui & Crossterm) |
 | `sil parse` | Uses **xberg** for structured metadata/citations and **Python 3** / **marker-pdf** for Markdown text |
-| `sil source fetch` | Needs **Python 3** (stdlib networking) |
-| `sil build` | Needs a **LaTeX engine** on `PATH` |
+| `sil source fetch` | Needs **Python 3** (stdlib networking) & CrossRef/arXiv APIs for official BibTeX resolution |
+| `sil build` | Needs a **LaTeX engine** on `PATH` |ATH` |
 
 
 ### Install script (macOS / Linux / Windows)
@@ -219,7 +221,8 @@ Sci-Action: fetch-source
    - Adding new works via links (`a`).
    - Real-time parse status indicator (`[✓ Parsed]` / `[  Not Parsed]`).
    - Source statistics (word count, extracted reference count).
-   - Extracted references pop-up window per source document (`v`).
+   - Extracted references viewer per document (`v`) with `IDs` column badges (`[DOI]`, `[arXiv]`, `[URL]`), DOI/arXiv/URL detail rows, and single-item (`a`) / batch (`A`) append to `references.bib`.
+   - Extracted reference entries added to `references.bib` are auto-marked with `% [status: unproved, incomplete]` until official metadata is fetched.
    - Deleting sources with confirmation (`d`) and renaming titles (`r`).
 4. **Settings (`4`)**: Unified settings window with distinct vertical section dividers:
    - **Global Settings**: Default author requisites, default grant, engine, and template defaults (`~/.config/sil/settings.yaml`).
@@ -236,6 +239,7 @@ Sci-Action: fetch-source
 - `r`: Rename source title.
 - `d` / `Delete`: Remove source (with confirmation) or remove co-author/grant item.
 - `v`: View extracted references for selected source (in Sources tab) or launch external `$EDITOR` (in Paper Draft tab).
+- `a` / `A` (inside reference viewer `v`): Add selected or ALL references to `references.bib` with `unproved, incomplete` status tagging and smart deduplication.
 - `s` or `Ctrl+S`: Save all global, local, and cache settings.
 - `q` or `Esc`: Quit TUI / close open modal.
 
