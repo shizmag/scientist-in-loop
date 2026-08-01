@@ -328,7 +328,14 @@ fn extract_unquoted_title(text: &str) -> Option<String> {
     let parts: Vec<&str> = clean.split(". ").collect();
 
     for part in parts {
-        let candidate = part.trim().trim_end_matches('.');
+        let mut candidate = part.trim().trim_end_matches('.').trim();
+        if let Some(pos) = candidate.rfind(',') {
+            let suffix = candidate[pos + 1..].trim();
+            if suffix.chars().all(|c| c.is_ascii_digit()) && suffix.len() == 4 {
+                candidate = candidate[..pos].trim();
+            }
+        }
+
         if is_valid_title(candidate) {
             return Some(candidate.to_string());
         }
@@ -338,8 +345,12 @@ fn extract_unquoted_title(text: &str) -> Option<String> {
 }
 
 fn is_valid_title(candidate: &str) -> bool {
-    let t = candidate.trim();
+    let t = candidate.trim().trim_matches(&['(', ')', '[', ']', '.', ' ', '"', '“', '”'][..]);
+
     if t.len() < 5 || t.len() > 200 || t.contains("http") || t.contains("doi:") {
+        return false;
+    }
+    if t.chars().all(|c| c.is_ascii_digit()) && t.len() == 4 {
         return false;
     }
     if t.ends_with("et al") || t.ends_with("et al.") {
@@ -354,7 +365,19 @@ fn is_valid_title(candidate: &str) -> bool {
     if sil_regex::is_author_list(t) {
         return false;
     }
+    if is_org_author(t) {
+        return false;
+    }
     true
+}
+
+fn is_org_author(candidate: &str) -> bool {
+    let lower = candidate.to_lowercase();
+    let org_keywords = [
+        " team", "-ai", " ai", " research", " lab", " labs", " group",
+        "openai", "deepseek", "anthropic", "meta ai", "google", "microsoft",
+    ];
+    org_keywords.iter().any(|&k| lower.contains(k)) && candidate.len() < 30 && !candidate.contains(':')
 }
 
 fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
@@ -364,9 +387,17 @@ fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option
         && let Some(pos) = clean.find(t)
     {
         let candidate = clean[..pos].trim();
-        let candidate = candidate
+        let mut candidate = candidate
             .trim_end_matches(&[' ', '"', '“', ',', '.'][..])
             .trim();
+
+        if let Some(open) = candidate.rfind('(') {
+            let inside = candidate[open..].trim_matches(&['(', ')', ' ', '.'][..]);
+            if inside.chars().all(|c| c.is_ascii_digit()) && inside.len() == 4 {
+                candidate = candidate[..open].trim().trim_end_matches(&[' ', '.', ','][..]).trim();
+            }
+        }
+
         if !candidate.is_empty() && candidate.len() < 1500 {
             return Some(candidate.to_string());
         }
@@ -716,5 +747,29 @@ This is not a reference, it's trailing text from the paper.
         assert_eq!(year3, Some(2022));
         assert_eq!(venue3.as_deref(), Some("Science"));
         assert_eq!(doi3.as_deref(), Some("10.1126/science.abq1158"));
+    }
+
+    #[test]
+    fn test_apa_and_org_author_title_extraction() {
+        // APA style with (2025)
+        let apa = "Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F. (2025). EasyEA: Large language model is all you need in entity alignment between knowledge graphs. In Findings of ACL 2025.";
+        let (authors_apa, year_apa, title_apa, venue_apa, _) = parse_entry_metadata(apa);
+        assert_eq!(title_apa.as_deref(), Some("EasyEA: Large language model is all you need in entity alignment between knowledge graphs"));
+        assert_eq!(authors_apa.as_deref(), Some("Cheng, J., Lu, C., Yang, L., Chen, G., & Zhang, F"));
+        assert_eq!(year_apa, Some(2025));
+        assert_eq!(venue_apa.as_deref(), Some("Findings of ACL"));
+
+        // Org / Team authors
+        let deepseek = "DeepSeek-AI. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning, 2025. URL https://arxiv.org/abs/2501.12948.";
+        let (authors_ds, year_ds, title_ds, _, _) = parse_entry_metadata(deepseek);
+        assert_eq!(title_ds.as_deref(), Some("Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"));
+        assert_eq!(authors_ds.as_deref(), Some("DeepSeek-AI"));
+        assert_eq!(year_ds, Some(2025));
+
+        let qwen = "Qwen Team. Qwen3 technical report, 2025. URL https://arxiv.org/abs/2505.09388.";
+        let (authors_qw, year_qw, title_qw, _, _) = parse_entry_metadata(qwen);
+        assert_eq!(title_qw.as_deref(), Some("Qwen3 technical report"));
+        assert_eq!(authors_qw.as_deref(), Some("Qwen Team"));
+        assert_eq!(year_qw, Some(2025));
     }
 }
