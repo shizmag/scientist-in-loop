@@ -158,7 +158,7 @@ fn split_raw_entries(block: &str) -> Vec<String> {
             .collect();
         split_by_sequential_markers(&lines, fmt, start_n)
     } else {
-        split_by_paragraphs(block)
+        split_by_regex_or_paragraphs(block)
     };
 
     // Phase 3: clean
@@ -172,6 +172,44 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     }
 
     cleaned_entries
+}
+
+fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
+    let lines: Vec<String> = block
+        .lines()
+        .map(clean_spans)
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l))
+        .collect();
+
+    let matches_count = lines
+        .iter()
+        .filter(|l| sil_regex::is_reference_entry_start(l))
+        .count();
+
+    if matches_count >= 2 {
+        let mut entries = Vec::new();
+        let mut current = String::new();
+
+        for line in lines {
+            if sil_regex::is_reference_entry_start(&line) {
+                if !current.is_empty() {
+                    entries.push(current.trim().to_string());
+                    current.clear();
+                }
+                current.push_str(&line);
+            } else if !current.is_empty() {
+                current.push(' ');
+                current.push_str(&line);
+            }
+        }
+        if !current.is_empty() {
+            entries.push(current.trim().to_string());
+        }
+        entries
+    } else {
+        split_by_paragraphs(block)
+    }
 }
 
 /// Check if a line is LaTeX math noise.
@@ -280,32 +318,33 @@ fn parse_entry_metadata(
 
 fn extract_unquoted_title(text: &str) -> Option<String> {
     let clean = text.trim();
-    // Since we now use clean_reference_text, the list prefixes ([1], 1.) are already stripped,
-    // so we can just look at the remaining text.
-    let content = clean;
+    let parts: Vec<&str> = clean.split(". ").collect();
 
-    let parts: Vec<&str> = content.split(". ").collect();
-    if parts.len() >= 2 {
-        let candidate = parts[1].trim().trim_end_matches('.');
-        if candidate.len() >= 5
-            && candidate.len() <= 200
-            && !candidate.contains("http")
-            && !candidate.contains("doi:")
-        {
-            return Some(candidate.to_string());
-        }
-    } else if parts.len() == 1 {
-        let candidate = parts[0].trim().trim_end_matches('.');
-        if candidate.len() >= 5
-            && candidate.len() <= 200
-            && !candidate.contains("http")
-            && !candidate.contains("doi:")
-        {
+    for part in parts {
+        let candidate = part.trim().trim_end_matches('.');
+        if is_valid_title(candidate) {
             return Some(candidate.to_string());
         }
     }
 
     None
+}
+
+fn is_valid_title(candidate: &str) -> bool {
+    let t = candidate.trim();
+    if t.len() < 5 || t.len() > 200 || t.contains("http") || t.contains("doi:") {
+        return false;
+    }
+    if t.ends_with("et al") || t.ends_with("et al.") {
+        return false;
+    }
+    if let Some(last_comma) = t.split(',').last() {
+        let s = last_comma.trim();
+        if s.len() == 1 && s.chars().next().map_or(false, |c| c.is_uppercase()) {
+            return false;
+        }
+    }
+    true
 }
 
 fn extract_authors(text: &str, year: Option<i32>, title: Option<&str>) -> Option<String> {
@@ -596,5 +635,26 @@ This is not a reference, it's trailing text from the paper.
         let entries = parse_reference_entries(&sid, raw);
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].year, Some(2017));
+    }
+
+    #[test]
+    fn test_extract_unquoted_title_with_author_initials() {
+        let text = "J. Kossen, L. Kuhn, Y. Gal. Detecting hallucinations in LLMs. Nature, 2024.";
+        let (authors, year, title, venue, doi) = parse_entry_metadata(text);
+        assert_eq!(title.as_deref(), Some("Detecting hallucinations in LLMs"));
+        assert_eq!(authors.as_deref(), Some("J. Kossen, L. Kuhn, Y. Gal"));
+        assert_eq!(year, Some(2024));
+        assert_eq!(venue.as_deref(), Some("Nature"));
+        assert_eq!(doi, None);
+    }
+
+    #[test]
+    fn test_split_unnumbered_single_line_entries() {
+        let sid = SourceId::new("unnumbered.pdf");
+        let raw = "Kossen, J. et al. Title A. 2024.\nKuhn, L. et al. Title B. 2025.";
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].year, Some(2024));
+        assert_eq!(entries[1].year, Some(2025));
     }
 }
