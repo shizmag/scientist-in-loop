@@ -233,9 +233,20 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
 
             let mut item_lines = Vec::new();
 
+            let mut badges = Vec::new();
+            if entry.doi.is_some() {
+                badges.push("DOI");
+            }
+            if entry.arxiv_id.is_some() {
+                badges.push("arXiv");
+            }
+            if entry.url.is_some() {
+                badges.push("URL");
+            }
+
             // Title / Header line
             let title_str = entry.title.as_deref().unwrap_or_else(|| &entry.raw_text);
-            item_lines.push(Line::from(vec![
+            let mut header_spans = vec![
                 Span::styled(prefix, style),
                 Span::styled(mark, mark_style),
                 Span::styled(
@@ -243,7 +254,16 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
                     Style::default().fg(Color::Cyan),
                 ),
                 Span::styled(title_str, style),
-            ]));
+            ];
+            if !badges.is_empty() {
+                header_spans.push(Span::styled(
+                    format!(" [{}]", badges.join("|")),
+                    Style::default()
+                        .fg(Color::LightBlue)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            item_lines.push(Line::from(header_spans));
 
             // Metadata line if structured fields present
             let mut meta_parts = Vec::new();
@@ -255,6 +275,15 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             }
             if let Some(year) = entry.year {
                 meta_parts.push(format!("Year: {}", year));
+            }
+            if let Some(ref doi) = entry.doi {
+                meta_parts.push(format!("DOI: {}", doi));
+            }
+            if let Some(ref arxiv_id) = entry.arxiv_id {
+                meta_parts.push(format!("arXiv: {}", arxiv_id));
+            }
+            if let Some(ref url) = entry.url {
+                meta_parts.push(format!("URL: {}", url));
             }
             if !meta_parts.is_empty() {
                 item_lines.push(Line::from(vec![
@@ -1860,9 +1889,9 @@ mod tests {
             authors: Some("Author".to_string()),
             year: Some(2024),
             venue: Some("JMLR".to_string()),
-            doi: None,
-            arxiv_id: None,
-            url: None,
+            doi: Some("10.1234/5678".to_string()),
+            arxiv_id: Some("2405.12345".to_string()),
+            url: Some("https://example.com".to_string()),
         }];
         app.marked_ref_ids.insert("r1".to_string());
         render_to_terminal(&mut app);
