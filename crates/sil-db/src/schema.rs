@@ -237,6 +237,12 @@ fn migrate_source_references_columns(conn: &Connection) -> Result<(), DbError> {
     if !columns.iter().any(|c| c == "venue") {
         conn.execute("ALTER TABLE source_references ADD COLUMN venue TEXT", [])?;
     }
+    if !columns.iter().any(|c| c == "arxiv_id") {
+        conn.execute("ALTER TABLE source_references ADD COLUMN arxiv_id TEXT", [])?;
+    }
+    if !columns.iter().any(|c| c == "url") {
+        conn.execute("ALTER TABLE source_references ADD COLUMN url TEXT", [])?;
+    }
 
     Ok(())
 }

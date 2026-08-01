@@ -918,4 +918,31 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
         db.insert_todo_idea(&idea).unwrap();
         assert!(db.get_todo_idea_by_id("idea_facade").unwrap().is_some());
     }
+
+    #[test]
+    fn test_source_references_automigration() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(r#"
+            CREATE TABLE sources (id TEXT PRIMARY KEY NOT NULL, path TEXT NOT NULL, filename TEXT NOT NULL);
+            CREATE TABLE source_references (
+                id TEXT PRIMARY KEY NOT NULL,
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                ref_index INTEGER NOT NULL,
+                raw_text TEXT NOT NULL,
+                title TEXT,
+                authors TEXT,
+                year INTEGER,
+                venue TEXT,
+                doi TEXT
+            );
+        "#).unwrap();
+
+        schema::migrate(&conn).unwrap();
+
+        let mut stmt = conn.prepare("PRAGMA table_info(source_references)").unwrap();
+        let cols: Vec<String> = stmt.query_map([], |row| row.get(1)).unwrap().collect::<Result<_, _>>().unwrap();
+
+        assert!(cols.contains(&"arxiv_id".to_string()));
+        assert!(cols.contains(&"url".to_string()));
+    }
 }
