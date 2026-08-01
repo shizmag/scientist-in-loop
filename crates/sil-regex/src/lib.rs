@@ -29,11 +29,11 @@ static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        // Branch 1: numbered/bracketed entries, or "Surname," pattern (with optional - and <span> prefix)
-        r"^\s*(?:-\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+[\.\)]|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\]|[A-Z][a-z]+[,\;\:]\s+[A-Z])",
+        // Branch 1: numbered/bracketed entries, "Surname," pattern, or "Firstname Surname," pattern (with optional -, *, • and <span> prefix)
+        r"^\s*(?:[\-*•]\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+[\.\)]|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\]|[A-Z][a-z]+[,\;\:]\s+[A-Z]|[A-Z][a-z]+(?:\s+[A-Z]\.|\s+[A-Z][a-z]+)+[,\;\.])",
         r"|",
         // Branch 2: "- " and/or <span> prefixed "Name et al" entries (requires at least one list marker)
-        r"^\s*(?:-\s+(?:<span[^>]*>.*?</span>\s*)?|<span[^>]*>.*?</span>\s*)[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+et\s+al",
+        r"^\s*(?:[\-*•]\s+(?:<span[^>]*>.*?</span>\s*)?|<span[^>]*>.*?</span>\s*)[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+et\s+al",
     )).unwrap()
 });
 
@@ -53,6 +53,15 @@ static MD_LINK_WITH_URL_REGEX: LazyLock<Regex> =
 
 static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap());
+
+static INLINE_BULLET_SEP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(\.|\b)\s+[\-*•]\s+([A-Z])").unwrap()
+});
+
+/// Expand inline bullet separators (e.g. `. - Author`) into newlines.
+pub fn expand_inline_bullet_references(text: &str) -> String {
+    INLINE_BULLET_SEP_REGEX.replace_all(text, "$1\n- $2").to_string()
+}
 
 /// Strip HTML `<span...>` and `</span>` tags from text.
 pub fn strip_html_spans(text: &str) -> String {

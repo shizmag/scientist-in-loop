@@ -168,6 +168,11 @@ fn split_raw_entries(block: &str) -> Vec<String> {
         if cleaned.is_empty() {
             continue;
         }
+        // Filter out page numbers or noise entries without sufficient alphabetic characters (e.g. "**558 559 560**")
+        let alpha_count = cleaned.chars().filter(|c| c.is_alphabetic()).count();
+        if alpha_count < 4 {
+            continue;
+        }
         cleaned_entries.push(cleaned);
     }
 
@@ -175,7 +180,9 @@ fn split_raw_entries(block: &str) -> Vec<String> {
 }
 
 fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
-    let lines: Vec<String> = block
+    let expanded_block = sil_regex::expand_inline_bullet_references(block);
+
+    let lines: Vec<String> = expanded_block
         .lines()
         .map(clean_spans)
         .map(|l| l.trim().to_string())
@@ -191,16 +198,16 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
         let mut entries = Vec::new();
         let mut current = String::new();
 
-        for line in lines {
-            if sil_regex::is_reference_entry_start(&line) {
+        for line in &lines {
+            if sil_regex::is_reference_entry_start(line) {
                 if !current.is_empty() {
                     entries.push(current.trim().to_string());
                     current.clear();
                 }
-                current.push_str(&line);
+                current.push_str(line);
             } else if !current.is_empty() {
                 current.push(' ');
-                current.push_str(&line);
+                current.push_str(line);
             }
         }
         if !current.is_empty() {
@@ -656,5 +663,30 @@ This is not a reference, it's trailing text from the paper.
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].year, Some(2024));
         assert_eq!(entries[1].year, Some(2025));
+    }
+
+    #[test]
+    fn test_filter_numeric_page_noise_entries() {
+        let sid = SourceId::new("page_noise.pdf");
+        let raw = r#"
+**558 559 560**
+**564**
+**579**
+[1] Vaswani et al. Attention is all you need. 2017.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].year, Some(2017));
+    }
+
+    #[test]
+    fn test_split_inline_bullet_references() {
+        let sid = SourceId::new("inline_bullets.pdf");
+        let raw = "Sourya Basu, Govardana Sachitanandam Ramachandran, Nitish Shirish Keskar, and Lav R. Varshney. Mirostat: A neural text decoding algorithm that directly controls perplexity. In Proceedings of ICLR, 2021. - Mark Braverman, Xinyi Chen, Sham Kakade. Calibration, entropy rates, and memory in language models. In ICML, 2020. - Yuntian Deng, Anton Bakhtin. Residual energy-based models for text generation. In ICLR, 2020.";
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries[0].year, Some(2021));
+        assert_eq!(entries[1].year, Some(2020));
+        assert_eq!(entries[2].year, Some(2020));
     }
 }
