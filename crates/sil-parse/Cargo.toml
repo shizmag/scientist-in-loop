@@ -20,7 +20,7 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ureq = { workspace = true }
-xberg = { workspace = true }
+xberg = { version = "1.0.6", features = ["pdf", "ocr", "layout-types", "layout-detection", "ner-onnx"] }
 
 [dev-dependencies]
 
