@@ -304,7 +304,7 @@ fn is_noise_line(line: &str) -> bool {
 
 /// Extract metadata fields (authors, year, title, venue, doi, arxiv_id, url) from a raw citation string.
 #[allow(clippy::type_complexity)]
-fn parse_entry_metadata(
+pub fn parse_entry_metadata(
     text: &str,
 ) -> (
     Option<String>,
