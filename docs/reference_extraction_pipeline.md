@@ -1,47 +1,196 @@
-# Reference, Author, and Title Extraction Pipeline (Detailed Specification)
+# Reference, Author, and Title Extraction Pipeline (Comprehensive Specification)
 
 ## 1. Executive Summary & Architecture Overview
 
-Scientist-In-Loop (`sil`) uses a multi-stage pipeline to extract metadata from source documents (PDF, Markdown, LaTeX) and embedded bibliography blocks. The pipeline guarantees strict scoping between document-level metadata and citation-level references, executes pattern-based extraction with zero runtime Python dependencies, and enriches data via throttled academic REST APIs (Crossref, ArXiv, OpenAlex).
+Scientist-In-Loop (`sil`) employs a high-performance, multi-layered extraction architecture designed to process source documents (PDF, Markdown, LaTeX) and convert them into clean, structured Data Transfer Objects (DTOs).
+
+The architecture features:
+1. **Zero-Dependency Native Fast Fallback**: Regular expressions and pattern recognition via `sil-regex` & `sil-parse`.
+2. **Deep Semantic Extraction via `xberg` Engine**: Onnx-backed Named Entity Recognition (NER) for rich structural PDF parsing.
+3. **Throttled Network Hydration Protocol**: External API lookups across Crossref, ArXiv, and OpenAlex.
+4. **Strict Document vs. Reference Scoping**: Header-scoped metadata extraction to guarantee parent document identities are never contaminated by cited paper DOIs.
 
 ```mermaid
 flowchart TD
-    subgraph Stage 1: Document Processing & Scoping
-        A[Source Document] --> B1[Header Scoper: First 3000 Chars / Before ## References]
-        A --> B2[Reference Section Isolator]
+    subgraph Input Phase
+        Doc[Source File: PDF / MD / TeX]
     end
 
-    subgraph Stage 2: Pattern-Based Extraction sil-regex & sil-parse
-        B1 --> C1[Doc DOI, ArXiv ID, Title, Authors]
-        B2 --> C2[Split Reference Entries: Bracketed / Parenthesized / Dot-Numbered / APA / Paragraph]
-        C2 --> C3[Field Parser: Authors, Year, Title, Venue, DOI, ArXiv ID, URL]
+    subgraph Scoping & Pipeline Orchestration
+        Doc --> HeaderScoper[Header Scoper: First 3,000 Chars]
+        Doc --> RefScoper[Reference Section Isolator]
     end
 
-    subgraph Stage 3: Metadata Hydration Engine sil-core
-        C1 & C3 --> D[Hydration Coordinator]
-        D -->|DOI Query| E1[Crossref REST API]
-        D -->|ArXiv ID Query| E2[ArXiv Export XML API]
-        D -->|Title + Author Fallback| E3[Crossref Bibliographic Search]
-        D -->|DOI Accept Header| E4[DOI Content Negotiation BibTeX]
+    subgraph Feature Extraction Engines
+        HeaderScoper --> NativeRegex[sil-regex Native Engine]
+        Doc -->|PDF Input| XbergEngine[xberg NER ONNX Engine]
+        RefScoper --> RefSplitter[sil-parse Reference Splitter]
     end
 
-    subgraph Stage 4: Rate Limiting & Network Control
-        E1 & E2 & E3 & E4 --> F[Sync Mutex Rate-Limiter: min 250ms delay]
+    subgraph Data Transfer Objects sil-core & sil-parse
+        XbergEngine --> XbergDTO[xberg_metadata::DocumentMetadata]
+        NativeRegex & RefSplitter --> CoreDTO[sil_core::SourceDocument & ReferenceEntry]
+        XbergDTO --> CoreDTO
     end
 
-    subgraph Stage 5: Persistence & Interface
-        F --> G[(SQLite Database: source_references & sources)]
-        G --> H[sil-tui & sil source doctor CLI]
+    subgraph Metadata Hydration & API Control
+        CoreDTO --> Hydration[sil-parse Metadata Hydrator]
+        Hydration -->|Throttled Requests: >=250ms| Crossref[Crossref REST API]
+        Hydration -->|Throttled Requests: >=250ms| ArXiv[ArXiv Atom XML API]
+        Hydration -->|Accept: application/x-bibtex| ContentNeg[DOI Content Negotiation]
+    end
+
+    subgraph Persistence & User Interface
+        Hydration --> SQLite[(sil-db: SQLite Database)]
+        SQLite --> TUI[sil-tui & sil source doctor]
     end
 ```
 
 ---
 
-## 2. Regular Expressions & Pattern Definitions (`sil-regex`)
+## 2. Core Data Transfer Objects (DTOs) & Data Contracts
+
+Data transfer across crates is governed by strongly typed, serialized structures defined in `crates/sil-core` and `crates/sil-parse`.
+
+### 2.1 `sil_core::SourceDocument`
+Represents the parent source document entity stored in the database.
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SourceDocument {
+    pub id: SourceId,                  // Opaque unique identifier key
+    pub path: Utf8PathBuf,             // Relative filesystem path
+    pub filename: String,              // Original filename
+    pub kind: SourceKind,              // Format: Pdf, Markdown, Html, Text, Code, Dataset
+    pub parsed: bool,                  // Indicates if parsed content is stored in DB
+    pub status: Option<DocumentStatus>,// Document status (Valid, Corrupted, NotFound, etc.)
+    pub title: Option<String>,         // Document title
+    pub authors: Option<String>,       // Document author(s)
+    pub abstract_text: Option<String>, // Abstract paragraph text
+    pub doi: Option<String>,           // Document-level Digital Object Identifier
+    pub year: Option<i32>,             // Publication year
+    pub venue: Option<String>,         // Journal / Conference venue
+    pub references_text: Option<String>,// Raw unparsed reference section text
+}
+```
+
+### 2.2 `sil_core::ReferenceEntry`
+Represents an individual extracted citation/reference entry within a paper's bibliography.
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReferenceEntry {
+    pub id: String,              // Unique identifier (e.g. "{source_id}_ref_{index}")
+    pub source_id: SourceId,     // Parent SourceId reference
+    pub ref_index: usize,        // 1-based sequential index in bibliography
+    pub raw_text: String,        // Complete raw unparsed reference line/paragraph
+    pub title: Option<String>,   // Parsed publication title
+    pub authors: Option<String>, // Parsed author list string
+    pub year: Option<i32>,       // Publication year (1800..=2030)
+    pub venue: Option<String>,   // Journal or conference name
+    pub doi: Option<String>,     // Reference DOI (10.xxxx/...)
+    pub arxiv_id: Option<String>,// ArXiv identifier (e.g. 1706.03762)
+    pub url: Option<String>,     // External publication URL
+}
+```
+
+### 2.3 `sil_parse::xberg_metadata::DocumentMetadata`
+Intermediary DTO populated during ML-driven extraction using the `xberg` crate.
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+pub struct DocumentMetadata {
+    pub title: String,          // Extracted document title
+    pub authors: Vec<String>,   // Vector of extracted author names
+    pub citations: Vec<String>, // Vector of extracted reference strings
+}
+```
+
+### 2.4 `sil_core::JournalPublication`
+External API transfer object for Crossref/ArXiv API responses.
+
+```rust
+pub struct JournalPublication {
+    pub doi: Option<String>,
+    pub title: String,
+    pub authors: String,
+    pub journal: String,
+    pub year: Option<u32>,
+    pub abstract_text: String,
+    pub citation_count: Option<u32>,
+    pub url: String,
+    pub pdf_url: Option<String>,
+}
+```
+
+---
+
+## 3. `xberg` Named Entity Recognition (NER) Integration
+
+For PDF files, `sil-parse` integrates the `xberg` crate, utilizing an ONNX-backed Named Entity Recognition model to extract titles, author names, and citation entities directly from unstructured layout streams.
+
+### 3.1 Model Cache & Environment Initialization
+To maintain deterministic execution across environments, `xberg` sets its HuggingFace cache directory to a local dedicated path:
+
+```rust
+let cache_dir = Path::new("/Volumes/happy-disk/models/xberg/huggingface");
+if let Ok(_) = std::fs::create_dir_all(cache_dir) {
+    unsafe {
+        std::env::set_var("HF_HOME", cache_dir);
+    }
+}
+```
+
+### 3.2 NER Extraction Configuration & Pipeline Execution
+`extract_metadata` configures ONNX backend custom labels to capture target document fields:
+
+```rust
+let config = ExtractionConfig {
+    ner: Some(NerConfig {
+        backend: NerBackendKind::Onnx,
+        custom_labels: vec![
+            "title".to_string(),
+            "author".to_string(),
+            "citation".to_string(),
+        ],
+        ..Default::default()
+    }),
+    ..Default::default()
+};
+
+let input = ExtractInput::from_uri(path_str);
+let result = extract(input, &config).await?;
+```
+
+### 3.3 DTO Mapping from `xberg` Results
+Extracted entities are mapped into `xberg_metadata::DocumentMetadata`:
+
+```rust
+for entity in doc.entities.iter().flatten() {
+    match &entity.category {
+        EntityCategory::Custom(label) if label == "title" => {
+            if metadata.title.is_empty() {
+                metadata.title = entity.text.clone();
+            }
+        }
+        EntityCategory::Custom(label) if label == "author" => {
+            metadata.authors.push(entity.text.clone());
+        }
+        EntityCategory::Custom(label) if label == "citation" => {
+            metadata.citations.push(entity.text.clone());
+        }
+        _ => {}
+    }
+}
+```
+
+---
+
+## 4. Regular Expression Engine & Pattern Definitions (`sil-regex`)
 
 All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` in `crates/sil-regex/src/lib.rs`.
 
-### 2.1 Document & Citation Identifier Patterns
+### 4.1 Document & Citation Identifier Patterns
 
 1. **Digital Object Identifier (DOI)**:
    ```regex
@@ -74,7 +223,7 @@ All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` i
 
 ---
 
-### 2.2 Heading & Section Boundary Patterns
+### 4.2 Heading & Section Boundary Patterns
 
 1. **Reference Section Heading**:
    ```regex
@@ -90,7 +239,7 @@ All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` i
 
 ---
 
-### 2.3 Citation Entry & Author Detection Patterns
+### 4.3 Citation Entry & Author Detection Patterns
 
 1. **Reference Entry Start**:
    ```regex
@@ -113,47 +262,10 @@ All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` i
 
 ---
 
-## 3. Reference Section Isolation & Splitting Algorithm (`sil-parse`)
+## 5. API Interaction Patterns & Network Control Protocol
 
-### 3.1 Two-Phase Entry Splitting
-1. **Phase 1: Numbering Format Detection**
-   - Scans reference lines for format consistency:
-     - `Bracketed`: `[1]`, `[2]`, ...
-     - `Parenthesized`: `(1)`, `(2)`, ...
-     - `DotNumbered`: `1.`, `2.`, ...
-   - If detected, `split_by_sequential_markers` processes entries sequentially by expected index `n`, grouping multi-line text into a single entry until `n+1` is encountered.
-
-2. **Phase 2: Fallback (Unnumbered / Paragraph Splitting)**
-   - If no numeric pattern is detected, `split_by_paragraphs` splits entries using double-newlines or bullet entries while filtering math equations (`$$...$$`), HTML noise, and page numbers (`**558 559 560**`).
-
-### 3.2 Field Extraction Rules (`parse_entry_metadata`)
-
-```mermaid
-flowchart LR
-    RawText[Raw Reference Entry String] --> ExtractDOI[extract_doi]
-    RawText --> ExtractArXiv[extract_arxiv_id]
-    RawText --> ExtractYear[extract_year]
-    RawText --> ExtractVenue[extract_reference_venue]
-    
-    RawText --> TitleCheck{Quoted Title Found?}
-    TitleCheck -- Yes --> Title[extract_quoted_title]
-    TitleCheck -- No --> UnquotedTitle[extract_unquoted_title]
-    
-    UnquotedTitle --> TitleValidation{is_valid_title}
-    TitleValidation -- True --> Title
-    TitleValidation -- False --> NullTitle[None]
-
-    Title & RawText & ExtractYear --> Authors[extract_authors]
-```
-
-- **Venue Extraction (`extract_reference_venue`)**: Matches against known venue strings (`Nature`, `Science`, `PNAS`, `NeurIPS`, `ICML`, `ICLR`, `CVPR`, `ACL`, `IEEE Transactions`, `CoRR`, `arXiv`) or captures patterns matching `Proceedings of ...` / `Journal of ...`.
-
----
-
-## 4. API Interaction Patterns & Network Protocol
-
-### 4.1 Throttling & Rate-Limiting Implementation
-All external API requests are protected by a global thread-safe rate limiter in `crates/sil-parse/src/journal_digest.rs`:
+### 5.1 Global Rate-Limiter Implementation
+All external REST calls are protected by a global thread-safe rate limiter in `crates/sil-parse/src/journal_digest.rs`:
 
 ```rust
 static LAST_API_CALL: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(|| Mutex::new(None));
@@ -172,19 +284,19 @@ pub fn enforce_api_ratelimit() {
 }
 ```
 
-### 4.2 External Provider Interaction Protocols
+### 5.2 External Provider Interaction Matrix
 
-| Provider | Endpoint | Parameters / Headers | Output Format | Purpose |
+| Provider | Endpoint | Headers / Params | Output DTO | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
-| **Crossref Works** | `GET https://api.crossref.org/works/{doi}` | `User-Agent: scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)` | JSON (`message`) | Retrieve exact paper metadata by DOI |
-| **Crossref Search** | `GET https://api.crossref.org/works` | `query.bibliographic={title}+{authors}&rows=1` | JSON (`message.items`) | Resolve missing DOI from title & author |
-| **DOI Content Negotiation** | `GET https://doi.org/{doi}` | `Accept: application/x-bibtex`<br>`Redirects: 5` | Plaintext BibTeX (`@article{...}`) | Fetch official BibTeX citation |
-| **ArXiv API** | `GET http://export.arxiv.org/api/query` | `id_list={arxiv_id}` | XML Atom Feed (`<entry>`) | Fetch arXiv paper title, authors, summary |
+| **Crossref Works** | `GET https://api.crossref.org/works/{doi}` | `User-Agent: scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)` | `JournalPublication` | Lookup paper metadata via DOI |
+| **Crossref Search** | `GET https://api.crossref.org/works` | `query.bibliographic={title}+{authors}&rows=1` | `JournalPublication` | Search DOI by title + author |
+| **DOI Content Negotiation** | `GET https://doi.org/{doi}` | `Accept: application/x-bibtex`<br>`Redirects: 5` | Plaintext BibTeX | Retrieve official BibTeX string |
+| **ArXiv API** | `GET http://export.arxiv.org/api/query` | `id_list={arxiv_id}` | `JournalPublication` | Query arXiv metadata feed |
 | **ArXiv BibTeX** | `GET https://arxiv.org/bibtex/{arxiv_id}` | Direct HTTP GET | Plaintext BibTeX | Fetch arXiv BibTeX entry |
 
 ---
 
-## 5. Metadata Hydration Protocol (`resolve_official_bibtex`)
+## 6. Metadata Hydration Protocol (`resolve_official_bibtex`)
 
 When generating or resolving references, `sil-parse` attempts network hydration in strict precedence order:
 
@@ -195,9 +307,9 @@ When generating or resolving references, `sil-parse` attempts network hydration 
 
 ---
 
-## 6. Database Storage & TUI Sorting Integration
+## 7. Database Persistence & TUI Interaction
 
-### 6.1 Database Schema (`sil-db` / SQLite)
+### 7.1 Database Schema (`sil-db` / SQLite)
 
 ```sql
 CREATE TABLE IF NOT EXISTS source_references (
@@ -216,7 +328,7 @@ CREATE TABLE IF NOT EXISTS source_references (
 );
 ```
 
-### 6.2 Interactive TUI Reference Sorting (`sil-tui`)
+### 7.2 Interactive TUI Reference Sorting (`sil-tui`)
 `sil-tui` provides interactive keybindings to re-sort reference lists dynamically:
 
 - **`y`**: Sort by **Publication Year** (descending/ascending).
