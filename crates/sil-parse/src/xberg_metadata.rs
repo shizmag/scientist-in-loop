@@ -55,7 +55,8 @@ pub async fn extract_file(
     file_path: &Path,
     config: &ExtractionConfig,
 ) -> std::result::Result<xberg::ExtractionResult, anyhow::Error> {
-    let cache_dir = Path::new("/Volumes/happy-disk/models/xberg/huggingface");
+    let settings = sil_core::GlobalSettings::load_or_default(None);
+    let cache_dir = settings.rag.xberg_model_cache_dir.as_std_path();
     if let Err(e) = std::fs::create_dir_all(cache_dir) {
         eprintln!(
             "Warning: failed to create xberg model cache directory {:?}: {}",

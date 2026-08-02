@@ -140,18 +140,20 @@ pub enum RagField {
     RerankerPath = 1,
     ModelsDir = 2,
     CacheDir = 3,
-    ExecutionProvider = 4,
-    NumThreads = 5,
-    ParentChunkSize = 6,
-    ChildChunkSize = 7,
+    XbergCacheDir = 4,
+    ExecutionProvider = 5,
+    NumThreads = 6,
+    ParentChunkSize = 7,
+    ChildChunkSize = 8,
 }
 
 impl RagField {
-    pub const ALL: [RagField; 8] = [
+    pub const ALL: [RagField; 9] = [
         RagField::EmbedderPath,
         RagField::RerankerPath,
         RagField::ModelsDir,
         RagField::CacheDir,
+        RagField::XbergCacheDir,
         RagField::ExecutionProvider,
         RagField::NumThreads,
         RagField::ParentChunkSize,
@@ -1294,6 +1296,9 @@ impl App {
                                 RagField::CacheDir => {
                                     self.global_settings.rag.model_cache_dir.to_string()
                                 }
+                                RagField::XbergCacheDir => {
+                                    self.global_settings.rag.xberg_model_cache_dir.to_string()
+                                }
                                 RagField::ExecutionProvider => {
                                     self.global_settings.rag.execution_provider.clone()
                                 }
@@ -1479,6 +1484,10 @@ impl App {
                         }
                         RagField::CacheDir => {
                             self.global_settings.rag.model_cache_dir =
+                                camino::Utf8PathBuf::from(val)
+                        }
+                        RagField::XbergCacheDir => {
+                            self.global_settings.rag.xberg_model_cache_dir =
                                 camino::Utf8PathBuf::from(val)
                         }
                         RagField::ModelsDir => {
@@ -2131,7 +2140,7 @@ mod tests {
 
         assert_eq!(GlobalField::ALL.len(), 9);
         assert_eq!(LocalField::ALL.len(), 4);
-        assert_eq!(RagField::ALL.len(), 8);
+        assert_eq!(RagField::ALL.len(), 9);
     }
 
     #[test]
@@ -2324,6 +2333,7 @@ mod tests {
                     RagField::RerankerPath => "/path/to/reranker.onnx".to_string(),
                     RagField::ModelsDir => "/path/to/models".to_string(),
                     RagField::CacheDir => "/path/to/cache".to_string(),
+                    RagField::XbergCacheDir => "/path/to/xberg_cache".to_string(),
                     RagField::ExecutionProvider => "cuda".to_string(),
                     RagField::NumThreads => "16".to_string(),
                     RagField::ParentChunkSize => "2000".to_string(),

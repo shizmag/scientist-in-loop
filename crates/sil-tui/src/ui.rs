@@ -722,6 +722,10 @@ fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
                         "Model Cache Dir",
                         app.global_settings.rag.model_cache_dir.as_str(),
                     ),
+                    RagField::XbergCacheDir => (
+                        "Xberg Cache Dir",
+                        app.global_settings.rag.xberg_model_cache_dir.as_str(),
+                    ),
                     RagField::ExecutionProvider => (
                         "Execution Provider",
                         app.global_settings.rag.execution_provider.as_str(),

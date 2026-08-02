@@ -80,6 +80,12 @@ fn default_model_cache_dir() -> Utf8PathBuf {
         .unwrap_or_else(|| Utf8PathBuf::from("~/.cache/sil/models"))
 }
 
+fn default_xberg_model_cache_dir() -> Utf8PathBuf {
+    dirs::home_dir()
+        .and_then(|h| Utf8PathBuf::from_path_buf(h.join(".cache").join("sil").join("xberg")).ok())
+        .unwrap_or_else(|| Utf8PathBuf::from("~/.cache/sil/xberg"))
+}
+
 fn default_execution_provider() -> String {
     "cpu".to_string()
 }
@@ -108,6 +114,9 @@ pub struct RagSettings {
     /// Cache directory for storing model artifacts.
     #[serde(default = "default_model_cache_dir")]
     pub model_cache_dir: Utf8PathBuf,
+    /// Cache directory for storing xberg model artifacts.
+    #[serde(default = "default_xberg_model_cache_dir")]
+    pub xberg_model_cache_dir: Utf8PathBuf,
     /// Custom directory path containing *.onnx models
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub onnx_models_dir: Option<Utf8PathBuf>,
@@ -137,6 +146,7 @@ impl Default for RagSettings {
             onnx_embedder_model: default_onnx_embedder_model(),
             onnx_reranker_model: default_onnx_reranker_model(),
             model_cache_dir: default_model_cache_dir(),
+            xberg_model_cache_dir: default_xberg_model_cache_dir(),
             onnx_models_dir: None,
             onnx_embedder_path: None,
             onnx_reranker_path: None,
