@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ManifestSchema",
+  "description": "Schema for manifest.yaml in golden_dataset",
+  "type": "object",
+  "required": ["sources"],
+  "properties": {
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "filename",
+          "source_stem",
+          "fixture_dir",
+          "gold_parent",
+          "parent_confidence",
+          "content_bytes",
+          "references_text_bytes",
+          "n_current_refs",
+          "flags",
+          "needs_reparse",
+          "gold_references"
+        ],
+        "properties": {
+          "filename": { "type": "string" },
+          "source_stem": { "type": "string" },
+          "fixture_dir": { "type": "string" },
+          "gold_parent": { "type": "boolean" },
+          "parent_confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "content_bytes": { "type": "integer", "minimum": 0 },
+          "references_text_bytes": { "type": "integer", "minimum": 0 },
+          "n_current_refs": { "type": "integer", "minimum": 0 },
+          "flags": {
+            "type": "object",
+            "required": ["empty_content", "empty_references_text", "ref_count_outlier"],
+            "properties": {
+              "empty_content": { "type": "boolean" },
+              "empty_references_text": { "type": "boolean" },
+              "ref_count_outlier": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "needs_reparse": { "type": "boolean" },
+          "gold_references": { "type": "boolean" },
+          "expected_ref_count_min": { "type": ["integer", "null"] },
+          "expected_ref_count_max": { "type": ["integer", "null"] },
+          "n_anchors": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

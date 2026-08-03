@@ -142,9 +142,9 @@ anchors:
 must_not_extract_as_reference:
   - pattern: "span id=\"page-"
     reason: "marker page anchors"
-  - pattern: "^#\s+A\s+Appendix"
+  - pattern: '^#\s+A\s+Appendix'
     reason: "appendix section heading"
-  - pattern: "^####\s+Listing\s+A"
+  - pattern: '^####\s+Listing\s+A'
     reason: "prompt code listing heading"
 split_errors_observed_in_current:
   - "current_extraction.json correctly parsed 34 items, but references_block.md included Appendix A text and QA prompts"

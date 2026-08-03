@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GoldParentSchema",
+  "description": "Schema for gold_parent.yaml in golden_dataset fixtures",
+  "type": "object",
+  "required": [
+    "source_stem",
+    "filename",
+    "title",
+    "authors",
+    "year",
+    "label_confidence",
+    "hard_negatives"
+  ],
+  "properties": {
+    "source_stem": { "type": "string" },
+    "filename": { "type": "string" },
+    "title": { "type": "string" },
+    "title_aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "authors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "authors_notes": { "type": ["string", "null"] },
+    "year": { "type": ["integer", "null"] },
+    "doi": { "type": ["string", "null"] },
+    "arxiv_id": { "type": ["string", "null"] },
+    "venue": { "type": ["string", "null"] },
+    "label_confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "label_notes": { "type": ["string", "null"] },
+    "hard_negatives": {
+      "type": "object",
+      "required": ["bad_titles_must_not_match", "author_pollution_must_not_include"],
+      "properties": {
+        "bad_titles_must_not_match": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "author_pollution_must_not_include": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "difficulty_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,51 @@
+# Baseline Extraction Scorecard
+
+This report documents the baseline evaluation of current `scientist-in-loop` extractions (`current_extraction.json`) against the labeled Golden Dataset (`gold_parent.yaml` & `gold_references.yaml`).
+
+## Summary Metrics & CI Gate Assessment
+
+| Metric Category | Target Gate | Current Macro Score | Current Micro / Total | CI Gate Status |
+| :--- | :---: | :---: | :---: | :---: |
+| **Parent Title Pass Rate** | $\ge 0.85$ | 53.85% | 7/13 | **FAIL** |
+| **Parent Year Pass Rate** | $\ge 0.85$ | 100.00% | 13/13 | PASS |
+| **Parent Authors Set F1** | $\ge 0.85$ | 0.51 | Avg F1 across fixtures | **FAIL** |
+| **Parent Hard Negatives Clean** | 100% | 15.38% | 2/13 clean | **FAIL** |
+| **Ref Count Band Pass Rate** | $\ge 0.80$ | 53.85% | 7/13 | **FAIL** |
+| **Ref Anchor Recall** | $\ge 0.75$ | 81.92% | 81.29% micro (113/139) | PASS |
+| **Ref Anchor Field Precision** | $\ge 0.80$ | 87.05% | 93.73% micro | PASS |
+| **Ref Negative Pattern Clean** | 100% | - | 7/934 refs polluted | **FAIL** |
+
+## Detailed Per-Fixture Results
+
+| Source Fixture | Parent Title | Authors F1 | Parent Year | Hard Negatives | Ref Count (Ext / Gold) | Ref Count Pass | Anchor Recall | Anchor Field Prec | Polluted Refs |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `2026.gem-main.4` | PASS | 0.22 | PASS | **FAIL** | 8 / [10, 10] | **FAIL** | 80% (8/10) | 100% | 0 |
+| `28_Implicit_Ensembles_of_Ensem` | PASS | 0.31 | PASS | **FAIL** | 2 / [28, 28] | **FAIL** | 20% (2/10) | 100% | 0 |
+| `8708_On_the_Entropy_Calibratio` | FAIL (0.15) | 0.00 | PASS | **FAIL** | 30 / [35, 35] | **FAIL** | 92% (11/12) | 98% | 0 |
+| `BEE-RAG` | PASS | 0.55 | PASS | **FAIL** | 39 / [38, 38] | **FAIL** | 100% (10/10) | 97% | 1 |
+| `GraphRAG` | PASS | 0.47 | PASS | PASS | 573 / [570, 575] | PASS | 92% (11/12) | 95% | 0 |
+| `HiChunk` | FAIL (0.14) | 0.57 | PASS | **FAIL** | 34 / [34, 34] | PASS | 100% (10/10) | 100% | 0 |
+| `Internak_states_approach` | PASS | 0.57 | PASS | **FAIL** | 41 / [45, 47] | **FAIL** | 100% (11/11) | 91% | 0 |
+| `Token_probability_approach` | PASS | 0.85 | PASS | **FAIL** | 38 / [38, 38] | PASS | 90% (9/10) | 100% | 6 |
+| `semantic_entropy` | PASS | 0.20 | PASS | PASS | 0 / [65, 65] | **FAIL** | 0% (0/12) | 0% | 0 |
+| `knowledge_graph` | FAIL (0.24) | 0.40 | PASS | **FAIL** | 42 / [42, 42] | PASS | 100% (10/10) | 100% | 0 |
+| `minecraft_graph` | FAIL (0.21) | 0.67 | PASS | **FAIL** | 24 / [24, 24] | PASS | 100% (10/10) | 95% | 0 |
+| `semantic_chunking` | FAIL (0.17) | 0.88 | PASS | **FAIL** | 70 / [70, 70] | PASS | 92% (11/12) | 91% | 0 |
+| `structure_predict_hallucination` | FAIL (0.32) | 1.00 | PASS | **FAIL** | 33 / [33, 33] | PASS | 100% (10/10) | 65% | 0 |
+
+## Failure Breakdown & Known Issues in Current Extractor
+
+1. **Reference Count Explosion / Truncation Outliers**:
+   - `GraphRAG`: Extracted **573** references vs expected **570-575** (PASS count band, but includes noise lines).
+   - `semantic_entropy`: Extracted **0** references vs expected **65** (**FAIL** - bibliography section missed).
+   - `28_Implicit_Ensembles_of_Ensem`: Extracted **2** references vs expected **28** (**FAIL** - bibliography truncated).
+   - `8708_On_the_Entropy_Calibratio`: Extracted **30** references vs expected **35** (**FAIL** - margin numbers split entries).
+2. **Parent Metadata In-Text Citation Bleed**:
+   - `2026.gem-main.4`: Author byline polluted with in-text citation names (`Kadavath et al`, `Xiong et al`, `Tian et al`, `Kahneman`).
+   - `BEE-RAG`: Title contains leading markdown artifacts or trailing header text.
+3. **Reference Negative Pattern Pollution**:
+   - HTML anchor tags (`<span id="page-...">`) embedded in raw_text of extracted references.
+   - Appendix code snippets or proofs extracted as bibliography entries.
+
+---
+*Report generated automatically by `scripts/score_against_current.py`.*

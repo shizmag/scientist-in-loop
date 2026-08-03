@@ -168,9 +168,9 @@ anchors:
 must_not_extract_as_reference:
   - pattern: "span id=\"page-"
     reason: "marker page anchors"
-  - pattern: "^\*\*\d+"
+  - pattern: '^\*\*\d+'
     reason: "double-blind submission margin line numbers"
-  - pattern: "^##\s+A\s+PROOFS"
+  - pattern: '^##\s+A\s+PROOFS'
     reason: "appendix section heading"
 split_errors_observed_in_current:
   - "current_extraction.json has 30 entries; under-extracted 5 entries due to margin line number noise (**558 559 560**) and multiline author wrapping"

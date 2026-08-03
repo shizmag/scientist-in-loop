@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GoldReferencesSchema",
+  "description": "Schema for gold_references.yaml in golden_dataset fixtures",
+  "type": "object",
+  "required": [
+    "source_stem",
+    "filename",
+    "references_present",
+    "expected_ref_count",
+    "anchors",
+    "must_not_extract_as_reference",
+    "label_confidence"
+  ],
+  "properties": {
+    "source_stem": { "type": "string" },
+    "filename": { "type": "string" },
+    "references_present": { "type": "boolean" },
+    "references_heading_examples": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ref_numbering_style": { "type": ["string", "null"] },
+    "expected_ref_count": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "match", "expected"],
+        "properties": {
+          "key": { "type": "string" },
+          "match": {
+            "type": "object",
+            "required": ["doi", "arxiv_id", "title_contains", "year"],
+            "properties": {
+              "doi": { "type": ["string", "null"] },
+              "arxiv_id": { "type": ["string", "null"] },
+              "title_contains": { "type": ["string", "null"] },
+              "year": { "type": ["integer", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "expected": {
+            "type": "object",
+            "required": ["authors_contains", "title", "year", "venue_contains", "doi"],
+            "properties": {
+              "authors_contains": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "title": { "type": ["string", "null"] },
+              "year": { "type": ["integer", "null"] },
+              "venue_contains": { "type": ["string", "null"] },
+              "doi": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "position_hint": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "must_not_extract_as_reference": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason"],
+        "properties": {
+          "pattern": { "type": "string" },
+          "contains": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "split_errors_observed_in_current": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "label_confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "label_notes": { "type": ["string", "null"] },
+    "difficulty_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

@@ -155,9 +155,9 @@ anchors:
 must_not_extract_as_reference:
   - pattern: "span id=\"page-"
     reason: "marker page anchors"
-  - pattern: "^###\s+A\s+Pseudocode"
+  - pattern: '^###\s+A\s+Pseudocode'
     reason: "appendix section heading"
-  - pattern: "^Algorithm\s+1"
+  - pattern: '^Algorithm\s+1'
     reason: "algorithm block heading"
 split_errors_observed_in_current:
   - "current_extraction.json has 41 entries; under-extracted 5 entries due to line breaks, wrapped author blocks across page boundaries, and orphan benchmark text"
