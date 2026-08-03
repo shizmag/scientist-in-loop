@@ -387,33 +387,98 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseE
     }
 }
 
-/// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup,
-/// falling back to local `entry.to_bibtex()` if network is unavailable or no match is found.
-pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
+/// Result of resolving official BibTeX metadata for a ReferenceEntry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReferenceBibResolution {
+    /// Official BibTeX string fetched via DOI content negotiation, arXiv API, or Crossref lookup.
+    Resolved(String),
+    /// Metadata resolution failed with clear explanation.
+    Failed(String),
+}
+
+/// Resolve official BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup.
+/// Returns `ReferenceBibResolution::Failed` with a reason if official metadata could not be fetched.
+pub fn resolve_official_bibtex_entry(entry: &sil_core::ReferenceEntry) -> ReferenceBibResolution {
     // 1. Try fetching via existing entry.doi
-    if let Some(ref doi) = entry.doi
-        && let Ok(Some(bib)) = fetch_bibtex_by_doi(doi)
-    {
-        return bib;
+    if let Some(ref doi) = entry.doi {
+        let clean_doi = doi.trim();
+        if !clean_doi.is_empty() {
+            match fetch_bibtex_by_doi(clean_doi) {
+                Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
+                Ok(None) => return ReferenceBibResolution::Failed(format!("DOI '{clean_doi}' returned no BibTeX")),
+                Err(e) => return ReferenceBibResolution::Failed(format!("DOI '{clean_doi}' fetch failed: {e}")),
+            }
+        }
     }
 
     // 2. Try fetching via existing entry.arxiv_id
-    if let Some(ref arxiv_id) = entry.arxiv_id
-        && let Ok(Some(bib)) = fetch_bibtex_by_arxiv_id(arxiv_id)
-    {
-        return bib;
+    if let Some(ref arxiv_id) = entry.arxiv_id {
+        let clean_id = arxiv_id.trim();
+        if !clean_id.is_empty() {
+            match fetch_bibtex_by_arxiv_id(clean_id) {
+                Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
+                Ok(None) => return ReferenceBibResolution::Failed(format!("arXiv ID '{clean_id}' returned no BibTeX")),
+                Err(e) => return ReferenceBibResolution::Failed(format!("arXiv ID '{clean_id}' fetch failed: {e}")),
+            }
+        }
     }
 
     // 3. If no DOI/arXiv ID, try Crossref lookup by title & authors to find DOI
-    if let Some(ref title) = entry.title
-        && let Ok(Some(doi)) = lookup_doi_by_title(title, entry.authors.as_deref())
-        && let Ok(Some(bib)) = fetch_bibtex_by_doi(&doi)
-    {
-        return bib;
+    if let Some(ref title) = entry.title {
+        let clean_title = title.trim();
+        if !clean_title.is_empty() {
+            match lookup_doi_by_title(clean_title, entry.authors.as_deref()) {
+                Ok(Some(doi)) => match fetch_bibtex_by_doi(&doi) {
+                    Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
+                    Ok(None) => {
+                        return ReferenceBibResolution::Failed(format!(
+                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch returned no entry"
+                        ));
+                    }
+                    Err(e) => {
+                        return ReferenceBibResolution::Failed(format!(
+                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch failed: {e}"
+                        ));
+                    }
+                },
+                Ok(None) => {
+                    return ReferenceBibResolution::Failed(format!(
+                        "No Crossref match found for title '{clean_title}'"
+                    ));
+                }
+                Err(e) => {
+                    return ReferenceBibResolution::Failed(format!(
+                        "Crossref lookup failed for title '{clean_title}': {e}"
+                    ));
+                }
+            }
+        }
     }
 
-    // 4. Fallback to entry.to_bibtex()
-    entry.to_bibtex()
+    // 4. Missing required metadata
+    let mut missing = Vec::new();
+    if entry.doi.is_none() {
+        missing.push("DOI");
+    }
+    if entry.arxiv_id.is_none() {
+        missing.push("arXiv ID");
+    }
+    if entry.title.is_none() {
+        missing.push("title");
+    }
+    ReferenceBibResolution::Failed(format!(
+        "Missing required metadata to fetch official BibTeX ({})",
+        missing.join(", ")
+    ))
+}
+
+/// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup,
+/// falling back to local `entry.to_bibtex()` if network is unavailable or no match is found.
+pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
+    match resolve_official_bibtex_entry(entry) {
+        ReferenceBibResolution::Resolved(bib) => bib,
+        ReferenceBibResolution::Failed(_) => entry.to_bibtex(),
+    }
 }
 
 /// Result of resolving official BibTeX metadata for a source document.

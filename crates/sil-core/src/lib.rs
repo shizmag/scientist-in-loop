@@ -42,7 +42,8 @@ pub use settings::{
 };
 pub use source::{
     DocumentStatus, ReferenceEntry, SourceDocument, SourceId, SourceKind, compute_draft_hash,
-    probe_source, ref_text_for_embed, strip_latex_for_embed, validate_pdf_path,
+    probe_source, ref_text_for_embed, should_attempt_metadata_fetch,
+    should_attempt_metadata_fetch_source, strip_latex_for_embed, validate_pdf_path,
 };
 pub use stage::Stage;
 pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};

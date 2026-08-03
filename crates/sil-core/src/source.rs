@@ -212,6 +212,28 @@ pub struct SourceDocument {
     pub references_text: Option<String>,
 }
 
+impl SourceDocument {
+    /// Return true if source doc has resolvable identifiers (DOI, arXiv ID, or non-empty title) suitable for network hydration.
+    pub fn should_attempt_metadata_fetch(&self) -> bool {
+        let has_doi = self.doi.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_title = self.title.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_arxiv = self.filename.to_lowercase().contains("arxiv")
+            || self.doi.as_deref().map_or(false, |d| d.to_lowercase().contains("arxiv"))
+            || self.title.as_deref().map_or(false, |t| t.to_lowercase().contains("arxiv"));
+        has_doi || has_title || has_arxiv
+    }
+}
+
+/// Standalone helper to check if a `ReferenceEntry` has resolvable identifiers (DOI, arXiv ID, or title).
+pub fn should_attempt_metadata_fetch(entry: &ReferenceEntry) -> bool {
+    entry.should_attempt_metadata_fetch()
+}
+
+/// Standalone helper to check if a `SourceDocument` has resolvable identifiers (DOI, arXiv ID, or title).
+pub fn should_attempt_metadata_fetch_source(doc: &SourceDocument) -> bool {
+    doc.should_attempt_metadata_fetch()
+}
+
 /// An individual extracted reference / citation item from a source document.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReferenceEntry {
@@ -240,6 +262,14 @@ pub struct ReferenceEntry {
 }
 
 impl ReferenceEntry {
+    /// Return true if entry has resolvable identifiers (DOI, arXiv ID, or non-empty title) suitable for network hydration.
+    pub fn should_attempt_metadata_fetch(&self) -> bool {
+        let has_doi = self.doi.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_arxiv = self.arxiv_id.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_title = self.title.as_ref().map_or(false, |s| !s.trim().is_empty());
+        has_doi || has_arxiv || has_title
+    }
+
     /// Format the reference as an `@article` or `@misc` BibTeX string.
     pub fn to_bibtex(&self) -> String {
         let title_or_raw = self.title.as_deref().unwrap_or(&self.raw_text);
@@ -678,4 +708,53 @@ pub fn compute_draft_hash(text: &str) -> String {
     text.hash(&mut hasher);
     format!("{:016x}", hasher.finish())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_should_attempt_metadata_fetch() {
+        let empty_entry = ReferenceEntry {
+            id: "ref_1".into(),
+            source_id: "src_1".into(),
+            ref_index: 1,
+            raw_text: "some raw ref".into(),
+            title: None,
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        assert!(!should_attempt_metadata_fetch(&empty_entry));
+        assert!(!empty_entry.should_attempt_metadata_fetch());
+
+        let doi_entry = ReferenceEntry {
+            doi: Some("10.1000/182".into()),
+            ..empty_entry.clone()
+        };
+        assert!(should_attempt_metadata_fetch(&doi_entry));
+
+        let arxiv_entry = ReferenceEntry {
+            arxiv_id: Some("2405.12345".into()),
+            ..empty_entry.clone()
+        };
+        assert!(should_attempt_metadata_fetch(&arxiv_entry));
+
+        let title_entry = ReferenceEntry {
+            title: Some("Attention Is All You Need".into()),
+            ..empty_entry.clone()
+        };
+        assert!(should_attempt_metadata_fetch(&title_entry));
+
+        let blank_title_entry = ReferenceEntry {
+            title: Some("   ".into()),
+            ..empty_entry.clone()
+        };
+        assert!(!should_attempt_metadata_fetch(&blank_title_entry));
+    }
+}
+
 

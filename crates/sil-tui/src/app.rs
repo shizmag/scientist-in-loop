@@ -176,10 +176,29 @@ fn resolve_onnx_from_dir(val: &str) -> String {
     val.to_string()
 }
 
+/// Result message from background metadata hydration thread.
+#[derive(Debug, Clone)]
+pub struct HydrationResult {
+    pub dedup_key: String,
+    pub label: String,
+    pub outcome: HydrationOutcome,
+}
+
+/// Outcome of background metadata fetch.
+#[derive(Debug, Clone)]
+pub enum HydrationOutcome {
+    Success { official_bib: String },
+    Failure { reason: String },
+}
+
 /// Application state struct for TUI.
 pub struct App {
     pub active_tab: ActiveTab,
     pub input_mode: InputMode,
+
+    pub hydration_tx: std::sync::mpsc::Sender<HydrationResult>,
+    pub hydration_rx: std::sync::mpsc::Receiver<HydrationResult>,
+    pub in_flight_hydration_keys: std::collections::HashSet<String>,
 
     pub active_ref_pane: RefPane,
     pub bib_file_entries: Vec<String>,
@@ -268,7 +287,12 @@ impl App {
             (LocalSettings::default(), None)
         };
 
+        let (hydration_tx, hydration_rx) = std::sync::mpsc::channel();
+
         let mut app = Self {
+            hydration_tx,
+            hydration_rx,
+            in_flight_hydration_keys: std::collections::HashSet::new(),
             project_root,
             loaded_config,
             global_settings,
@@ -341,6 +365,99 @@ impl App {
         app.load_project_references_bib();
         app.load_all_source_references();
         app
+    }
+
+    pub fn queue_ref_hydration(&mut self, entry: ReferenceEntry) {
+        let label = entry.title.as_deref().unwrap_or(&entry.raw_text).to_string();
+        let dedup_key = if let Some(ref doi) = entry.doi {
+            format!("doi:{}", doi.trim())
+        } else if let Some(ref arxiv_id) = entry.arxiv_id {
+            format!("arxiv:{}", arxiv_id.trim())
+        } else {
+            format!("ref_id:{}", entry.id)
+        };
+
+        if self.in_flight_hydration_keys.contains(&dedup_key) {
+            return;
+        }
+
+        self.in_flight_hydration_keys.insert(dedup_key.clone());
+        let tx = self.hydration_tx.clone();
+
+        std::thread::spawn(move || {
+            let res = sil_parse::journal_digest::resolve_official_bibtex_entry(&entry);
+            let outcome = match res {
+                sil_parse::journal_digest::ReferenceBibResolution::Resolved(official_bib) => {
+                    HydrationOutcome::Success { official_bib }
+                }
+                sil_parse::journal_digest::ReferenceBibResolution::Failed(reason) => {
+                    HydrationOutcome::Failure { reason }
+                }
+            };
+            let _ = tx.send(HydrationResult {
+                dedup_key,
+                label,
+                outcome,
+            });
+        });
+    }
+
+    pub fn queue_source_hydration(&mut self, doc: SourceDocument) {
+        let label = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
+        let dedup_key = if let Some(ref doi) = doc.doi {
+            format!("doi:{}", doi.trim())
+        } else {
+            format!("source_id:{}", doc.id)
+        };
+
+        if self.in_flight_hydration_keys.contains(&dedup_key) {
+            return;
+        }
+
+        self.in_flight_hydration_keys.insert(dedup_key.clone());
+        let tx = self.hydration_tx.clone();
+
+        std::thread::spawn(move || {
+            let res = sil_parse::journal_digest::resolve_official_bibtex_for_source(&doc);
+            let outcome = match res {
+                sil_parse::SourceBibResolution::Resolved(official_bib) => {
+                    HydrationOutcome::Success { official_bib }
+                }
+                sil_parse::SourceBibResolution::Failed(reason) => {
+                    HydrationOutcome::Failure { reason }
+                }
+            };
+            let _ = tx.send(HydrationResult {
+                dedup_key,
+                label,
+                outcome,
+            });
+        });
+    }
+
+    pub fn poll_background_hydration(&mut self) {
+        while let Ok(res) = self.hydration_rx.try_recv() {
+            self.in_flight_hydration_keys.remove(&res.dedup_key);
+            match res.outcome {
+                HydrationOutcome::Success { official_bib } => {
+                    let marked = sil_core::mark_tui_added_bib_entry(&official_bib);
+                    if let Some(ref root) = self.project_root {
+                        let bib_path = root.join(sil_core::paths::rel::REFERENCES);
+                        let current =
+                            std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                        let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
+                        if let Ok(()) = std::fs::write(bib_path.as_std_path(), updated) {
+                            self.load_project_references_bib();
+                            self.status_message = format!("✓ Official metadata for '{}'", res.label);
+                        }
+                    }
+                }
+                HydrationOutcome::Failure { reason } => {
+                    self.status_message =
+                        format!("⚠ Metadata fetch failed for '{}': {reason}", res.label);
+                }
+            }
+        }
     }
 
     pub fn reload_sources(&mut self) {
@@ -571,33 +688,31 @@ impl App {
             return;
         }
 
-        let doc = &self.sources[self.selected_source_index];
+        let doc = self.sources[self.selected_source_index].clone();
         let doc_name = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
 
-        let resolution = sil_parse::resolve_official_bibtex_for_source(doc);
-        match resolution {
-            sil_parse::SourceBibResolution::Resolved(bib_str) => {
-                let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
-                if let Some(ref root) = self.project_root {
-                    let bib_path = root.join(sil_core::paths::rel::REFERENCES);
-                    let current =
-                        std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-                    let (updated, _replaced) = sil_core::bib::upsert_bib_entry(&current, &marked);
-                    if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
-                        self.status_message = format!("Error writing references.bib: {e}");
-                        return;
-                    }
-                    self.load_project_references_bib();
-                    self.status_message = format!("✓ Added '{doc_name}' to references.bib");
-                } else {
-                    self.status_message = format!(
-                        "✓ Resolved BibTeX for '{doc_name}' (no active project root to save)"
-                    );
-                }
+        let local_bib = sil_core::suggest_from_source(&doc).bibtex;
+        let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
+
+        if let Some(ref root) = self.project_root {
+            let bib_path = root.join(sil_core::paths::rel::REFERENCES);
+            let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+            let (updated, _replaced) = sil_core::bib::upsert_bib_entry(&current, &marked);
+            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+                self.status_message = format!("Error writing references.bib: {e}");
+                return;
             }
-            sil_parse::SourceBibResolution::Failed(reason) => {
-                self.status_message = format!("⚠ Could not resolve metadata for '{doc_name}': {reason}");
-            }
+            self.load_project_references_bib();
+        }
+
+        if doc.should_attempt_metadata_fetch() {
+            self.status_message =
+                format!("✓ Added '{doc_name}' to references.bib; fetching official metadata…");
+            self.queue_source_hydration(doc);
+        } else {
+            self.status_message = format!(
+                "✓ Added '{doc_name}' to references.bib (⚠ No DOI/arXiv/title — cannot hydrate)"
+            );
         }
     }
 
@@ -733,18 +848,28 @@ impl App {
             if !entries_to_add.is_empty() {
                 let mut current =
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                let mut fetch_count = 0;
                 for e in &entries_to_add {
-                    let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                    let local_bib = e.to_bibtex();
+                    let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
                     let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
                     current = updated;
+                    if e.should_attempt_metadata_fetch() {
+                        fetch_count += 1;
+                        self.queue_ref_hydration(e.clone());
+                    }
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
                 let count = entries_to_add.len();
                 self.marked_ref_ids.clear();
                 self.load_project_references_bib();
-                self.status_message =
-                    format!("✓ Updated/added {count} reference(s) to references.bib");
+                if fetch_count > 0 {
+                    self.status_message =
+                        format!("✓ Added {count} ref(s); fetching official metadata…");
+                } else {
+                    self.status_message =
+                        format!("✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                }
             }
         }
     }
@@ -760,17 +885,27 @@ impl App {
             if !entries_to_add.is_empty() {
                 let mut current =
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                let mut fetch_count = 0;
                 for e in &entries_to_add {
-                    let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                    let local_bib = e.to_bibtex();
+                    let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
                     let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
                     current = updated;
+                    if e.should_attempt_metadata_fetch() {
+                        fetch_count += 1;
+                        self.queue_ref_hydration(e.clone());
+                    }
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
                 let count = entries_to_add.len();
                 self.load_project_references_bib();
-                self.status_message =
-                    format!("✓ Updated/added ALL {count} reference(s) to references.bib");
+                if fetch_count > 0 {
+                    self.status_message =
+                        format!("✓ Added ALL {count} ref(s); fetching official metadata…");
+                } else {
+                    self.status_message =
+                        format!("✓ Added ALL {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                }
             }
         }
     }
@@ -1241,18 +1376,28 @@ impl App {
                         if !entries_to_add.is_empty() {
                             let mut current =
                                 std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                            let mut fetch_count = 0;
                             for e in &entries_to_add {
-                                let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                                let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                                let local_bib = e.to_bibtex();
+                                let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
                                 let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
                                 current = updated;
+                                if e.should_attempt_metadata_fetch() {
+                                    fetch_count += 1;
+                                    self.queue_ref_hydration(e.clone());
+                                }
                             }
                             let _ = std::fs::write(bib_path.as_std_path(), current);
                             self.load_project_references_bib();
                             let count = entries_to_add.len();
                             self.marked_ref_ids.clear();
-                            self.status_message =
-                                format!("✓ Added/updated {} reference(s) to references.bib (marked % [sil: tui-added])", count);
+                            if fetch_count > 0 {
+                                self.status_message =
+                                    format!("✓ Added {count} ref(s); fetching official metadata…");
+                            } else {
+                                self.status_message =
+                                    format!("✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                            }
                         }
                     }
                 }
@@ -3175,6 +3320,128 @@ mod tests {
         let promoted_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(!promoted_content.contains("tui-added"));
         assert!(promoted_content.contains("@"));
+    }
+
+    #[test]
+    fn test_background_hydration_success_upserts_and_preserves_tui_added() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(bib_path.as_std_path(), "% [sil: tui-added]\n@article{stub, title={Stub}}\n").unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys.insert("doi:10.1000/182".to_string());
+
+        let official_bib = "@article{stub,\n  title={Official Title},\n  doi={10.1000/182}\n}";
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/182".to_string(),
+                label: "Official Title".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: official_bib.to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        assert!(!app.in_flight_hydration_keys.contains("doi:10.1000/182"));
+        let updated_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(updated_content.contains("% [sil: tui-added]"));
+        assert!(updated_content.contains("Official Title"));
+        assert!(app.status_message.contains("✓ Official metadata for 'Official Title'"));
+    }
+
+    #[test]
+    fn test_background_hydration_failure_warns_and_retains_local() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        let initial_bib = "% [sil: tui-added]\n@article{stub, title={Stub Title}}\n";
+        std::fs::write(bib_path.as_std_path(), initial_bib).unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys.insert("doi:10.1000/invalid".to_string());
+
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/invalid".to_string(),
+                label: "Stub Title".to_string(),
+                outcome: HydrationOutcome::Failure {
+                    reason: "HTTP 404 Not Found".to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        assert!(!app.in_flight_hydration_keys.contains("doi:10.1000/invalid"));
+        let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert_eq!(content_after, initial_bib);
+        assert!(app.status_message.contains("⚠ Metadata fetch failed for 'Stub Title': HTTP 404 Not Found"));
+    }
+
+    #[test]
+    fn test_hydration_deduplication() {
+        let mut app = App::new(None);
+        let entry = ReferenceEntry {
+            id: "ref_dedup".to_string(),
+            source_id: "src_1".into(),
+            ref_index: 1,
+            raw_text: "Ref text".to_string(),
+            title: Some("Dedup Title".to_string()),
+            authors: None,
+            year: None,
+            venue: None,
+            doi: Some("10.1000/dedup".to_string()),
+            arxiv_id: None,
+            url: None,
+        };
+
+        app.queue_ref_hydration(entry.clone());
+        assert!(app.in_flight_hydration_keys.contains("doi:10.1000/dedup"));
+
+        // Attempting second queue for same key should be a no-op
+        app.queue_ref_hydration(entry);
+        assert_eq!(app.in_flight_hydration_keys.len(), 1);
+    }
+
+    #[test]
+    fn test_no_fetch_when_no_identifiers() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(bib_path.as_std_path(), "").unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        let empty_entry = ReferenceEntry {
+            id: "ref_empty".to_string(),
+            source_id: "src_1".into(),
+            ref_index: 1,
+            raw_text: "Unparseable citation".to_string(),
+            title: None,
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+
+        app.selected_source_references = vec![empty_entry];
+        app.selected_viewing_ref_index = 0;
+        app.append_selected_viewing_ref_to_bib();
+
+        assert!(app.in_flight_hydration_keys.is_empty());
+        assert!(app.status_message.contains("⚠ No DOI/arXiv/title — cannot hydrate"));
+        let content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(content.contains("% [sil: tui-added]"));
     }
 }
 

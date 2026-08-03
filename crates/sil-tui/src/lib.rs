@@ -43,6 +43,7 @@ where
     <B as ratatui::backend::Backend>::Error: Send + Sync + 'static,
 {
     loop {
+        app.poll_background_hydration();
         terminal.draw(|f| ui::draw(f, app))?;
 
         if app.pending_external_editor {
