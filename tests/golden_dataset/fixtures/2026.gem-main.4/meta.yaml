@@ -1,12 +1,12 @@
 filename: "2026.gem-main.4.pdf"
-pdf_path: "/Users/vladimirkasterin/articles/entropy_framework/sources/2026.gem-main.4.pdf"
+pdf_path: "sources/2026.gem-main.4.pdf"
 content_sha256: fad5317eb788f67341f3cacd159b8c9b0ce53b113fa04b030dfa3a63374649f5
 content_bytes: 21978
 references_text_bytes: 2883
 current_db_fields:
   id: "2026.gem-main.4.pdf"
   filename: "2026.gem-main.4.pdf"
-  path: "/Users/vladimirkasterin/articles/entropy_framework/sources/2026.gem-main.4.pdf"
+  path: "sources/2026.gem-main.4.pdf"
   title: "Self-Anchoring Calibration Drift in Large Language Models: How Multi-Turn Conversations Reshape Model Confidence"
   authors: |
     Harshavardhan, Kadavath et al, Xiong et al, Tian et al, Kahne-

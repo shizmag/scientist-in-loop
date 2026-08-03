@@ -2,7 +2,7 @@
   "source": {
     "id": "semantic entropy.pdf",
     "filename": "semantic entropy.pdf",
-    "path": "/Users/vladimirkasterin/articles/entropy_framework/sources/semantic entropy.pdf",
+    "path": "sources/semantic entropy.pdf",
     "title": "Detecting hallucinations in large language models using semantic entropy",
     "authors": "Sebastian Farquhar1",
     "year": 2024,

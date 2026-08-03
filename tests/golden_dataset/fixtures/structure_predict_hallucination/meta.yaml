@@ -1,12 +1,12 @@
 filename: structure predict hallucination.pdf
-pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/structure predict hallucination.pdf
+pdf_path: sources/structure predict hallucination.pdf
 content_sha256: 29d2697847d4dd9a63a20bd7511bee0a65d669ede92a6d02e90be957760cc229
 content_bytes: 32862
 references_text_bytes: 10330
 current_db_fields:
   id: structure predict hallucination.pdf
   filename: structure predict hallucination.pdf
-  path: /Users/vladimirkasterin/articles/entropy_framework/sources/structure predict hallucination.pdf
+  path: sources/structure predict hallucination.pdf
   title: "Data & Knowledge Engineering"
   authors: "Ushtar Ali, Steven Lynden, Akiyoshi Matono, Toshiyuki Amagasa"
   year: 2026

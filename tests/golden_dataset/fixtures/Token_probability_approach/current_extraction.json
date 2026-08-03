@@ -2,7 +2,7 @@
   "source": {
     "id": "Token probability approach.pdf",
     "filename": "Token probability approach.pdf",
-    "path": "/Users/vladimirkasterin/articles/entropy_framework/sources/Token probability approach.pdf",
+    "path": "sources/Token probability approach.pdf",
     "title": "Detecting Hallucinations in Large Language Model Generation: A Token Probability Approach",
     "authors": "Ernesto Quevedo, Ernesto Quevedo1@Baylor.edu\n\nPablo Rivas, Pablo Rivas@Baylor.edu\n\nJorge Yero Salazar, Jorge Yero1@Baylor.edu\n\nRachel Koerner, Tomas Cerny",
     "year": null,

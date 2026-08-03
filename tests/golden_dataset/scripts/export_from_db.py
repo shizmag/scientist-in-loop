@@ -6,9 +6,12 @@ import sqlite3
 import hashlib
 import argparse
 
-DEFAULT_DB_PATH = "/Users/vladimirkasterin/articles/entropy_framework/.sil/db.sqlite"
-DEFAULT_PDF_DIR = "/Users/vladimirkasterin/articles/entropy_framework/sources"
-DEFAULT_OUTPUT_DIR = "/Users/vladimirkasterin/rust/scientist-in-loop/tests/golden_dataset"
+DEFAULT_DB_PATH = os.environ.get("SIL_GOLDEN_DB", "")
+DEFAULT_PDF_DIR = os.environ.get("SIL_GOLDEN_PDF_DIR", "")
+DEFAULT_OUTPUT_DIR = os.environ.get(
+    "SIL_GOLDEN_OUTPUT_DIR",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+)
 
 
 def sanitize_stem(filename: str) -> str:
@@ -163,8 +166,12 @@ def to_yaml(data, indent=0) -> str:
 
 
 def export_fixtures(db_path: str, pdf_dir: str, output_dir: str):
+    if not db_path:
+        raise ValueError(
+            "Please provide --db-path or set SIL_GOLDEN_DB environment variable."
+        )
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"Database not found at {db_path}")
+        raise FileNotFoundError(f"Database not found at '{db_path}'")
 
     fixtures_dir = os.path.join(output_dir, "fixtures")
     os.makedirs(fixtures_dir, exist_ok=True)
@@ -214,10 +221,11 @@ def export_fixtures(db_path: str, pdf_dir: str, output_dir: str):
             f.write(references_text)
 
         # Extract current parent fields for meta & current_extraction
+        rel_pdf_path = f"sources/{filename}"
         db_fields = {
             "id": src["id"],
             "filename": src["filename"],
-            "path": src["path"],
+            "path": rel_pdf_path,
             "title": src["title"],
             "authors": src["authors"],
             "year": src["year"],
@@ -232,10 +240,10 @@ def export_fixtures(db_path: str, pdf_dir: str, output_dir: str):
         }
 
         # Write meta.yaml
-        pdf_path = os.path.join(pdf_dir, filename)
+        actual_pdf_path = os.path.join(pdf_dir, filename)
         meta_data = {
             "filename": filename,
-            "pdf_path": pdf_path,
+            "pdf_path": rel_pdf_path,
             "content_sha256": content_sha256,
             "content_bytes": content_bytes,
             "references_text_bytes": refs_text_bytes,
@@ -264,7 +272,7 @@ def export_fixtures(db_path: str, pdf_dir: str, output_dir: str):
         ref_count_outlier = (n_current_refs > 150) or (
             not empty_references_text and n_current_refs < 3
         )
-        needs_reparse = empty_content and os.path.exists(pdf_path)
+        needs_reparse = empty_content and os.path.exists(actual_pdf_path)
 
         flag_list = []
         if empty_content:

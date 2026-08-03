@@ -2,7 +2,7 @@
   "source": {
     "id": "GraphRAG.pdf",
     "filename": "GraphRAG.pdf",
-    "path": "/Users/vladimirkasterin/articles/entropy_framework/sources/GraphRAG.pdf",
+    "path": "sources/GraphRAG.pdf",
     "title": "Retrieval-Augmented Generation with Graphs (GraphRAG)",
     "authors": "Haoyu Han1, Yu Wang2, Harry Shomer1, Kai Guo1, Jiayuan Ding5, Yongjia Lei2, Mahantesh Halappanavar3, Ryan A. Rossi4, Subhabrata Mukherjee5, Xianfeng Tang6, Bo Long7, Tong Zhao8, Neil Shah8, Amin Javari9, Yinglong Xia7, Jiliang Tang1, hala, tong",
     "year": null,

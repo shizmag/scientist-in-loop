@@ -1,12 +1,12 @@
 filename: Internak states approach.pdf
-pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/Internak states approach.pdf
+pdf_path: sources/Internak states approach.pdf
 content_sha256: 691bdf34ebf858fd49f8f99aa61f62c89736febef7b8a6ae620f62f46afc7dd0
 content_bytes: 64281
 references_text_bytes: 19902
 current_db_fields:
   id: Internak states approach.pdf
   filename: Internak states approach.pdf
-  path: /Users/vladimirkasterin/articles/entropy_framework/sources/Internak states approach.pdf
+  path: sources/Internak states approach.pdf
   title: "Unsupervised Real-Time Hallucination Detection based on the Internal States of Large Language Models"
   authors: |
     Weihang Su, Changyue Wang, Qingyao

@@ -1,12 +1,12 @@
 filename: Token probability approach.pdf
-pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/Token probability approach.pdf
+pdf_path: sources/Token probability approach.pdf
 content_sha256: b6aedec877f63fcfe108b14df9e3a109256692829da85c1b3df01788e220ecf1
 content_bytes: 60420
 references_text_bytes: 11060
 current_db_fields:
   id: Token probability approach.pdf
   filename: Token probability approach.pdf
-  path: /Users/vladimirkasterin/articles/entropy_framework/sources/Token probability approach.pdf
+  path: sources/Token probability approach.pdf
   title: "Detecting Hallucinations in Large Language Model Generation: A Token Probability Approach"
   authors: |
     Ernesto Quevedo, Ernesto Quevedo1@Baylor.edu

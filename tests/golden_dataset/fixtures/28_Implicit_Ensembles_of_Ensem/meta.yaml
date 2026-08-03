@@ -1,12 +1,12 @@
 filename: 28_Implicit_Ensembles_of_Ensem.pdf
-pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/28_Implicit_Ensembles_of_Ensem.pdf
+pdf_path: sources/28_Implicit_Ensembles_of_Ensem.pdf
 content_sha256: f94722f937617d973dcc6cb5bec306c1937a9956a7cd209e6f3ee8f3153d7957
 content_bytes: 59287
 references_text_bytes: 936
 current_db_fields:
   id: 28_Implicit_Ensembles_of_Ensem.pdf
   filename: 28_Implicit_Ensembles_of_Ensem.pdf
-  path: /Users/vladimirkasterin/articles/entropy_framework/sources/28_Implicit_Ensembles_of_Ensem.pdf
+  path: sources/28_Implicit_Ensembles_of_Ensem.pdf
   title: "(Implicit) Ensembles of Ensembles: Epistemic Uncertainty Collapse in Large Models"
   authors: "Andreas Kirsch, MacKay, Neal, Der Kiureghian, Ditlevsen, Kendall, Gal, Fellaji, Pennerath"
   year: 1992

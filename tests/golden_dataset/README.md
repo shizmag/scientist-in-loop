@@ -47,7 +47,7 @@ python3 tests/golden_dataset/scripts/export_from_db.py \
 Alternatively, you can inspect or extract directly with `sqlite3` one-liners:
 
 ```bash
-sqlite3 /Users/vladimirkasterin/articles/entropy_framework/.sil/db.sqlite "SELECT id, title, year FROM sources;"
+sqlite3 /path/to/db.sqlite "SELECT id, title, year FROM sources;"
 ```
 
 ## Manifest Quality Flags
