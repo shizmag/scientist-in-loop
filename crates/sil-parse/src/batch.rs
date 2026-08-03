@@ -170,14 +170,29 @@ pub fn parse_many(
 /// Hydrate a `SourceDocument`'s metadata (title, authors, year, venue, abstract, doi)
 /// using header-scoped DOI/arXiv API lookup and robust frontmatter text parsing.
 pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str, path: &Utf8Path) {
-    let header_text: String = if let Some(pos) = content
-        .lines()
-        .position(|l| sil_regex::is_reference_heading(l.trim()))
-    {
-        content.lines().take(pos).collect::<Vec<_>>().join("\n")
-    } else {
-        content.chars().take(4000).collect()
-    };
+    let mut header_lines = Vec::new();
+    for line in content.lines() {
+        let clean = sil_regex::strip_html_spans(line).trim().to_string();
+        let lower = clean.to_lowercase();
+        let stripped_lower = lower.trim_start_matches('#').trim();
+
+        if sil_regex::is_reference_heading(&clean)
+            || stripped_lower == "abstract"
+            || stripped_lower == "a b s t r a c t"
+            || stripped_lower.starts_with("abstract")
+            || stripped_lower == "a r t i c l e i n f o"
+            || stripped_lower.starts_with("1. introduction")
+            || stripped_lower.starts_with("1 introduction")
+            || stripped_lower.starts_with("i. introduction")
+        {
+            break;
+        }
+        header_lines.push(line.to_string());
+        if header_lines.len() >= 60 {
+            break;
+        }
+    }
+    let header_text = header_lines.join("\n");
 
     let header_doi = sil_regex::extract_doi(&header_text);
     let header_arxiv = sil_regex::extract_arxiv_id(&header_text);
@@ -237,173 +252,127 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     }
 
     // Local extraction for Title
-    if doc.title.is_none()
+    let mut selected_title_idx = None;
+    if doc.kind == SourceKind::Text {
+        if doc.title.is_none() {
+            doc.title = path.file_stem().map(|s| s.to_string());
+        }
+    } else if doc.title.is_none()
         || doc
             .title
             .as_deref()
             .is_some_and(|t| t.starts_with("page-") || t.len() < 4)
     {
-        let mut extracted_title = None;
-        for line in header_text.lines() {
-            let clean = sil_regex::strip_html_spans(line).trim().to_string();
-            if clean.starts_with('#') {
-                let candidate = clean
-                    .trim_start_matches('#')
-                    .trim()
-                    .trim_matches('*')
-                    .trim();
-                let lower = candidate.to_lowercase();
-                if !candidate.is_empty()
-                    && !candidate.starts_with("page-")
-                    && !candidate.starts_with("Parsed from")
-                    && lower != "abstract"
-                    && lower != "contents"
-                    && !lower.starts_with("1 introduction")
-                    && !lower.starts_with("contents lists")
-                    && !lower.starts_with("journal homepage")
-                    && lower != "knowledge-based systems"
-                    && lower != "sciencedirect"
-                    && !lower.contains("elsevier")
-                {
-                    extracted_title = Some(candidate.to_string());
-                    break;
-                }
+        let mut candidates = Vec::new();
+        for (idx, line) in header_lines.iter().enumerate() {
+            if sil_regex::is_journal_or_publisher_title(line) {
+                continue;
             }
+            let clean = sil_regex::strip_html_spans(line).trim().to_string();
+            let raw_cand = clean.trim_start_matches('#').trim();
+            let cand = raw_cand.trim_matches('*').trim_matches('_').trim();
+            let lower = cand.to_lowercase();
+
+            if cand.is_empty() || cand.starts_with("page-") || cand.starts_with("Parsed from") {
+                continue;
+            }
+            if lower == "abstract"
+                || lower == "a b s t r a c t"
+                || lower == "contents"
+                || lower.starts_with("1 introduction")
+                || lower.starts_with("1. introduction")
+                || lower.starts_with("i. introduction")
+            {
+                continue;
+            }
+
+            let is_h1 = line.trim_start().starts_with("# ");
+            let is_any_h = line.trim_start().starts_with('#');
+            candidates.push((idx, cand.to_string(), is_h1, is_any_h));
         }
-        if extracted_title.is_none() {
-            extracted_title = path.file_stem().map(|s| s.to_string());
+
+        let chosen = candidates
+            .iter()
+            .find(|(_, _, is_h1, _)| *is_h1)
+            .or_else(|| candidates.iter().find(|(_, _, _, is_h)| *is_h))
+            .or_else(|| candidates.first());
+
+        if let Some((idx, title_str, _, _)) = chosen {
+            doc.title = Some(title_str.clone());
+            selected_title_idx = Some(*idx);
+        } else {
+            doc.title = path.file_stem().map(|s| s.to_string());
         }
-        doc.title = extracted_title;
     }
 
     // Local extraction for Authors
     if doc.authors.is_none() || doc.authors.as_deref().is_some_and(|a| a.trim().is_empty()) {
-        let mut author_lines = Vec::new();
-        let mut past_title = false;
-        for line in header_text.lines() {
-            let clean = sil_regex::strip_html_spans(line).trim().to_string();
-            let candidate = clean.trim_start_matches('#').trim().to_string();
-            let lower_clean = clean.to_lowercase();
-            let lower_cand = candidate.to_lowercase();
+        let title_line_idx = selected_title_idx.or_else(|| {
+            doc.title.as_ref().and_then(|t| {
+                let t_clean = t.trim().to_lowercase();
+                header_lines.iter().position(|l| {
+                    let clean = sil_regex::strip_html_spans(l).trim().trim_start_matches('#').trim().to_lowercase();
+                    !t_clean.is_empty() && (clean == t_clean || clean.contains(&t_clean))
+                })
+            })
+        });
+        let start_idx = title_line_idx.map_or(0, |i| i + 1);
+        let byline_lines = if start_idx < header_lines.len() {
+            &header_lines[start_idx..]
+        } else {
+            &header_lines[..]
+        };
 
-            if lower_cand.starts_with("parsed from") {
-                continue;
-            }
+        let is_anonymous = byline_lines.iter().any(|line| {
+            let l = line.to_lowercase();
+            l.contains("anonymous authors") || l.contains("paper under double-blind review")
+        });
 
-            if lower_clean == "abstract"
-                || lower_clean.starts_with("1 introduction")
-                || lower_clean.starts_with("keywords")
-                || lower_clean.starts_with("index terms")
-                || lower_clean.contains("date:")
-                || lower_clean.contains("code:")
-                || lower_clean.contains("data:")
-            {
-                break;
-            }
+        if is_anonymous {
+            doc.authors = Some("Anonymous authors".to_string());
+        } else {
+            let mut author_names = Vec::new();
+            for line in byline_lines {
+                let clean = sil_regex::strip_html_spans(line).trim().to_string();
+                let lower = clean.to_lowercase();
+                let stripped_lower = lower.trim_start_matches('#').trim();
 
-            let is_heading = clean.starts_with('#');
-            let is_title_match = doc.title.as_deref().is_some_and(|t| {
-                !clean.is_empty() && (clean.contains(t) || (clean.len() >= 4 && t.contains(&clean)))
-            });
-
-            if !past_title && (is_heading || is_title_match) {
-                past_title = true;
-                continue;
-            }
-
-            if past_title && !clean.is_empty() {
-                if is_heading {
+                if stripped_lower == "abstract"
+                    || stripped_lower == "a b s t r a c t"
+                    || stripped_lower.starts_with("abstract")
+                    || stripped_lower.starts_with("1 introduction")
+                    || stripped_lower.starts_with("1. introduction")
+                    || stripped_lower.starts_with("keywords")
+                    || stripped_lower.starts_with("index terms")
+                    || stripped_lower.starts_with("date:")
+                    || stripped_lower.starts_with("code:")
+                    || stripped_lower.starts_with("data:")
+                {
                     break;
                 }
-                if sil_regex::is_affiliation_or_noise_line(&clean) {
-                    continue;
-                }
-                let lower = clean.to_lowercase();
-                if lower.starts_with("january")
-                    || lower.starts_with("february")
-                    || lower.starts_with("march")
-                    || lower.starts_with("april")
-                    || lower.starts_with("may")
-                    || lower.starts_with("june")
-                    || lower.starts_with("july")
-                    || lower.starts_with("august")
-                    || lower.starts_with("september")
-                    || lower.starts_with("october")
-                    || lower.starts_with("november")
-                    || lower.starts_with("december")
-                    || lower.contains("university")
-                    || lower.contains("department")
-                {
+
+                let cleaned_line = sil_regex::clean_author_byline_line(&clean);
+                if cleaned_line.is_empty() {
                     continue;
                 }
 
-                let cleaned_author = sil_regex::strip_markdown_links(&clean);
-                let cleaned_author = sil_regex::strip_author_footnote_markers(&cleaned_author);
-
-                let cleaned_author = cleaned_author
-                    .replace(
-                        [
-                            '*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶',
-                            '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8',
-                            '9',
-                        ],
-                        "",
-                    )
-                    .trim_start_matches('-')
-                    .trim_matches(|c: char| c.is_ascii_punctuation() || c.is_whitespace())
-                    .to_string();
-
-                // Collapse multiple spaces and trim commas
-                let cleaned_author = cleaned_author
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .replace(" ,", ",")
-                    .trim_matches(|c: char| c == ',' || c.is_whitespace())
-                    .to_string();
-
-                if !cleaned_author.is_empty() && cleaned_author.len() < 150 {
-                    // Reject lines that start with non-author lower-case text
-                    if cleaned_author
-                        .chars()
-                        .next()
-                        .is_some_and(|c| c.is_lowercase())
-                    {
-                        continue;
-                    }
-
-                    // Validate capitalized words ratio
-                    let words: Vec<&str> = cleaned_author.split_whitespace().collect();
-                    let word_count = words.len();
-                    if word_count > 0 {
-                        let capitalized_count = words
-                            .iter()
-                            .filter(|w| w.chars().next().is_some_and(|c| c.is_uppercase()))
-                            .count();
-                        if word_count > 15 || (word_count > 3 && capitalized_count < word_count / 2)
-                        {
-                            continue;
-                        }
-                    }
-
-                    author_lines.push(cleaned_author);
-                    // Extracting up to a few lines to avoid getting into noise,
-                    // but we can increase if there are many authors.
-                    if author_lines.len() >= 3 {
-                        break;
+                for name in sil_regex::split_author_names(&cleaned_line) {
+                    if is_valid_author_name(&name) && !author_names.contains(&name) {
+                        author_names.push(name);
                     }
                 }
             }
-        }
-        if !author_lines.is_empty() {
-            doc.authors = Some(author_lines.join(", "));
+
+            if !author_names.is_empty() {
+                doc.authors = Some(author_names.join(", "));
+            }
         }
     }
 
-    // Local extraction for Year
+    // Local extraction for Year (document header level only)
     if doc.year.is_none() {
-        for line in header_text.lines().take(20) {
-            if let Some(y) = sil_regex::extract_year(line) {
+        for line in content.lines().take(80) {
+            if let Some(y) = sil_regex::extract_header_year(line) {
                 doc.year = Some(y);
                 break;
             }
@@ -412,13 +381,99 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
 
     // Local extraction for Venue
     if doc.venue.is_none() {
-        for line in header_text.lines().take(25) {
+        for line in &header_lines {
             if let Some(v) = sil_regex::extract_reference_venue(line) {
                 doc.venue = Some(v);
                 break;
             }
         }
     }
+}
+
+fn is_valid_author_name(name: &str) -> bool {
+    let t = name.trim();
+    if t.is_empty() || t.len() < 2 || t.len() > 60 {
+        return false;
+    }
+    let lower = t.to_lowercase();
+
+    let bad_words = [
+        "university",
+        "universidad",
+        "department",
+        "departamento",
+        "institute",
+        "instituto",
+        "school",
+        "researcher",
+        "abstract",
+        "introduction",
+        "keywords",
+        "date:",
+        "correspondence",
+        "equal contribution",
+        "inc.",
+        "github",
+        "ieee",
+        "senior",
+        "member",
+        "orcid",
+        "email",
+        "http",
+        "https",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "some",
+        "another",
+        "address",
+        "singapore",
+        "china",
+        "japan",
+        "research",
+        "center",
+        "group",
+        "lab",
+        "joint",
+        "alibaba",
+        "baidu",
+        "tencent",
+        "google",
+        "meta",
+        "amazon",
+    ];
+    if bad_words.iter().any(|w| lower == *w || lower.contains(w)) {
+        return false;
+    }
+
+    let first_char = match t.chars().next() {
+        Some(c) => c,
+        None => return false,
+    };
+    if !first_char.is_uppercase() {
+        return false;
+    }
+
+    let words: Vec<&str> = t.split_whitespace().collect();
+    if words.is_empty() || words.len() > 5 {
+        return false;
+    }
+
+    let capitalized_count = words
+        .iter()
+        .filter(|w| {
+            w.chars().next().is_some_and(|c| c.is_uppercase())
+                || *w == &"de"
+                || *w == &"van"
+                || *w == &"von"
+                || *w == &"der"
+        })
+        .count();
+
+    capitalized_count >= (words.len() + 1) / 2
 }
 
 #[cfg(test)]
@@ -464,6 +519,70 @@ Ushtar Ali<sup>a</sup>, Steven Lynden<sup>b</sup>, Akiyoshi Matono<sup>b</sup>
             doc.authors.unwrap(),
             "Ushtar Ali, Steven Lynden, Akiyoshi Matono"
         );
+    }
+
+    #[test]
+    fn test_hydrate_elsevier_journal_header_title_skipping() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("test3.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"ScienceDirect
+# Knowledge-Based Systems
+journal homepage: www.elsevier.com/locate/knosys
+# Optimising retrieval performance in RAG systems: A new growing window semantic chunking strategy to address weak semantic boundaries
+Antonio Moreno-Cediel , Eva Garcia-Lopez , Antonio Garcia-Cabot * , David De-Fitero-Dominguez
+*Departamento de Ciencias de la Computacion, Universidad de Alcala, Madrid, Spain
+## Abstract"#;
+
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("test3.pdf"));
+
+        assert_eq!(
+            doc.title.unwrap(),
+            "Optimising retrieval performance in RAG systems: A new growing window semantic chunking strategy to address weak semantic boundaries"
+        );
+        assert_eq!(
+            doc.authors.unwrap(),
+            "Antonio Moreno-Cediel, Eva Garcia-Lopez, Antonio Garcia-Cabot, David De-Fitero-Dominguez"
+        );
+    }
+
+    #[test]
+    fn test_hydrate_double_blind_anonymous_authors() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("test4.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"Paper under double-blind review
+# ON THE ENTROPY CALIBRATION OF LANGUAGE MODELS
+Anonymous authors
+## Abstract"#;
+
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("test4.pdf"));
+
+        assert_eq!(
+            doc.title.unwrap(),
+            "ON THE ENTROPY CALIBRATION OF LANGUAGE MODELS"
+        );
+        assert_eq!(doc.authors.unwrap(), "Anonymous authors");
+    }
+
+    #[test]
+    fn test_hydrate_single_author_independent_researcher() {
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("test5.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"# Self-Anchoring Calibration Drift in Large Language Models: How Multi-Turn Conversations Reshape Model Confidence
+Harshavardhan Independent Researcher harsh@link.cuhk.edu.hk
+May 2026
+## Abstract"#;
+
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("test5.pdf"));
+
+        assert_eq!(
+            doc.title.unwrap(),
+            "Self-Anchoring Calibration Drift in Large Language Models: How Multi-Turn Conversations Reshape Model Confidence"
+        );
+        assert_eq!(doc.authors.unwrap(), "Harshavardhan");
+        assert_eq!(doc.year, Some(2026));
     }
 
     #[test]

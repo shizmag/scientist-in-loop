@@ -11,9 +11,19 @@ import sys
 import os
 import glob
 import json
-import yaml
 import re
 import difflib
+
+try:
+    import yaml
+except ImportError:
+    print(
+        "Error: PyYAML is required. From the repo root run:\n"
+        "  uv sync --group dev\n"
+        "  uv run tests/golden_dataset/scripts/score_against_current.py",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def normalize_text(text: str) -> str:
@@ -84,10 +94,8 @@ def compute_author_f1(pred_authors, gold_authors: list) -> tuple[float, float, f
 
     if not gold_tokens and not pred_tokens:
         return 1.0, 1.0, 1.0
-    if not gold_tokens:
-        return 0.0, 1.0, 0.0
-    if not pred_tokens:
-        return 1.0, 0.0, 0.0
+    if not gold_tokens or not pred_tokens:
+        return 0.0, 0.0, 0.0
 
     tp = len(gold_tokens.intersection(pred_tokens))
     precision = tp / len(pred_tokens) if pred_tokens else 0.0
@@ -228,11 +236,28 @@ def check_ref_negative_patterns(refs: list, must_not_list: list) -> tuple[int, l
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Score extracted metadata against Golden Dataset.")
+    parser.add_argument(
+        "--predictions-dir",
+        type=str,
+        default=None,
+        help="Optional directory containing candidate JSON extractions ({stem}.json or {stem}/current_extraction.json).",
+    )
+    parser.add_argument(
+        "--report-path",
+        type=str,
+        default=None,
+        help="Optional output markdown report path (defaults to reports/baseline_scorecard.md).",
+    )
+    args = parser.parse_args()
+
     dataset_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     manifest_path = os.path.join(dataset_dir, "manifest.yaml")
     reports_dir = os.path.join(dataset_dir, "reports")
     os.makedirs(reports_dir, exist_ok=True)
-    report_path = os.path.join(reports_dir, "baseline_scorecard.md")
+    report_path = args.report_path or os.path.join(reports_dir, "baseline_scorecard.md")
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest_data = yaml.safe_load(f)
@@ -260,7 +285,18 @@ def main():
         rel_fdir = src["fixture_dir"]
         fdir = os.path.join(dataset_dir, rel_fdir)
 
-        ext_path = os.path.join(fdir, "current_extraction.json")
+        if args.predictions_dir:
+            cand1 = os.path.join(args.predictions_dir, f"{stem}.json")
+            cand2 = os.path.join(args.predictions_dir, stem, "current_extraction.json")
+            if os.path.exists(cand1):
+                ext_path = cand1
+            elif os.path.exists(cand2):
+                ext_path = cand2
+            else:
+                ext_path = os.path.join(fdir, "current_extraction.json")
+        else:
+            ext_path = os.path.join(fdir, "current_extraction.json")
+
         gold_p_path = os.path.join(fdir, "gold_parent.yaml")
         gold_r_path = os.path.join(fdir, "gold_references.yaml")
 

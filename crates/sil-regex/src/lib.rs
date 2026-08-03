@@ -61,6 +61,26 @@ static AND_AUTHOR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)\b(?:and|&)\s+[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z][a-zA-Za-z\-']+)?$").unwrap()
 });
 
+static SPLIT_MD_LINK: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([A-Za-z]+)\[([A-Za-z]+)\]\([^)]+\)").unwrap());
+
+static ORCID_LINK_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[ID\]\([^)]+\)").unwrap());
+
+static EMAIL_BRACKETS_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\{[^}]*\}@[^\s,]+").unwrap());
+
+static EMAIL_ADDR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b(?:email:\s*)?[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b").unwrap()
+});
+
+static IEEE_BADGE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\*?\s*(?:Senior|Student|Fellow)?\s*(?:Member)?,\s*IEEE\*?").unwrap()
+});
+
+static AND_SPLIT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)\s+(?:and|&)\s+").unwrap());
+
 /// Expand inline bullet separators (e.g. `. - Author`) into newlines.
 pub fn expand_inline_bullet_references(text: &str) -> String {
     INLINE_BULLET_SEP_REGEX
@@ -209,6 +229,227 @@ pub fn is_affiliation_or_noise_line(line: &str) -> bool {
         "contents",
     ];
     keywords.iter().any(|&k| lower.contains(k))
+}
+
+/// Check if a candidate line is publisher chrome or a known journal title header.
+pub fn is_journal_or_publisher_title(line: &str) -> bool {
+    let clean = strip_html_spans(line).trim().to_string();
+    let raw = clean.trim_start_matches('#').trim().trim_matches('*').trim_matches('_').trim();
+    let lower = raw.to_lowercase();
+
+    if lower.is_empty() {
+        return true;
+    }
+
+    let bad_exact = [
+        "sciencedirect",
+        "knowledge-based systems",
+        "data & knowledge engineering",
+        "intelligent systems with applications",
+        "abstract",
+        "a b s t r a c t",
+        "contents",
+        "paper under double-blind review",
+        "article info",
+        "a r t i c l e i n f o",
+    ];
+    if bad_exact.contains(&lower.as_str()) {
+        return true;
+    }
+
+    let bad_prefixes = [
+        "contents lists available at",
+        "journal homepage",
+        "1 introduction",
+        "1. introduction",
+        "i. introduction",
+        "parsed from",
+    ];
+    if bad_prefixes.iter().any(|&p| lower.starts_with(p)) {
+        return true;
+    }
+
+    if lower.contains("elsevier") {
+        return true;
+    }
+
+    false
+}
+
+/// Clean an author line from byline section: strips links, ORCIDs, emails, math footnotes, IEEE badges, noise.
+pub fn clean_author_byline_line(line: &str) -> String {
+    let mut s = line.trim().to_string();
+
+    if s.starts_with('#') {
+        s = s.trim_start_matches('#').trim().to_string();
+    }
+
+    // Handle split markdown links e.g. She[n](https://...) -> Shen
+    s = SPLIT_MD_LINK.replace_all(&s, "$1$2").to_string();
+
+    // Strip ORCID link icon e.g. [ID](https://orcid.org/...)
+    s = ORCID_LINK_REGEX.replace_all(&s, "").to_string();
+
+    // General markdown link stripping [Name](#link) -> Name
+    s = strip_markdown_links(&s);
+
+    // Strip email blocks e.g. {user1, user2}@domain.com or user1@domain.com
+    s = EMAIL_BRACKETS_REGEX.replace_all(&s, "").to_string();
+    s = EMAIL_ADDR_REGEX.replace_all(&s, "").to_string();
+
+    // Strip attached email usernames e.g. Ernesto Quevedo1@Baylor.edu -> Ernesto Quevedo
+    static EMAIL_USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b").unwrap()
+    });
+    s = EMAIL_USERNAME_REGEX.replace_all(&s, "").to_string();
+
+    // Handle affiliation lines and keywords
+    if let Some(idx) = find_affiliation_keyword_idx(&s) {
+        s = s[..idx].to_string();
+    } else if is_affiliation_or_noise_line(&s) {
+        return String::new();
+    }
+
+    // Strip TeX math footnote markers e.g. $^{1*\dagger}$, $^1$, $^{2\ddagger}$
+    static TEX_MATH_NOISE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"\$\^\{?[^}]*\}?\$|\$[^$]*\$|\^\{[^}]*\}|\^\[[^\]]*\]").unwrap()
+    });
+    s = TEX_MATH_NOISE_REGEX.replace_all(&s, "").to_string();
+
+    // Strip HTML <sup>...</sup>
+    s = strip_author_footnote_markers(&s);
+
+    // Strip footnote/superscript characters
+    static NOISE_CHARS: &[char] = &[
+        '*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶',
+        '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    ];
+    s = s.replace(NOISE_CHARS, "");
+
+    // Strip IEEE badges
+    s = IEEE_BADGE_REGEX.replace_all(&s, "").to_string();
+
+    s = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    s.trim_matches(|c: char| c == ',' || c == ';' || c == '-' || c.is_whitespace()).to_string()
+}
+
+fn find_affiliation_keyword_idx(text: &str) -> Option<usize> {
+    let lower = text.to_lowercase();
+    let keywords = [
+        "independent researcher",
+        "departamento de",
+        "departamento",
+        "department of",
+        "department",
+        "school of",
+        "school",
+        "universidad de",
+        "universidad",
+        "university of",
+        "university",
+        "faculty of",
+        "faculty",
+        "college of",
+        "college",
+        "institute of",
+        "institute",
+        "laboratory",
+        "lab",
+        "corp lab",
+        "corplab",
+        "baidu inc",
+        "adobe research",
+        "amazon",
+        "meta",
+        "snap inc",
+        "home depot",
+    ];
+    keywords.iter().filter_map(|kw| lower.find(kw)).min()
+}
+
+/// Split author line into individual candidate author names.
+pub fn split_author_names(line: &str) -> Vec<String> {
+    let mut res = Vec::new();
+    if line.contains(',') || line.contains(';') {
+        let parts: Vec<&str> = line.split(&[';', ','][..]).collect();
+        for part in parts {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let and_split: Vec<&str> = AND_SPLIT_REGEX.split(trimmed).collect();
+            for item in and_split {
+                let clean_item = item.trim().trim_matches(|c: char| c == ',' || c == ';' || c.is_whitespace()).to_string();
+                if !clean_item.is_empty() {
+                    res.push(clean_item);
+                }
+            }
+        }
+    } else {
+        // Line has no commas/semicolons: e.g. "Wensheng Lu Keyu Chen Ruizhi Qiao Xing Sun"
+        let words: Vec<&str> = line.split_whitespace().collect();
+        let mut idx = 0;
+        while idx < words.len() {
+            let w1 = words[idx];
+            if idx + 1 < words.len() {
+                let w2 = words[idx + 1];
+                let is_w1_cap = w1.chars().next().is_some_and(|c| c.is_uppercase());
+                let is_w2_cap = w2.chars().next().is_some_and(|c| c.is_uppercase());
+                if is_w1_cap && is_w2_cap {
+                    // Check if 3rd word is middle initial or name e.g. "Wayne Xin Zhao"
+                    if idx + 2 < words.len() {
+                        let w3 = words[idx + 2];
+                        let is_w3_cap = w3.chars().next().is_some_and(|c| c.is_uppercase());
+                        // If w2 is a middle initial or short middle name and w3 is capitalized
+                        if is_w3_cap && (w2.len() <= 3 || idx + 3 >= words.len() || !words[idx + 3].chars().next().is_some_and(|c| c.is_uppercase())) {
+                            res.push(format!("{w1} {w2} {w3}"));
+                            idx += 3;
+                            continue;
+                        }
+                    }
+                    res.push(format!("{w1} {w2}"));
+                    idx += 2;
+                    continue;
+                }
+            }
+            if w1.chars().next().is_some_and(|c| c.is_uppercase()) {
+                res.push(w1.to_string());
+            }
+            idx += 1;
+        }
+    }
+    res
+}
+
+/// Extract publication year from document header line (does not scan body text).
+pub fn extract_header_year(line: &str) -> Option<i32> {
+    let lower = line.to_lowercase();
+    if lower.contains("published:")
+        || lower.contains("published online:")
+        || lower.contains("date:")
+        || lower.contains("received:")
+        || lower.contains("accepted:")
+        || lower.contains("available online")
+        || lower.contains("©")
+        || lower.contains("copyright")
+        || lower.contains("may 20")
+        || lower.contains("sep 20")
+        || lower.contains("jan 20")
+        || lower.contains("feb 20")
+        || lower.contains("mar 20")
+        || lower.contains("apr 20")
+        || lower.contains("jun 20")
+        || lower.contains("jul 20")
+        || lower.contains("aug 20")
+        || lower.contains("oct 20")
+        || lower.contains("nov 20")
+        || lower.contains("dec 20")
+        || lower.contains("10.1016/")
+        || lower.contains("10.1038/")
+    {
+        return extract_year(line);
+    }
+    None
 }
 
 /// Check if line is an author biography or prose line (not a citation).
@@ -433,6 +674,15 @@ pub fn extract_reference_venue(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_clean_author_byline_line_single_author() {
+        let line = "Harshavardhan Independent Researcher harsh@link.cuhk.edu.hk";
+        let cleaned = clean_author_byline_line(line);
+        let names = split_author_names(&cleaned);
+        assert_eq!(cleaned, "Harshavardhan");
+        assert_eq!(names, vec!["Harshavardhan"]);
+    }
 
     #[test]
     fn test_strip_markdown_links() {
