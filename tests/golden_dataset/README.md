@@ -17,6 +17,20 @@ This directory contains the golden-dataset fixture pack, schemas, validation too
 
 ---
 
+## Python tooling (uv)
+
+From the **repository root** (not this directory):
+
+```bash
+uv sync --group dev          # pypdf + pyyaml + jsonschema
+uv run tests/golden_dataset/scripts/validate_dataset.py
+uv run tests/golden_dataset/scripts/score_against_current.py
+```
+
+See root `pyproject.toml` and `uv.lock`. Do not use ad-hoc `pip install` for these scripts.
+
+---
+
 ## Directory Map
 
 ```text
@@ -54,7 +68,8 @@ tests/golden_dataset/
 To re-export fixtures from the SQLite database (`db.sqlite`), run:
 
 ```bash
-python3 tests/golden_dataset/scripts/export_from_db.py
+# From repository root (once): uv sync --group dev
+uv run tests/golden_dataset/scripts/export_from_db.py
 ```
 
 ### Custom Database or PDF Paths
@@ -62,7 +77,7 @@ python3 tests/golden_dataset/scripts/export_from_db.py
 Pass custom paths via CLI flags:
 
 ```bash
-python3 tests/golden_dataset/scripts/export_from_db.py \
+uv run tests/golden_dataset/scripts/export_from_db.py \
     --db-path /path/to/db.sqlite \
     --pdf-dir /path/to/sources \
     --output-dir /path/to/output/golden_dataset
@@ -73,10 +88,10 @@ python3 tests/golden_dataset/scripts/export_from_db.py \
 ## How to Label New Fixtures
 
 When adding or updating ground-truth annotations:
-1. Refer to [`LABELING.md`](file:///Users/vladimirkasterin/rust/scientist-in-loop/tests/golden_dataset/LABELING.md) for step-by-step annotation guidelines.
+1. Refer to [`LABELING.md`](LABELING.md) for step-by-step annotation guidelines.
 2. Create `gold_parent.yaml` (title, author list, year, DOI, venue, hard negative rules).
 3. Create `gold_references.yaml` (expected count range `[min, max]`, anchor items, and negative patterns to avoid).
-4. Run `python3 tests/golden_dataset/scripts/validate_dataset.py` to ensure schema compliance.
+4. Run `uv run tests/golden_dataset/scripts/validate_dataset.py` to ensure schema compliance.
 
 ---
 
@@ -113,9 +128,9 @@ To test a new extraction implementation (in Rust or Python):
 3. **Scoring & Verification**:
    - Run the baseline evaluator or your scorer against `gold_parent.yaml` and `gold_references.yaml`:
      ```bash
-     python3 tests/golden_dataset/scripts/score_against_current.py
+     uv run tests/golden_dataset/scripts/score_against_current.py
      ```
-   - Compare your results with the evaluation criteria in [`EVALUATION.md`](file:///Users/vladimirkasterin/rust/scientist-in-loop/tests/golden_dataset/EVALUATION.md).
+   - Compare your results with the evaluation criteria in [`EVALUATION.md`](EVALUATION.md).
 
 ---
 
@@ -124,7 +139,7 @@ To test a new extraction implementation (in Rust or Python):
 Before submitting changes to the dataset, ensure the validation suite passes:
 
 ```bash
-python3 tests/golden_dataset/scripts/validate_dataset.py
+uv run tests/golden_dataset/scripts/validate_dataset.py
 ```
 
 This verifies file presence, SHA-256 checksums, and JSON Schema validity across all fixtures.

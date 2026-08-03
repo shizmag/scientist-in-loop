@@ -27,9 +27,11 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     let mut checks = Vec::new();
     let mut project_root = None;
 
-    // Always: git, python, cargo (optional), latex engines
+    // Always: git, python, uv (optional), cargo (optional), latex engines
     checks.push(check_cmd("git", &["git", "--version"]));
     checks.push(check_cmd("python3", &["python3", "--version"]));
+    // uv manages project Python deps (pyproject.toml); non-fatal if absent
+    checks.push(check_cmd("uv", &["uv", "--version"]));
     checks.push(check_which("tectonic"));
     checks.push(check_which("pdflatex"));
     checks.push(check_which("latexmk"));
@@ -193,7 +195,11 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
 }
 
 fn is_soft(name: &str) -> bool {
-    name == "tectonic" || name == "pdflatex" || name == "latexmk" || name.starts_with("engine ")
+    name == "tectonic"
+        || name == "pdflatex"
+        || name == "latexmk"
+        || name == "uv"
+        || name.starts_with("engine ")
 }
 
 fn check_cmd(name: &str, args: &[&str]) -> Check {

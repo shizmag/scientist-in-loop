@@ -45,7 +45,8 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | **Rust** (stable `cargo` / `rustc`) | Compile / install `sil` | Edition **2024** — use a recent stable toolchain via [rustup](https://rustup.rs) |
 | **Git** | `init`, `status`, `log`, commit proposals | Must be on `PATH` as `git` |
 | **Python 3** | `sil parse`, `sil source fetch` | Helpers under `python/`; override with `SIL_PYTHON` |
-| **pip packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `pypdf` is the light fallback; **Marker** is preferred quality. See `python/requirements.txt` |
+| **[uv](https://docs.astral.sh/uv/)** | Project Python env | Root `pyproject.toml` + `uv.lock`; install via [astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
+| **uv packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `uv sync` (pypdf); `uv sync --extra marker` for Marker quality |
 | **xberg** (Rust Crate) | Structured PDF Metadata & Citation Extraction | Extracts `title`, `authors`, and `citations` via LLM/NER schema. Models cached at `/Volumes/happy-disk/models/xberg/huggingface` |
 | **C toolchain** | Building `sil` (bundled SQLite) | Xcode CLT (macOS), `build-essential` (Debian/Ubuntu), MinGW or MSVC (Windows) |
 | **LaTeX engine** | `sil build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
@@ -67,10 +68,10 @@ A single shell installer lives in `install/`. It detects the OS, installs missin
 # From the repository root
 chmod +x install/install.sh
 
-# Core: git, Rust, Python, pypdf, C tools → cargo install sil
+# Core: git, Rust, uv, Python env (pypdf), C tools → cargo install sil
 ./install/install.sh
 
-# Also install Marker (large) and a LaTeX engine for sil build
+# Also install Marker (large, via uv) and a LaTeX engine for sil build
 ./install/install.sh --with-marker --with-latex
 
 # Report what is present / missing (no changes)
@@ -98,11 +99,14 @@ Manual alternative (if you already have the toolchain):
 
 ```bash
 # System packages (examples)
-# macOS:  brew install git python tectonic
-# Debian: sudo apt install git python3 python3-pip build-essential
-# Then:
-pip install -r python/requirements.txt   # pypdf
-# pip install marker-pdf                 # optional, heavy
+# macOS:  brew install git python uv tectonic
+# Debian: sudo apt install git python3 curl build-essential
+# Install uv: https://docs.astral.sh/uv/getting-started/installation/
+# Then, from the repository root:
+uv sync                      # pypdf into .venv
+# uv sync --extra marker     # optional, heavy (Marker PDF parser)
+# uv sync --group dev        # golden_dataset validate/score scripts
+export SIL_PYTHON="$(pwd)/.venv/bin/python"
 cargo install --path crates/sil
 ```
 
@@ -157,7 +161,7 @@ Optional environment:
 |----------|--------|
 | `NO_COLOR` / `SIL_NO_COLOR=1` | Disable colors |
 | `SIL_NONINTERACTIVE=1` | No spinners/prompts; parse selects all |
-| `SIL_PYTHON` | Python executable (default `python3`) |
+| `SIL_PYTHON` | Python executable (default `python3`; prefer `.venv/bin/python` after `uv sync`) |
 | `SIL_MARKER_BIN` | Path to pre-installed `marker_single` / `marker` CLI binary |
 | `SIL_MARKER_MODE` | Parsing mode for Marker (default `balance`) |
 | `SIL_MARKER_FLAGS` | Custom space-separated CLI flags for `marker_single` |
@@ -165,7 +169,7 @@ Optional environment:
 | `SIL_DOWNLOAD_SCRIPT` | Path to `download_pdf.py` |
 | `SIL_MARKER_STUB` | Test-only: skip Marker, use this text |
 
-Python helpers (`python/`) need a working `python3`. Marker is preferred for parse quality; a fallback exists when Marker is not installed. See `python/requirements.txt` and [External dependencies](#external-dependencies).
+Python helpers (`python/`) are managed with **uv** from the repo root (`pyproject.toml` / `uv.lock`). After `uv sync`, point `SIL_PYTHON` at `.venv/bin/python` or use a global `marker_single` CLI. Marker is preferred for parse quality; a pypdf fallback exists when Marker is not installed. Golden-dataset scripts need `uv sync --group dev` then `uv run tests/golden_dataset/scripts/…`.
 
 ---
 

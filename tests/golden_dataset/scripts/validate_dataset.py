@@ -21,13 +21,23 @@ import hashlib
 try:
     import yaml
 except ImportError:
-    print("Error: PyYAML package is required. Install via `pip install pyyaml`.", file=sys.stderr)
+    print(
+        "Error: PyYAML is required. From the repo root run:\n"
+        "  uv sync --group dev\n"
+        "  uv run tests/golden_dataset/scripts/validate_dataset.py",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 try:
     import jsonschema
 except ImportError:
-    print("Error: jsonschema package is required. Install via `pip install jsonschema`.", file=sys.stderr)
+    print(
+        "Error: jsonschema is required. From the repo root run:\n"
+        "  uv sync --group dev\n"
+        "  uv run tests/golden_dataset/scripts/validate_dataset.py",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 

@@ -1,4 +1,9 @@
-# Optional runtime deps for sil Python helpers.
-# Marker is preferred for high-quality PDF parsing.
-# marker-pdf>=1.0.0
-pypdf>=4.0.0
+# Deprecated as the install path.
+#
+# Use uv from the repository root instead (see root pyproject.toml):
+#   uv sync                 # pypdf
+#   uv sync --group dev     # + golden_dataset (pyyaml, jsonschema)
+#   uv sync --extra marker  # + marker-pdf
+#
+# Optional lock export (not required for normal use):
+#   uv export --no-dev --no-emit-project -o python/requirements.export.txt

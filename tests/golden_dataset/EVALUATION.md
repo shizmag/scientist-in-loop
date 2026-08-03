@@ -137,7 +137,7 @@ The scorecard aggregates scores across all test fixtures using both **Macro Aver
 2. **Output Format**:
    - The extractor emits a JSON object conforming to the `current_extraction.json` structure (schema defined above).
 3. **Execution & Validation**:
-   - Run `python3 scripts/validate_dataset.py` to ensure dataset integrity.
-   - Run `python3 scripts/score_against_current.py` (or Rust equivalent) to compute scores against `gold_parent.yaml` and `gold_references.yaml`.
+   - From the repo root: `uv sync --group dev` (once), then `uv run tests/golden_dataset/scripts/validate_dataset.py`.
+   - Score with `uv run tests/golden_dataset/scripts/score_against_current.py` (or a Rust equivalent) against `gold_parent.yaml` and `gold_references.yaml`.
 4. **Important**:
    - **Do NOT treat `current_extraction.json` as ground truth gold labels!** It contains known baseline bugs documented in `reports/baseline_scorecard.md`.

@@ -1,0 +1,32 @@
+# Local Python tooling for scientist-in-loop (not published to PyPI).
+# Managed with uv: https://docs.astral.sh/uv/
+#
+#   uv sync                 # runtime: pypdf
+#   uv sync --group dev     # + golden_dataset scripts (pyyaml, jsonschema)
+#   uv sync --extra marker  # + marker-pdf (heavy; preferred PDF parse quality)
+#   uv run <script>         # run helpers / eval scripts in the project env
+
+[project]
+name = "scientist-in-loop"
+version = "0.0.0"
+description = "Python helpers and golden-dataset tooling for the sil (scientist-in-loop) CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pypdf>=4.0.0",
+]
+
+[project.optional-dependencies]
+marker = [
+    "marker-pdf>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+]
+
+[tool.uv]
+# Default `uv sync` stays lean (no Marker). Use --extra marker when needed.
+default-groups = []

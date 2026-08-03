@@ -8,14 +8,14 @@
 #
 # Usage:
 #   ./install/install.sh                 # core deps + build sil
-#   ./install/install.sh --with-marker   # also install marker-pdf (heavy)
+#   ./install/install.sh --with-marker   # also install marker-pdf via uv (heavy)
 #   ./install/install.sh --with-latex    # also install tectonic (or TeX fallback)
 #   ./install/install.sh --check-only    # report what is present/missing
 #   ./install/install.sh --skip-build    # deps only, do not cargo-install sil
 #   ./install/install.sh --help
 #
 # Environment:
-#   SIL_PYTHON          Python executable (default: python3, then python)
+#   SIL_PYTHON          Python executable (default: project .venv via uv, else python3)
 #   SKIP_MARKER=1       Same as omitting --with-marker
 #   SKIP_LATEX=1        Same as omitting --with-latex
 #   NONINTERACTIVE=1    Never prompt; assume yes for package installs when possible
@@ -36,11 +36,16 @@ usage() {
 install/install.sh — install scientist-in-loop external dependencies and build `sil`
 
 Options:
-  --with-marker    Install marker-pdf via pip (preferred PDF parser; large download)
+  --with-marker    Install marker-pdf via uv (preferred PDF parser; large download)
   --with-latex     Install a LaTeX engine (tectonic preferred) for `sil build`
   --check-only     Print dependency status and exit (no installs)
   --skip-build     Install/check deps only; do not compile/install the sil binary
   --help           Show this help
+
+Python deps are managed with uv (https://docs.astral.sh/uv/) from the repo root:
+  uv sync                 # pypdf
+  uv sync --group dev     # + golden_dataset tooling
+  uv sync --extra marker  # + marker-pdf
 
 Examples:
   ./install/install.sh
@@ -260,14 +265,15 @@ pkgs_for_git() {
 }
 
 pkgs_for_python() {
+  # System Python is only a bootstrap; project packages come from uv.
   case "${PKG}" in
     brew) echo "python" ;;
-    apt) echo "python3 python3-pip python3-venv" ;;
-    dnf|yum) echo "python3 python3-pip" ;;
-    pacman) echo "python python-pip" ;;
-    msys2) echo "python python-pip" ;;
-    zypper) echo "python3 python3-pip" ;;
-    apk) echo "python3 py3-pip" ;;
+    apt) echo "python3 python3-venv curl" ;;
+    dnf|yum) echo "python3 curl" ;;
+    pacman) echo "python curl" ;;
+    msys2) echo "python" ;;
+    zypper) echo "python3 curl" ;;
+    apk) echo "python3 curl" ;;
     choco) echo "python" ;;
     scoop) echo "python" ;;
     winget) echo "Python.Python.3.12" ;;
@@ -506,67 +512,123 @@ ensure_python() {
   return 1
 }
 
-pip_install() {
-  local py="$1"; shift
-  # Prefer python -m pip; ensure pip exists
-  if ! "$py" -m pip --version >/dev/null 2>&1; then
-    if have "$py"; then
-      "$py" -m ensurepip --upgrade 2>/dev/null || true
-    fi
+# ---------------------------------------------------------------------------
+# uv (Python package manager)
+# ---------------------------------------------------------------------------
+resolve_uv() {
+  if have uv; then
+    command -v uv
+    return 0
   fi
-  if ! "$py" -m pip --version >/dev/null 2>&1; then
-    err "pip not available for $py"
+  # Common install location from astral.sh installer
+  if [[ -x "${HOME}/.local/bin/uv" ]]; then
+    echo "${HOME}/.local/bin/uv"
+    return 0
+  fi
+  if [[ -x "${HOME}/.cargo/bin/uv" ]]; then
+    echo "${HOME}/.cargo/bin/uv"
+    return 0
+  fi
+  return 1
+}
+
+ensure_uv() {
+  local uv_bin
+  if uv_bin="$(resolve_uv)"; then
+    ok "uv $($uv_bin --version 2>&1 | head -1) [$uv_bin]"
+    UV_BIN="$uv_bin"
+    return 0
+  fi
+  if [[ "${CHECK_ONLY}" == "1" ]]; then
+    warn "uv: missing (required for Python deps; https://docs.astral.sh/uv/)"
     return 1
   fi
-  "$py" -m pip install --user --upgrade "$@"
+  info "Installing uv (Astral Python package manager)"
+  if ! confirm_install "uv"; then
+    warn "uv install skipped; Python packages will not be synced"
+    return 1
+  fi
+  if have curl; then
+    if curl -LsSf https://astral.sh/uv/install.sh | sh; then
+      # ensure current shell can see it
+      export PATH="${HOME}/.local/bin:${HOME}/.cargo/bin:${PATH}"
+      if uv_bin="$(resolve_uv)"; then
+        ok "uv installed: $($uv_bin --version 2>&1 | head -1)"
+        UV_BIN="$uv_bin"
+        return 0
+      fi
+    fi
+  fi
+  if [[ "${PKG}" == "brew" ]] && have brew; then
+    if brew install uv 2>/dev/null; then
+      if uv_bin="$(resolve_uv)"; then
+        ok "uv installed via Homebrew"
+        UV_BIN="$uv_bin"
+        return 0
+      fi
+    fi
+  fi
+  err "Could not install uv. See https://docs.astral.sh/uv/getting-started/installation/"
+  return 1
 }
 
 ensure_python_packages() {
-  local py="${PYTHON_BIN:-}"
-  if [[ -z "${py}" ]]; then
-    if ! py="$(resolve_python)"; then
+  local uv_bin="${UV_BIN:-}"
+  if [[ -z "${uv_bin}" ]]; then
+    if ! uv_bin="$(resolve_uv)"; then
+      warn "uv not available; skipping Python package sync"
       return 1
     fi
-    PYTHON_BIN="$py"
+    UV_BIN="$uv_bin"
   fi
 
-  local req="${REPO_ROOT}/python/requirements.txt"
-  if [[ ! -f "${req}" ]]; then
-    warn "python/requirements.txt not found; skipping pip packages"
-    return 0
+  if [[ ! -f "${REPO_ROOT}/pyproject.toml" ]]; then
+    warn "pyproject.toml not found at repo root; skipping uv sync"
+    return 1
   fi
 
   if [[ "${CHECK_ONLY}" == "1" ]]; then
-    if "$py" -c 'import pypdf' 2>/dev/null; then
-      ok "pypdf: installed"
+    if (cd "${REPO_ROOT}" && "$uv_bin" run --no-sync python -c 'import pypdf' 2>/dev/null) \
+      || (cd "${REPO_ROOT}" && [[ -x .venv/bin/python ]] && .venv/bin/python -c 'import pypdf' 2>/dev/null); then
+      ok "pypdf: available (uv project env)"
     else
-      warn "pypdf: missing (fallback PDF text extraction; see python/requirements.txt)"
+      warn "pypdf: missing (run: uv sync)"
     fi
-    if "$py" -c 'import marker' 2>/dev/null; then
-      ok "marker: installed"
+    if (cd "${REPO_ROOT}" && "$uv_bin" run --no-sync python -c 'import marker' 2>/dev/null) \
+      || (cd "${REPO_ROOT}" && [[ -x .venv/bin/python ]] && .venv/bin/python -c 'import marker' 2>/dev/null); then
+      ok "marker: available"
     else
       dim "marker-pdf: not installed (optional; better parse quality with --with-marker)"
     fi
     return 0
   fi
 
-  info "Installing Python packages from python/requirements.txt (pypdf, …)"
-  if confirm_install "Python packages from requirements.txt"; then
-    pip_install "$py" -r "${req}" || warn "pip install -r requirements.txt had errors"
+  info "Syncing Python environment with uv (pypdf, …)"
+  if confirm_install "uv sync (project Python deps)"; then
+    if ! (cd "${REPO_ROOT}" && "$uv_bin" sync); then
+      warn "uv sync failed"
+      return 1
+    fi
+    ok "uv sync complete (.venv with pypdf)"
   fi
 
   if [[ "${WITH_MARKER}" == "1" ]]; then
-    info "Installing marker-pdf (large ML stack; may take several minutes)"
-    if confirm_install "marker-pdf"; then
-      # Package name on PyPI is marker-pdf; import name is marker
-      if ! pip_install "$py" "marker-pdf"; then
-        warn "marker-pdf install failed. sil parse still works with pypdf fallback."
+    info "Installing marker-pdf via uv (large ML stack; may take several minutes)"
+    if confirm_install "uv sync --extra marker"; then
+      if ! (cd "${REPO_ROOT}" && "$uv_bin" sync --extra marker); then
+        warn "marker-pdf install failed. sil parse still works with pypdf fallback / marker_single CLI."
       else
-        ok "marker-pdf installed"
+        ok "marker-pdf installed into project .venv"
       fi
     fi
   else
     dim "Skipping marker-pdf (pass --with-marker for high-quality PDF parsing)"
+  fi
+
+  # Point SIL_PYTHON at the project venv when present
+  if [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
+    export SIL_PYTHON="${REPO_ROOT}/.venv/bin/python"
+    dim "SIL_PYTHON=${SIL_PYTHON}"
   fi
 }
 
@@ -682,16 +744,19 @@ print_summary() {
   local status=0
   if have git; then ok "git"; else warn "git MISSING"; status=1; fi
   if have rustc && have cargo; then ok "rust/cargo"; else warn "rust/cargo MISSING"; status=1; fi
+  if resolve_uv >/dev/null 2>&1; then ok "uv"; else warn "uv MISSING"; status=1; fi
   if resolve_python >/dev/null 2>&1; then ok "python3"; else warn "python3 MISSING"; status=1; fi
-  if resolve_python >/dev/null 2>&1 && "$(resolve_python)" -c 'import pypdf' 2>/dev/null; then
-    ok "pypdf"
+  if [[ -x "${REPO_ROOT}/.venv/bin/python" ]] && "${REPO_ROOT}/.venv/bin/python" -c 'import pypdf' 2>/dev/null; then
+    ok "pypdf (uv .venv)"
+  elif resolve_uv >/dev/null 2>&1 && (cd "${REPO_ROOT}" && "$(resolve_uv)" run --no-sync python -c 'import pypdf' 2>/dev/null); then
+    ok "pypdf (uv run)"
   else
-    dim "pypdf optional-but-recommended"
+    dim "pypdf optional-but-recommended (uv sync)"
   fi
-  if resolve_python >/dev/null 2>&1 && "$(resolve_python)" -c 'import marker' 2>/dev/null; then
+  if [[ -x "${REPO_ROOT}/.venv/bin/python" ]] && "${REPO_ROOT}/.venv/bin/python" -c 'import marker' 2>/dev/null; then
     ok "marker"
   else
-    dim "marker optional (--with-marker)"
+    dim "marker optional (--with-marker / uv sync --extra marker)"
   fi
   if have_latex_engine; then
     ok "latex engine"
@@ -714,6 +779,7 @@ main() {
   ensure_build_tools || true
   ensure_rust || failed=1
   ensure_python || failed=1
+  ensure_uv || true
   ensure_python_packages || true
   ensure_latex || true
   build_sil || failed=1
@@ -746,8 +812,10 @@ ${C_GREEN}${C_BOLD}Done.${C_RESET} Next steps:
   sil init my-paper
   cd my-paper
 
-  # Optional env for Python helpers
-  # export SIL_PYTHON=python3
+  # Python helpers (uv project env)
+  #   cd ${REPO_ROOT} && uv sync
+  #   export SIL_PYTHON="${REPO_ROOT}/.venv/bin/python"
+  #   # or: export SIL_PYTHON="\$(cd ${REPO_ROOT} && uv run which python)"
   # export SIL_PARSE_SCRIPT=${REPO_ROOT}/python/parse_with_marker.py
 
 EOF

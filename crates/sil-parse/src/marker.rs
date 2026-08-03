@@ -302,7 +302,7 @@ pub fn discover_marker_runner() -> Result<Box<dyn MarkerRunner>, ParseError> {
         return Ok(Box::new(py));
     }
     Err(ParseError::Message(
-        "could not locate marker_single CLI binary (pip install marker-pdf) or python/parse_with_marker.py helper script; set SIL_MARKER_BIN or SIL_PARSE_SCRIPT".into(),
+        "could not locate marker_single CLI binary (uv sync --extra marker / marker-pdf) or python/parse_with_marker.py helper script; set SIL_MARKER_BIN or SIL_PARSE_SCRIPT".into(),
     ))
 }
 
