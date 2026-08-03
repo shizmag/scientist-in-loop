@@ -9,18 +9,71 @@ use sil_regex::{
 pub fn extract_references_block(content: &str) -> Option<String> {
     let mut references = Vec::new();
     let mut in_refs = false;
+    let mut last_ref_num: Option<usize> = None;
 
     for line in content.lines() {
         let t = line.trim();
+
+        if sil_regex::is_margin_line_number(t) {
+            continue;
+        }
+
         if is_reference_heading(t) {
             in_refs = true;
             continue;
-        } else if in_refs && (is_non_ref_heading(t) || sil_regex::is_biography_or_prose_line(t)) {
-            break;
+        } else if in_refs {
+            let is_non_ref = is_non_ref_heading(t);
+            let is_prose = sil_regex::is_biography_or_prose_line(t);
+            let is_entry_start = sil_regex::is_reference_entry_start(t)
+                || t.trim_start().starts_with('-')
+                || t.trim_start().starts_with('*')
+                || t.trim_start().starts_with('[')
+                || extract_doi(t).is_some()
+                || sil_regex::extract_arxiv_id(t).is_some();
+
+            if is_non_ref || (is_prose && !is_entry_start) {
+                in_refs = false;
+            }
+        } else if !in_refs && last_ref_num.is_some() {
+            if let Some((_, n)) = detect_number_format(t) {
+                if let Some(prev) = last_ref_num {
+                    if n == prev + 1 || n == prev + 2 {
+                        in_refs = true;
+                    }
+                }
+            }
         }
 
         if in_refs {
+            if let Some((_, n)) = detect_number_format(t) {
+                last_ref_num = Some(n);
+            }
             references.push(line);
+        }
+    }
+
+    if references.is_empty() {
+        let mut in_fallback = false;
+        for line in content.lines() {
+            let t = line.trim();
+            if sil_regex::is_margin_line_number(t) {
+                continue;
+            }
+
+            if is_reference_heading(t) {
+                in_fallback = true;
+                continue;
+            }
+
+            if detect_number_format(t).is_some() || sil_regex::is_reference_entry_start(t) {
+                in_fallback = true;
+            } else if in_fallback && is_non_ref_heading(t) {
+                in_fallback = false;
+            }
+
+            if in_fallback {
+                references.push(line);
+            }
         }
     }
 
@@ -138,7 +191,7 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     for raw_line in block.lines() {
         let cleaned = clean_spans(raw_line);
         let trimmed = cleaned.trim();
-        if trimmed.is_empty() || is_noise_line(trimmed) {
+        if trimmed.is_empty() || is_noise_line(trimmed) || sil_regex::is_margin_line_number(trimmed) {
             continue;
         }
         if let Some(d) = detect_number_format(trimmed) {
@@ -153,7 +206,7 @@ fn split_raw_entries(block: &str) -> Vec<String> {
             .lines()
             .map(clean_spans)
             .map(|l| l.trim().to_string())
-            .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l))
+            .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l) && !sil_regex::is_margin_line_number(l))
             .collect();
         split_by_sequential_markers(&lines, fmt, start_n)
     } else {
@@ -185,7 +238,7 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
         .lines()
         .map(clean_spans)
         .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l))
+        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l) && !sil_regex::is_margin_line_number(l))
         .collect();
 
     let matches_count = lines
@@ -198,7 +251,12 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
         let mut current = String::new();
 
         for line in &lines {
-            if sil_regex::is_reference_entry_start(line) {
+            let current_trimmed = current.trim();
+            let is_incomplete_author_line = !current_trimmed.is_empty()
+                && current_trimmed.ends_with(',')
+                && sil_regex::extract_year(current_trimmed).is_none();
+
+            if sil_regex::is_reference_entry_start(line) && !is_incomplete_author_line {
                 if !current.is_empty() {
                     entries.push(current.trim().to_string());
                     current.clear();

@@ -20,20 +20,39 @@ static QUOTED_TITLE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"["“]([^"”\r\n]{2,})[”"]"#).unwrap());
 
 static REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(?:\*\*|__)?\s*(references|bibliography|literature cited|works cited|references and notes)(?:\*\*|__)?\b").unwrap()
+    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(?:\*\*|__)?\s*(references|bibliography|literature cited|works cited|references\s*(?:and|&)\s*notes|online content|selected references|additional references)(?:\*\*|__)?\b").unwrap()
 });
 
 static NON_REF_HEADING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(appendix|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary|supplemental|ethics statement|declarations|competing interests|conflict of interest|about the authors|biography|author biographies)\b").unwrap()
+    Regex::new(concat!(
+        r"(?i)^\s*#*\s*(?:\d+\.?)?\s*(?:[A-Z0-9]\.?\s+)?(?:\*\*|__)?\s*",
+        r"(appendix|proofs?|pseudocode|algorithm|listings?|author contributions|acknowledgements|acknowledgments|figures|tables|supplementary|supplemental|ethics statement|declarations|competing interests|conflict of interest|about the authors|biography|author biographies)(?:\*\*|__)?\b"
+    )).unwrap()
 });
 
 static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        // Branch 1: numbered/bracketed entries, "Surname," pattern, or "Firstname Surname," pattern (with optional -, *, • and <span> prefix)
-        r"^\s*(?:[\-*•]\s+)?(?:<span[^>]*>.*?</span>\s*)?(?:\[\d+\]|\(\d+\)|\d+[\.\)]|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\]|[A-Z][a-z]+[,\;\:]\s+[A-Z]|[A-Z][a-z]+(?:\s+[A-Z]\.|\s+[A-Z][a-z]+)+[,\;\.])",
-        r"|",
-        // Branch 2: "- " and/or <span> prefixed "Name et al" entries (requires at least one list marker)
-        r"^\s*(?:[\-*•]\s+(?:<span[^>]*>.*?</span>\s*)?|<span[^>]*>.*?</span>\s*)[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+et\s+al",
+        r#"^\s*(?:[\-*•]\s+)?(?:<span[^>]*>.*?</span>\s*)?"#,
+        r#"(?:"#,
+        // 1. Bracketed or numbered markers: [1], (1), 1., 1), [Vaswani 2017], (Vaswani 2017)
+        r#"\[\d+\]|\(\d+\)|\d+[\.\)]|\([^\)]*\d{4}\)|\[[^\]]*\d{4}\]"#,
+        r#"|"#,
+        // 2. Surname, Initial / Surname, Firstname: "Vaswani, A.", "Der Kiureghian, A."
+        r#"[A-Z][a-zA-Za-z\-']+[,\;\:]\s+[A-Z]"#,
+        r#"|"#,
+        // 3. Firstname [Middle] Surname, / . : "Sourya Basu,", "Katherine Tian,", "Nelson F Liu,", "David JC MacKay."
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z]{1,3}\.?|\s+[A-Z][a-zA-Za-z\-']+)+\s*[,\.]\s*[*_"'“]?[A-Z]"#,
+        r#"|"#,
+        // 4. Initials Surname : "J. D. Hunter.", "J. Platt."
+        r#"[A-Z]\.(?:\s+[A-Z]\.)*\s+[A-Z][a-zA-Za-z\-']+[,\;\.]"#,
+        r#"|"#,
+        // 5. "Name and Name" / "Name et al" / "Org maintainers" entries
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z]{1,3}\.?|\s+[A-Z][a-zA-Za-z\-']+)+\s+(?:and|&)\s+[A-Z][a-zA-Za-z\-']+"#,
+        r#"|"#,
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z][a-zA-Za-z\-']+)*\s+et\s+al"#,
+        r#"|"#,
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[a-zA-Z\-']+)*\s+(?:maintainers|contributors|authors|team|group|collaboration|consortium|committee|editors?)\b"#,
+        r#")"#
     )).unwrap()
 });
 
@@ -41,7 +60,7 @@ static LATEX_METADATA_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)^\s*%\s*metadata:\s*(.+)$").unwrap());
 
 static HTML_SPAN_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)<span[^>]*>(?:</span>)?").unwrap());
+    LazyLock::new(|| Regex::new(r"(?i)<span[^>]*>|</span>").unwrap());
 
 static A_TAG_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)<a[^>]*>|</a>").unwrap());
 
@@ -153,11 +172,22 @@ pub fn clean_reference_text(text: &str) -> String {
             let url = &caps[2];
             if url.contains("10.") || url.contains("arxiv") || extract_arxiv_id(url).is_some() {
                 caps[0].to_string()
+            } else if text_content.contains("aclanthology.org") || url.contains("aclanthology.org") {
+                String::new()
             } else {
                 text_content.to_string()
             }
         })
         .to_string();
+
+    static ACL_URL_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?i)https?://(?:www\.)?aclanthology\.org/\S*").unwrap());
+    cleaned = ACL_URL_REGEX.replace_all(&cleaned, "").to_string();
+
+    static FIGURE_CAPTION_SUFFIX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)\s*\([a-d]\)\s*(?:Histogram|Figure|OoD|Detection|Table)\b.*$").unwrap()
+    });
+    cleaned = FIGURE_CAPTION_SUFFIX.replace(&cleaned, "").to_string();
 
     static MULTI_SPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s{2,}").unwrap());
     cleaned = MULTI_SPACE_REGEX.replace_all(&cleaned, " ").to_string();
@@ -487,6 +517,17 @@ pub fn is_biography_or_prose_line(line: &str) -> bool {
     bio_keywords.iter().any(|&k| lower.contains(k))
 }
 
+/// Check if a line is a double-blind margin line number line (e.g. "**558 559 560**" or "**564**").
+pub fn is_margin_line_number(line: &str) -> bool {
+    let s = strip_html_spans(line);
+    let clean = s.trim();
+    if clean.is_empty() {
+        return false;
+    }
+    let t = clean.trim_start_matches("**").trim_end_matches("**").trim();
+    !t.is_empty() && t.split_whitespace().all(|w| w.chars().all(|c| c.is_ascii_digit()))
+}
+
 /// Check if text has strong publication / citation markers (doi, arxiv, in:, pp., vol., journal/conf keywords).
 pub fn has_strong_citation_markers(text: &str) -> bool {
     let lower = text.to_lowercase();
@@ -586,6 +627,54 @@ pub fn is_non_ref_heading(line: &str) -> bool {
 
 /// Check if a line starts a reference list entry (e.g., `[1]`, `1.`, `[Vaswani 2017]`, `(1)`).
 pub fn is_reference_entry_start(line: &str) -> bool {
+    let s = strip_html_spans(line);
+    let trimmed = s
+        .trim()
+        .trim_start_matches('-')
+        .trim_start_matches('*')
+        .trim_start_matches('•')
+        .trim();
+
+    let first_word = trimmed
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .trim_matches(|c: char| !c.is_alphabetic());
+
+    let non_author_words = [
+        "Language",
+        "Model",
+        "Models",
+        "System",
+        "Systems",
+        "Dataset",
+        "Datasets",
+        "Survey",
+        "Review",
+        "Overview",
+        "Report",
+        "Technical",
+        "Evaluation",
+        "Benchmark",
+        "Deep",
+        "Neural",
+        "Learning",
+        "Artificial",
+        "Computer",
+        "Vision",
+        "Natural",
+        "Information",
+        "Figure",
+        "Table",
+        "Section",
+        "Appendix",
+        "Algorithm",
+        "Listing",
+    ];
+    if non_author_words.contains(&first_word) {
+        return false;
+    }
+
     REF_ENTRY_START_REGEX.is_match(line)
 }
 
