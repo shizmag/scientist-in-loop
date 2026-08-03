@@ -1,0 +1,23 @@
+filename: HiChunk.pdf
+pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/HiChunk.pdf
+content_sha256: 681a3536c4d81a9529de56c0dab82c57f6aca25febba522bd3a7bf3861868e42
+content_bytes: 62115
+references_text_bytes: 22163
+current_db_fields:
+  id: HiChunk.pdf
+  filename: HiChunk.pdf
+  path: /Users/vladimirkasterin/articles/entropy_framework/sources/HiChunk.pdf
+  title: HiCBench
+  authors: |
+    Wensheng Lu, Keyu Chen, Ruizhi Qiao, Xing Sun, Ruizhi.Qiao, Lewis et al, Zhang et al, Chen, He et al, Wang
+    et al, Li et al, Bhat et al, Bai et al, Dasigi et al, Duarte
+    et al, Pang et al
+  year: 2025
+  doi: null
+  venue: null
+  abstract_text: null
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 09:44:46"
+  updated_at: "2026-08-02 10:19:50"

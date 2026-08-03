@@ -1,0 +1,48 @@
+{
+  "source": {
+    "id": "28_Implicit_Ensembles_of_Ensem.pdf",
+    "filename": "28_Implicit_Ensembles_of_Ensem.pdf",
+    "path": "/Users/vladimirkasterin/articles/entropy_framework/sources/28_Implicit_Ensembles_of_Ensem.pdf",
+    "title": "(Implicit) Ensembles of Ensembles: Epistemic Uncertainty Collapse in Large Models",
+    "authors": "Andreas Kirsch, MacKay, Neal, Der Kiureghian, Ditlevsen, Kendall, Gal, Fellaji, Pennerath",
+    "year": 1992,
+    "doi": null,
+    "venue": null,
+    "abstract_text": null,
+    "kind": "pdf",
+    "status": "Valid(Pdf)",
+    "parsed": 1,
+    "created_at": "2026-07-31 08:41:43",
+    "updated_at": "2026-08-02 10:16:36"
+  },
+  "references": [
+    {
+      "id": "28_Implicit_Ensembles_of_Ensem.pdf_ref_1",
+      "source_id": "28_Implicit_Ensembles_of_Ensem.pdf",
+      "ref_index": 1,
+      "raw_text": "Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale. In *International Conference on Learning Representations*, 2021. URL https://openreview. net/forum?id=YicbFdNTTy.",
+      "title": "An image is worth 16x16 words: Transformers for image recognition at scale",
+      "authors": "Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby",
+      "year": 2021,
+      "doi": null,
+      "created_at": "2026-08-02 10:16:36",
+      "venue": "International Conference on Learning Representations",
+      "arxiv_id": null,
+      "url": "https://openreview"
+    },
+    {
+      "id": "28_Implicit_Ensembles_of_Ensem.pdf_ref_2",
+      "source_id": "28_Implicit_Ensembles_of_Ensem.pdf",
+      "ref_index": 2,
+      "raw_text": "Nikita Durasov, Timur Bagautdinov, Pierre Baque, and Pascal Fua. Masksembles for Uncertainty Estimation. In *2021 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, pp. 13534–13543. IEEE Computer Society, 2021.",
+      "title": "Masksembles for Uncertainty Estimation",
+      "authors": "Nikita Durasov, Timur Bagautdinov, Pierre Baque, and Pascal Fua",
+      "year": 2021,
+      "doi": null,
+      "created_at": "2026-08-02 10:16:36",
+      "venue": "CVPR",
+      "arxiv_id": null,
+      "url": null
+    }
+  ]
+}

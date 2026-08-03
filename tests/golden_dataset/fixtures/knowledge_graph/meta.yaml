@@ -1,0 +1,20 @@
+filename: knowledge graph.pdf
+pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/knowledge graph.pdf
+content_sha256: 5634c1e002384685462543c80bb73e948b41dcac630c4f9ff58133c1c7ac83ca
+content_bytes: 36079
+references_text_bytes: 15035
+current_db_fields:
+  id: knowledge graph.pdf
+  filename: knowledge graph.pdf
+  path: /Users/vladimirkasterin/articles/entropy_framework/sources/knowledge graph.pdf
+  title: Intelligent Systems with Applications
+  authors: "Ziqiu Huang, Cool-EdwardH, Xiang Li, Primpeli, Bizer, Saeedi et al, Salve et al"
+  year: null
+  doi: null
+  venue: Science
+  abstract_text: null
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 14:25:27"
+  updated_at: "2026-08-02 10:20:44"

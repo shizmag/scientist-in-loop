@@ -1,0 +1,20 @@
+filename: semantic entropy.pdf
+pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/semantic entropy.pdf
+content_sha256: b1efc616c021d1bbd45d314d8734cbd3301ac766abbbeb5c455a4a5edec19455
+content_bytes: 84818
+references_text_bytes: 0
+current_db_fields:
+  id: semantic entropy.pdf
+  filename: semantic entropy.pdf
+  path: /Users/vladimirkasterin/articles/entropy_framework/sources/semantic entropy.pdf
+  title: Detecting hallucinations in large language models using semantic entropy
+  authors: Sebastian Farquhar1
+  year: 2024
+  doi: "10.1038/s41586-024-07421-0"
+  venue: Nature
+  abstract_text: "AbstractLarge language model (LLM) systems, such as ChatGPT1or Gemini2, can show impressive reasoning and question-answering capabilities but often \u2018hallucinate\u2019 false outputs and unsubstantiated answers3,4. Answering unreliably or without the necessary information prevents adoption in diverse fields, with problems including fabrication of legal precedents5or untrue facts in news articles6and even posing a risk to human life in medical domains such as radiology7. Encouraging truthfulness through supervision or reinforcement has\u00a0been only partially successful8. Researchers need a general method for detecting hallucinations in LLMs that works even with new and unseen questions to which humans might not know the answer. Here we develop new methods grounded in statistics, proposing entropy-based uncertainty estimators for LLMs to detect a subset of hallucinations\u2014confabulations\u2014which are arbitrary and incorrect generations. Our method addresses the fact that one idea can be expressed in many ways by computing uncertainty at the level of meaning rather than specific sequences of words. Our method works across datasets and tasks without a priori knowledge of the task, requires no task-specific data and robustly generalizes to new tasks not seen before. By detecting when a prompt is likely to produce a confabulation, our method helps users understand when they must take extra care with LLMs and opens up new possibilities for using LLMs that are otherwise prevented by their unreliability."
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 10:04:29"
+  updated_at: "2026-08-02 10:22:02"

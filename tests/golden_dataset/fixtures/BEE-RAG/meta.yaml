@@ -1,0 +1,20 @@
+filename: "BEE-RAG.pdf"
+pdf_path: "/Users/vladimirkasterin/articles/entropy_framework/sources/BEE-RAG.pdf"
+content_sha256: fdae019dee1fe8fd15371e99863670d5d01258b4d1271ae5f660316c28023d71
+content_bytes: 45292
+references_text_bytes: 8557
+current_db_fields:
+  id: "BEE-RAG.pdf"
+  filename: "BEE-RAG.pdf"
+  path: "/Users/vladimirkasterin/articles/entropy_framework/sources/BEE-RAG.pdf"
+  title: "BEE-RAG: Balanced Entropy Engineering for Retrieval-Augmented Generation"
+  authors: "Yuhao Wang1, Ruiyang Ren1, Yucheng Wang2, Jing Liu2, Wayne Xin Zhao1, Hua Wu3, Haifeng Wang2, reyon ren, Jeong et al, Zhang"
+  year: 2023
+  doi: null
+  venue: null
+  abstract_text: null
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 09:09:40"
+  updated_at: "2026-08-02 10:17:23"

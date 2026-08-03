@@ -1,0 +1,20 @@
+filename: GraphRAG.pdf
+pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/GraphRAG.pdf
+content_sha256: 139a49568cd7bf4a3299ff417581bfff5eb080199011c332717a0272bd2c92a5
+content_bytes: 408148
+references_text_bytes: 145117
+current_db_fields:
+  id: GraphRAG.pdf
+  filename: GraphRAG.pdf
+  path: /Users/vladimirkasterin/articles/entropy_framework/sources/GraphRAG.pdf
+  title: "Retrieval-Augmented Generation with Graphs (GraphRAG)"
+  authors: "Haoyu Han1, Yu Wang2, Harry Shomer1, Kai Guo1, Jiayuan Ding5, Yongjia Lei2, Mahantesh Halappanavar3, Ryan A. Rossi4, Subhabrata Mukherjee5, Xianfeng Tang6, Bo Long7, Tong Zhao8, Neil Shah8, Amin Javari9, Yinglong Xia7, Jiliang Tang1, hala, tong"
+  year: null
+  doi: null
+  venue: null
+  abstract_text: null
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 09:35:44"
+  updated_at: "2026-08-02 10:19:25"

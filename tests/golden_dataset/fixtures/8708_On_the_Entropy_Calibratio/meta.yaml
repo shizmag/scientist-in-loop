@@ -1,0 +1,20 @@
+filename: 8708_On_the_Entropy_Calibratio.pdf
+pdf_path: /Users/vladimirkasterin/articles/entropy_framework/sources/8708_On_the_Entropy_Calibratio.pdf
+content_sha256: 1a6158e0d514ae7116c7bc395e13a486671347cfdd2b2314c0262a56e750311d
+content_bytes: 103640
+references_text_bytes: 67709
+current_db_fields:
+  id: 8708_On_the_Entropy_Calibratio.pdf
+  filename: 8708_On_the_Entropy_Calibratio.pdf
+  path: /Users/vladimirkasterin/articles/entropy_framework/sources/8708_On_the_Entropy_Calibratio.pdf
+  title: ABSTRACT
+  authors: "Holtzman et al, Welleck et al"
+  year: null
+  doi: null
+  venue: null
+  abstract_text: null
+  kind: pdf
+  status: Valid(Pdf)
+  parsed: 1
+  created_at: "2026-07-31 09:01:53"
+  updated_at: "2026-08-02 10:17:08"
