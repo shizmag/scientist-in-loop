@@ -103,6 +103,19 @@ static IEEE_BADGE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 static AND_SPLIT_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)\s+(?:and|&)\s+").unwrap());
 
+/// Unprefixed dual-author bibliography starts: "Amos Azaria and Tom Mitchell. 2023. …"
+/// Used when Marker spans were already stripped (splitter cleans lines first).
+static NAME_AND_NAME_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        r#"^\s*"#,
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z]{1,3}\.?|\s+[A-Z][a-zA-Za-z\-']+)+\s+"#,
+        r#"(?:and|&)\s+"#,
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z]{1,3}\.?|\s+[A-Z][a-zA-Za-z\-']+)*"#,
+        r#"\s*[,\.]"#,
+    ))
+    .unwrap()
+});
+
 /// Expand inline bullet separators (e.g. `. - Author`) into newlines.
 pub fn expand_inline_bullet_references(text: &str) -> String {
     INLINE_BULLET_SEP_REGEX
@@ -678,7 +691,18 @@ pub fn is_reference_entry_start(line: &str) -> bool {
         return false;
     }
 
-    REF_ENTRY_START_REGEX.is_match(line)
+    if REF_ENTRY_START_REGEX.is_match(line) || REF_ENTRY_START_REGEX.is_match(&s) {
+        return true;
+    }
+
+    // After the splitter strips `<span>` tags, dual-author lines lose their only
+    // structural prefix. Treat "First Last and First Last. YEAR" as entry starts
+    // when a publication year is present (e.g. Amos Azaria and Tom Mitchell. 2023.).
+    if extract_year(trimmed).is_some() && NAME_AND_NAME_START_REGEX.is_match(trimmed) {
+        return true;
+    }
+
+    false
 }
 
 /// Extract LaTeX `% metadata: ...` comment content from a line.
@@ -911,6 +935,17 @@ mod tests {
         assert!(is_reference_entry_start(
             "<span id=\"page-8-4\"></span>Ebtesam Almazrouei et al."
         ));
+        // Span stripped by splitter: dual-author + year must still start an entry
+        assert!(is_reference_entry_start(
+            "Amos Azaria and Tom Mitchell. 2023. The internal state of an llm knows when its lying."
+        ));
+        assert!(is_reference_entry_start(
+            "Ben Wang and Aran Komatsuzaki. 2021. GPT-J-6B: A 6 Billion Parameter Autoregressive Language Model."
+        ));
+        assert!(is_reference_entry_start(
+            "Andrey Malinin and Mark Gales. 2020. Uncertainty estimation in autoregressive structured prediction."
+        ));
+        // Unprefixed et al. body citations must still not start an entry
         assert!(!is_reference_entry_start(
             "Vaswani et al. (2017) Attention is all you need."
         ));
