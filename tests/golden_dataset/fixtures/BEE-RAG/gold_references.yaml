@@ -13,7 +13,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Self-RAG: Learning to Retrieve, Generate"
+      title_contains: "Self-RAG: Learning to Retrieve, Generate, and Critique"
       year: 2023
     expected:
       authors_contains: ["Asai", "Wu", "Wang", "Sil", "Hajishirzi"]
@@ -39,7 +39,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Dubey, A."
+      title_contains: "The Llama 3 Herd of Models"
       year: 2024
     expected:
       authors_contains: ["Dubey", "Jauhri", "Pandey"]
@@ -65,7 +65,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models"
+      title_contains: "Adaptive-RAG: Learning to Adapt Retrieval-Augmented"
       year: 2024
     expected:
       authors_contains: ["Jeong", "Baek", "Cho", "Hwang", "Park"]
@@ -104,7 +104,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Parallel Context Windows for Large Language Models"
+      title_contains: "Parallel Context Windows for Large"
       year: 2023
     expected:
       authors_contains: ["Ratner", "Levine", "Belinkov"]
@@ -117,24 +117,24 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Attention Is All You Need"
+      title_contains: "Attention is all you need"
       year: 2017
     expected:
       authors_contains: ["Waswani", "Shazeer", "Parmar"]
-      title: "Attention Is All You Need"
+      title: "Attention is all you need"
       year: 2017
-      venue_contains: "NeurIPS"
+      venue_contains: "NIPS"
       doi: null
     position_hint: late
   - key: "zhuang_setwise_reranking_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "A setwise approach for effective and efficient document re-ranking"
+      title_contains: "A setwise approach for effective and highly efficient zeroshot"
       year: 2024
     expected:
       authors_contains: ["Zhuang", "Zhuang", "Koopman", "Zuccon"]
-      title: "A setwise approach for effective and efficient document re-ranking"
+      title: "A setwise approach for effective and highly efficient zeroshot document re-ranking"
       year: 2024
       venue_contains: null
       doi: null

@@ -13,11 +13,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "R. Gallotta"
+      title_contains: "R. Gallotta, G. Todd, M. Zammit"
       year: null
     expected:
       authors_contains: ["Gallotta", "Todd", "Zammit"]
-      title: "Enhancing procedural generation in games"
+      title: "Enhancing procedural content generation"
       year: null
       venue_contains: null
       doi: null
@@ -26,11 +26,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "ChessGPT: bridging policy learning and language models"
+      title_contains: "ChessGPT: bridging policy learning and language modeling"
       year: null
     expected:
       authors_contains: ["Feng", "Luo", "Wang"]
-      title: "ChessGPT: bridging policy learning and language models"
+      title: "ChessGPT: bridging policy learning and language modeling"
       year: null
       venue_contains: null
       doi: null
@@ -38,90 +38,90 @@ anchors:
   - key: "edge_graphrag_mc_2024"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "From local to global: A graph rag approach"
-      year: 2024
+      arxiv_id: "2410.05779"
+      title_contains: "From local to global: A graph RAG approach to query-focused summarization"
+      year: null
     expected:
       authors_contains: ["Edge", "Trinh", "Cheng"]
-      title: "From local to global: A graph rag approach to query-focused summarization"
-      year: 2024
-      venue_contains: "arXiv"
+      title: "From local to global: A graph RAG approach to query-focused summarization"
+      year: null
+      venue_contains: null
       doi: null
     position_hint: early
-  - key: "vaswani_attention_mc_2017"
+  - key: "lewis_rag_mc_2020"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Attention is all you need"
-      year: 2017
+      title_contains: "Retrieval-augmented generation for knowledge-intensive NLP tasks"
+      year: 2020
     expected:
-      authors_contains: ["Vaswani", "Shazeer", "Parmar"]
-      title: "Attention is all you need"
-      year: 2017
+      authors_contains: ["Lewis", "Perez", "Piktus"]
+      title: "Retrieval-augmented generation for knowledge-intensive NLP tasks"
+      year: 2020
       venue_contains: "NeurIPS"
       doi: null
     position_hint: middle
-  - key: "pan_unifying_llm_kg_mc_2024"
+  - key: "gao_rag_survey_mc_2023"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Unifying large language models and knowledge graphs"
-      year: 2024
+      title_contains: "Retrieval-Augmented Generation for Large Language Models: A Survey"
+      year: null
     expected:
-      authors_contains: ["Pan", "Luo", "Wang"]
-      title: "Unifying large language models and knowledge graphs: A roadmap"
-      year: 2024
-      venue_contains: "IEEE TKDE"
+      authors_contains: ["Gao", "Xiong", "Gao"]
+      title: "Retrieval-Augmented Generation for Large Language Models: A Survey"
+      year: null
+      venue_contains: null
       doi: null
     position_hint: middle
   - key: "wang_voyager_2023"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Voyager: An open-ended embodied agent with large language models"
-      year: 2023
+      title_contains: "Voyager: an open-ended embodied agent with large language models"
+      year: null
     expected:
       authors_contains: ["Wang", "Xie", "Jiang"]
-      title: "Voyager: An open-ended embodied agent with large language models"
-      year: 2023
-      venue_contains: "arXiv"
+      title: "Voyager: an open-ended embodied agent with large language models"
+      year: null
+      venue_contains: null
       doi: null
     position_hint: middle
-  - key: "baker_video_pretraining_2022"
+  - key: "ahn_saycan_2022"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Video pre-training (vpt): Learning to act by watching unlabeled online videos"
+      arxiv_id: "2204.01691"
+      title_contains: "Do as i can, not as i say: grounding language in robotic affordances"
       year: 2022
     expected:
-      authors_contains: ["Baker", "Akraya", "Aslanides"]
-      title: "Video pre-training (vpt): Learning to act by watching unlabeled online videos"
+      authors_contains: ["Ahn", "Brohan", "Brown"]
+      title: "Do as i can, not as i say: grounding language in robotic affordances"
       year: 2022
-      venue_contains: "NeurIPS"
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
   - key: "fan_minedojo_2022"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Minedojo: Building open-ended embodied agents with internet-scale knowledge"
-      year: 2022
+      title_contains: "MineDojo: building open-ended embodied agents with internet-scale knowledge"
+      year: null
     expected:
       authors_contains: ["Fan", "Wang", "Jiang"]
-      title: "Minedojo: Building open-ended embodied agents with internet-scale knowledge"
-      year: 2022
-      venue_contains: "NeurIPS"
+      title: "MineDojo: building open-ended embodied agents with internet-scale knowledge"
+      year: null
+      venue_contains: null
       doi: null
     position_hint: late
   - key: "nussbaum_nomic_embed_2024"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Nomic embed: Training a reproducible long-context text embedder"
+      arxiv_id: "2402.01613"
+      title_contains: "Nomic embed: Training a reproducible long context text embedder"
       year: 2024
     expected:
       authors_contains: ["Nussbaum", "Morris", "Duderstadt"]
-      title: "Nomic embed: Training a reproducible long-context text embedder"
+      title: "Nomic embed: Training a reproducible long context text embedder"
       year: 2024
       venue_contains: "arXiv"
       doi: null
@@ -130,11 +130,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Unifying large language models"
+      title_contains: "Self-consistency improves chain of thought reasoning in language models"
       year: null
     expected:
-      authors_contains: ["Pan"]
-      title: "Unifying large language models and knowledge graphs: A roadmap"
+      authors_contains: ["Wang", "Wei", "Schuurmans"]
+      title: "Self-consistency improves chain of thought reasoning in language models"
       year: null
       venue_contains: null
       doi: null

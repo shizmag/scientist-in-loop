@@ -91,13 +91,13 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Large language models can be easily distracted by irrelevant context"
+      title_contains: "can be easily distracted by irrelevant context"
       year: 2023
     expected:
       authors_contains: ["Shi"]
       title: "Large language models can be easily distracted by irrelevant context"
       year: 2023
-      venue_contains: "ICML"
+      venue_contains: "International Conference on Machine Learning"
       doi: null
     position_hint: middle
   - key: "tian_just_ask_calibration_2023"
@@ -130,7 +130,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Can LLMs express their uncertainty? an empirical evaluation of confidence elicitation"
+      title_contains: "Can LLMs express their uncertainty?"
       year: 2024
     expected:
       authors_contains: ["Xiong"]

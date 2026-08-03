@@ -13,7 +13,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Ebtesam Almazrouei"
+      title_contains: "Ebtesam Almazrouei, Hamza Alobeidli"
       year: null
     expected:
       authors_contains: ["Almazrouei", "Alobeidli", "Alshamsi"]
@@ -39,7 +39,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Sebastian Borgeaud"
+      title_contains: "Sebastian Borgeaud, Arthur Mensch"
       year: null
     expected:
       authors_contains: ["Borgeaud", "Mensch", "Hoffmann"]
@@ -52,7 +52,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Tom Brown"
+      title_contains: "Tom Brown, Benjamin Mann"
       year: null
     expected:
       authors_contains: ["Brown", "Mann", "Ryder"]
@@ -78,7 +78,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Survey of hallucination in natural language generation"
+      title_contains: "Ziwei Ji, Nayeon Lee, Rita Frieske"
       year: null
     expected:
       authors_contains: ["Ji", "Lee", "Frieske"]
@@ -91,7 +91,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Language models (mostly) know what they know"
+      title_contains: "Saurav Kadavath, Tom Conerly"
       year: null
     expected:
       authors_contains: ["Kadavath", "Conerly", "Askell"]
@@ -104,7 +104,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Retrieval-augmented generation for knowledge-intensive"
+      title_contains: "Patrick Lewis, Ethan Perez"
       year: null
     expected:
       authors_contains: ["Lewis", "Perez", "Piktus"]
@@ -117,7 +117,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Llama: Open and efficient foundation language models"
+      title_contains: "Hugo Touvron, Thibaut Lavril"
       year: null
     expected:
       authors_contains: ["Touvron", "Lavril", "Izacard"]
@@ -143,7 +143,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Chunting Zhou"
+      title_contains: "Chunting Zhou, Graham Neubig"
       year: null
     expected:
       authors_contains: ["Zhou", "Neubig", "Gu"]

@@ -9,134 +9,134 @@ expected_ref_count:
   max: 35
   notes: "35 true author-year bibliography items before Appendix A."
 anchors:
-  - key: "basu_entropy_calibration_2023"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Sourya Basu"
-      year: null
-    expected:
-      authors_contains: ["Basu", "Ramachandran"]
-      title: "Sourya Basu, Govardana Sachitanandam Ramachandran, Nitish Shirish Keskar, and Lav R. Varshney"
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: early
-  - key: "braverman_can_llms_reason_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Mark Braverman"
-      year: null
-    expected:
-      authors_contains: ["Braverman", "Chen", "Kakade"]
-      title: "Mark Braverman, Xinyi Chen, Sham Kakade, Karthik Narasimhan, Cyril Zhang, and Yi Zhang"
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: early
-  - key: "dettmers_gpt3_int8_2022"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Gpt3.int8(): 8 bit matrix"
-      year: null
-    expected:
-      authors_contains: ["Dettmers", "Lewis", "Belkada", "Zettlemoyer"]
-      title: "Gpt3.int8(): 8 bit matrix multiplication for transformer at scale"
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: early
   - key: "fan_hierarchical_story_2018"
     match:
-      doi: null
+      doi: "10.18653/v1/P18-1082"
       arxiv_id: null
       title_contains: "Hierarchical neural story generation"
-      year: null
+      year: 2018
     expected:
       authors_contains: ["Fan", "Lewis", "Dauphin"]
       title: "Hierarchical neural story generation"
-      year: null
+      year: 2018
       venue_contains: "ACL"
-      doi: null
+      doi: "10.18653/v1/P18-1082"
     position_hint: early
-  - key: "guo_on_calibration_2017"
+  - key: "freitag_epsilon_sampling_2023"
+    match:
+      doi: "10.18653/v1/2023.findings-emnlp.617"
+      arxiv_id: null
+      title_contains: "Epsilon sampling rocks: Investigating sampling strategies for minimum Bayes risk decoding"
+      year: 2023
+    expected:
+      authors_contains: ["Freitag", "Ghorbani", "Fernandes"]
+      title: "Epsilon sampling rocks: Investigating sampling strategies for minimum Bayes risk decoding for machine translation"
+      year: 2023
+      venue_contains: "EMNLP"
+      doi: "10.18653/v1/2023.findings-emnlp.617"
+    position_hint: early
+  - key: "genzel_entropy_rate_2002"
+    match:
+      doi: "10.3115/1073083.1073117"
+      arxiv_id: null
+      title_contains: "Entropy rate constancy in text"
+      year: 2002
+    expected:
+      authors_contains: ["Genzel", "Charniak"]
+      title: "Entropy rate constancy in text"
+      year: 2002
+      venue_contains: "ACL"
+      doi: "10.3115/1073083.1073117"
+    position_hint: early
+  - key: "guo_on_calibration_8708_2017"
     match:
       doi: null
       arxiv_id: null
       title_contains: "On calibration of modern neural networks"
-      year: null
+      year: 2017
     expected:
       authors_contains: ["Guo", "Pleiss", "Sun", "Weinberger"]
       title: "On calibration of modern neural networks"
-      year: null
+      year: 2017
       venue_contains: "ICML"
       doi: null
     position_hint: middle
-  - key: "holtzman_curious_case_2020"
+  - key: "hashimoto_unifying_human_2019"
+    match:
+      doi: "10.18653/v1/N19-1169"
+      arxiv_id: null
+      title_contains: "Unifying human and statistical evaluation for natural language generation"
+      year: 2019
+    expected:
+      authors_contains: ["Hashimoto", "Zhang", "Liang"]
+      title: "Unifying human and statistical evaluation for natural language generation"
+      year: 2019
+      venue_contains: "NAACL"
+      doi: "10.18653/v1/N19-1169"
+    position_hint: middle
+  - key: "holtzman_curious_case_8708_2020"
     match:
       doi: null
       arxiv_id: null
       title_contains: "The curious case of neural text degeneration"
-      year: null
+      year: 2020
     expected:
       authors_contains: ["Holtzman", "Buys", "Du", "Forbes", "Choi"]
       title: "The curious case of neural text degeneration"
-      year: null
+      year: 2020
       venue_contains: "ICLR"
       doi: null
     position_hint: middle
   - key: "hunter_matplotlib_2007"
     match:
-      doi: null
+      doi: "10.1109/MCSE.2007.55"
       arxiv_id: null
       title_contains: "Matplotlib: A 2d graphics environment"
-      year: null
+      year: 2007
     expected:
       authors_contains: ["Hunter"]
       title: "Matplotlib: A 2d graphics environment"
-      year: null
+      year: 2007
       venue_contains: "Computing in Science & Engineering"
-      doi: null
+      doi: "10.1109/MCSE.2007.55"
     position_hint: middle
-  - key: "kumar_verified_calibration_2019"
+  - key: "kumar_verified_calibration_8708_2019"
     match:
       doi: null
       arxiv_id: null
       title_contains: "Verified uncertainty calibration"
-      year: null
+      year: 2019
     expected:
       authors_contains: ["Kumar", "Liang", "Ma"]
       title: "Verified uncertainty calibration"
-      year: null
+      year: 2019
       venue_contains: "NeurIPS"
       doi: null
     position_hint: middle
-  - key: "touvron_llama_2_2023"
+  - key: "li_competition_level_code_2022"
+    match:
+      doi: "10.1126/science.abq1158"
+      arxiv_id: null
+      title_contains: "Competition-level code generation with alphacode"
+      year: 2022
+    expected:
+      authors_contains: ["Li", "Choi", "Chung", "Kushman"]
+      title: "Competition-level code generation with alphacode"
+      year: 2022
+      venue_contains: "Science"
+      doi: "10.1126/science.abq1158"
+    position_hint: middle
+  - key: "shi_decoding_methods_2024"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Hugo Touvron"
-      year: null
+      arxiv_id: "2402.06925"
+      title_contains: "A thorough examination of decoding methods in the era of llms"
+      year: 2024
     expected:
-      authors_contains: ["Touvron", "Martin", "Stone"]
-      title: "Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert..."
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: late
-  - key: "verma_revisiting_entropy_rate_2023"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Revisiting entropy rate constancy in text"
-      year: null
-    expected:
-      authors_contains: ["Verma", "Tomlin", "Klein"]
-      title: "Revisiting entropy rate constancy in text"
-      year: null
-      venue_contains: "EMNLP"
+      authors_contains: ["Shi", "Yang", "Cai", "Zhang"]
+      title: "A thorough examination of decoding methods in the era of llms"
+      year: 2024
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
   - key: "zhang_tinyllama_2024"
@@ -152,17 +152,17 @@ anchors:
       venue_contains: null
       doi: null
     position_hint: late
-  - key: "zhao_calibrating_predictive_2020"
+  - key: "zhao_calibrating_predictions_decisions_2021"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Calibrating predictive execution"
-      year: null
+      title_contains: "Calibrating predictions to decisions: A novel approach to multi-class calibration"
+      year: 2021
     expected:
       authors_contains: ["Zhao", "Kim", "Sahoo", "Ma", "Ermon"]
-      title: "Calibrating predictive execution"
-      year: null
-      venue_contains: null
+      title: "Calibrating predictions to decisions: A novel approach to multi-class calibration"
+      year: 2021
+      venue_contains: "NeurIPS"
       doi: null
     position_hint: late
 must_not_extract_as_reference:

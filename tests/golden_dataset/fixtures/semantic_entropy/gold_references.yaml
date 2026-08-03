@@ -91,7 +91,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Der Kiureghian, A."
+      title_contains: "Aleatory or epistemic? Does it matter?"
       year: 2009
     expected:
       authors_contains: ["Der Kiureghian", "Ditlevsen"]
@@ -130,11 +130,11 @@ anchors:
     match:
       doi: "10.5281/zenodo.10964366"
       arxiv_id: null
-      title_contains: "jlko/semantic_uncertainty: Initial release"
+      title_contains: "Initial release v.1.0.0"
       year: 2024
     expected:
       authors_contains: ["Kossen"]
-      title: "jlko/semantic_uncertainty: Initial release v.1.0.0"
+      title: "Initial release v.1.0.0"
       year: 2024
       venue_contains: "Zenodo"
       doi: "10.5281/zenodo.10964366"
@@ -156,7 +156,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Llama 2: open foundation"
+      title_contains: "Llama 2: open foundation and fine-tuned chat models"
       year: null
     expected:
       authors_contains: ["Touvron"]

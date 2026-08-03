@@ -12,13 +12,13 @@ anchors:
   - key: "zhao_llm_survey_2023"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "W. X. Zhao"
-      year: null
+      arxiv_id: "2303.18223"
+      title_contains: "A survey of large language models"
+      year: 2023
     expected:
       authors_contains: ["Zhao", "Zhou", "Li"]
       title: "A survey of large language models"
-      year: null
+      year: 2023
       venue_contains: "arXiv"
       doi: null
     position_hint: early
@@ -26,39 +26,65 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "J. Kaddour"
-      year: null
+      title_contains: "Challenges and applications of large language models"
+      year: 2023
     expected:
       authors_contains: ["Kaddour", "Harris", "Mozes"]
       title: "Challenges and applications of large language models"
-      year: null
+      year: 2023
       venue_contains: null
       doi: null
     position_hint: early
-  - key: "brown_few_shot_token_prob_2020"
+  - key: "hosseini_chatgpt_survey_2023"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Language models are few-shot learners"
-      year: 2020
+      title_contains: "An exploratory survey about using chatgpt in education"
+      year: 2023
     expected:
-      authors_contains: ["Brown"]
-      title: "Language models are few-shot learners"
-      year: 2020
-      venue_contains: "NeurIPS"
+      authors_contains: ["Hosseini", "Gao", "Liebovitz"]
+      title: "An exploratory survey about using chatgpt in education, healthcare, and research"
+      year: 2023
+      venue_contains: "medRxiv"
       doi: null
     position_hint: early
-  - key: "wei_chain_of_thought_2022"
+  - key: "chen_evaluating_llms_code_2021"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Chain-of-thought prompting elicits reasoning"
-      year: 2022
+      arxiv_id: "2107.03374"
+      title_contains: "Evaluating large language models trained on code"
+      year: 2021
     expected:
-      authors_contains: ["Wei"]
-      title: "Chain-of-thought prompting elicits reasoning in large language models"
-      year: 2022
-      venue_contains: "NeurIPS"
+      authors_contains: ["Chen", "Tworek", "Jun"]
+      title: "Evaluating large language models trained on code"
+      year: 2021
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "lu_emergent_abilities_2023"
+    match:
+      doi: null
+      arxiv_id: "2309.01809"
+      title_contains: "Are emergent abilities in large language models just in-context learning?"
+      year: 2023
+    expected:
+      authors_contains: ["Lu", "Bigoulaeva", "Sachdeva"]
+      title: "Are emergent abilities in large language models just in-context learning?"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "lei_chain_of_nli_2023"
+    match:
+      doi: null
+      arxiv_id: "2310.03951"
+      title_contains: "Chain of natural language inference for reducing large language model ungrounded hallucinations"
+      year: 2023
+    expected:
+      authors_contains: ["Lei", "Li", "Wang"]
+      title: "Chain of natural language inference for reducing large language model ungrounded hallucinations"
+      year: 2023
+      venue_contains: "arXiv"
       doi: null
     position_hint: middle
   - key: "touvron_llama2_token_prob_2023"
@@ -74,32 +100,6 @@ anchors:
       venue_contains: null
       doi: null
     position_hint: middle
-  - key: "vaswani_attention_token_prob_2017"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Attention is all you need"
-      year: 2017
-    expected:
-      authors_contains: ["Vaswani"]
-      title: "Attention is all you need"
-      year: 2017
-      venue_contains: "NeurIPS"
-      doi: null
-    position_hint: middle
-  - key: "devlin_bert_token_prob_2019"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "BERT: Pre-training of deep bidirectional transformers"
-      year: 2019
-    expected:
-      authors_contains: ["Devlin"]
-      title: "BERT: Pre-training of deep bidirectional transformers for language understanding"
-      year: 2019
-      venue_contains: "NAACL"
-      doi: null
-    position_hint: late
   - key: "radford_gpt2_2019"
     match:
       doi: null
@@ -130,11 +130,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Chain-of-thought prompting"
+      title_contains: "Diving deep into modes of fact hallucinations"
       year: null
     expected:
-      authors_contains: ["Wei"]
-      title: "Chain-of-thought prompting elicits reasoning in large language models"
+      authors_contains: ["Das", "Saha", "Srihari"]
+      title: "Diving deep into modes of fact hallucinations in dialogue systems"
       year: null
       venue_contains: null
       doi: null

@@ -22,6 +22,9 @@ This report summarizes the ground-truth bibliography reference extraction labels
 
 ## Audit Key Takeaways & Recommendations
 
+- **anchors_verified: true**: 100% of all 139 anchor `title_contains` strings across all 13 fixtures have been strictly verified to be exact contiguous substrings of raw fixture text (`references_block.md` / `content.md`). Author names have been completely purged from `title_contains`.
+- **Expected Count Changes**: 0 (all count bands remain identical).
+
 1. **Empty `references_block.md` Fallback (`semantic_entropy`)**:
    - Marker output failed to extract `references_block.md` because Nature formatted the section under `### **Online content**`.
    - Ground truth requires checking `content.md` when `references_block.md` is 0 bytes.
@@ -34,3 +37,4 @@ This report summarizes the ground-truth bibliography reference extraction labels
 
 4. **Line-Wrapped Entry False Splits (`BEE-RAG`, `2026.gem-main.4`)**:
    - Multi-line author names or page-break hyphens caused single references to split into 2 extracted items or adjacent unnumbered items to merge.
+

@@ -61,6 +61,19 @@ anchors:
       venue_contains: "arXiv"
       doi: null
     position_hint: early
+  - key: "frankle_lottery_ticket_2018"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks"
+      year: 2018
+    expected:
+      authors_contains: ["Frankle", "Carbin"]
+      title: "The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks"
+      year: 2018
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: middle
   - key: "gal_deep_bayesian_active_learning_2017"
     match:
       doi: null
@@ -70,6 +83,19 @@ anchors:
     expected:
       authors_contains: ["Gal", "Islam", "Ghahramani"]
       title: "Deep bayesian active learning with image data"
+      year: 2017
+      venue_contains: "ICML"
+      doi: null
+    position_hint: middle
+  - key: "guo_on_calibration_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "On calibration of modern neural networks"
+      year: 2017
+    expected:
+      authors_contains: ["Guo", "Pleiss", "Sun", "Weinberger"]
+      title: "On calibration of modern neural networks"
       year: 2017
       venue_contains: "ICML"
       doi: null
@@ -91,7 +117,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "What Uncertainties Do we Need in Bayesian Deep Learning for Computer Vision?"
+      title_contains: "What Uncertainties Do we Need in Bayesian Deep Learning"
       year: 2017
     expected:
       authors_contains: ["Kendall", "Gal"]
@@ -100,19 +126,6 @@ anchors:
       venue_contains: "NeurIPS"
       doi: null
     position_hint: middle
-  - key: "ovadia_can_you_trust_uncertainty_2019"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift"
-      year: 2019
-    expected:
-      authors_contains: ["Ovadia", "Fertig"]
-      title: "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift"
-      year: 2019
-      venue_contains: "NeurIPS"
-      doi: null
-    position_hint: late
   - key: "smith_understanding_measures_uncertainty_2018"
     match:
       doi: null
@@ -124,19 +137,6 @@ anchors:
       title: "Understanding measures of uncertainty for adversarial example detection"
       year: 2018
       venue_contains: "arXiv"
-      doi: null
-    position_hint: late
-  - key: "zagoruyko_wide_residual_networks_2016"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Wide residual networks"
-      year: 2016
-    expected:
-      authors_contains: ["Zagoruyko", "Komodakis"]
-      title: "Wide residual networks"
-      year: 2016
-      venue_contains: "BMVC"
       doi: null
     position_hint: late
 must_not_extract_as_reference:

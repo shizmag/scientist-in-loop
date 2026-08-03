@@ -13,7 +13,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "M.E. Peters"
+      title_contains: "Knowledge enhanced contextual word representations"
       year: null
     expected:
       authors_contains: ["Peters", "Neumann", "Logan"]
@@ -26,11 +26,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Mitigating large language model hallucinations"
+      title_contains: "via autonomous knowledge graph-based retrofitting"
       year: null
     expected:
       authors_contains: ["Guan", "Liu", "Lin"]
-      title: "Mitigating large language model hallucinations via knowledge graph reasoning"
+      title: "Mitigating large language model hallucinations via autonomous knowledge graph-based retrofitting"
       year: null
       venue_contains: null
       doi: null
@@ -52,7 +52,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Detecting hallucinations using semantic entropy"
+      title_contains: "using semantic entropy"
       year: null
     expected:
       authors_contains: ["Farquhar", "Kossen", "Kuhn", "Gal"]
@@ -65,7 +65,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "A survey on hallucination in large language models"
+      title_contains: "in large language models: principles, taxonomy"
       year: null
     expected:
       authors_contains: ["Huang", "Yu", "Ma"]
@@ -91,7 +91,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "From symbolic to neural and back: Exploring knowledge graph"
+      title_contains: "Exploring knowledge"
       year: null
     expected:
       authors_contains: ["Škrlj", "Koloski", "Pollak"]
@@ -104,7 +104,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Unifying large language models and knowledge graphs"
+      title_contains: "Unifying large language models and"
       year: null
     expected:
       authors_contains: ["Pan", "Luo", "Wang"]
@@ -130,7 +130,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "L. Zheng"
+      title_contains: "L. Zheng, W.L. Chiang, Y. Sheng"
       year: null
     expected:
       authors_contains: ["Zheng", "Chiang", "Sheng"]

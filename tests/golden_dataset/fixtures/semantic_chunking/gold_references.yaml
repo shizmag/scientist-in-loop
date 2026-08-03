@@ -13,12 +13,12 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "A. Vaswani"
-      year: 2017
+      title_contains: "Attention is all you need"
+      year: null
     expected:
       authors_contains: ["Vaswani", "Shazeer", "Parmar"]
       title: "Attention is all you need"
-      year: 2017
+      year: null
       venue_contains: "NeurIPS"
       doi: null
     position_hint: early
@@ -26,12 +26,12 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "From Turing to transformers: a comprehensive survey"
-      year: 2023
+      title_contains: "From Turing to transformers: a comprehensive review and tutorial"
+      year: null
     expected:
       authors_contains: ["Zhang", "Cheok", "Pan"]
-      title: "From Turing to transformers: a comprehensive survey of language models"
-      year: 2023
+      title: "From Turing to transformers: a comprehensive review and tutorial on the evolution and applications of generative transformers"
+      year: null
       venue_contains: null
       doi: null
     position_hint: early
@@ -39,12 +39,12 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "BERT: pre-training of deep bidirectional transformers"
-      year: 2019
+      title_contains: "BERT: pre-training of deep bidirectional transformers for language understanding"
+      year: null
     expected:
       authors_contains: ["Devlin", "Chang", "Lee"]
       title: "BERT: pre-training of deep bidirectional transformers for language understanding"
-      year: 2019
+      year: null
       venue_contains: "NAACL"
       doi: null
     position_hint: early
@@ -61,30 +61,30 @@ anchors:
       venue_contains: "EMNLP"
       doi: "10.18653/v1/D19-1410"
     position_hint: middle
-  - key: "lewis_rag_sc_2020"
+  - key: "lewis_rag_sc_2021"
     match:
-      doi: null
+      doi: "10.48550/arxiv.2005.11401"
       arxiv_id: null
-      title_contains: "Retrieval-augmented generation for knowledge-intensive"
-      year: 2020
+      title_contains: "Retrieval-augmented generation"
+      year: 2021
     expected:
       authors_contains: ["Lewis", "Perez", "Piktus"]
-      title: "Retrieval-augmented generation for knowledge-intensive NLP tasks"
-      year: 2020
-      venue_contains: "NeurIPS"
-      doi: null
+      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      year: 2021
+      venue_contains: null
+      doi: "10.48550/arxiv.2005.11401"
     position_hint: middle
-  - key: "karpukhin_dpr_sc_2020"
+  - key: "peters_elmo_2018"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Dense passage retrieval for open-domain question answering"
-      year: 2020
+      title_contains: "Deep contextualized word representations"
+      year: null
     expected:
-      authors_contains: ["Karpukhin", "Oguz", "Min"]
-      title: "Dense passage retrieval for open-domain question answering"
-      year: 2020
-      venue_contains: "EMNLP"
+      authors_contains: ["Peters", "Neumann", "Iyyer"]
+      title: "Deep contextualized word representations"
+      year: null
+      venue_contains: "NAACL"
       doi: null
     position_hint: middle
   - key: "attardi_wikiextractor_2015"
@@ -117,11 +117,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "JudgeRank: leveraging large language models"
+      title_contains: "JudgeRank: leveraging large language models for reasoning-intensive reranking"
       year: 2024
     expected:
       authors_contains: ["Niu", "Joty", "Liu"]
-      title: "JudgeRank: leveraging large language models for reasoning-intensive re-ranking"
+      title: "JudgeRank: leveraging large language models for reasoning-intensive reranking"
       year: 2024
       venue_contains: null
       doi: null
@@ -143,7 +143,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Sentence-BERT"
+      title_contains: "Sentence-BERT: sentence embeddings using siamese BERT-networks"
       year: null
     expected:
       authors_contains: ["Reimers"]
@@ -156,11 +156,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Dense passage retrieval"
+      title_contains: "Retrieval-augmented generation"
       year: null
     expected:
-      authors_contains: ["Karpukhin"]
-      title: "Dense passage retrieval for open-domain question answering"
+      authors_contains: ["Lewis"]
+      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
       year: null
       venue_contains: null
       doi: null

@@ -13,26 +13,26 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "EasyEA: Large language model is all you need"
+      title_contains: "EasyEA: Large language model is all you need in entity alignment"
       year: 2025
     expected:
       authors_contains: ["Cheng", "Lu", "Yang"]
-      title: "EasyEA: Large language model is all you need for entity alignment"
+      title: "EasyEA: Large language model is all you need in entity alignment"
       year: 2025
       venue_contains: null
       doi: null
     position_hint: early
-  - key: "chung_graph_matching_2024"
+  - key: "chung_graspy_2019"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Chung, J."
-      year: 2024
+      title_contains: "GraSPy: Graph statistics in python"
+      year: 2019
     expected:
       authors_contains: ["Chung", "Pedigo", "Bridgeford"]
-      title: "Graph matching in Python"
-      year: 2024
-      venue_contains: null
+      title: "GraSPy: Graph statistics in python"
+      year: 2019
+      venue_contains: "Journal of Machine Learning Research"
       doi: null
     position_hint: early
   - key: "dong_knowledge_vault_2014"
@@ -52,11 +52,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "From local to global: A graph rag approach"
+      title_contains: "From local to global: A graph RAG approach to query-focused summarization"
       year: 2024
     expected:
       authors_contains: ["Edge", "Trinh", "Cheng"]
-      title: "From local to global: A graph rag approach to query-focused summarization"
+      title: "From local to global: A graph RAG approach to query-focused summarization"
       year: 2024
       venue_contains: "arXiv"
       doi: null
@@ -78,11 +78,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Retrieval-augmented generation for knowledge-intensive"
+      title_contains: "Retrievalaugmented generation for"
       year: 2020
     expected:
       authors_contains: ["Lewis", "Perez", "Piktus"]
-      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      title: "Retrievalaugmented generation for knowledge-intensive NLP tasks"
       year: 2020
       venue_contains: "NeurIPS"
       doi: null
@@ -117,7 +117,7 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "BEIR: A heterogeneous benchmark for zero-shot evaluation"
+      title_contains: "BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models"
       year: 2021
     expected:
       authors_contains: ["Thakur", "Reimers", "Rücklé"]
@@ -130,11 +130,11 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "FusionQuery: On-demand fusion queries"
+      title_contains: "FusionQuery: On-demand fusion queries over multi-source"
       year: 2024
     expected:
       authors_contains: ["Zhu", "Zhang", "Lyu"]
-      title: "FusionQuery: On-demand fusion queries over knowledge graphs"
+      title: "FusionQuery: On-demand fusion queries over multi-source knowledge graphs"
       year: 2024
       venue_contains: null
       doi: null

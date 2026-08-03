@@ -9,67 +9,67 @@ expected_ref_count:
   max: 575
   notes: "Massive survey bibliography with 573 bracketed reference items ([1] to [573])."
 anchors:
-  - key: "abramson_graphrag_1_2024"
+  - key: "abramson_alphafold3_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Josh Abramson"
-      year: null
+      title_contains: "Accurate structure prediction of biomolecular interactions with alphafold 3"
+      year: 2024
     expected:
       authors_contains: ["Abramson", "Adler", "Dunger"]
-      title: "Josh Abramson, Jonas Adler, Jack Dunger, Richard Evans..."
-      year: null
-      venue_contains: null
+      title: "Accurate structure prediction of biomolecular interactions with alphafold 3"
+      year: 2024
+      venue_contains: "Nature"
       doi: null
     position_hint: early
-  - key: "abu_rasheed_student_support_2024"
+  - key: "abu_rasheed_student_decisions_2024"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Supporting student"
-      year: null
+      arxiv_id: "2401.08517"
+      title_contains: "Supporting student decisions on learning recommendations"
+      year: 2024
     expected:
       authors_contains: ["Abu-Rasheed", "Abdulsalam"]
-      title: "Supporting student learning with knowledge graphs"
-      year: null
-      venue_contains: null
+      title: "Supporting student decisions on learning recommendations: An llm-based chatbot with knowledge graph contextualization for conversational explainability and mentoring"
+      year: 2024
+      venue_contains: "arXiv"
       doi: null
     position_hint: early
-  - key: "agarwal_synthetic_corpus_2024"
+  - key: "agarwal_synthetic_corpus_2020"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Knowledge graph based synthetic corpus"
-      year: null
+      arxiv_id: "2010.12688"
+      title_contains: "Knowledge graph based synthetic corpus generation"
+      year: 2020
     expected:
       authors_contains: ["Agarwal", "Ge", "Shakeri"]
-      title: "Knowledge graph based synthetic corpus generation"
-      year: null
-      venue_contains: null
+      title: "Knowledge graph based synthetic corpus generation for knowledge-enhanced language model pre-training"
+      year: 2020
+      venue_contains: "arXiv"
       doi: null
     position_hint: early
-  - key: "aggarwal_edge_classification_2024"
+  - key: "aggarwal_edge_classification_2017"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "On edge classification in networks"
-      year: null
+      title_contains: "On edge classification in networks with structure and content"
+      year: 2017
     expected:
       authors_contains: ["Aggarwal", "Li", "Philip"]
-      title: "On edge classification in networks with structural noise"
-      year: null
-      venue_contains: null
+      title: "On edge classification in networks with structure and content"
+      year: 2017
+      venue_contains: "IEEE"
       doi: null
     position_hint: early
   - key: "liu_gnn_llm_synergy_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Explore then determine: A gnn-llm synergy"
+      title_contains: "Explore then determine: A gnn-llm synergy framework"
       year: null
     expected:
       authors_contains: ["Liu", "Zhang", "Li", "Yao"]
-      title: "Explore then determine: A gnn-llm synergy framework"
+      title: "Explore then determine: A gnn-llm synergy framework for reasoning over knowledge graphs"
       year: null
       venue_contains: null
       doi: null
@@ -77,14 +77,14 @@ anchors:
   - key: "liu_knowledge_graph_enhanced_2024"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Knowledge graphenhanced large lang"
-      year: null
+      arxiv_id: "2406.13862"
+      title_contains: "Knowledge graphenhanced large language models via path selection"
+      year: 2024
     expected:
       authors_contains: ["Liu", "Wang", "Zhu", "Dong"]
-      title: "Knowledge graphenhanced large language models: A survey"
-      year: null
-      venue_contains: null
+      title: "Knowledge graphenhanced large language models via path selection"
+      year: 2024
+      venue_contains: "arXiv"
       doi: null
     position_hint: middle
   - key: "liu_llamaindex_2022"
@@ -100,30 +100,17 @@ anchors:
       venue_contains: "GitHub"
       doi: null
     position_hint: middle
-  - key: "liu_graph_neural_networks_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Jiawei Liu, Cheng Yang, Zhiyuan Lu"
-      year: null
-    expected:
-      authors_contains: ["Liu", "Yang", "Lu", "Chen"]
-      title: "Jiawei Liu, Cheng Yang, Zhiyuan Lu, Junze Chen..."
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: middle
   - key: "liu_drak_molecular_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Drak: Unlocking molecular insights"
-      year: null
+      title_contains: "Drak: Unlocking molecular insights with domain-specific retrieval-augmented knowledge in llms"
+      year: 2024
     expected:
       authors_contains: ["Liu", "Huang", "Chen", "Fang"]
-      title: "Drak: Unlocking molecular insights with domain-specific knowledge"
-      year: null
-      venue_contains: null
+      title: "Drak: Unlocking molecular insights with domain-specific retrieval-augmented knowledge in llms"
+      year: 2024
+      venue_contains: "Authorea Preprints"
       doi: null
     position_hint: middle
   - key: "zhuang_graph_rag_eval_569_2024"
@@ -134,55 +121,42 @@ anchors:
       year: null
     expected:
       authors_contains: ["Zhuang", "Chen", "Yu", "Mitra"]
-      title: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra..."
+      title: "Evaluating graph-assisted retrieval-augmented generation"
       year: null
       venue_contains: null
       doi: null
     position_hint: late
-  - key: "zhuang_graph_rag_eval_570_2024"
+  - key: "zimmerman_matpower_2010"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra, Victor Bursztyn"
-      year: null
-    expected:
-      authors_contains: ["Zhuang", "Chen", "Yu"]
-      title: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra..."
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: late
-  - key: "zimmerman_matpower_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Matpower: Steady-state"
-      year: null
+      title_contains: "Matpower: Steady-state operations, planning, and analysis tools"
+      year: 2010
     expected:
       authors_contains: ["Zimmerman", "Murillo-Sánchez", "Thomas"]
-      title: "Matpower: Steady-state power flow simulator"
-      year: null
-      venue_contains: null
+      title: "Matpower: Steady-state operations, planning, and analysis tools for power systems research and education"
+      year: 2010
+      venue_contains: "IEEE Transactions on power systems"
       doi: null
     position_hint: late
-  - key: "zou_pretraining_language_models_2024"
+  - key: "zou_pretraining_language_models_2023"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Pretraining language models with text-attribu"
-      year: null
+      arxiv_id: "2310.12580"
+      title_contains: "Pretraining language models with text-attributed heterogeneous graphs"
+      year: 2023
     expected:
       authors_contains: ["Zou", "Yu", "Huang", "Sun"]
-      title: "Pretraining language models with text-attributed graphs"
-      year: null
-      venue_contains: null
+      title: "Pretraining language models with text-attributed heterogeneous graphs"
+      year: 2023
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
   - key: "zou_poisonedrag_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Poisonedrag: Knowledge corruption attacks"
+      title_contains: "Poisonedrag: Knowledge corruption attacks to retrieval-augmented generation"
       year: null
     expected:
       authors_contains: ["Zou", "Geng", "Wang", "Jia"]
@@ -191,19 +165,6 @@ anchors:
       venue_contains: null
       doi: null
     position_hint: late
-  - key: "graphrag_survey_mid_anchor"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Explore then determine"
-      year: null
-    expected:
-      authors_contains: ["Liu"]
-      title: "Explore then determine: A gnn-llm synergy framework"
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: middle
 must_not_extract_as_reference:
   - pattern: "span id=\"page-"
     reason: "marker page anchors"

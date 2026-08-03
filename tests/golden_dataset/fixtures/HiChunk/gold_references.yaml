@@ -13,132 +13,132 @@ anchors:
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Patrick Lewis"
-      year: null
+      title_contains: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      year: 2020
     expected:
       authors_contains: ["Lewis", "Perez", "Piktus"]
-      title: "Retrieval-augmented generation for knowledge-intensive NLP tasks"
-      year: null
-      venue_contains: "NeurIPS"
+      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      year: 2020
+      venue_contains: "Advances in neural information processing systems"
       doi: null
     position_hint: early
-  - key: "chen_benchmarking_llms_rag_2023"
+  - key: "chen_benchmarking_llms_rag_2024"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Benchmarking large language models in retrieval-augmented"
-      year: null
+      title_contains: "Benchmarking large language models in retrievalaugmented generation"
+      year: 2024
     expected:
       authors_contains: ["Chen", "Lin", "Han", "Sun"]
-      title: "Benchmarking large language models in retrieval-augmented generation"
-      year: null
-      venue_contains: null
+      title: "Benchmarking large language models in retrievalaugmented generation"
+      year: 2024
+      venue_contains: "AAAI"
       doi: null
     position_hint: early
-  - key: "zhang_siren_2023"
+  - key: "zhang_siren_2025"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Siren: A benchmark for hallucination in large language models"
-      year: null
+      title_contains: "Siren's song in the ai ocean: A survey on hallucination"
+      year: 2025
     expected:
       authors_contains: ["Zhang", "Li", "Cui", "Cai"]
-      title: "Siren: A benchmark for hallucination in large language models"
-      year: null
-      venue_contains: null
+      title: "Siren's song in the ai ocean: A survey on hallucination in large language models"
+      year: 2025
+      venue_contains: "Computational Linguistics"
       doi: null
     position_hint: early
-  - key: "he_rethinking_window_2023"
+  - key: "he_rethinking_retrieval_faithful_2022"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Rethinking with retrieval: Faithfulness for large language models"
-      year: null
+      arxiv_id: "2301.00303"
+      title_contains: "Rethinking with retrieval: Faithful large language model inference"
+      year: 2022
     expected:
       authors_contains: ["He", "Zhang", "Roth"]
-      title: "Rethinking with retrieval: Faithfulness for large language models"
-      year: null
-      venue_contains: null
+      title: "Rethinking with retrieval: Faithful large language model inference"
+      year: 2022
+      venue_contains: "arXiv"
       doi: null
     position_hint: middle
-  - key: "wang_evaluating_hallucination_2023"
+  - key: "wang_survey_factuality_2023"
+    match:
+      doi: null
+      arxiv_id: "2310.07521"
+      title_contains: "Survey on factuality in large language models"
+      year: 2023
+    expected:
+      authors_contains: ["Wang", "Liu", "Yue", "Tang"]
+      title: "Survey on factuality in large language models: Knowledge, retrieval and domain-specificity"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "devlin_bert_hichunk_2019"
     match:
       doi: null
       arxiv_id: null
-      title_contains: "Evaluating hallucination in retrieval-augmented generation"
-      year: null
+      title_contains: "Bert: Pre-training of deep bidirectional transformers for language understanding"
+      year: 2019
     expected:
-      authors_contains: ["Wang", "Liu", "Yue", "Tang"]
-      title: "Evaluating hallucination in retrieval-augmented generation"
-      year: null
-      venue_contains: null
+      authors_contains: ["Devlin", "Chang", "Lee", "Toutanova"]
+      title: "Bert: Pre-training of deep bidirectional transformers for language understanding"
+      year: 2019
+      venue_contains: "NAACL"
       doi: null
     position_hint: middle
   - key: "deepseek_r1_2025"
     match:
       doi: null
-      arxiv_id: null
-      title_contains: "Deepseek-r1: Incentivizing reasoning capability"
+      arxiv_id: "2501.12948"
+      title_contains: "Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"
       year: 2025
     expected:
       authors_contains: ["DeepSeek-AI"]
       title: "Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"
       year: 2025
-      venue_contains: null
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
   - key: "qwen_team_qwen3_2025"
     match:
       doi: null
-      arxiv_id: null
+      arxiv_id: "2505.09388"
       title_contains: "Qwen3 technical report"
       year: 2025
     expected:
       authors_contains: ["Qwen Team"]
       title: "Qwen3 technical report"
       year: 2025
-      venue_contains: null
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
-  - key: "chen_bge_m3_2024"
+  - key: "chen_m3_embedding_2024"
     match:
-      doi: null
+      doi: "10.18653/v1/2024.findings-acl.137"
       arxiv_id: null
-      title_contains: "Bge m3-embedding: Multi-lingual, multi-functionality"
-      year: null
+      title_contains: "M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings"
+      year: 2024
     expected:
       authors_contains: ["Chen", "Xiao", "Zhang", "Luo"]
-      title: "Bge m3-embedding: Multi-lingual, multi-functionality, multi-granularity text embeddings in unified fine-tuning"
-      year: null
-      venue_contains: null
-      doi: null
+      title: "M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings through self-knowledge distillation"
+      year: 2024
+      venue_contains: "ACL"
+      doi: "10.18653/v1/2024.findings-acl.137"
     position_hint: late
   - key: "dubey_llama3_hichunk_2024"
     match:
       doi: null
       arxiv_id: null
       title_contains: "The llama 3 herd of models"
-      year: null
+      year: 2024
     expected:
       authors_contains: ["Dubey", "Jauhri", "Pandey"]
       title: "The llama 3 herd of models"
-      year: null
-      venue_contains: null
+      year: 2024
+      venue_contains: "arXiv"
       doi: null
     position_hint: late
-  - key: "hichunk_mid_anchor"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Rethinking with retrieval"
-      year: null
-    expected:
-      authors_contains: ["He"]
-      title: "Rethinking with retrieval: Faithfulness for large language models"
-      year: null
-      venue_contains: null
-      doi: null
-    position_hint: middle
 must_not_extract_as_reference:
   - pattern: "span id=\"page-"
     reason: "marker page anchors"
