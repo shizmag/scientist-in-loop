@@ -45,13 +45,16 @@ static REF_ENTRY_START_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         r#"|"#,
         // 4. Initials Surname : "J. D. Hunter.", "J. Platt."
         r#"[A-Z]\.(?:\s+[A-Z]\.)*\s+[A-Z][a-zA-Za-z\-']+[,\;\.]"#,
+        r#")"#,
         r#"|"#,
-        // 5. "Name and Name" / "Name et al" / "Org maintainers" entries
+        // 5. Prefixed "Name and Name" / "Name et al" / "Org maintainers" entries
+        r#"^\s*(?:[\-*•]\s+(?:<span[^>]*>.*?</span>\s*)?|<span[^>]*>.*?</span>\s*)"#,
+        r#"(?:"#,
         r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z]{1,3}\.?|\s+[A-Z][a-zA-Za-z\-']+)+\s+(?:and|&)\s+[A-Z][a-zA-Za-z\-']+"#,
         r#"|"#,
         r#"[A-Z][a-zA-Za-z\-']+(?:\s+[A-Z][a-zA-Za-z\-']+)*\s+et\s+al"#,
         r#"|"#,
-        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[a-zA-Z\-']+)*\s+(?:maintainers|contributors|authors|team|group|collaboration|consortium|committee|editors?)\b"#,
+        r#"[A-Z][a-zA-Za-z\-']+(?:\s+[a-zA-Za-z\-']+)*\s+(?:maintainers|contributors|authors|team|group|collaboration|consortium|committee|editors?)\b"#,
         r#")"#
     )).unwrap()
 });
