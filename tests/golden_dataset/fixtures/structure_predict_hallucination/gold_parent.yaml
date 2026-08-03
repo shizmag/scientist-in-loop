@@ -1,0 +1,29 @@
+source_stem: structure_predict_hallucination
+filename: structure predict hallucination.pdf
+title: "When structure predicts hallucination: Aligning LLMs with knowledge graph features"
+title_aliases:
+  - "When Structure Predicts Hallucination: Aligning LLMs with Knowledge Graph Features"
+authors:
+  - "Ushtar Ali"
+  - "Steven Lynden"
+  - "Akiyoshi Matono"
+  - "Toshiyuki Amagasa"
+authors_notes: 4 authors cleaned of superscript affiliation markers and asterisk corresponding author marker.
+year: 2026
+doi: 10.1016/j.datak.2026.102630
+arxiv_id: null
+venue: "Data & Knowledge Engineering"
+label_confidence: high
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Data & Knowledge Engineering. DOI is 10.1016/j.datak.2026.102630. Published online July 2026. Sil previously extracted venue Data & Knowledge Engineering as the paper title."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Data & Knowledge Engineering"
+    - "ScienceDirect"
+    - "A B S T R A C T"
+  author_pollution_must_not_include:
+    - "University of Tsukuba"
+    - "AIST"
+    - "et al"
+difficulty_tags:
+  - "elsevier_header"
+  - "venue_as_title"

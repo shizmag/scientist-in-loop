@@ -1,0 +1,28 @@
+source_stem: semantic_entropy
+filename: semantic entropy.pdf
+title: Detecting hallucinations in large language models using semantic entropy
+title_aliases: []
+authors:
+  - "Sebastian Farquhar"
+  - "Jannik Kossen"
+  - "Lorenz Kuhn"
+  - "Yarin Gal"
+authors_notes: Authors cleaned from Nature paper byline/metadata.
+year: 2024
+doi: "10.1038/s41586-024-07421-0"
+arxiv_id: null
+venue: Nature
+label_confidence: high
+label_notes: "Title taken from first H1 and metadata. Authors cleaned from byline; ignored marker superscripts. DOI is 10.1038/s41586-024-07421-0. Published in Nature (2024)."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Nature"
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "Department of Computer Science"
+    - "University of Oxford"
+    - "et al"
+difficulty_tags:
+  - "nature_header"
+  - "superscript_citation_noise"

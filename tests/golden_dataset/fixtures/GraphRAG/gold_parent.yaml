@@ -1,0 +1,44 @@
+source_stem: GraphRAG
+filename: GraphRAG.pdf
+title: "Retrieval-Augmented Generation with Graphs (GraphRAG)"
+title_aliases:
+  - "Retrieval-Augmented Generation with Graphs"
+  - "GraphRAG"
+authors:
+  - "Haoyu Han"
+  - "Yu Wang"
+  - "Harry Shomer"
+  - "Kai Guo"
+  - "Jiayuan Ding"
+  - "Yongjia Lei"
+  - "Mahantesh Halappanavar"
+  - "Ryan A. Rossi"
+  - "Subhabrata Mukherjee"
+  - "Xianfeng Tang"
+  - "Qi He"
+  - "Zhigang Hua"
+  - "Bo Long"
+  - "Tong Zhao"
+  - "Neil Shah"
+  - "Amin Javari"
+  - "Yinglong Xia"
+  - "Jiliang Tang"
+authors_notes: "18 authors cleaned of superscripts, institution numbers, symbols, and email addresses."
+year: 2024
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title from H1. 18 authors in byline. Year 2024 (citations up to late 2024, GitHub repository created 2024)."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "Michigan State University"
+    - "Equal Contribution"
+    - "et al"
+difficulty_tags:
+  - "large_author_list"
+  - "superscript_noise"
+  - "email_block_bleed"

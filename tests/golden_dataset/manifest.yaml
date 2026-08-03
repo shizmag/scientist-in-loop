@@ -2,6 +2,8 @@ sources:
   - filename: "2026.gem-main.4.pdf"
     source_stem: "2026.gem-main.4"
     fixture_dir: "fixtures/2026.gem-main.4"
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 21978
     references_text_bytes: 2883
     n_current_refs: 8
@@ -13,6 +15,8 @@ sources:
   - filename: 28_Implicit_Ensembles_of_Ensem.pdf
     source_stem: 28_Implicit_Ensembles_of_Ensem
     fixture_dir: fixtures/28_Implicit_Ensembles_of_Ensem
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 59287
     references_text_bytes: 936
     n_current_refs: 2
@@ -24,6 +28,8 @@ sources:
   - filename: 8708_On_the_Entropy_Calibratio.pdf
     source_stem: 8708_On_the_Entropy_Calibratio
     fixture_dir: fixtures/8708_On_the_Entropy_Calibratio
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 103640
     references_text_bytes: 67709
     n_current_refs: 30
@@ -35,6 +41,8 @@ sources:
   - filename: "BEE-RAG.pdf"
     source_stem: "BEE-RAG"
     fixture_dir: "fixtures/BEE-RAG"
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 45292
     references_text_bytes: 8557
     n_current_refs: 39
@@ -46,6 +54,8 @@ sources:
   - filename: GraphRAG.pdf
     source_stem: GraphRAG
     fixture_dir: fixtures/GraphRAG
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 408148
     references_text_bytes: 145117
     n_current_refs: 573
@@ -57,6 +67,8 @@ sources:
   - filename: HiChunk.pdf
     source_stem: HiChunk
     fixture_dir: fixtures/HiChunk
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 62115
     references_text_bytes: 22163
     n_current_refs: 34
@@ -68,6 +80,8 @@ sources:
   - filename: Internak states approach.pdf
     source_stem: Internak_states_approach
     fixture_dir: fixtures/Internak_states_approach
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 64281
     references_text_bytes: 19902
     n_current_refs: 41
@@ -79,6 +93,8 @@ sources:
   - filename: Token probability approach.pdf
     source_stem: Token_probability_approach
     fixture_dir: fixtures/Token_probability_approach
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 60420
     references_text_bytes: 11060
     n_current_refs: 38
@@ -90,6 +106,8 @@ sources:
   - filename: semantic entropy.pdf
     source_stem: semantic_entropy
     fixture_dir: fixtures/semantic_entropy
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 84818
     references_text_bytes: 0
     n_current_refs: 0
@@ -101,6 +119,8 @@ sources:
   - filename: knowledge graph.pdf
     source_stem: knowledge_graph
     fixture_dir: fixtures/knowledge_graph
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 36079
     references_text_bytes: 15035
     n_current_refs: 42
@@ -112,6 +132,8 @@ sources:
   - filename: minecraft graph.pdf
     source_stem: minecraft_graph
     fixture_dir: fixtures/minecraft_graph
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 25500
     references_text_bytes: 9919
     n_current_refs: 24
@@ -123,6 +145,8 @@ sources:
   - filename: semantic chunking.pdf
     source_stem: semantic_chunking
     fixture_dir: fixtures/semantic_chunking
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 73384
     references_text_bytes: 24937
     n_current_refs: 70
@@ -134,6 +158,8 @@ sources:
   - filename: structure predict hallucination.pdf
     source_stem: structure_predict_hallucination
     fixture_dir: fixtures/structure_predict_hallucination
+    gold_parent: true
+    parent_confidence: high
     content_bytes: 32862
     references_text_bytes: 10330
     n_current_refs: 33

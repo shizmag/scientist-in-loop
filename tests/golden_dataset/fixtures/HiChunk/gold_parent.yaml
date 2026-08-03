@@ -1,0 +1,29 @@
+source_stem: HiChunk
+filename: HiChunk.pdf
+title: "HiChunk: Evaluating and Enhancing Retrieval-Augmented Generation with Hierarchical Chunking"
+title_aliases:
+  - "HiChunk"
+authors:
+  - "Wensheng Lu"
+  - "Keyu Chen"
+  - "Ruizhi Qiao"
+  - "Xing Sun"
+authors_notes: "4 authors cleaned of superscripts (1, *), equal contribution tags, and affiliation (Tencent Youtu Lab). HiCBench is the benchmark, NOT the title."
+year: 2025
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title from H1 line 1. Authors cleaned from byline. Date explicitly given as Sep 15, 2025. Sil previously incorrectly extracted HiCBench (the benchmark name inside Abstract) as title."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "HiCBench"
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "Tencent Youtu Lab"
+    - "Equal contribution"
+    - "et al"
+difficulty_tags:
+  - "benchmark_name_trap"
+  - "byline_superscripts"

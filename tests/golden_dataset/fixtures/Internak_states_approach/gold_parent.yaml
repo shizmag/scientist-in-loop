@@ -1,0 +1,31 @@
+source_stem: Internak_states_approach
+filename: Internak states approach.pdf
+title: "Unsupervised Real-Time Hallucination Detection based on the Internal States of Large Language Models"
+title_aliases: []
+authors:
+  - "Weihang Su"
+  - "Changyue Wang"
+  - "Qingyao Ai"
+  - "Yiran Hu"
+  - "Zhijing Wu"
+  - "Yujia Zhou"
+  - "Yiqun Liu"
+authors_notes: "7 authors cleaned from line 3 by removing footnote/affiliation markers (*1, dagger1, double_dagger1, 1, 2, 3) and affiliations (Tsinghua University, BIT, RUC)."
+year: 2024
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title from H1 line 1. Authors cleaned from line 3. Year 2024 (code/MIND repo launched 2024, references include 2023/2024)."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "Department of Computer Science"
+    - "Tsinghua University"
+    - "Corresponding Author"
+    - "et al"
+difficulty_tags:
+  - "complex_superscript_markers"
+  - "affiliation_bleed"

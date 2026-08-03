@@ -1,0 +1,29 @@
+source_stem: minecraft_graph
+filename: minecraft graph.pdf
+title: "From entity-centric to goal-oriented graphs: Enhancing LLM knowledge retrieval in minecraft"
+title_aliases:
+  - "From Entity-Centric to Goal-Oriented Graphs: Enhancing LLM Knowledge Retrieval in Minecraft"
+authors:
+  - "Jonathan Leung"
+  - "Yongjie Wang"
+  - "Zhiqi Shen"
+authors_notes: "3 authors cleaned of superscript markers and ORCID link text (She[n])."
+year: 2024
+doi: null
+arxiv_id: null
+venue: "Knowledge-Based Systems"
+label_confidence: high
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Sil previously extracted ScienceDirect as the paper title."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "ScienceDirect"
+    - "Knowledge-Based Systems"
+    - "a b s t r a c t"
+  author_pollution_must_not_include:
+    - "Nanyang Technological University"
+    - "Singapore"
+    - "et al"
+difficulty_tags:
+  - "elsevier_header"
+  - "header_chrome_as_title"
+  - "thin_byline_orcid_noise"

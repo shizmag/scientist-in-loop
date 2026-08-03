@@ -276,11 +276,23 @@ def export_fixtures(db_path: str, pdf_dir: str, output_dir: str):
         if needs_reparse:
             flag_list.append("needs_reparse")
 
+        # Check gold_parent.yaml
+        gold_parent_path = os.path.join(fixture_path, "gold_parent.yaml")
+        has_gold_parent = os.path.exists(gold_parent_path)
+        parent_confidence = None
+        if has_gold_parent:
+            with open(gold_parent_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("label_confidence:"):
+                        parent_confidence = line.split(":", 1)[1].strip()
+
         manifest_sources.append(
             {
                 "filename": filename,
                 "source_stem": stem,
                 "fixture_dir": f"fixtures/{stem}",
+                "gold_parent": has_gold_parent,
+                "parent_confidence": parent_confidence,
                 "content_bytes": content_bytes,
                 "references_text_bytes": refs_text_bytes,
                 "n_current_refs": n_current_refs,

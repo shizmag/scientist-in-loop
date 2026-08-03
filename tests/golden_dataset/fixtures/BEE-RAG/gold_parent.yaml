@@ -1,0 +1,31 @@
+source_stem: "BEE-RAG"
+filename: "BEE-RAG.pdf"
+title: "BEE-RAG: Balanced Entropy Engineering for Retrieval-Augmented Generation"
+title_aliases: []
+authors:
+  - "Yuhao Wang"
+  - "Ruiyang Ren"
+  - "Yucheng Wang"
+  - "Jing Liu"
+  - "Wayne Xin Zhao"
+  - "Hua Wu"
+  - "Haifeng Wang"
+authors_notes: "Cleaned author list by removing superscripts (1, 2, 3, *, dagger, ddot), email addresses, and institution names."
+year: 2024
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title from H1. 7 authors cleaned from byline. Year 2024 from citations in text (e.g. Zhang et al. 2024a, Wang et al. 2024)."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "Introduction"
+  author_pollution_must_not_include:
+    - "outlook.com"
+    - "gmail.com"
+    - "Equal contributions"
+    - "et al"
+difficulty_tags:
+  - "complex_superscripts"
+  - "fused_emails"

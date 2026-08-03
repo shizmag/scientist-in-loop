@@ -1,0 +1,29 @@
+source_stem: semantic_chunking
+filename: semantic chunking.pdf
+title: "Optimising retrieval performance in RAG systems: A new growing window semantic chunking strategy to address weak semantic boundaries"
+title_aliases:
+  - "Optimising Retrieval Performance in RAG Systems: A New Growing Window Semantic Chunking Strategy to Address Weak Semantic Boundaries"
+authors:
+  - "Antonio Moreno-Cediel"
+  - "Eva Garcia-Lopez"
+  - "Antonio Garcia-Cabot"
+  - "David De-Fitero-Dominguez"
+authors_notes: 4 authors cleaned of asterisk/corresponding author markers and university affiliation text.
+year: 2024
+doi: null
+arxiv_id: null
+venue: "Knowledge-Based Systems"
+label_confidence: high
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Sil previously extracted venue Knowledge-Based Systems as the paper title."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Knowledge-Based Systems"
+    - "ScienceDirect"
+    - "ABSTRACT"
+  author_pollution_must_not_include:
+    - "Universidad de Alcala"
+    - "Madrid"
+    - "et al"
+difficulty_tags:
+  - "elsevier_header"
+  - "venue_as_title"

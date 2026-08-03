@@ -1,0 +1,31 @@
+source_stem: Token_probability_approach
+filename: Token probability approach.pdf
+title: "Detecting Hallucinations in Large Language Model Generation: A Token Probability Approach"
+title_aliases: []
+authors:
+  - "Ernesto Quevedo"
+  - "Pablo Rivas"
+  - "Jorge Yero Salazar"
+  - "Rachel Koerner"
+  - "Tomas Cerny"
+authors_notes: "5 authors extracted by removing ORCID icons, IEEE membership labels (Senior, IEEE), department names, university names, and embedded email addresses."
+year: 2024
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title from H1. 5 authors cleaned by separating names from fused emails, ORCID badges, and affiliation text. Sil previously fused email addresses directly into author strings."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "Index Terms"
+    - "I. INTRODUCTION"
+  author_pollution_must_not_include:
+    - "Baylor.edu"
+    - "ORCID"
+    - "Senior, IEEE"
+    - "Department of Computer Science"
+    - "et al"
+difficulty_tags:
+  - "fused_emails_in_byline"
+  - "orcid_membership_noise"

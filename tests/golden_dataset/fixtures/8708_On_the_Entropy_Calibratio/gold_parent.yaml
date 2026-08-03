@@ -1,0 +1,25 @@
+source_stem: 8708_On_the_Entropy_Calibratio
+filename: 8708_On_the_Entropy_Calibratio.pdf
+title: ON THE ENTROPY CALIBRATION OF LANGUAGE MODELS
+title_aliases:
+  - "On the Entropy Calibration of Language Models"
+authors:
+  - "Anonymous authors"
+authors_notes: "Double-blind review paper header explicitly lists Anonymous authors."
+year: null
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title taken from H1 line 1. Authors is Anonymous authors due to double-blind review. Current sil extracted ABSTRACT because ABSTRACT heading appeared at line 60 after margin line numbers."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "ABSTRACT"
+    - "Paper under double-blind review"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "et al"
+difficulty_tags:
+  - "anonymous_submission"
+  - "margin_line_numbers"
+  - "abstract_heading_trap"

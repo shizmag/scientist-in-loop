@@ -1,0 +1,29 @@
+source_stem: knowledge_graph
+filename: knowledge graph.pdf
+title: "Multi-source knowledge graph construction through LLM-assisted incremental fusion"
+title_aliases:
+  - "Multi-Source Knowledge Graph Construction Through LLM-Assisted Incremental Fusion"
+authors:
+  - "Ziqiu Huang"
+  - "Wenli Yang"
+  - "Xiang Li"
+  - "Quan Bai"
+authors_notes: 4 authors cleaned of asterisk footnote markers and affiliation text.
+year: 2025
+doi: null
+arxiv_id: null
+venue: Intelligent Systems with Applications
+label_confidence: high
+label_notes: Title from line 7 H1. Authors cleaned from byline. Journal is Elsevier Intelligent Systems with Applications. Sil previously extracted venue header as the paper title.
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Intelligent Systems with Applications"
+    - "ScienceDirect"
+    - "A B S T R A C T"
+  author_pollution_must_not_include:
+    - "University of Tasmania"
+    - "Hobart"
+    - "et al"
+difficulty_tags:
+  - "elsevier_header"
+  - "venue_as_title"

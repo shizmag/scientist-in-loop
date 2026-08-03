@@ -1,0 +1,27 @@
+source_stem: "2026.gem-main.4"
+filename: "2026.gem-main.4.pdf"
+title: "Self-Anchoring Calibration Drift in Large Language Models: How Multi-Turn Conversations Reshape Model Confidence"
+title_aliases: []
+authors:
+  - "Harshavardhan"
+authors_notes: "Single author. Extracted from header Harshavardhan Independent Researcher. Excluded in-text cited authors (Kadavath et al., Xiong et al., Tian et al., Tversky and Kahneman)."
+year: 2026
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: Title taken from first H1. Single author in byline. Year 2026 from header line May 2026.
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "Kadavath"
+    - "Xiong"
+    - "Tian"
+    - "Tversky"
+    - "Kahneman"
+    - "et al"
+difficulty_tags:
+  - "in_text_citation_bleed"
+  - "single_author_byline"

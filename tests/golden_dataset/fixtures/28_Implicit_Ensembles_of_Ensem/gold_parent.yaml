@@ -1,0 +1,30 @@
+source_stem: 28_Implicit_Ensembles_of_Ensem
+filename: 28_Implicit_Ensembles_of_Ensem.pdf
+title: "(Implicit) Ensembles of Ensembles: Epistemic Uncertainty Collapse in Large Models"
+title_aliases:
+  - "Implicit Ensembles of Ensembles: Epistemic Uncertainty Collapse in Large Models"
+authors:
+  - "Andreas Kirsch"
+authors_notes: "Single author. Excluded in-text citations MacKay, Neal, Gal, Kendall, Fellaji, Pennerath."
+year: 2024
+doi: null
+arxiv_id: null
+venue: null
+label_confidence: high
+label_notes: "Title taken from H1. Author from header Andreas Kirsch blackhc@gmail.com. Year 2024 (latest citation is Fellaji & Pennerath 2024; footnote references Spring 2021). Sil previously incorrectly extracted 1992 from MacKay (1992)."
+hard_negatives:
+  bad_titles_must_not_match:
+    - "Abstract"
+    - "1 Introduction"
+  author_pollution_must_not_include:
+    - "MacKay"
+    - "Neal"
+    - "Gal"
+    - "Kendall"
+    - "Fellaji"
+    - "Pennerath"
+    - "et al"
+difficulty_tags:
+  - "in_text_citation_bleed"
+  - "false_year_from_citation"
+  - "single_author_byline"
