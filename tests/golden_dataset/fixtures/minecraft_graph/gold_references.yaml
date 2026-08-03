@@ -1,0 +1,151 @@
+source_stem: "minecraft_graph"
+filename: "minecraft graph.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: bracketed
+expected_ref_count:
+  min: 24
+  max: 24
+  notes: "24 true bracketed bibliography items ([1] to [24])."
+anchors:
+  - key: "gallotta_game_ai_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "R. Gallotta"
+      year: null
+    expected:
+      authors_contains: ["Gallotta", "Todd", "Zammit"]
+      title: "Enhancing procedural generation in games"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "feng_chessgpt_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "ChessGPT: bridging policy learning and language models"
+      year: null
+    expected:
+      authors_contains: ["Feng", "Luo", "Wang"]
+      title: "ChessGPT: bridging policy learning and language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "edge_graphrag_mc_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "From local to global: A graph rag approach"
+      year: 2024
+    expected:
+      authors_contains: ["Edge", "Trinh", "Cheng"]
+      title: "From local to global: A graph rag approach to query-focused summarization"
+      year: 2024
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "vaswani_attention_mc_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Attention is all you need"
+      year: 2017
+    expected:
+      authors_contains: ["Vaswani", "Shazeer", "Parmar"]
+      title: "Attention is all you need"
+      year: 2017
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "pan_unifying_llm_kg_mc_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Unifying large language models and knowledge graphs"
+      year: 2024
+    expected:
+      authors_contains: ["Pan", "Luo", "Wang"]
+      title: "Unifying large language models and knowledge graphs: A roadmap"
+      year: 2024
+      venue_contains: "IEEE TKDE"
+      doi: null
+    position_hint: middle
+  - key: "wang_voyager_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Voyager: An open-ended embodied agent with large language models"
+      year: 2023
+    expected:
+      authors_contains: ["Wang", "Xie", "Jiang"]
+      title: "Voyager: An open-ended embodied agent with large language models"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "baker_video_pretraining_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Video pre-training (vpt): Learning to act by watching unlabeled online videos"
+      year: 2022
+    expected:
+      authors_contains: ["Baker", "Akraya", "Aslanides"]
+      title: "Video pre-training (vpt): Learning to act by watching unlabeled online videos"
+      year: 2022
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: late
+  - key: "fan_minedojo_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Minedojo: Building open-ended embodied agents with internet-scale knowledge"
+      year: 2022
+    expected:
+      authors_contains: ["Fan", "Wang", "Jiang"]
+      title: "Minedojo: Building open-ended embodied agents with internet-scale knowledge"
+      year: 2022
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: late
+  - key: "nussbaum_nomic_embed_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Nomic embed: Training a reproducible long-context text embedder"
+      year: 2024
+    expected:
+      authors_contains: ["Nussbaum", "Morris", "Duderstadt"]
+      title: "Nomic embed: Training a reproducible long-context text embedder"
+      year: 2024
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: late
+  - key: "mc_mid_anchor"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Unifying large language models"
+      year: null
+    expected:
+      authors_contains: ["Pan"]
+      title: "Unifying large language models and knowledge graphs: A roadmap"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+must_not_extract_as_reference:
+  - contains: "refhub.elsevier.com"
+    reason: "Elsevier reference hub links embedded in text"
+split_errors_observed_in_current:
+  - "current_extraction.json extracted 24 entries cleanly"
+label_confidence: high
+label_notes: "Clean bracketed list [1]-[24]."
+difficulty_tags:
+  - bracketed_style
+  - elsevier_refhub_links

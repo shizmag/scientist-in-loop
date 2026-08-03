@@ -1,0 +1,217 @@
+source_stem: "GraphRAG"
+filename: "GraphRAG.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: bracketed
+expected_ref_count:
+  min: 570
+  max: 575
+  notes: "Massive survey bibliography with 573 bracketed reference items ([1] to [573])."
+anchors:
+  - key: "abramson_graphrag_1_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Josh Abramson"
+      year: null
+    expected:
+      authors_contains: ["Abramson", "Adler", "Dunger"]
+      title: "Josh Abramson, Jonas Adler, Jack Dunger, Richard Evans..."
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "abu_rasheed_student_support_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Supporting student"
+      year: null
+    expected:
+      authors_contains: ["Abu-Rasheed", "Abdulsalam"]
+      title: "Supporting student learning with knowledge graphs"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "agarwal_synthetic_corpus_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Knowledge graph based synthetic corpus"
+      year: null
+    expected:
+      authors_contains: ["Agarwal", "Ge", "Shakeri"]
+      title: "Knowledge graph based synthetic corpus generation"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "aggarwal_edge_classification_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "On edge classification in networks"
+      year: null
+    expected:
+      authors_contains: ["Aggarwal", "Li", "Philip"]
+      title: "On edge classification in networks with structural noise"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "liu_gnn_llm_synergy_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Explore then determine: A gnn-llm synergy"
+      year: null
+    expected:
+      authors_contains: ["Liu", "Zhang", "Li", "Yao"]
+      title: "Explore then determine: A gnn-llm synergy framework"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "liu_knowledge_graph_enhanced_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Knowledge graphenhanced large lang"
+      year: null
+    expected:
+      authors_contains: ["Liu", "Wang", "Zhu", "Dong"]
+      title: "Knowledge graphenhanced large language models: A survey"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "liu_llamaindex_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "LlamaIndex"
+      year: 2022
+    expected:
+      authors_contains: ["Liu"]
+      title: "LlamaIndex"
+      year: 2022
+      venue_contains: "GitHub"
+      doi: null
+    position_hint: middle
+  - key: "liu_graph_neural_networks_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Jiawei Liu, Cheng Yang, Zhiyuan Lu"
+      year: null
+    expected:
+      authors_contains: ["Liu", "Yang", "Lu", "Chen"]
+      title: "Jiawei Liu, Cheng Yang, Zhiyuan Lu, Junze Chen..."
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "liu_drak_molecular_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Drak: Unlocking molecular insights"
+      year: null
+    expected:
+      authors_contains: ["Liu", "Huang", "Chen", "Fang"]
+      title: "Drak: Unlocking molecular insights with domain-specific knowledge"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "zhuang_graph_rag_eval_569_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Yuchen Zhuang, Xiang Chen, Tong Yu"
+      year: null
+    expected:
+      authors_contains: ["Zhuang", "Chen", "Yu", "Mitra"]
+      title: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra..."
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zhuang_graph_rag_eval_570_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra, Victor Bursztyn"
+      year: null
+    expected:
+      authors_contains: ["Zhuang", "Chen", "Yu"]
+      title: "Yuchen Zhuang, Xiang Chen, Tong Yu, Saayan Mitra..."
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zimmerman_matpower_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Matpower: Steady-state"
+      year: null
+    expected:
+      authors_contains: ["Zimmerman", "Murillo-Sánchez", "Thomas"]
+      title: "Matpower: Steady-state power flow simulator"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zou_pretraining_language_models_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Pretraining language models with text-attribu"
+      year: null
+    expected:
+      authors_contains: ["Zou", "Yu", "Huang", "Sun"]
+      title: "Pretraining language models with text-attributed graphs"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zou_poisonedrag_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Poisonedrag: Knowledge corruption attacks"
+      year: null
+    expected:
+      authors_contains: ["Zou", "Geng", "Wang", "Jia"]
+      title: "Poisonedrag: Knowledge corruption attacks to retrieval-augmented generation"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "graphrag_survey_mid_anchor"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Explore then determine"
+      year: null
+    expected:
+      authors_contains: ["Liu"]
+      title: "Explore then determine: A gnn-llm synergy framework"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+split_errors_observed_in_current:
+  - "current_extraction.json has 573 entries; verify whether all items [1]-[573] are fully intact without multiline fragmentation"
+label_confidence: medium
+label_notes: "Outlier bibliography with 573 entries. Visual sampling confirms [1]..[573] sequence."
+difficulty_tags:
+  - massive_bibliography
+  - outlier_count
+  - bracketed_style

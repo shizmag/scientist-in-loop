@@ -12,6 +12,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 10
+    expected_ref_count_max: 10
+    n_anchors: 10
   - filename: 28_Implicit_Ensembles_of_Ensem.pdf
     source_stem: 28_Implicit_Ensembles_of_Ensem
     fixture_dir: fixtures/28_Implicit_Ensembles_of_Ensem
@@ -25,6 +29,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: true
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 28
+    expected_ref_count_max: 28
+    n_anchors: 10
   - filename: 8708_On_the_Entropy_Calibratio.pdf
     source_stem: 8708_On_the_Entropy_Calibratio
     fixture_dir: fixtures/8708_On_the_Entropy_Calibratio
@@ -38,6 +46,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 35
+    expected_ref_count_max: 35
+    n_anchors: 12
   - filename: "BEE-RAG.pdf"
     source_stem: "BEE-RAG"
     fixture_dir: "fixtures/BEE-RAG"
@@ -51,6 +63,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 38
+    expected_ref_count_max: 38
+    n_anchors: 10
   - filename: GraphRAG.pdf
     source_stem: GraphRAG
     fixture_dir: fixtures/GraphRAG
@@ -64,6 +80,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: true
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 570
+    expected_ref_count_max: 575
+    n_anchors: 15
   - filename: HiChunk.pdf
     source_stem: HiChunk
     fixture_dir: fixtures/HiChunk
@@ -77,6 +97,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 34
+    expected_ref_count_max: 34
+    n_anchors: 10
   - filename: Internak states approach.pdf
     source_stem: Internak_states_approach
     fixture_dir: fixtures/Internak_states_approach
@@ -90,6 +114,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 45
+    expected_ref_count_max: 47
+    n_anchors: 11
   - filename: Token probability approach.pdf
     source_stem: Token_probability_approach
     fixture_dir: fixtures/Token_probability_approach
@@ -103,6 +131,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 38
+    expected_ref_count_max: 38
+    n_anchors: 10
   - filename: semantic entropy.pdf
     source_stem: semantic_entropy
     fixture_dir: fixtures/semantic_entropy
@@ -116,6 +148,10 @@ sources:
       empty_references_text: true
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 65
+    expected_ref_count_max: 65
+    n_anchors: 12
   - filename: knowledge graph.pdf
     source_stem: knowledge_graph
     fixture_dir: fixtures/knowledge_graph
@@ -129,6 +165,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 42
+    expected_ref_count_max: 42
+    n_anchors: 10
   - filename: minecraft graph.pdf
     source_stem: minecraft_graph
     fixture_dir: fixtures/minecraft_graph
@@ -142,6 +182,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 24
+    expected_ref_count_max: 24
+    n_anchors: 10
   - filename: semantic chunking.pdf
     source_stem: semantic_chunking
     fixture_dir: fixtures/semantic_chunking
@@ -155,6 +199,10 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 70
+    expected_ref_count_max: 70
+    n_anchors: 12
   - filename: structure predict hallucination.pdf
     source_stem: structure_predict_hallucination
     fixture_dir: fixtures/structure_predict_hallucination
@@ -168,3 +216,7 @@ sources:
       empty_references_text: false
       ref_count_outlier: false
     needs_reparse: false
+    gold_references: true
+    expected_ref_count_min: 33
+    expected_ref_count_max: 33
+    n_anchors: 10

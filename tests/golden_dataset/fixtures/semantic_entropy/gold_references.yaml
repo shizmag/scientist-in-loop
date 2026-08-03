@@ -1,0 +1,182 @@
+source_stem: "semantic_entropy"
+filename: "semantic entropy.pdf"
+references_present: true
+references_heading_examples:
+  - "#### References"
+ref_numbering_style: dot
+expected_ref_count:
+  min: 65
+  max: 65
+  notes: "65 true numbered references (1 to 65) present in content.md."
+anchors:
+  - key: "gpt4_technical_report_2023"
+    match:
+      doi: null
+      arxiv_id: "2303.08774"
+      title_contains: "GPT-4 technical report"
+      year: 2023
+    expected:
+      authors_contains: ["OpenAI"]
+      title: "GPT-4 technical report"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "gemini_multimodal_2023"
+    match:
+      doi: null
+      arxiv_id: "2312.11805"
+      title_contains: "Gemini: a family of highly capable multimodal models"
+      year: 2023
+    expected:
+      authors_contains: ["Gemini Team"]
+      title: "Gemini: a family of highly capable multimodal models"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "xiao_hallucination_conditional_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "On hallucination and predictive uncertainty in conditional language generation"
+      year: 2021
+    expected:
+      authors_contains: ["Xiao", "Wang"]
+      title: "On hallucination and predictive uncertainty in conditional language generation"
+      year: 2021
+      venue_contains: "EACL"
+      doi: null
+    position_hint: early
+  - key: "desai_calibration_transformers_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Calibration of pre-trained transformers"
+      year: 2020
+    expected:
+      authors_contains: ["Desai", "Durrett"]
+      title: "Calibration of pre-trained transformers"
+      year: 2020
+      venue_contains: "EMNLP"
+      doi: null
+    position_hint: middle
+  - key: "kadavath_mostly_know_se_2022"
+    match:
+      doi: null
+      arxiv_id: "2207.05221"
+      title_contains: "Language models (mostly) know what they know"
+      year: 2022
+    expected:
+      authors_contains: ["Kadavath"]
+      title: "Language models (mostly) know what they know"
+      year: 2022
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "touvron_llama2_se_2023"
+    match:
+      doi: null
+      arxiv_id: "2307.09288"
+      title_contains: "Llama 2: open foundation and fine-tuned chat models"
+      year: 2023
+    expected:
+      authors_contains: ["Touvron"]
+      title: "Llama 2: open foundation and fine-tuned chat models"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "der_kiureghian_aleatory_se_2009"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Der Kiureghian, A."
+      year: 2009
+    expected:
+      authors_contains: ["Der Kiureghian", "Ditlevsen"]
+      title: "Aleatory or epistemic? Does it matter?"
+      year: 2009
+      venue_contains: "Struct. Saf."
+      doi: null
+    position_hint: late
+  - key: "brown_few_shot_se_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Language models are few-shot learners"
+      year: 2020
+    expected:
+      authors_contains: ["Brown"]
+      title: "Language models are few-shot learners"
+      year: 2020
+      venue_contains: "Adv. Neural Inf. Process. Syst."
+      doi: null
+    position_hint: late
+  - key: "tay_charformer_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Charformer: fast character transformers via gradient-based subword tokenization"
+      year: 2022
+    expected:
+      authors_contains: ["Tay"]
+      title: "Charformer: fast character transformers via gradient-based subword tokenization"
+      year: 2022
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: late
+  - key: "kossen_semantic_uncertainty_code_2024"
+    match:
+      doi: "10.5281/zenodo.10964366"
+      arxiv_id: null
+      title_contains: "jlko/semantic_uncertainty: Initial release"
+      year: 2024
+    expected:
+      authors_contains: ["Kossen"]
+      title: "jlko/semantic_uncertainty: Initial release v.1.0.0"
+      year: 2024
+      venue_contains: "Zenodo"
+      doi: "10.5281/zenodo.10964366"
+    position_hint: late
+  - key: "se_mid_anchor_1"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Calibration of pre-trained transformers"
+      year: null
+    expected:
+      authors_contains: ["Desai"]
+      title: "Calibration of pre-trained transformers"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "se_mid_anchor_2"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Llama 2: open foundation"
+      year: null
+    expected:
+      authors_contains: ["Touvron"]
+      title: "Llama 2: open foundation and fine-tuned chat models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - contains: "Acknowledgements"
+    reason: "acknowledgements section text"
+  - contains: "Author contributions"
+    reason: "author contribution statement"
+split_errors_observed_in_current:
+  - "references_block.md was 0 bytes and current_extraction.json had 0 entries; ground-truth reference list (65 items) was located in content.md lines 113-159 (items 1-45) and lines 37-57 (items 46-65)"
+label_confidence: high
+label_notes: "references_block.md was empty (0 bytes); ground truth reconstructed from content.md."
+difficulty_tags:
+  - empty_references_block
+  - dot_numbered
+  - split_reference_sections

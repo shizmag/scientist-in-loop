@@ -1,0 +1,151 @@
+source_stem: "knowledge_graph"
+filename: "knowledge graph.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: author_year
+expected_ref_count:
+  min: 42
+  max: 42
+  notes: "42 true APA-style author-year references."
+anchors:
+  - key: "cheng_easyea_2025"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "EasyEA: Large language model is all you need"
+      year: 2025
+    expected:
+      authors_contains: ["Cheng", "Lu", "Yang"]
+      title: "EasyEA: Large language model is all you need for entity alignment"
+      year: 2025
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "chung_graph_matching_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Chung, J."
+      year: 2024
+    expected:
+      authors_contains: ["Chung", "Pedigo", "Bridgeford"]
+      title: "Graph matching in Python"
+      year: 2024
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "dong_knowledge_vault_2014"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "From data fusion to knowledge fusion"
+      year: 2014
+    expected:
+      authors_contains: ["Dong", "Gabrilovich", "Heitz"]
+      title: "From data fusion to knowledge fusion"
+      year: 2014
+      venue_contains: "KDD"
+      doi: null
+    position_hint: early
+  - key: "edge_graphrag_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "From local to global: A graph rag approach"
+      year: 2024
+    expected:
+      authors_contains: ["Edge", "Trinh", "Cheng"]
+      title: "From local to global: A graph rag approach to query-focused summarization"
+      year: 2024
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "hogan_knowledge_graphs_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Knowledge graphs"
+      year: 2021
+    expected:
+      authors_contains: ["Hogan", "Blomqvist", "Cochez"]
+      title: "Knowledge graphs"
+      year: 2021
+      venue_contains: "ACM Computing Surveys"
+      doi: null
+    position_hint: middle
+  - key: "lewis_rag_kg_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Retrieval-augmented generation for knowledge-intensive"
+      year: 2020
+    expected:
+      authors_contains: ["Lewis", "Perez", "Piktus"]
+      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      year: 2020
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "lin_rouge_2004"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "ROUGE: A package for automatic evaluation of summaries"
+      year: 2004
+    expected:
+      authors_contains: ["Lin"]
+      title: "ROUGE: A package for automatic evaluation of summaries"
+      year: 2004
+      venue_contains: "ACL"
+      doi: null
+    position_hint: middle
+  - key: "malkov_hnsw_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs"
+      year: 2020
+    expected:
+      authors_contains: ["Malkov", "Yashunin"]
+      title: "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs"
+      year: 2020
+      venue_contains: "IEEE TPAMI"
+      doi: null
+    position_hint: middle
+  - key: "thakur_beir_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "BEIR: A heterogeneous benchmark for zero-shot evaluation"
+      year: 2021
+    expected:
+      authors_contains: ["Thakur", "Reimers", "Rücklé"]
+      title: "BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models"
+      year: 2021
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: late
+  - key: "zhu_fusionquery_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "FusionQuery: On-demand fusion queries"
+      year: 2024
+    expected:
+      authors_contains: ["Zhu", "Zhang", "Lyu"]
+      title: "FusionQuery: On-demand fusion queries over knowledge graphs"
+      year: 2024
+      venue_contains: null
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - contains: "refhub.elsevier.com"
+    reason: "Elsevier reference hub links embedded in citation"
+split_errors_observed_in_current:
+  - "current_extraction.json extracted 42 entries cleanly"
+label_confidence: high
+label_notes: "All 42 entries are well-formed author-year lines with DOIs."
+difficulty_tags:
+  - author_year_style
+  - elsevier_refhub_links

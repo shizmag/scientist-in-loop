@@ -1,0 +1,153 @@
+source_stem: "structure_predict_hallucination"
+filename: "structure predict hallucination.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: bracketed
+expected_ref_count:
+  min: 33
+  max: 33
+  notes: "33 true bracketed bibliography entries ([1] to [33])."
+anchors:
+  - key: "peters_knowledge_enhanced_2019"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "M.E. Peters"
+      year: null
+    expected:
+      authors_contains: ["Peters", "Neumann", "Logan"]
+      title: "Knowledge enhanced contextual word representations"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "guan_mitigating_llm_hallucinations_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Mitigating large language model hallucinations"
+      year: null
+    expected:
+      authors_contains: ["Guan", "Liu", "Lin"]
+      title: "Mitigating large language model hallucinations via knowledge graph reasoning"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "zheng_kglens_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "KGLens: Towards efficient and effective knowledge probing"
+      year: null
+    expected:
+      authors_contains: ["Zheng", "Bai", "Zhang"]
+      title: "KGLens: Towards efficient and effective knowledge probing of LLMs"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "farquhar_detecting_hallucinations_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Detecting hallucinations using semantic entropy"
+      year: null
+    expected:
+      authors_contains: ["Farquhar", "Kossen", "Kuhn", "Gal"]
+      title: "Detecting hallucinations in large language models using semantic entropy"
+      year: null
+      venue_contains: "Nature"
+      doi: null
+    position_hint: middle
+  - key: "huang_survey_hallucination_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "A survey on hallucination in large language models"
+      year: null
+    expected:
+      authors_contains: ["Huang", "Yu", "Ma"]
+      title: "A survey on hallucination in large language models: Principles, taxonomy, and open challenges"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "manakul_selfcheckgpt_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Selfcheckgpt: Zero-resource black-box hallucination detection"
+      year: null
+    expected:
+      authors_contains: ["Manakul", "Liusie", "Gales"]
+      title: "Selfcheckgpt: Zero-resource black-box hallucination detection for generative large language models"
+      year: null
+      venue_contains: "EMNLP"
+      doi: null
+    position_hint: middle
+  - key: "skrlj_symbolic_to_neural_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "From symbolic to neural and back: Exploring knowledge graph"
+      year: null
+    expected:
+      authors_contains: ["Škrlj", "Koloski", "Pollak"]
+      title: "From symbolic to neural and back: Exploring knowledge graph–large language model representations"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "pan_unifying_llm_kg_sph_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Unifying large language models and knowledge graphs"
+      year: null
+    expected:
+      authors_contains: ["Pan", "Luo", "Wang"]
+      title: "Unifying large language models and knowledge graphs: A roadmap"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "trivedi_lc_quad_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Lc-quad: A corpus for complex question answering over knowledge"
+      year: null
+    expected:
+      authors_contains: ["Trivedi", "Maheshwari", "Dubey"]
+      title: "Lc-quad: A corpus for complex question answering over knowledge graphs"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zheng_lmsys_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "L. Zheng"
+      year: null
+    expected:
+      authors_contains: ["Zheng", "Chiang", "Sheng"]
+      title: "Judging LLM-as-a-judge with MT-bench and chatbot arena"
+      year: null
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - contains: "Ushtar Ali received his BSCS degree"
+    reason: "author biography text"
+  - contains: "Steven Lynden is a Senior Researcher"
+    reason: "author biography text"
+split_errors_observed_in_current:
+  - "current_extraction.json extracted 33 entries cleanly"
+label_confidence: high
+label_notes: "Clean bracketed list [1]-[33]."
+difficulty_tags:
+  - bracketed_style
+  - author_bio_noise

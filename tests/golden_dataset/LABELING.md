@@ -50,3 +50,31 @@ This document outlines the strict guidelines and edge cases established for crea
 * **Observed in**: `28_Implicit_Ensembles_of_Ensem.pdf`, `2026.gem-main.4.pdf`.
 * **Pattern**: Introduction paragraphs containing inline citations like `[MacKay, 1992]` caused previous extraction systems to select `1992` as the publication year and add `MacKay` to the authors list.
 * **Resolution**: Restrict author and year candidate searching to the structural byline region above the Abstract.
+
+## Bibliography Reference Gold Labeling & Edge Cases
+
+### 1. Non-Standard Reference Headings (`semantic_entropy.pdf`)
+* **Observed in**: `semantic_entropy.pdf`.
+* **Pattern**: Nature publications use `### **Online content**` or `References` without a standard Markdown `# References` header. Marker produced a 0-byte `references_block.md`.
+* **Resolution**: Reference extraction algorithms must scan `content.md` for non-standard section titles (`Online content`, `References and Notes`) when `references_block.md` is empty.
+
+### 2. Early Truncation on Keywords (`28_Implicit_Ensembles_of_Ensem.pdf`)
+* **Observed in**: `28_Implicit_Ensembles_of_Ensem.pdf`.
+* **Pattern**: A reference title containing prose terms like "epistemic uncertainty" triggered `is_biography_or_prose_line()` early termination in `extract_references_block()`, losing 24 references out of 28.
+* **Resolution**: Guard prose termination checks so lines starting with list markers (`- `, `[N]`, `N.`) or containing DOIs/arXiv IDs are never misclassified as prose/biography.
+
+### 3. Appendix & Math Proof Leaks (`8708_On_the_Entropy_Calibratio.pdf`, `HiChunk.pdf`, `Internak_states_approach.pdf`)
+* **Observed in**: `8708_On_the_Entropy_Calibratio.pdf`, `HiChunk.pdf`, `Internak_states_approach.pdf`.
+* **Pattern**: Marker included Appendix sections (`## A PROOFS`, `# A Appendix`, `### A Pseudocode Description`) inside `references_block.md`.
+* **Resolution**: Reference boundary parsers must treat structural H1/H2 Appendix headings (`# Appendix`, `## A PROOFS`, `#### Listing A`) as strict hard-stop boundaries.
+
+### 4. False Splits from Page-Break Hyphens (`BEE-RAG.pdf`)
+* **Observed in**: `BEE-RAG.pdf`.
+* **Pattern**: A page break inserted a hyphen bullet (`- `) into a multi-line reference entry (`- Language Models. In...`), causing it to be extracted as an extra reference item.
+* **Resolution**: Extractors should check whether a new bullet line starts with an author name or citation number before treating it as a new entry.
+
+### 5. Double-Blind Submission Margin Line Number Noise (`8708_On_the_Entropy_Calibratio.pdf`)
+* **Observed in**: `8708_On_the_Entropy_Calibratio.pdf`.
+* **Pattern**: Margin line numbers (`**558 559 560**`) inserted between reference entries caused line breaks and parser confusion.
+* **Resolution**: Filter out standalone bold integer patterns (`^\*\*\d+`) within the reference block.
+

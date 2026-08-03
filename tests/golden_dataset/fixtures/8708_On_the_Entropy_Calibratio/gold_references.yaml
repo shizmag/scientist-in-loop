@@ -1,0 +1,183 @@
+source_stem: "8708_On_the_Entropy_Calibratio"
+filename: "8708_On_the_Entropy_Calibratio.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: author_year
+expected_ref_count:
+  min: 35
+  max: 35
+  notes: "35 true author-year bibliography items before Appendix A."
+anchors:
+  - key: "basu_entropy_calibration_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Sourya Basu"
+      year: null
+    expected:
+      authors_contains: ["Basu", "Ramachandran"]
+      title: "Sourya Basu, Govardana Sachitanandam Ramachandran, Nitish Shirish Keskar, and Lav R. Varshney"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "braverman_can_llms_reason_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Mark Braverman"
+      year: null
+    expected:
+      authors_contains: ["Braverman", "Chen", "Kakade"]
+      title: "Mark Braverman, Xinyi Chen, Sham Kakade, Karthik Narasimhan, Cyril Zhang, and Yi Zhang"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "dettmers_gpt3_int8_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Gpt3.int8(): 8 bit matrix"
+      year: null
+    expected:
+      authors_contains: ["Dettmers", "Lewis", "Belkada", "Zettlemoyer"]
+      title: "Gpt3.int8(): 8 bit matrix multiplication for transformer at scale"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "fan_hierarchical_story_2018"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Hierarchical neural story generation"
+      year: null
+    expected:
+      authors_contains: ["Fan", "Lewis", "Dauphin"]
+      title: "Hierarchical neural story generation"
+      year: null
+      venue_contains: "ACL"
+      doi: null
+    position_hint: early
+  - key: "guo_on_calibration_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "On calibration of modern neural networks"
+      year: null
+    expected:
+      authors_contains: ["Guo", "Pleiss", "Sun", "Weinberger"]
+      title: "On calibration of modern neural networks"
+      year: null
+      venue_contains: "ICML"
+      doi: null
+    position_hint: middle
+  - key: "holtzman_curious_case_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "The curious case of neural text degeneration"
+      year: null
+    expected:
+      authors_contains: ["Holtzman", "Buys", "Du", "Forbes", "Choi"]
+      title: "The curious case of neural text degeneration"
+      year: null
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: middle
+  - key: "hunter_matplotlib_2007"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Matplotlib: A 2d graphics environment"
+      year: null
+    expected:
+      authors_contains: ["Hunter"]
+      title: "Matplotlib: A 2d graphics environment"
+      year: null
+      venue_contains: "Computing in Science & Engineering"
+      doi: null
+    position_hint: middle
+  - key: "kumar_verified_calibration_2019"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Verified uncertainty calibration"
+      year: null
+    expected:
+      authors_contains: ["Kumar", "Liang", "Ma"]
+      title: "Verified uncertainty calibration"
+      year: null
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "touvron_llama_2_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Hugo Touvron"
+      year: null
+    expected:
+      authors_contains: ["Touvron", "Martin", "Stone"]
+      title: "Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert..."
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "verma_revisiting_entropy_rate_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Revisiting entropy rate constancy in text"
+      year: null
+    expected:
+      authors_contains: ["Verma", "Tomlin", "Klein"]
+      title: "Revisiting entropy rate constancy in text"
+      year: null
+      venue_contains: "EMNLP"
+      doi: null
+    position_hint: late
+  - key: "zhang_tinyllama_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Tinyllama: An open-source small language model"
+      year: null
+    expected:
+      authors_contains: ["Zhang", "Zeng", "Wang", "Lu"]
+      title: "Tinyllama: An open-source small language model"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "zhao_calibrating_predictive_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Calibrating predictive execution"
+      year: null
+    expected:
+      authors_contains: ["Zhao", "Kim", "Sahoo", "Ma", "Ermon"]
+      title: "Calibrating predictive execution"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - pattern: "^\*\*\d+"
+    reason: "double-blind submission margin line numbers"
+  - pattern: "^##\s+A\s+PROOFS"
+    reason: "appendix section heading"
+split_errors_observed_in_current:
+  - "current_extraction.json has 30 entries; under-extracted 5 entries due to margin line number noise (**558 559 560**) and multiline author wrapping"
+label_confidence: high
+label_notes: "Appendix section (## A PROOFS) removed from reference count band."
+difficulty_tags:
+  - margin_line_numbers
+  - appendix_bleed
+  - author_year_style
+  - multiline_entries

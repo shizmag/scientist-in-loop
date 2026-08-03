@@ -1,0 +1,156 @@
+source_stem: "HiChunk"
+filename: "HiChunk.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: bracketed
+expected_ref_count:
+  min: 34
+  max: 34
+  notes: "34 true bracketed bibliography entries ([1] to [34]) before Appendix."
+anchors:
+  - key: "lewis_rag_hichunk_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Patrick Lewis"
+      year: null
+    expected:
+      authors_contains: ["Lewis", "Perez", "Piktus"]
+      title: "Retrieval-augmented generation for knowledge-intensive NLP tasks"
+      year: null
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: early
+  - key: "chen_benchmarking_llms_rag_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Benchmarking large language models in retrieval-augmented"
+      year: null
+    expected:
+      authors_contains: ["Chen", "Lin", "Han", "Sun"]
+      title: "Benchmarking large language models in retrieval-augmented generation"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "zhang_siren_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Siren: A benchmark for hallucination in large language models"
+      year: null
+    expected:
+      authors_contains: ["Zhang", "Li", "Cui", "Cai"]
+      title: "Siren: A benchmark for hallucination in large language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "he_rethinking_window_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Rethinking with retrieval: Faithfulness for large language models"
+      year: null
+    expected:
+      authors_contains: ["He", "Zhang", "Roth"]
+      title: "Rethinking with retrieval: Faithfulness for large language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "wang_evaluating_hallucination_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Evaluating hallucination in retrieval-augmented generation"
+      year: null
+    expected:
+      authors_contains: ["Wang", "Liu", "Yue", "Tang"]
+      title: "Evaluating hallucination in retrieval-augmented generation"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "deepseek_r1_2025"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Deepseek-r1: Incentivizing reasoning capability"
+      year: 2025
+    expected:
+      authors_contains: ["DeepSeek-AI"]
+      title: "Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"
+      year: 2025
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "qwen_team_qwen3_2025"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Qwen3 technical report"
+      year: 2025
+    expected:
+      authors_contains: ["Qwen Team"]
+      title: "Qwen3 technical report"
+      year: 2025
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "chen_bge_m3_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Bge m3-embedding: Multi-lingual, multi-functionality"
+      year: null
+    expected:
+      authors_contains: ["Chen", "Xiao", "Zhang", "Luo"]
+      title: "Bge m3-embedding: Multi-lingual, multi-functionality, multi-granularity text embeddings in unified fine-tuning"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "dubey_llama3_hichunk_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "The llama 3 herd of models"
+      year: null
+    expected:
+      authors_contains: ["Dubey", "Jauhri", "Pandey"]
+      title: "The llama 3 herd of models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+  - key: "hichunk_mid_anchor"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Rethinking with retrieval"
+      year: null
+    expected:
+      authors_contains: ["He"]
+      title: "Rethinking with retrieval: Faithfulness for large language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - pattern: "^#\s+A\s+Appendix"
+    reason: "appendix section heading"
+  - pattern: "^####\s+Listing\s+A"
+    reason: "prompt code listing heading"
+split_errors_observed_in_current:
+  - "current_extraction.json correctly parsed 34 items, but references_block.md included Appendix A text and QA prompts"
+label_confidence: high
+label_notes: "Appendix A text ignored for reference count."
+difficulty_tags:
+  - appendix_bleed
+  - bracketed_style
+  - prompt_listing_noise

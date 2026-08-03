@@ -1,0 +1,169 @@
+source_stem: "Internak_states_approach"
+filename: "Internak states approach.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: author_year
+expected_ref_count:
+  min: 45
+  max: 47
+  notes: "45-47 author-year bibliography items before Appendix A."
+anchors:
+  - key: "almazrouei_falcon_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Ebtesam Almazrouei"
+      year: null
+    expected:
+      authors_contains: ["Almazrouei", "Alobeidli", "Alshamsi"]
+      title: "The Falcon Series of Open Language Models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "azaria_internal_state_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "The internal state of an llm knows when its lying"
+      year: 2023
+    expected:
+      authors_contains: ["Azaria", "Mitchell"]
+      title: "The internal state of an llm knows when its lying"
+      year: 2023
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "borgeaud_retro_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Sebastian Borgeaud"
+      year: null
+    expected:
+      authors_contains: ["Borgeaud", "Mensch", "Hoffmann"]
+      title: "Improving language models by retrieving from trillions of tokens"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "brown_gpt3_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Tom Brown"
+      year: null
+    expected:
+      authors_contains: ["Brown", "Mann", "Ryder"]
+      title: "Language models are few-shot learners"
+      year: null
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: early
+  - key: "izacard_fid_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Leveraging passage retrieval with generative mode"
+      year: 2020
+    expected:
+      authors_contains: ["Izacard", "Grave"]
+      title: "Leveraging passage retrieval with generative models for open domain question answering"
+      year: 2020
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "ji_survey_hallucination_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Survey of hallucination in natural language generation"
+      year: null
+    expected:
+      authors_contains: ["Ji", "Lee", "Frieske"]
+      title: "Survey of hallucination in natural language generation"
+      year: null
+      venue_contains: "ACM Computing Surveys"
+      doi: null
+    position_hint: middle
+  - key: "kadavath_mostly_know_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Language models (mostly) know what they know"
+      year: null
+    expected:
+      authors_contains: ["Kadavath", "Conerly", "Askell"]
+      title: "Language models (mostly) know what they know"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "lewis_rag_internak_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Retrieval-augmented generation for knowledge-intensive"
+      year: null
+    expected:
+      authors_contains: ["Lewis", "Perez", "Piktus"]
+      title: "Retrieval-augmented generation for knowledge-intensive nlp tasks"
+      year: null
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "touvron_llama_1_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Llama: Open and efficient foundation language models"
+      year: null
+    expected:
+      authors_contains: ["Touvron", "Lavril", "Izacard"]
+      title: "Llama: Open and efficient foundation language models"
+      year: null
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: late
+  - key: "wang_gpt_j_6b_2021"
+    match:
+      doi: null
+      arxiv_id: "2104.08704"
+      title_contains: "GPT-J-6B: A 6 Billion Parameter Autoregressive Language"
+      year: 2021
+    expected:
+      authors_contains: ["Wang", "Komatsuzaki"]
+      title: "GPT-J-6B: A 6 Billion Parameter Autoregressive Language Model"
+      year: 2021
+      venue_contains: "GitHub"
+      doi: null
+    position_hint: late
+  - key: "zhou_limo_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Chunting Zhou"
+      year: null
+    expected:
+      authors_contains: ["Zhou", "Neubig", "Gu"]
+      title: "LIMA: Less Is More for Alignment"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - pattern: "^###\s+A\s+Pseudocode"
+    reason: "appendix section heading"
+  - pattern: "^Algorithm\s+1"
+    reason: "algorithm block heading"
+split_errors_observed_in_current:
+  - "current_extraction.json has 41 entries; under-extracted 5 entries due to line breaks, wrapped author blocks across page boundaries, and orphan benchmark text"
+label_confidence: medium
+label_notes: "Appendix pseudocode and HELM prompts excluded."
+difficulty_tags:
+  - appendix_bleed
+  - author_year_style
+  - page_boundary_split

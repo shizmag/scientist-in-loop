@@ -1,0 +1,156 @@
+source_stem: "28_Implicit_Ensembles_of_Ensem"
+filename: "28_Implicit_Ensembles_of_Ensem.pdf"
+references_present: true
+references_heading_examples:
+  - "# References"
+ref_numbering_style: author_year
+expected_ref_count:
+  min: 28
+  max: 28
+  notes: "28 author-year bibliography entries in content.md under # References."
+anchors:
+  - key: "der_kiureghian_aleatory_2009"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Aleatory or epistemic? Does it matter?"
+      year: 2009
+    expected:
+      authors_contains: ["Der Kiureghian", "Ditlevsen"]
+      title: "Aleatory or epistemic? Does it matter?"
+      year: 2009
+      venue_contains: "Structural Safety"
+      doi: null
+    position_hint: early
+  - key: "dosovitskiy_image_worth_16x16_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "An image is worth 16x16 words: Transformers for image recognition at scale"
+      year: 2021
+    expected:
+      authors_contains: ["Dosovitskiy", "Beyer"]
+      title: "An image is worth 16x16 words: Transformers for image recognition at scale"
+      year: 2021
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: early
+  - key: "durasov_masksembles_2021"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Masksembles for Uncertainty Estimation"
+      year: 2021
+    expected:
+      authors_contains: ["Durasov", "Bagautdinov"]
+      title: "Masksembles for Uncertainty Estimation"
+      year: 2021
+      venue_contains: "CVPR"
+      doi: null
+    position_hint: early
+  - key: "fellaji_epistemic_uncertainty_hole_2024"
+    match:
+      doi: null
+      arxiv_id: "2407.01985"
+      title_contains: "The Epistemic Uncertainty Hole: an issue of Bayesian Neural Networks"
+      year: 2024
+    expected:
+      authors_contains: ["Fellaji", "Pennerath"]
+      title: "The Epistemic Uncertainty Hole: an issue of Bayesian Neural Networks"
+      year: 2024
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "gal_deep_bayesian_active_learning_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Deep bayesian active learning with image data"
+      year: 2017
+    expected:
+      authors_contains: ["Gal", "Islam", "Ghahramani"]
+      title: "Deep bayesian active learning with image data"
+      year: 2017
+      venue_contains: "ICML"
+      doi: null
+    position_hint: middle
+  - key: "he_deep_residual_learning_2015"
+    match:
+      doi: null
+      arxiv_id: "1512.03385"
+      title_contains: "Deep residual learning for image recognition"
+      year: 2015
+    expected:
+      authors_contains: ["He", "Zhang", "Ren", "Sun"]
+      title: "Deep residual learning for image recognition"
+      year: 2015
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "kendall_what_uncertainties_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "What Uncertainties Do we Need in Bayesian Deep Learning for Computer Vision?"
+      year: 2017
+    expected:
+      authors_contains: ["Kendall", "Gal"]
+      title: "What Uncertainties Do we Need in Bayesian Deep Learning for Computer Vision?"
+      year: 2017
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "ovadia_can_you_trust_uncertainty_2019"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift"
+      year: 2019
+    expected:
+      authors_contains: ["Ovadia", "Fertig"]
+      title: "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift"
+      year: 2019
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: late
+  - key: "smith_understanding_measures_uncertainty_2018"
+    match:
+      doi: null
+      arxiv_id: "1803.08533"
+      title_contains: "Understanding measures of uncertainty for adversarial example detection"
+      year: 2018
+    expected:
+      authors_contains: ["Smith", "Gal"]
+      title: "Understanding measures of uncertainty for adversarial example detection"
+      year: 2018
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: late
+  - key: "zagoruyko_wide_residual_networks_2016"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Wide residual networks"
+      year: 2016
+    expected:
+      authors_contains: ["Zagoruyko", "Komodakis"]
+      title: "Wide residual networks"
+      year: 2016
+      venue_contains: "BMVC"
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - contains: "Table 5:"
+    reason: "table caption text"
+  - contains: "Histogram on SVHN"
+    reason: "figure caption"
+split_errors_observed_in_current:
+  - "current_extraction.json has only 2 entries; references_block.md was truncated during initial export, leaving 26 references unparsed"
+label_confidence: high
+label_notes: "Ground truth extracted from content.md lines 115-143."
+difficulty_tags:
+  - author_year_style
+  - truncated_ref_block
+  - span_tag_noise

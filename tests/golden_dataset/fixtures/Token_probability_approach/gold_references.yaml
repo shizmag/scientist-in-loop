@@ -1,0 +1,153 @@
+source_stem: "Token_probability_approach"
+filename: "Token probability approach.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: bracketed
+expected_ref_count:
+  min: 38
+  max: 38
+  notes: "38 true bracketed bibliography entries ([1] to [38])."
+anchors:
+  - key: "zhao_llm_survey_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "W. X. Zhao"
+      year: null
+    expected:
+      authors_contains: ["Zhao", "Zhou", "Li"]
+      title: "A survey of large language models"
+      year: null
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: early
+  - key: "kaddour_challenges_llm_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "J. Kaddour"
+      year: null
+    expected:
+      authors_contains: ["Kaddour", "Harris", "Mozes"]
+      title: "Challenges and applications of large language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: early
+  - key: "brown_few_shot_token_prob_2020"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Language models are few-shot learners"
+      year: 2020
+    expected:
+      authors_contains: ["Brown"]
+      title: "Language models are few-shot learners"
+      year: 2020
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: early
+  - key: "wei_chain_of_thought_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Chain-of-thought prompting elicits reasoning"
+      year: 2022
+    expected:
+      authors_contains: ["Wei"]
+      title: "Chain-of-thought prompting elicits reasoning in large language models"
+      year: 2022
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "touvron_llama2_token_prob_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Llama 2: Open foundation and fine-tuned chat models"
+      year: 2023
+    expected:
+      authors_contains: ["Touvron"]
+      title: "Llama 2: Open foundation and fine-tuned chat models"
+      year: 2023
+      venue_contains: null
+      doi: null
+    position_hint: middle
+  - key: "vaswani_attention_token_prob_2017"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Attention is all you need"
+      year: 2017
+    expected:
+      authors_contains: ["Vaswani"]
+      title: "Attention is all you need"
+      year: 2017
+      venue_contains: "NeurIPS"
+      doi: null
+    position_hint: middle
+  - key: "devlin_bert_token_prob_2019"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "BERT: Pre-training of deep bidirectional transformers"
+      year: 2019
+    expected:
+      authors_contains: ["Devlin"]
+      title: "BERT: Pre-training of deep bidirectional transformers for language understanding"
+      year: 2019
+      venue_contains: "NAACL"
+      doi: null
+    position_hint: late
+  - key: "radford_gpt2_2019"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Language models are unsupervised multitask learners"
+      year: 2019
+    expected:
+      authors_contains: ["Radford"]
+      title: "Language models are unsupervised multitask learners"
+      year: 2019
+      venue_contains: "OpenAI blog"
+      doi: null
+    position_hint: late
+  - key: "kingma_adam_2015"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Adam: A method for stochastic optimization"
+      year: 2015
+    expected:
+      authors_contains: ["Kingma", "Ba"]
+      title: "Adam: A method for stochastic optimization"
+      year: 2015
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: late
+  - key: "token_prob_mid_anchor"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Chain-of-thought prompting"
+      year: null
+    expected:
+      authors_contains: ["Wei"]
+      title: "Chain-of-thought prompting elicits reasoning in large language models"
+      year: null
+      venue_contains: null
+      doi: null
+    position_hint: middle
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - contains: "https://aclanthology.org/"
+    reason: "standalone URL continuation line"
+split_errors_observed_in_current:
+  - "current_extraction.json has 38 entries; correctly counted [1]-[38], but multiline URLs were split in raw block"
+label_confidence: high
+label_notes: "Clean bracketed list."
+difficulty_tags:
+  - bracketed_style
+  - multiline_urls

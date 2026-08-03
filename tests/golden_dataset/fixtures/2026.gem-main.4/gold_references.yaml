@@ -1,0 +1,153 @@
+source_stem: "2026.gem-main.4"
+filename: "2026.gem-main.4.pdf"
+references_present: true
+references_heading_examples:
+  - "## References"
+ref_numbering_style: author_year
+expected_ref_count:
+  min: 10
+  max: 10
+  notes: "10 true unnumbered author-year bibliography items."
+anchors:
+  - key: "kadavath_lm_know_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Language models (mostly) know what they know"
+      year: 2022
+    expected:
+      authors_contains: ["Kadavath"]
+      title: "Language models (mostly) know what they know"
+      year: 2022
+      venue_contains: "NeurIPS Workshop"
+      doi: null
+    position_hint: early
+  - key: "kim_factual_consistency_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Factual consistency across turns"
+      year: 2023
+    expected:
+      authors_contains: ["Kim"]
+      title: "Factual consistency across turns: A study of multi-turn dialogue hallucination"
+      year: 2023
+      venue_contains: "EMNLP"
+      doi: null
+    position_hint: early
+  - key: "liu_lost_in_middle_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Lost in the middle: How language models use long contexts"
+      year: 2024
+    expected:
+      authors_contains: ["Liu"]
+      title: "Lost in the middle: How language models use long contexts"
+      year: 2024
+      venue_contains: "Transactions of the Association for Computational Linguistics"
+      doi: null
+    position_hint: early
+  - key: "ouyang_rlhf_2022"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Training language models to follow instructions with human feedback"
+      year: 2022
+    expected:
+      authors_contains: ["Ouyang"]
+      title: "Training language models to follow instructions with human feedback"
+      year: 2022
+      venue_contains: "Advances in Neural Information Processing Systems"
+      doi: null
+    position_hint: middle
+  - key: "perez_red_teaming_2022"
+    match:
+      doi: null
+      arxiv_id: "2202.03286"
+      title_contains: "Red teaming language models with language models"
+      year: 2022
+    expected:
+      authors_contains: ["Perez"]
+      title: "Red teaming language models with language models"
+      year: 2022
+      venue_contains: "arXiv"
+      doi: null
+    position_hint: middle
+  - key: "sharma_sycophancy_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Towards understanding sycophancy in language models"
+      year: 2024
+    expected:
+      authors_contains: ["Sharma"]
+      title: "Towards understanding sycophancy in language models"
+      year: 2024
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: middle
+  - key: "shi_distracted_context_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Large language models can be easily distracted by irrelevant context"
+      year: 2023
+    expected:
+      authors_contains: ["Shi"]
+      title: "Large language models can be easily distracted by irrelevant context"
+      year: 2023
+      venue_contains: "ICML"
+      doi: null
+    position_hint: middle
+  - key: "tian_just_ask_calibration_2023"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Just ask for calibration: Strategies for eliciting calibrated confidence scores"
+      year: 2023
+    expected:
+      authors_contains: ["Tian"]
+      title: "Just ask for calibration: Strategies for eliciting calibrated confidence scores from language models fine-tuned with human feedback"
+      year: 2023
+      venue_contains: "EMNLP"
+      doi: null
+    position_hint: late
+  - key: "tversky_judgment_uncertainty_1974"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Judgment under uncertainty: Heuristics and biases"
+      year: 1974
+    expected:
+      authors_contains: ["Tversky", "Kahneman"]
+      title: "Judgment under uncertainty: Heuristics and biases"
+      year: 1974
+      venue_contains: "Science"
+      doi: null
+    position_hint: late
+  - key: "xiong_express_uncertainty_2024"
+    match:
+      doi: null
+      arxiv_id: null
+      title_contains: "Can LLMs express their uncertainty? an empirical evaluation of confidence elicitation"
+      year: 2024
+    expected:
+      authors_contains: ["Xiong"]
+      title: "Can LLMs express their uncertainty? an empirical evaluation of confidence elicitation in large language models"
+      year: 2024
+      venue_contains: "ICLR"
+      doi: null
+    position_hint: late
+must_not_extract_as_reference:
+  - pattern: "span id=\"page-"
+    reason: "marker page anchors"
+  - contains: "Self-Anchoring Calibration Drift"
+    reason: "header text"
+split_errors_observed_in_current:
+  - "current_extraction.json has 8 entries; under-extracted 2 entries (missed Tian et al. and Xiong et al.)"
+label_confidence: high
+label_notes: "All 10 entries labeled as anchors."
+difficulty_tags:
+  - author_year_style
+  - span_tag_noise
