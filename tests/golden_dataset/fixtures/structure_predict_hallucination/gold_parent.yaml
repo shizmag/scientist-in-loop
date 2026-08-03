@@ -14,7 +14,7 @@ doi: 10.1016/j.datak.2026.102630
 arxiv_id: null
 venue: "Data & Knowledge Engineering"
 label_confidence: high
-label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Data & Knowledge Engineering. DOI is 10.1016/j.datak.2026.102630. Published online July 2026. Sil previously extracted venue Data & Knowledge Engineering as the paper title."
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Data & Knowledge Engineering. DOI is 10.1016/j.datak.2026.102630. Year 2026 evidenced by line 34: \"Available online 8 July 2026\"."
 hard_negatives:
   bad_titles_must_not_match:
     - "Data & Knowledge Engineering"

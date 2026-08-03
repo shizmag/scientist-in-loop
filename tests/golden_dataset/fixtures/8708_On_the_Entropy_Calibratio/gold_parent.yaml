@@ -11,7 +11,7 @@ doi: null
 arxiv_id: null
 venue: null
 label_confidence: high
-label_notes: "Title taken from H1 line 1. Authors is Anonymous authors due to double-blind review. Current sil extracted ABSTRACT because ABSTRACT heading appeared at line 60 after margin line numbers."
+label_notes: "Title taken from H1 line 1. Authors is Anonymous authors due to double-blind review. Year correctly null as no header publication date exists."
 hard_negatives:
   bad_titles_must_not_match:
     - "ABSTRACT"

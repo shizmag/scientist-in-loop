@@ -9,12 +9,12 @@ authors:
   - "Antonio Garcia-Cabot"
   - "David De-Fitero-Dominguez"
 authors_notes: 4 authors cleaned of asterisk/corresponding author markers and university affiliation text.
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: "Knowledge-Based Systems"
-label_confidence: high
-label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Sil previously extracted venue Knowledge-Based Systems as the paper title."
+label_confidence: medium
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Year set to null due to lack of document-level header date signal (line 19 ChatGPT 2022 is historical background)."
 hard_negatives:
   bad_titles_must_not_match:
     - "Knowledge-Based Systems"

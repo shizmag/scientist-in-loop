@@ -24,12 +24,12 @@ authors:
   - "Yinglong Xia"
   - "Jiliang Tang"
 authors_notes: "18 authors cleaned of superscripts, institution numbers, symbols, and email addresses."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: null
-label_confidence: high
-label_notes: "Title from H1. 18 authors in byline. Year 2024 (citations up to late 2024, GitHub repository created 2024)."
+label_confidence: medium
+label_notes: "Title from H1. 18 authors in byline. Year set to null due to lack of document-level header date signal (prior year 2024 was incorrectly inferred from in-text citations)."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

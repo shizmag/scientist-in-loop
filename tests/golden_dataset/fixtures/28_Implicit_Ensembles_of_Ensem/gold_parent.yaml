@@ -6,12 +6,12 @@ title_aliases:
 authors:
   - "Andreas Kirsch"
 authors_notes: "Single author. Excluded in-text citations MacKay, Neal, Gal, Kendall, Fellaji, Pennerath."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: null
-label_confidence: high
-label_notes: "Title taken from H1. Author from header Andreas Kirsch blackhc@gmail.com. Year 2024 (latest citation is Fellaji & Pennerath 2024; footnote references Spring 2021). Sil previously incorrectly extracted 1992 from MacKay (1992)."
+label_confidence: medium
+label_notes: "Title taken from H1. Author from header Andreas Kirsch. Year set to null due to lack of document-level header date signal (prior year 2024 was incorrectly inferred from in-text citation Fellaji & Pennerath 2024)."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

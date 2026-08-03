@@ -10,7 +10,7 @@ doi: null
 arxiv_id: null
 venue: null
 label_confidence: high
-label_notes: Title taken from first H1. Single author in byline. Year 2026 from header line May 2026.
+label_notes: "Title taken from first H1. Single author in byline. Year 2026 evidenced by header line 5: \"May 2026\"."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

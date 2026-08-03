@@ -9,12 +9,12 @@ authors:
   - "Xiang Li"
   - "Quan Bai"
 authors_notes: 4 authors cleaned of asterisk footnote markers and affiliation text.
-year: 2025
+year: null
 doi: null
 arxiv_id: null
 venue: Intelligent Systems with Applications
-label_confidence: high
-label_notes: Title from line 7 H1. Authors cleaned from byline. Journal is Elsevier Intelligent Systems with Applications. Sil previously extracted venue header as the paper title.
+label_confidence: medium
+label_notes: "Title from H1 line 7. Authors cleaned from byline. Journal is Elsevier Intelligent Systems with Applications. Year set to null due to lack of document-level header date signal."
 hard_negatives:
   bad_titles_must_not_match:
     - "Intelligent Systems with Applications"

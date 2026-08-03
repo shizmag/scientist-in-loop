@@ -14,7 +14,7 @@ doi: null
 arxiv_id: null
 venue: null
 label_confidence: high
-label_notes: "Title from H1 line 1. Authors cleaned from byline. Date explicitly given as Sep 15, 2025. Sil previously incorrectly extracted HiCBench (the benchmark name inside Abstract) as title."
+label_notes: "Title from H1 line 1. Authors cleaned from byline. Year 2025 evidenced by line 9: \"- **Date:** Sep 15, 2025\"."
 hard_negatives:
   bad_titles_must_not_match:
     - "HiCBench"

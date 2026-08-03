@@ -13,7 +13,7 @@ doi: "10.1038/s41586-024-07421-0"
 arxiv_id: null
 venue: Nature
 label_confidence: high
-label_notes: "Title taken from first H1 and metadata. Authors cleaned from byline; ignored marker superscripts. DOI is 10.1038/s41586-024-07421-0. Published in Nature (2024)."
+label_notes: "Title taken from first H1. Authors cleaned from byline. DOI is 10.1038/s41586-024-07421-0. Year 2024 evidenced by line 11: \"Published online: 19 June 2024\"."
 hard_negatives:
   bad_titles_must_not_match:
     - "Nature"

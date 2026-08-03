@@ -8,12 +8,12 @@ authors:
   - "Yongjie Wang"
   - "Zhiqi Shen"
 authors_notes: "3 authors cleaned of superscript markers and ORCID link text (She[n])."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: "Knowledge-Based Systems"
-label_confidence: high
-label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Sil previously extracted ScienceDirect as the paper title."
+label_confidence: medium
+label_notes: "Title from H1 line 7. Authors cleaned from line 9. Journal is Elsevier Knowledge-Based Systems. Year set to null due to lack of document-level header date signal."
 hard_negatives:
   bad_titles_must_not_match:
     - "ScienceDirect"

@@ -11,12 +11,12 @@ authors:
   - "Yujia Zhou"
   - "Yiqun Liu"
 authors_notes: "7 authors cleaned from line 3 by removing footnote/affiliation markers (*1, dagger1, double_dagger1, 1, 2, 3) and affiliations (Tsinghua University, BIT, RUC)."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: null
-label_confidence: high
-label_notes: "Title from H1 line 1. Authors cleaned from line 3. Year 2024 (code/MIND repo launched 2024, references include 2023/2024)."
+label_confidence: medium
+label_notes: "Title from H1 line 1. Authors cleaned from line 3. Year set to null due to lack of document-level header date signal (prior year 2024 was incorrectly inferred from in-text citations)."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

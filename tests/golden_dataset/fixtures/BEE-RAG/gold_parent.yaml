@@ -11,12 +11,12 @@ authors:
   - "Hua Wu"
   - "Haifeng Wang"
 authors_notes: "Cleaned author list by removing superscripts (1, 2, 3, *, dagger, ddot), email addresses, and institution names."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: null
-label_confidence: high
-label_notes: "Title from H1. 7 authors cleaned from byline. Year 2024 from citations in text (e.g. Zhang et al. 2024a, Wang et al. 2024)."
+label_confidence: medium
+label_notes: "Title from H1. 7 authors cleaned from byline. Year set to null due to lack of document-level header date signal (prior year 2024 was incorrectly inferred from in-text citations)."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

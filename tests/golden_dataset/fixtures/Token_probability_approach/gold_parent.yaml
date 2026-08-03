@@ -9,12 +9,12 @@ authors:
   - "Rachel Koerner"
   - "Tomas Cerny"
 authors_notes: "5 authors extracted by removing ORCID icons, IEEE membership labels (Senior, IEEE), department names, university names, and embedded email addresses."
-year: 2024
+year: null
 doi: null
 arxiv_id: null
 venue: null
-label_confidence: high
-label_notes: "Title from H1. 5 authors cleaned by separating names from fused emails, ORCID badges, and affiliation text. Sil previously fused email addresses directly into author strings."
+label_confidence: medium
+label_notes: "Title from H1. 5 authors cleaned by separating names from fused emails. Year set to null due to lack of document-level header date signal."
 hard_negatives:
   bad_titles_must_not_match:
     - "Abstract"

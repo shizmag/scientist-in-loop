@@ -16,7 +16,7 @@ sources:
     source_stem: 28_Implicit_Ensembles_of_Ensem
     fixture_dir: fixtures/28_Implicit_Ensembles_of_Ensem
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 59287
     references_text_bytes: 936
     n_current_refs: 2
@@ -42,7 +42,7 @@ sources:
     source_stem: "BEE-RAG"
     fixture_dir: "fixtures/BEE-RAG"
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 45292
     references_text_bytes: 8557
     n_current_refs: 39
@@ -55,7 +55,7 @@ sources:
     source_stem: GraphRAG
     fixture_dir: fixtures/GraphRAG
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 408148
     references_text_bytes: 145117
     n_current_refs: 573
@@ -81,7 +81,7 @@ sources:
     source_stem: Internak_states_approach
     fixture_dir: fixtures/Internak_states_approach
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 64281
     references_text_bytes: 19902
     n_current_refs: 41
@@ -94,7 +94,7 @@ sources:
     source_stem: Token_probability_approach
     fixture_dir: fixtures/Token_probability_approach
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 60420
     references_text_bytes: 11060
     n_current_refs: 38
@@ -120,7 +120,7 @@ sources:
     source_stem: knowledge_graph
     fixture_dir: fixtures/knowledge_graph
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 36079
     references_text_bytes: 15035
     n_current_refs: 42
@@ -133,7 +133,7 @@ sources:
     source_stem: minecraft_graph
     fixture_dir: fixtures/minecraft_graph
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 25500
     references_text_bytes: 9919
     n_current_refs: 24
@@ -146,7 +146,7 @@ sources:
     source_stem: semantic_chunking
     fixture_dir: fixtures/semantic_chunking
     gold_parent: true
-    parent_confidence: high
+    parent_confidence: medium
     content_bytes: 73384
     references_text_bytes: 24937
     n_current_refs: 70
