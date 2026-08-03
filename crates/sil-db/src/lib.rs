@@ -302,6 +302,27 @@ impl SilDb {
     ) -> Result<(), DbError> {
         references::delete_references_for_source(&self.conn, source_id)
     }
+
+    /// Recompute cosine similarity scores between paper draft text and all extracted source references.
+    pub fn recompute_draft_ref_similarities(
+        &self,
+        draft_text: &str,
+        embedder: &crate::onnx::OnnxEmbedder,
+    ) -> Result<usize, DbError> {
+        references::recompute_draft_ref_similarities(&self.conn, draft_text, embedder)
+    }
+
+    /// Retrieve all persisted draft-reference similarity scores keyed by `ref_id`.
+    pub fn get_draft_ref_similarities(
+        &self,
+    ) -> Result<std::collections::HashMap<String, f32>, DbError> {
+        references::get_draft_ref_similarities(&self.conn)
+    }
+
+    /// Retrieve stored draft content hash to verify staleness.
+    pub fn get_draft_similarity_hash(&self) -> Result<Option<String>, DbError> {
+        references::get_draft_similarity_hash(&self.conn)
+    }
 }
 
 #[cfg(test)]

@@ -25,10 +25,11 @@ pub mod health;
 pub mod todo;
 
 pub use bib::{
-    BibEntryInfo, BibSuggestion, extract_bib_entry_info, format_bibtex_article,
-    format_cite_command, is_same_paper, parse_bib_blocks, slug_cite_key,
-    suggest_from_filename_title, suggest_from_query, suggest_from_reference_entry,
-    suggest_from_source, upsert_bib_entry,
+    BibEntryInfo, BibSuggestion, TUI_ADDED_MARKER, extract_bib_entry_info, format_bibtex_article,
+    format_cite_command, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry,
+    parse_bib_blocks, slug_cite_key, strip_tui_added_bib_entries, suggest_from_filename_title,
+    suggest_from_query, suggest_from_reference_entry, suggest_from_source,
+    unmark_tui_added_bib_entry, upsert_bib_entry,
 };
 pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
 pub use digest::JournalPublication;
@@ -40,8 +41,8 @@ pub use settings::{
     AuthorDetails, GlobalSettings, GrantDetails, LocalSettings, RagSettings, SettingsCache,
 };
 pub use source::{
-    DocumentStatus, ReferenceEntry, SourceDocument, SourceId, SourceKind, probe_source,
-    validate_pdf_path,
+    DocumentStatus, ReferenceEntry, SourceDocument, SourceId, SourceKind, compute_draft_hash,
+    probe_source, ref_text_for_embed, strip_latex_for_embed, validate_pdf_path,
 };
 pub use stage::Stage;
 pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};

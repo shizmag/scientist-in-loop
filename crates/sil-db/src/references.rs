@@ -156,6 +156,70 @@ pub fn delete_references_for_source(
     Ok(())
 }
 
+/// Recompute cosine similarity scores between paper draft text and all extracted source references.
+pub fn recompute_draft_ref_similarities(
+    conn: &Connection,
+    draft_text: &str,
+    embedder: &crate::onnx::OnnxEmbedder,
+) -> Result<usize, DbError> {
+    let clean_draft = sil_core::strip_latex_for_embed(draft_text);
+    if clean_draft.trim().is_empty() {
+        return Ok(0);
+    }
+    let draft_hash = sil_core::compute_draft_hash(&clean_draft);
+    let draft_vec = embedder.embed(&clean_draft)?;
+
+    let all_refs = get_all_references(conn)?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM draft_ref_similarity", [])?;
+
+    let mut count = 0;
+    for r in &all_refs {
+        let ref_text = sil_core::ref_text_for_embed(r);
+        let ref_vec = embedder.embed(&ref_text)?;
+        let sim = crate::chunks::cosine_similarity(&draft_vec, &ref_vec);
+        tx.execute(
+            "INSERT INTO draft_ref_similarity (ref_id, score, draft_hash, model_dim, updated_at)
+             VALUES (?1, ?2, ?3, ?4, datetime('now'))",
+            params![r.id, sim, draft_hash, embedder.dimension() as i64],
+        )?;
+        count += 1;
+    }
+    tx.commit()?;
+    Ok(count)
+}
+
+/// Retrieve all persisted draft-reference similarity scores keyed by `ref_id`.
+pub fn get_draft_ref_similarities(
+    conn: &Connection,
+) -> Result<std::collections::HashMap<String, f32>, DbError> {
+    let mut stmt = conn.prepare("SELECT ref_id, score FROM draft_ref_similarity")?;
+    let rows = stmt.query_map([], |row| {
+        let id: String = row.get(0)?;
+        let score: f32 = row.get(1)?;
+        Ok((id, score))
+    })?;
+    let mut map = std::collections::HashMap::new();
+    for r in rows {
+        let (id, score) = r?;
+        map.insert(id, score);
+    }
+    Ok(map)
+}
+
+/// Retrieve stored draft content hash to verify staleness.
+pub fn get_draft_similarity_hash(conn: &Connection) -> Result<Option<String>, DbError> {
+    let mut stmt = conn.prepare("SELECT draft_hash FROM draft_ref_similarity LIMIT 1")?;
+    let mut rows = stmt.query([])?;
+    if let Some(row) = rows.next()? {
+        let hash: String = row.get(0)?;
+        Ok(Some(hash))
+    } else {
+        Ok(None)
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,5 +347,41 @@ mod tests {
             .get_references_for_source(&SourceId::new("missing.pdf"))
             .unwrap();
         assert!(missing.is_empty());
+    }
+
+    #[test]
+    fn test_draft_ref_similarities_persistence() {
+        let db = crate::SilDb::open_in_memory().unwrap();
+        let sid = SourceId::new("source_a.pdf");
+        let mut doc = SourceDocument::new("source_a.pdf".into());
+        doc.status = Some(DocumentStatus::ValidPdf);
+        db.upsert_parsed(&doc, "Content A").unwrap();
+
+        let ref1 = ReferenceEntry {
+            id: "ref_1".into(),
+            source_id: sid.clone(),
+            ref_index: 1,
+            raw_text: "Deep Learning for Natural Language Processing".into(),
+            title: Some("Deep Learning for NLP".into()),
+            authors: Some("Author A".into()),
+            year: Some(2021),
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        db.save_source_references(&[ref1]).unwrap();
+
+        let embedder = crate::onnx::OnnxEmbedder::default();
+        let draft = "\\section{Intro} Deep Learning for Natural Language Processing";
+        let count = db.recompute_draft_ref_similarities(draft, &embedder).unwrap();
+        assert_eq!(count, 1);
+
+        let scores = db.get_draft_ref_similarities().unwrap();
+        assert_eq!(scores.len(), 1);
+        assert!(scores.get("ref_1").unwrap() > &0.0);
+
+        let hash = db.get_draft_similarity_hash().unwrap();
+        assert!(hash.is_some());
     }
 }

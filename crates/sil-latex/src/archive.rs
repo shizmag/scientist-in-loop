@@ -41,17 +41,27 @@ pub fn create_submission_archive(
         }
         added_paths.insert(zip_path.to_string());
 
-        let mut f = File::open(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
-            engine: "tectonic".to_string(),
-            message: format!("Could not open {abs_path} for zip creation: {e}"),
-        })?;
-
-        let mut buffer = Vec::new();
-        f.read_to_end(&mut buffer)
-            .map_err(|e| LatexError::BuildFailed {
+        let ext = abs_path.extension().unwrap_or_default().to_lowercase();
+        let buffer = if ext == "bib" {
+            let content = fs::read_to_string(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
                 engine: "tectonic".to_string(),
                 message: format!("Could not read {abs_path}: {e}"),
             })?;
+            sil_core::bib::strip_tui_added_bib_entries(&content).into_bytes()
+        } else {
+            let mut f = File::open(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
+                engine: "tectonic".to_string(),
+                message: format!("Could not open {abs_path} for zip creation: {e}"),
+            })?;
+
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf)
+                .map_err(|e| LatexError::BuildFailed {
+                    engine: "tectonic".to_string(),
+                    message: format!("Could not read {abs_path}: {e}"),
+                })?;
+            buf
+        };
 
         zip.start_file(zip_path, options)
             .map_err(|e| LatexError::BuildFailed {
@@ -189,4 +199,48 @@ mod tests {
         assert!(names.contains(&"neurips_2024.sty".to_string()));
         assert!(names.contains(&"figures/fig1.png".to_string()));
     }
+
+    #[test]
+    fn test_submission_archive_strips_tui_added_bib_entries() {
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+
+        let main_tex = root.join("paper_neurips.tex");
+        fs::write(
+            &main_tex,
+            "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}",
+        )
+        .unwrap();
+
+        let bib_file = root.join("references.bib");
+        let bib_content = r#"@article{permanent,
+  title={Permanent Entry},
+  author={Official}
 }
+
+% [sil: tui-added]
+@article{tui_candidate,
+  title={TUI Candidate Entry},
+  author={Provisional}
+}
+"#;
+        fs::write(&bib_file, bib_content).unwrap();
+
+        let zip_out = root.join("submission_neurips.zip");
+        create_submission_archive(root, &main_tex, None, &zip_out).unwrap();
+
+        let file = File::open(&zip_out).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut bib_entry = archive.by_name("references.bib").unwrap();
+        let mut content = String::new();
+        bib_entry.read_to_string(&mut content).unwrap();
+
+        assert!(content.contains("permanent"));
+        assert!(!content.contains("tui_candidate"));
+
+        // Workspace references.bib on disk must remain unchanged!
+        let workspace_bib = fs::read_to_string(&bib_file).unwrap();
+        assert!(workspace_bib.contains("tui_candidate"));
+    }
+}
+

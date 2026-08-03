@@ -416,6 +416,92 @@ pub fn resolve_official_bibtex(entry: &sil_core::ReferenceEntry) -> String {
     entry.to_bibtex()
 }
 
+/// Result of resolving official BibTeX metadata for a source document.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceBibResolution {
+    /// Official BibTeX string fetched via DOI content negotiation, arXiv API, or Crossref lookup.
+    Resolved(String),
+    /// Metadata resolution failed with clear explanation.
+    Failed(String),
+}
+
+/// Resolve official BibTeX metadata for a `SourceDocument` via DOI content negotiation, arXiv API, or Crossref lookup.
+/// Returns `SourceBibResolution::Failed` with a reason if official metadata could not be fetched.
+pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> SourceBibResolution {
+    // 1. Try DOI fetch if present
+    if let Some(ref doi) = doc.doi {
+        match fetch_bibtex_by_doi(doi) {
+            Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+            Ok(None) => {}
+            Err(e) => return SourceBibResolution::Failed(format!("DOI '{doi}' fetch failed: {e}")),
+        }
+    }
+
+    // 2. Check for arXiv ID in DOI, filename, or title
+    let arxiv_candidate = doc
+        .doi
+        .as_deref()
+        .and_then(sil_regex::extract_arxiv_id)
+        .or_else(|| sil_regex::extract_arxiv_id(&doc.filename))
+        .or_else(|| doc.title.as_deref().and_then(sil_regex::extract_arxiv_id));
+
+    if let Some(arxiv_id) = arxiv_candidate {
+        match fetch_bibtex_by_arxiv_id(&arxiv_id) {
+            Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+            Ok(None) => {}
+            Err(e) => {
+                return SourceBibResolution::Failed(format!("arXiv ID '{arxiv_id}' fetch failed: {e}"));
+            }
+        }
+    }
+
+    // 3. Try Crossref lookup by title (+ authors) to find DOI
+    if let Some(ref title) = doc.title {
+        let clean_title = title.trim();
+        if !clean_title.is_empty() {
+            match lookup_doi_by_title(clean_title, doc.authors.as_deref()) {
+                Ok(Some(doi)) => match fetch_bibtex_by_doi(&doi) {
+                    Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+                    Ok(None) => {
+                        return SourceBibResolution::Failed(format!(
+                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch returned no entry"
+                        ));
+                    }
+                    Err(e) => {
+                        return SourceBibResolution::Failed(format!(
+                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch failed: {e}"
+                        ));
+                    }
+                },
+                Ok(None) => {
+                    return SourceBibResolution::Failed(format!(
+                        "No Crossref match found for title '{clean_title}'"
+                    ));
+                }
+                Err(e) => {
+                    return SourceBibResolution::Failed(format!(
+                        "Crossref lookup failed for title '{clean_title}': {e}"
+                    ));
+                }
+            }
+        }
+    }
+
+    // 4. Missing necessary metadata
+    let mut missing = Vec::new();
+    if doc.doi.is_none() {
+        missing.push("DOI");
+    }
+    if doc.title.is_none() {
+        missing.push("title");
+    }
+    SourceBibResolution::Failed(format!(
+        "Missing required metadata to fetch official BibTeX ({})",
+        missing.join(", ")
+    ))
+}
+
+
 /// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
 pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {
     enforce_api_ratelimit();
@@ -800,5 +886,19 @@ print(json.dumps([
         let bib = resolve_official_bibtex(&entry);
         assert!(bib.contains("@article{"));
         assert!(bib.to_lowercase().contains("attention is all you need"));
+    }
+
+    #[test]
+    fn test_resolve_official_bibtex_for_source_missing_metadata() {
+        let mut doc = sil_core::SourceDocument::new("unparsed_file.pdf".into());
+        doc.doi = None;
+        doc.title = None;
+        let res = resolve_official_bibtex_for_source(&doc);
+        match res {
+            SourceBibResolution::Failed(reason) => {
+                assert!(reason.contains("Missing required metadata"));
+            }
+            SourceBibResolution::Resolved(_) => panic!("Expected failed resolution"),
+        }
     }
 }

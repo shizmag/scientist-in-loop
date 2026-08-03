@@ -180,17 +180,17 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
 
     let right_title = if app.input_mode == InputMode::SearchingRefs {
         format!(
-            " Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle (Search: {}_) ",
+            " Extracted References ({count_refs}/{total_refs}) | Sort: [m]atch/sim [y]ear [v]enue [s]ource [i]ndex [t]itle (Search: {}_) ",
             app.ref_search_query
         )
     } else if !app.ref_search_query.is_empty() {
         format!(
-            " Extracted References ({count_refs}/{total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle (Filter: {}) ",
+            " Extracted References ({count_refs}/{total_refs}) | Sort: [m]atch/sim [y]ear [v]enue [s]ource [i]ndex [t]itle (Filter: {}) ",
             app.ref_search_query
         )
     } else {
         format!(
-            " Extracted References ({total_refs}) | Sort: [y]ear [v]enue [s]ource [i]ndex [t]itle "
+            " Extracted References ({total_refs}) | Sort: [m]atch/sim [y]ear [v]enue [s]ource [i]ndex [t]itle "
         )
     };
 
@@ -255,6 +255,14 @@ fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
                 ),
                 Span::styled(title_str, style),
             ];
+            if let Some(&sim) = app.draft_ref_similarities.get(&entry.id) {
+                header_spans.push(Span::styled(
+                    format!(" [{:.2}]", sim),
+                    Style::default()
+                        .fg(Color::LightMagenta)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
             if !badges.is_empty() {
                 header_spans.push(Span::styled(
                     format!(" [{}]", badges.join("|")),
@@ -458,7 +466,7 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(" 📚 Source Documents ('a': Add Link, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
+        .title(" 📚 Source Documents ('a': Add Link, 'b': Add to Bib, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
 
     let list = List::new(items).block(list_block);
     let mut sources_state = ListState::default();
@@ -1141,6 +1149,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
         crate::app::RefSortKey::Year => "Year 📅",
         crate::app::RefSortKey::Source => "Source 📄",
         crate::app::RefSortKey::Venue => "Venue 🏛️",
+        crate::app::RefSortKey::Similarity => "Similarity 🎯",
     };
 
     let filtered = app.filtered_viewing_source_references();

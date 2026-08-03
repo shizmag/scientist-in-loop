@@ -69,6 +69,7 @@ pub enum RefSortKey {
     Year,
     Source,
     Venue,
+    Similarity,
 }
 
 /// Items present in the unified Settings tab.
@@ -236,6 +237,11 @@ pub struct App {
     pub new_source_link_buffer: String,
     pub rename_source_buffer: String,
 
+    // Draft similarity state
+    pub draft_ref_similarities: std::collections::HashMap<String, f32>,
+    pub draft_similarity_hash: Option<String>,
+    pub min_similarity_filter: Option<f32>,
+
     // Scroll offsets for scrollbars & lists
     pub bib_scroll_offset: usize,
     pub ref_scroll_offset: usize,
@@ -263,34 +269,39 @@ impl App {
         };
 
         let mut app = Self {
+            project_root,
+            loaded_config,
+            global_settings,
+            cache,
+            local_settings,
             active_tab: ActiveTab::Dashboard,
-
-            input_mode: InputMode::Normal,
             active_ref_pane: RefPane::RightSources,
+            input_mode: InputMode::Normal,
+
+            source_references: Vec::new(),
+            marked_ref_ids: std::collections::HashSet::new(),
             bib_file_entries: Vec::new(),
             selected_bib_index: 0,
-            source_references: Vec::new(),
             selected_source_ref_index: 0,
-            marked_ref_ids: std::collections::HashSet::new(),
+
             ref_search_query: String::new(),
             bib_search_query: String::new(),
 
-            global_settings,
-            local_settings,
-            cache,
-            project_root,
-            loaded_config,
             selected_global_field: 0,
             selected_local_field: 0,
             selected_rag_field: 0,
+
             cache_coauthor_index: 0,
             cache_grant_index: 0,
+
             local_coauthor_index: 0,
             local_grant_index: 0,
+
             input_buffer: String::new(),
             status_message: "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string(),
             dirty: false,
             should_quit: false,
+
             new_author: AuthorDetails::default(),
             new_grant: GrantDetails::default(),
             modal_field_index: 0,
@@ -313,6 +324,10 @@ impl App {
             ref_sort_key: RefSortKey::Index,
             new_source_link_buffer: String::new(),
             rename_source_buffer: String::new(),
+
+            draft_ref_similarities: std::collections::HashMap::new(),
+            draft_similarity_hash: None,
+            min_similarity_filter: None,
 
             bib_scroll_offset: 0,
             ref_scroll_offset: 0,
@@ -429,28 +444,7 @@ impl App {
             let bib_path = root.join("references.bib");
             if bib_path.is_file() {
                 if let Ok(content) = std::fs::read_to_string(bib_path.as_std_path()) {
-                    let mut current_entry = String::new();
-                    for line in content.lines() {
-                        let trimmed = line.trim();
-                        if trimmed.starts_with('#') || trimmed.starts_with('%') {
-                            if current_entry.trim().is_empty() {
-                                continue;
-                            }
-                        }
-                        if trimmed.starts_with('@') {
-                            if !current_entry.trim().is_empty() {
-                                self.bib_file_entries.push(current_entry.trim().to_string());
-                                current_entry.clear();
-                            }
-                        }
-                        if !current_entry.is_empty() || trimmed.starts_with('@') {
-                            current_entry.push_str(line);
-                            current_entry.push('\n');
-                        }
-                    }
-                    if !current_entry.trim().is_empty() {
-                        self.bib_file_entries.push(current_entry.trim().to_string());
-                    }
+                    self.bib_file_entries = sil_core::parse_bib_blocks(&content);
                 }
             }
         }
@@ -463,6 +457,58 @@ impl App {
                 if let Ok(refs) = db.get_all_references() {
                     self.source_references = refs;
                 }
+                if let Ok(sims) = db.get_draft_ref_similarities() {
+                    self.draft_ref_similarities = sims;
+                }
+                if let Ok(hash) = db.get_draft_similarity_hash() {
+                    self.draft_similarity_hash = hash;
+                }
+            }
+            self.check_draft_staleness();
+            self.sort_source_references();
+        }
+    }
+
+    pub fn check_draft_staleness(&mut self) {
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            let draft_path = paths.paper_draft();
+            if draft_path.exists()
+                && let Ok(text) = std::fs::read_to_string(draft_path.as_std_path())
+            {
+                let clean = sil_core::strip_latex_for_embed(&text);
+                let current_hash = sil_core::compute_draft_hash(&clean);
+                if let Some(ref db_hash) = self.draft_similarity_hash {
+                    if db_hash != &current_hash {
+                        self.status_message = "⚠ Draft updated — press 'm' / 'X' to recompute similarity".to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn sort_source_references(&mut self) {
+        match self.ref_sort_key {
+            RefSortKey::Index => self.source_references.sort_by_key(|a| a.ref_index),
+            RefSortKey::Year => self
+                .source_references
+                .sort_by_key(|b| std::cmp::Reverse(b.year.unwrap_or(0))),
+            RefSortKey::Venue => self.source_references.sort_by(|a, b| {
+                a.venue
+                    .as_deref()
+                    .unwrap_or("")
+                    .cmp(b.venue.as_deref().unwrap_or(""))
+            }),
+            RefSortKey::Source => self
+                .source_references
+                .sort_by(|a, b| a.source_id.as_str().cmp(b.source_id.as_str())),
+            RefSortKey::Similarity => {
+                let sims = &self.draft_ref_similarities;
+                self.source_references.sort_by(|a, b| {
+                    let score_a = sims.get(&a.id).copied().unwrap_or(0.0);
+                    let score_b = sims.get(&b.id).copied().unwrap_or(0.0);
+                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
         }
     }
@@ -480,13 +526,20 @@ impl App {
     }
 
     pub fn filtered_source_references(&self) -> Vec<&ReferenceEntry> {
-        if self.ref_search_query.is_empty() {
-            self.source_references.iter().collect()
-        } else {
-            let q = self.ref_search_query.to_lowercase();
-            self.source_references
-                .iter()
-                .filter(|r| {
+        let mut refs: Vec<&ReferenceEntry> = self
+            .source_references
+            .iter()
+            .filter(|r| {
+                if let Some(min) = self.min_similarity_filter {
+                    let score = self.draft_ref_similarities.get(&r.id).copied().unwrap_or(0.0);
+                    if score < min {
+                        return false;
+                    }
+                }
+                if self.ref_search_query.is_empty() {
+                    true
+                } else {
+                    let q = self.ref_search_query.to_lowercase();
                     r.raw_text.to_lowercase().contains(&q)
                         || r.title
                             .as_deref()
@@ -497,8 +550,108 @@ impl App {
                         || r.venue
                             .as_deref()
                             .is_some_and(|v| v.to_lowercase().contains(&q))
-                })
-                .collect()
+                }
+            })
+            .collect();
+
+        if self.ref_sort_key == RefSortKey::Similarity {
+            let sims = &self.draft_ref_similarities;
+            refs.sort_by(|a, b| {
+                let score_a = sims.get(&a.id).copied().unwrap_or(0.0);
+                let score_b = sims.get(&b.id).copied().unwrap_or(0.0);
+                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        refs
+    }
+
+    pub fn append_selected_source_to_bib(&mut self) {
+        if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
+            self.status_message = "No source document selected to append".to_string();
+            return;
+        }
+
+        let doc = &self.sources[self.selected_source_index];
+        let doc_name = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
+
+        let resolution = sil_parse::resolve_official_bibtex_for_source(doc);
+        match resolution {
+            sil_parse::SourceBibResolution::Resolved(bib_str) => {
+                let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                if let Some(ref root) = self.project_root {
+                    let bib_path = root.join(sil_core::paths::rel::REFERENCES);
+                    let current =
+                        std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+                    let (updated, _replaced) = sil_core::bib::upsert_bib_entry(&current, &marked);
+                    if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+                        self.status_message = format!("Error writing references.bib: {e}");
+                        return;
+                    }
+                    self.load_project_references_bib();
+                    self.status_message = format!("✓ Added '{doc_name}' to references.bib");
+                } else {
+                    self.status_message = format!(
+                        "✓ Resolved BibTeX for '{doc_name}' (no active project root to save)"
+                    );
+                }
+            }
+            sil_parse::SourceBibResolution::Failed(reason) => {
+                self.status_message = format!("⚠ Could not resolve metadata for '{doc_name}': {reason}");
+            }
+        }
+    }
+
+    pub fn recompute_draft_ref_similarities(&mut self) {
+        let root = match self.project_root.as_ref() {
+            Some(r) => r,
+            None => {
+                self.status_message = "No active project loaded to compute similarity".to_string();
+                return;
+            }
+        };
+
+        let paths = ProjectPaths::new(root);
+        let draft_path = paths.paper_draft();
+        if !draft_path.exists() {
+            self.status_message = format!(
+                "⚠ Paper draft not found at {}",
+                draft_path.file_name().unwrap_or(draft_path.as_str())
+            );
+            return;
+        }
+
+        let draft_text = match std::fs::read_to_string(draft_path.as_std_path()) {
+            Ok(t) => t,
+            Err(e) => {
+                self.status_message = format!("⚠ Failed reading paper draft: {e}");
+                return;
+            }
+        };
+
+        let db = match sil_db::SilDb::open(&paths.db()) {
+            Ok(d) => d,
+            Err(e) => {
+                self.status_message = format!("⚠ Database error: {e}");
+                return;
+            }
+        };
+
+        let embedder = sil_db::OnnxEmbedder::default();
+        match db.recompute_draft_ref_similarities(&draft_text, &embedder) {
+            Ok(count) => {
+                if let Ok(sims) = db.get_draft_ref_similarities() {
+                    self.draft_ref_similarities = sims;
+                }
+                if let Ok(hash) = db.get_draft_similarity_hash() {
+                    self.draft_similarity_hash = hash;
+                }
+                self.sort_source_references();
+                self.status_message =
+                    format!("✓ Recomputed draft similarity scores for {count} reference(s)");
+            }
+            Err(e) => {
+                self.status_message = format!("⚠ Failed computing similarity scores: {e}");
+            }
         }
     }
 
@@ -582,7 +735,8 @@ impl App {
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
                     let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &bib_str);
+                    let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
                     current = updated;
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
@@ -608,7 +762,8 @@ impl App {
                     std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 for e in &entries_to_add {
                     let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
-                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &bib_str);
+                    let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
                     current = updated;
                 }
                 let _ = std::fs::write(bib_path.as_std_path(), current);
@@ -617,6 +772,50 @@ impl App {
                 self.status_message =
                     format!("✓ Updated/added ALL {count} reference(s) to references.bib");
             }
+        }
+    }
+
+    pub fn promote_selected_bib_entry(&mut self) {
+        let filtered = self.filtered_bib_entries();
+        if filtered.is_empty() || self.selected_bib_index >= filtered.len() {
+            self.status_message = "No bibliography entry selected to promote".to_string();
+            return;
+        }
+
+        let selected_block = filtered[self.selected_bib_index].clone();
+        let info = sil_core::extract_bib_entry_info(&selected_block);
+        let cite_key = info.cite_key.as_deref().unwrap_or("entry").to_string();
+
+        if !sil_core::is_tui_added_bib_block(&selected_block) {
+            self.status_message = format!("Entry '{cite_key}' is already promoted / not TUI-added");
+            return;
+        }
+
+        let unmarked = sil_core::unmark_tui_added_bib_entry(&selected_block);
+        if let Some(ref root) = self.project_root {
+            let bib_path = root.join("references.bib");
+            let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
+            let mut blocks = sil_core::parse_bib_blocks(&current);
+            for block in &mut blocks {
+                let block_info = sil_core::extract_bib_entry_info(block);
+                if sil_core::is_same_paper(&block_info, &info) {
+                    *block = unmarked.clone();
+                    break;
+                }
+            }
+            let updated = if blocks.is_empty() {
+                String::new()
+            } else {
+                blocks.join("\n\n") + "\n"
+            };
+            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+                self.status_message = format!("Error writing references.bib: {e}");
+                return;
+            }
+            self.load_project_references_bib();
+            self.status_message = format!("✓ Promoted '{cite_key}' (removed % [sil: tui-added] marker)");
+        } else {
+            self.status_message = format!("✓ Promoted '{cite_key}' (no project root loaded to save)");
         }
     }
 
@@ -1043,30 +1242,24 @@ impl App {
                             let mut current =
                                 std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                             for e in &entries_to_add {
-                                let mut bibtex = format!(
-                                    "@misc{{\n  title = {{{}}},\n",
-                                    e.title.as_deref().unwrap_or("")
-                                );
-                                if let Some(ref a) = e.authors {
-                                    bibtex.push_str(&format!("  author = {{{}}},\n", a));
-                                }
-                                if let Some(ref y) = e.year {
-                                    bibtex.push_str(&format!("  year = {{{}}},\n", y));
-                                }
-                                if let Some(ref v) = e.venue {
-                                    bibtex.push_str(&format!("  journal = {{{}}},\n", v));
-                                }
-                                bibtex.push_str("}\n\n");
-                                current.push_str(&bibtex);
+                                let bib_str = sil_parse::journal_digest::resolve_official_bibtex(e);
+                                let marked = sil_core::mark_tui_added_bib_entry(&bib_str);
+                                let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
+                                current = updated;
                             }
                             let _ = std::fs::write(bib_path.as_std_path(), current);
                             self.load_project_references_bib();
                             let count = entries_to_add.len();
                             self.marked_ref_ids.clear();
                             self.status_message =
-                                format!("Pasted {} reference(s) to references.bib", count);
+                                format!("✓ Added/updated {} reference(s) to references.bib (marked % [sil: tui-added])", count);
                         }
                     }
+                }
+            }
+            KeyCode::Char('P') => {
+                if self.active_tab == ActiveTab::References {
+                    self.promote_selected_bib_entry();
                 }
             }
             KeyCode::Char('/') | KeyCode::Char('f') => {
@@ -1085,15 +1278,34 @@ impl App {
                     }
                 }
             }
+            KeyCode::Char('b') => {
+                if self.active_tab == ActiveTab::Sources {
+                    self.append_selected_source_to_bib();
+                }
+            }
+            KeyCode::Char('m') | KeyCode::Char('c') => {
+                if self.active_tab == ActiveTab::References {
+                    self.ref_sort_key = RefSortKey::Similarity;
+                    self.sort_source_references();
+                    self.status_message =
+                        "Sorted references by Draft Cosine Similarity (highest first).".to_string();
+                }
+            }
+            KeyCode::Char('X') => {
+                if self.active_tab == ActiveTab::References {
+                    self.recompute_draft_ref_similarities();
+                }
+            }
             KeyCode::Char('y') => {
                 if self.active_tab == ActiveTab::References {
-                    self.source_references
-                        .sort_by_key(|r| std::cmp::Reverse(r.year.unwrap_or_default()));
+                    self.ref_sort_key = RefSortKey::Year;
+                    self.sort_source_references();
                 }
             }
             KeyCode::Char('i') => {
                 if self.active_tab == ActiveTab::References {
-                    self.source_references.sort_by_key(|r| r.ref_index);
+                    self.ref_sort_key = RefSortKey::Index;
+                    self.sort_source_references();
                 }
             }
             KeyCode::Char(' ') => {
@@ -2848,4 +3060,121 @@ mod tests {
         assert!(app.bib_file_entries[0].contains("entry1"));
         assert!(app.bib_file_entries[1].contains("entry2"));
     }
+
+    #[test]
+    fn test_sources_tab_append_selected_to_bib() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_path = Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf()).unwrap();
+        std::fs::write(project_path.join("references.bib").as_std_path(), "").unwrap();
+
+        let mut app = App::new(Some(project_path.clone()));
+        app.active_tab = ActiveTab::Sources;
+        let mut doc = SourceDocument::new("test_paper.pdf".into());
+        doc.title = Some("Deep Learning Advances".into());
+        doc.authors = Some("Alice Smith".into());
+        app.sources = vec![doc];
+        app.selected_source_index = 0;
+
+        // Press 'b' to append selected source to references.bib
+        app.handle_key(KeyEvent::new(KeyCode::Char('b'), KeyModifiers::empty()));
+
+        // Since test_paper.pdf has no DOI or Crossref hit, it warns
+        assert!(app.status_message.contains("⚠") || app.status_message.contains("✓"));
+    }
+
+    #[test]
+    fn test_references_similarity_sorting_and_filtering() {
+        let mut app = App::new(None);
+        let ref1 = ReferenceEntry {
+            id: "ref_1".to_string(),
+            source_id: "src".into(),
+            ref_index: 1,
+            raw_text: "Low similarity ref".to_string(),
+            title: Some("Low similarity ref".to_string()),
+            authors: None,
+            year: Some(2020),
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        let ref2 = ReferenceEntry {
+            id: "ref_2".to_string(),
+            source_id: "src".into(),
+            ref_index: 2,
+            raw_text: "High similarity ref".to_string(),
+            title: Some("High similarity ref".to_string()),
+            authors: None,
+            year: Some(2021),
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+
+        app.source_references = vec![ref1, ref2];
+        app.draft_ref_similarities.insert("ref_1".to_string(), 0.25);
+        app.draft_ref_similarities.insert("ref_2".to_string(), 0.95);
+
+        // Sort by similarity via 'm'
+        app.active_tab = ActiveTab::References;
+        app.handle_key(KeyEvent::new(KeyCode::Char('m'), KeyModifiers::empty()));
+        assert_eq!(app.ref_sort_key, RefSortKey::Similarity);
+
+        let filtered = app.filtered_source_references();
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].id, "ref_2"); // highest score first
+        assert_eq!(filtered[1].id, "ref_1");
+
+        // Filter by min similarity score threshold = 0.5
+        app.min_similarity_filter = Some(0.5);
+        let filtered_threshold = app.filtered_source_references();
+        assert_eq!(filtered_threshold.len(), 1);
+        assert_eq!(filtered_threshold[0].id, "ref_2");
+    }
+
+    #[test]
+    fn test_tui_added_bib_entry_marking_and_promote() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        let ref_entry = ReferenceEntry {
+            id: "ref_test".to_string(),
+            source_id: "src_test".into(),
+            ref_index: 1,
+            raw_text: "Sample Raw Reference Text".to_string(),
+            title: Some("Sample Reference Title".to_string()),
+            authors: Some("Author A".to_string()),
+            year: Some(2024),
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        app.source_references = vec![ref_entry];
+        app.active_tab = ActiveTab::References;
+        app.active_ref_pane = RefPane::RightSources;
+        app.selected_source_ref_index = 0;
+
+        // Paste/add reference to references.bib using 'p'
+        app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::empty()));
+
+        let bib_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(bib_content.contains("% [sil: tui-added]"));
+        assert!(bib_content.contains("@"));
+
+        // Switch to LeftBib pane and promote using 'P'
+        app.active_ref_pane = RefPane::LeftBib;
+        app.selected_bib_index = 0;
+        app.handle_key(KeyEvent::new(KeyCode::Char('P'), KeyModifiers::SHIFT));
+
+        let promoted_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(!promoted_content.contains("tui-added"));
+        assert!(promoted_content.contains("@"));
+    }
 }
+

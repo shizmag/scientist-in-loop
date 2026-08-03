@@ -19,8 +19,8 @@ pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
 pub use journal_digest::{
-    fetch_journal_publications, fetch_journal_publications_native, fetch_work_by_arxiv_id,
-    fetch_work_by_doi,
+    SourceBibResolution, fetch_journal_publications, fetch_journal_publications_native,
+    fetch_work_by_arxiv_id, fetch_work_by_doi, resolve_official_bibtex_for_source,
 };
 pub use marker::{
     CliMarkerRunner, MarkerRunner, PythonMarkerRunner, StubMarkerRunner, discover_marker_runner,

@@ -44,11 +44,15 @@ fn run() -> Result<()> {
             SourceCmd::Cite {
                 target,
                 append,
+                promote,
                 json,
-            } => commands::cite(&target, append, json, ui.as_ref()),
+            } => commands::cite(&target, append, promote, json, ui.as_ref()),
             SourceCmd::Digest { query, limit } => commands::digest(&query, limit, ui.as_ref()),
             SourceCmd::Read { id } => commands::source_read(&id, ui.as_ref()),
             SourceCmd::Doctor { id } => commands::source_doctor(id, ui.as_ref()),
+            SourceCmd::RankDraft { min_score, json } => {
+                commands::source_rank_draft(min_score, json, ui.as_ref())
+            }
         },
         Commands::Paper { action } => match action {
             PaperCmd::Build { target, release } => commands::build(target, release, ui.as_ref()),

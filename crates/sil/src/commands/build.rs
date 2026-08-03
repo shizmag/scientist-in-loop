@@ -7,6 +7,17 @@ use sil_latex::{build as latex_build, create_submission_archive};
 use crate::commands::template_cmd;
 use crate::util::load_project;
 
+struct BibRestorer {
+    path: camino::Utf8PathBuf,
+    original_content: String,
+}
+
+impl Drop for BibRestorer {
+    fn drop(&mut self) {
+        let _ = std::fs::write(&self.path, &self.original_content);
+    }
+}
+
 pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, config, _paths) = load_project()?;
 
@@ -18,6 +29,33 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
                 lower == "release" || lower == "realese" || lower == "rel"
             })
             .unwrap_or(false);
+
+    let _bib_guard = if is_release {
+        let bib_path = root.join(sil_core::paths::rel::REFERENCES);
+        if bib_path.is_file() {
+            if let Ok(orig) = std::fs::read_to_string(bib_path.as_std_path()) {
+                let stripped = sil_core::strip_tui_added_bib_entries(&orig);
+                if stripped != orig {
+                    if std::fs::write(bib_path.as_std_path(), &stripped).is_ok() {
+                        Some(BibRestorer {
+                            path: bib_path,
+                            original_content: orig,
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     let main = if is_release {
         template_cmd::apply(None, None, None, ui)?;

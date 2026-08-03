@@ -110,6 +110,9 @@ pub enum SourceCmd {
         /// Append the stub entry to references.bib
         #[arg(long)]
         append: bool,
+        /// Promote an existing entry in references.bib by removing % [sil: tui-added] marker
+        #[arg(long)]
+        promote: bool,
         /// Machine-readable JSON output
         #[arg(long)]
         json: bool,
@@ -132,6 +135,15 @@ pub enum SourceCmd {
     Doctor {
         /// Source ID or filename to repair (omit to process all parsed sources)
         id: Option<String>,
+    },
+    /// Rank extracted references by cosine similarity against paper_draft.tex
+    RankDraft {
+        /// Filter by minimum similarity score threshold (0.0 to 1.0)
+        #[arg(long)]
+        min_score: Option<f32>,
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
     },
 }
 

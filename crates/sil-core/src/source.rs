@@ -517,4 +517,165 @@ mod tests {
         assert_eq!(a.id, b.id);
         assert_eq!(a.filename, b.filename);
     }
+
+    #[test]
+    fn test_strip_latex_for_embed() {
+        let latex = "% Comment line\n\\section{Introduction}\nWe present a novel method \\cite{paper2024} for \\textbf{machine learning}.\n";
+        let stripped = strip_latex_for_embed(latex);
+        assert!(!stripped.contains("Comment line"));
+        assert!(!stripped.contains("\\section"));
+        assert!(stripped.contains("Introduction"));
+        assert!(stripped.contains("We present a novel method"));
+        assert!(stripped.contains("machine learning"));
+    }
+
+    #[test]
+    fn test_ref_text_for_embed() {
+        let entry = ReferenceEntry {
+            id: "ref-1".into(),
+            source_id: SourceId::from_sources_relative(camino::Utf8Path::new("test.pdf")),
+            ref_index: 1,
+            raw_text: "Unused raw text".into(),
+            title: Some("Attention Is All You Need".into()),
+            authors: Some("Vaswani et al.".into()),
+            year: Some(2017),
+            venue: Some("NeurIPS".into()),
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        let text = ref_text_for_embed(&entry);
+        assert_eq!(text, "Attention Is All You Need Vaswani et al. NeurIPS 2017");
+
+        let empty_entry = ReferenceEntry {
+            id: "ref-2".into(),
+            source_id: SourceId::from_sources_relative(camino::Utf8Path::new("test.pdf")),
+            ref_index: 2,
+            raw_text: "Full raw citation string".into(),
+            title: None,
+            authors: None,
+            year: None,
+            venue: None,
+            doi: None,
+            arxiv_id: None,
+            url: None,
+        };
+        assert_eq!(ref_text_for_embed(&empty_entry), "Full raw citation string");
+    }
 }
+
+/// Strip LaTeX comments, macros, and markup to isolate clean prose for text embedding.
+pub fn strip_latex_for_embed(tex: &str) -> String {
+    let mut out = String::with_capacity(tex.len());
+    for line in tex.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('%') {
+            continue;
+        }
+        let line_without_comment = if let Some(idx) = find_unescaped_percent(line) {
+            &line[..idx]
+        } else {
+            line
+        };
+
+        let clean = strip_latex_commands(line_without_comment);
+        if !clean.trim().is_empty() {
+            out.push_str(clean.trim());
+            out.push(' ');
+        }
+    }
+    out.trim().to_string()
+}
+
+fn find_unescaped_percent(line: &str) -> Option<usize> {
+    let mut prev_backslash = false;
+    for (i, ch) in line.char_indices() {
+        if ch == '%' && !prev_backslash {
+            return Some(i);
+        }
+        prev_backslash = ch == '\\' && !prev_backslash;
+    }
+    None
+}
+
+fn strip_latex_commands(text: &str) -> String {
+    let mut res = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let mut cmd = String::new();
+            while let Some(&next_c) = chars.peek() {
+                if next_c.is_alphabetic() {
+                    cmd.push(next_c);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if cmd == "cite"
+                || cmd == "ref"
+                || cmd == "label"
+                || cmd == "bibliography"
+                || cmd == "bibliographystyle"
+            {
+                if let Some(&'{') = chars.peek() {
+                    chars.next();
+                    let mut depth = 1;
+                    while depth > 0 && let Some(ch) = chars.next() {
+                        if ch == '{' {
+                            depth += 1;
+                        } else if ch == '}' {
+                            depth -= 1;
+                        }
+                    }
+                }
+            } else if let Some(&' ') = chars.peek() {
+                chars.next();
+            }
+        } else if c != '{' && c != '}' {
+            res.push(c);
+        }
+    }
+    res
+}
+
+/// Format reference entry into a single dense string representation suitable for text embedding.
+pub fn ref_text_for_embed(entry: &ReferenceEntry) -> String {
+    let mut parts = Vec::new();
+    if let Some(ref title) = entry.title {
+        let t = title.trim();
+        if !t.is_empty() {
+            parts.push(t.to_string());
+        }
+    }
+    if let Some(ref authors) = entry.authors {
+        let a = authors.trim();
+        if !a.is_empty() {
+            parts.push(a.to_string());
+        }
+    }
+    if let Some(ref venue) = entry.venue {
+        let v = venue.trim();
+        if !v.is_empty() {
+            parts.push(v.to_string());
+        }
+    }
+    if let Some(year) = entry.year {
+        parts.push(year.to_string());
+    }
+
+    if parts.is_empty() {
+        entry.raw_text.trim().to_string()
+    } else {
+        parts.join(" ")
+    }
+}
+
+/// Compute 16-character hex hash of paper draft text for staleness detection.
+pub fn compute_draft_hash(text: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+

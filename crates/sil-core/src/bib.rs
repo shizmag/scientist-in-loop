@@ -303,22 +303,39 @@ pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
 /// Split a BibTeX file content into individual entry blocks, preserving associated comments.
 pub fn parse_bib_blocks(content: &str) -> Vec<String> {
     let mut blocks = Vec::new();
-    let mut current_block = String::new();
+    let mut current_lines: Vec<&str> = Vec::new();
+    let mut has_at = false;
 
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with('@')
-            && !current_block.trim().is_empty()
-            && current_block.contains('@')
-        {
-            blocks.push(current_block.trim().to_string());
-            current_block.clear();
+        if trimmed.starts_with('@') {
+            if has_at {
+                let mut split_idx = current_lines.len();
+                while split_idx > 0 {
+                    let prev_trimmed = current_lines[split_idx - 1].trim();
+                    if prev_trimmed.starts_with('%') || prev_trimmed.is_empty() {
+                        split_idx -= 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                let block1: Vec<&str> = current_lines.drain(..split_idx).collect();
+                let block1_str = block1.join("\n");
+                if !block1_str.trim().is_empty() {
+                    blocks.push(block1_str.trim().to_string());
+                }
+            }
+            has_at = true;
         }
-        current_block.push_str(line);
-        current_block.push('\n');
+        current_lines.push(line);
     }
-    if !current_block.trim().is_empty() {
-        blocks.push(current_block.trim().to_string());
+
+    if !current_lines.is_empty() {
+        let block_str = current_lines.join("\n");
+        if !block_str.trim().is_empty() {
+            blocks.push(block_str.trim().to_string());
+        }
     }
 
     blocks
@@ -357,6 +374,57 @@ pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String,
         (out, false)
     }
 }
+
+/// Canonical marker comment for entries added via sil tui.
+pub const TUI_ADDED_MARKER: &str = "% [sil: tui-added]";
+
+/// Check if a BibTeX block or string contains the TUI-added marker comment.
+pub fn is_tui_added_bib_block(block: &str) -> bool {
+    block.to_lowercase().contains("sil: tui-added")
+}
+
+/// Prepend `% [sil: tui-added]` comment to a BibTeX entry string if not already present.
+/// Idempotent: returns unchanged if the marker is already present.
+pub fn mark_tui_added_bib_entry(bibtex: &str) -> String {
+    let trimmed = bibtex.trim();
+    if is_tui_added_bib_block(trimmed) {
+        return trimmed.to_string();
+    }
+    format!("{TUI_ADDED_MARKER}\n{trimmed}")
+}
+
+/// Remove `% [sil: tui-added]` marker line(s) from a BibTeX entry string.
+pub fn unmark_tui_added_bib_entry(bibtex: &str) -> String {
+    let lines: Vec<&str> = bibtex
+        .lines()
+        .filter(|line| !line.to_lowercase().contains("sil: tui-added"))
+        .collect();
+    let result = lines.join("\n");
+    let trimmed = result.trim();
+    if trimmed.is_empty() {
+        String::new()
+    } else {
+        format!("{trimmed}\n")
+    }
+}
+
+/// Strip all BibTeX entry blocks containing `% [sil: tui-added]` from `bib_content` for release builds.
+pub fn strip_tui_added_bib_entries(bib_content: &str) -> String {
+    let blocks = parse_bib_blocks(bib_content);
+    let retained: Vec<String> = blocks
+        .into_iter()
+        .filter(|block| !is_tui_added_bib_block(block))
+        .map(|b| b.trim().to_string())
+        .filter(|b| !b.is_empty())
+        .collect();
+
+    if retained.is_empty() {
+        String::new()
+    } else {
+        retained.join("\n\n") + "\n"
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -637,4 +705,79 @@ mod tests {
         assert!(!bib_fallback.contains("doi="));
         assert!(bib_fallback.contains("note={unproved, incomplete}"));
     }
+
+    #[test]
+    fn test_mark_tui_added_bib_entry_idempotent() {
+        let entry = "@article{key,\n  title={Title}\n}";
+        let marked = mark_tui_added_bib_entry(entry);
+        assert!(marked.starts_with("% [sil: tui-added]"));
+        assert!(is_tui_added_bib_block(&marked));
+
+        let re_marked = mark_tui_added_bib_entry(&marked);
+        assert_eq!(marked, re_marked);
+        assert_eq!(re_marked.matches("tui-added").count(), 1);
+    }
+
+    #[test]
+    fn test_unmark_tui_added_bib_entry() {
+        let entry = "@article{key,\n  title={Title}\n}";
+        let marked = mark_tui_added_bib_entry(entry);
+        assert!(is_tui_added_bib_block(&marked));
+
+        let unmarked = unmark_tui_added_bib_entry(&marked);
+        assert!(!is_tui_added_bib_block(&unmarked));
+        assert!(unmarked.contains("@article{key,"));
+        assert!(!unmarked.contains("tui-added"));
+    }
+
+    #[test]
+    fn test_strip_tui_added_bib_entries_mixed_file() {
+        let bib_content = r#"% Preamble comment
+@article{normal1,
+  title={Normal One},
+  author={Author One}
 }
+
+% [sil: tui-added]
+@article{tui1,
+  title={TUI Added One},
+  author={Author Two}
+}
+
+% [SIL: TUI-ADDED metadata=extra]
+@article{tui2,
+  title={TUI Added Two},
+  author={Author Three}
+}
+
+@article{normal2,
+  title={Normal Two},
+  author={Author Four}
+}
+"#;
+
+        let stripped = strip_tui_added_bib_entries(bib_content);
+        assert!(stripped.contains("normal1"));
+        assert!(stripped.contains("normal2"));
+        assert!(!stripped.contains("tui1"));
+        assert!(!stripped.contains("tui2"));
+    }
+
+    #[test]
+    fn test_promote_unmark_survives_strip() {
+        let entry = "@article{tui_entry,\n  title={TUI Candidate}\n}";
+        let marked = mark_tui_added_bib_entry(entry);
+
+        // Before promote: stripped
+        let stripped_before = strip_tui_added_bib_entries(&marked);
+        assert!(stripped_before.trim().is_empty());
+
+        // Promote: unmark
+        let promoted = unmark_tui_added_bib_entry(&marked);
+
+        // After promote: survives strip
+        let stripped_after = strip_tui_added_bib_entries(&promoted);
+        assert!(stripped_after.contains("tui_entry"));
+    }
+}
+

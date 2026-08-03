@@ -159,6 +159,14 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             INSERT INTO source_references_fts(rowid, id, source_id, raw_text, title, authors)
             VALUES (new.rowid, new.id, new.source_id, new.raw_text, new.title, new.authors);
         END;
+
+        CREATE TABLE IF NOT EXISTS draft_ref_similarity (
+            ref_id      TEXT PRIMARY KEY NOT NULL REFERENCES source_references(id) ON DELETE CASCADE,
+            score       REAL NOT NULL,
+            draft_hash  TEXT NOT NULL,
+            model_dim   INTEGER NOT NULL,
+            updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         "#,
     )?;
 

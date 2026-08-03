@@ -495,3 +495,74 @@ pub fn doctor(id: Option<String>, ui: &dyn SilUi) -> Result<()> {
 
     Ok(())
 }
+
+/// Structure for JSON output of similarity rankings.
+#[derive(Debug, Serialize)]
+pub struct SimilarityRankHit {
+    pub ref_id: String,
+    pub title: Option<String>,
+    pub authors: Option<String>,
+    pub year: Option<i32>,
+    pub score: f32,
+    pub raw_text: String,
+}
+
+/// Recompute and rank extracted references by cosine similarity against paper_draft.tex.
+pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<()> {
+    let (_root, _config, paths) = load_project()?;
+    let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let draft_path = paths.paper_draft();
+    if !draft_path.exists() {
+        anyhow::bail!("paper_draft.tex not found at {draft_path}");
+    }
+    let draft_text = std::fs::read_to_string(draft_path.as_std_path())?;
+
+    let embedder = sil_db::OnnxEmbedder::default();
+    let mut spinner = ui.spinner("Computing cosine similarity against paper_draft.tex...");
+    let count = db
+        .recompute_draft_ref_similarities(&draft_text, &embedder)
+        .map_err(|e| {
+            spinner.finish_error("recomputation failed");
+            anyhow::anyhow!("{e}")
+        })?;
+    spinner.finish_success(&format!("Computed similarity for {count} reference(s)"));
+
+    let scores = db.get_draft_ref_similarities().map_err(|e| anyhow::anyhow!("{e}"))?;
+    let all_refs = db.get_all_references().map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let threshold = min_score.unwrap_or(0.0);
+    let mut hits: Vec<SimilarityRankHit> = all_refs
+        .into_iter()
+        .filter_map(|r| {
+            let score = *scores.get(&r.id).unwrap_or(&0.0);
+            if score >= threshold {
+                Some(SimilarityRankHit {
+                    ref_id: r.id,
+                    title: r.title,
+                    authors: r.authors,
+                    year: r.year,
+                    score,
+                    raw_text: r.raw_text,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&hits)?);
+    } else {
+        ui.info(&format!("Draft Cosine Similarity Rankings (total: {})", hits.len()));
+        for hit in &hits {
+            let title = hit.title.as_deref().unwrap_or(&hit.raw_text);
+            let year = hit.year.map(|y| format!(" ({y})")).unwrap_or_default();
+            ui.println(&format!("  [{:.3}] {title}{year}", hit.score));
+        }
+    }
+    Ok(())
+}
+

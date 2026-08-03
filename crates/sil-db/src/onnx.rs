@@ -118,6 +118,12 @@ impl OnnxEmbedder {
     }
 }
 
+impl Default for OnnxEmbedder {
+    fn default() -> Self {
+        Self::new(None::<&Path>)
+    }
+}
+
 /// Local ONNX Cross-Encoder Reranker wrapper with deterministic scoring.
 #[derive(Debug, Clone)]
 pub struct OnnxReranker {

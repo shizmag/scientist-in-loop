@@ -34,8 +34,8 @@ pub use propose::run as propose;
 pub use search::run as search;
 pub use settings_cmd::run as settings;
 pub use source::{
-    doctor as source_doctor, fetch as source_fetch, list as source_list, read as source_read,
-    remove as source_remove,
+    doctor as source_doctor, fetch as source_fetch, list as source_list, rank_draft as source_rank_draft,
+    read as source_read, remove as source_remove,
 };
 pub use split::run as split;
 pub use status::run as status;
