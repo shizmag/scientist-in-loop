@@ -60,6 +60,7 @@ pub enum InputMode {
     SearchingBib,
     ReadingSourceMd,
     SearchingViewingRefs,
+    HelpOverlay,
 }
 
 /// Sorting key for references display in TUI.
@@ -70,6 +71,250 @@ pub enum RefSortKey {
     Source,
     Venue,
     Similarity,
+    Title,
+}
+
+/// Helper context mode for keyboard help overlays.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HelpMode {
+    Dashboard,
+    SourcesList,
+    ReadingSourceMd,
+    ViewingSourceRefs,
+    ReferencesLeft,
+    ReferencesRight,
+    PaperDraft,
+    Settings,
+    ModalPicker,
+    ModalAddAuthor,
+    ModalAddGrant,
+    ModalAddSourceLink,
+    ModalRenameSource,
+    ConfirmDeleteSource,
+    Editing,
+    EditingPaper,
+    SearchingRefs,
+    SearchingBib,
+    SearchingViewingRefs,
+}
+
+impl HelpMode {
+    pub fn title(&self) -> &'static str {
+        match self {
+            HelpMode::Dashboard => "Dashboard",
+            HelpMode::SourcesList => "Sources List",
+            HelpMode::ReadingSourceMd => "Reading Source Markdown",
+            HelpMode::ViewingSourceRefs => "Viewing Source References",
+            HelpMode::ReferencesLeft => "References (references.bib)",
+            HelpMode::ReferencesRight => "References (Extracted References)",
+            HelpMode::PaperDraft => "Paper Draft Viewer & Editor",
+            HelpMode::Settings => "Unified Settings",
+            HelpMode::ModalPicker => "Co-Author / Grant Picker Modal",
+            HelpMode::ModalAddAuthor => "Add Co-Author Modal",
+            HelpMode::ModalAddGrant => "Add Grant Modal",
+            HelpMode::ModalAddSourceLink => "Add Source Link Modal",
+            HelpMode::ModalRenameSource => "Rename Source Title Modal",
+            HelpMode::ConfirmDeleteSource => "Confirm Delete Source Modal",
+            HelpMode::Editing => "Field Text Editing Modal",
+            HelpMode::EditingPaper => "Paper Section Editing Modal",
+            HelpMode::SearchingRefs => "Searching Extracted References",
+            HelpMode::SearchingBib => "Searching references.bib",
+            HelpMode::SearchingViewingRefs => "Searching Source References",
+        }
+    }
+}
+
+/// Pure function returning the (key, action) mapping for a given help context mode.
+pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
+    match mode {
+        HelpMode::Dashboard => vec![
+            ("1 - 5", "Switch directly to tab (Dashboard, Sources, References, Draft, Settings)"),
+            ("Tab / Shift+Tab", "Cycle forward / backward through tabs"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Quit application"),
+            ("Ctrl+S / s", "Save all settings and project state"),
+        ],
+        HelpMode::SourcesList => vec![
+            ("j / Down", "Select next source document"),
+            ("k / Up", "Select previous source document"),
+            ("PageUp / PageDown", "Scroll source list by 5 items"),
+            ("Enter", "Read full source document in Markdown viewer"),
+            ("v", "View extracted reference citations for selected source"),
+            ("a", "Add new source document via link / URL / DOI / arXiv"),
+            ("b", "Append selected source to references.bib (hydrates metadata if DOI/arXiv)"),
+            ("r", "Rename selected source document title"),
+            ("d / Delete", "Delete selected source document (requires confirmation)"),
+            ("1 - 5", "Switch to tab"),
+            ("Tab / Shift+Tab", "Cycle tabs"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Quit application"),
+            ("Ctrl+S / s", "Save all settings and project state"),
+        ],
+        HelpMode::ReadingSourceMd => vec![
+            ("j / Down", "Scroll down 1 line"),
+            ("k / Up", "Scroll up 1 line"),
+            ("PageUp / PageDown", "Scroll up / down 10 lines"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Exit Markdown reader mode"),
+        ],
+        HelpMode::ViewingSourceRefs => vec![
+            ("j / Down", "Navigate down to next reference"),
+            ("k / Up", "Navigate up to previous reference"),
+            ("PageUp / PageDown", "Jump 5 references up / down"),
+            ("g / Home", "Jump to first reference"),
+            ("G / End", "Jump to last reference"),
+            ("Space", "Toggle selection mark on highlighted reference"),
+            ("c / b / p", "Append marked (or highlighted) reference to references.bib"),
+            ("a", "Append ALL filtered references to references.bib"),
+            ("d / e", "Toggle reference inspector card & BibTeX preview"),
+            ("/ / f", "Search / filter references by text query"),
+            ("y", "Sort references by Year (descending)"),
+            ("v", "Sort references by Venue / Journal"),
+            ("s", "Sort references by Source document ID"),
+            ("i / n", "Sort references by original Index"),
+            ("t", "Sort references by Title"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Close references viewer (or clear search filter)"),
+        ],
+        HelpMode::ReferencesLeft => vec![
+            ("j / Down", "Select next entry in references.bib"),
+            ("k / Up", "Select previous entry in references.bib"),
+            ("PageUp / PageDown", "Jump 5 entries up / down"),
+            ("Tab", "Switch focus to Right Pane (Extracted References)"),
+            ("/ / f", "Search references.bib entries"),
+            ("P", "Promote TUI-added entry (strip % [sil: tui-added] marker)"),
+            ("Delete", "Delete selected entry from references.bib"),
+            ("1 - 5", "Switch to tab"),
+            ("Shift+Tab", "Previous tab"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Clear search filter (or quit if search empty)"),
+            ("Ctrl+S / s", "Save all settings and project state"),
+        ],
+        HelpMode::ReferencesRight => vec![
+            ("j / Down", "Select next extracted reference"),
+            ("k / Up", "Select previous extracted reference"),
+            ("PageUp / PageDown", "Jump 5 references up / down"),
+            ("Tab", "Switch focus to Left Pane (references.bib)"),
+            ("Space", "Toggle selection mark on highlighted reference"),
+            ("p", "Add marked (or highlighted) reference to references.bib"),
+            ("P", "Promote highlighted entry in references.bib"),
+            ("/ / f", "Search extracted references"),
+            ("m / c", "Sort references by Draft Cosine Similarity (highest score first)"),
+            ("X", "Recompute draft similarity scores against ONNX embeddings"),
+            ("y", "Sort references by Year (descending)"),
+            ("v", "Sort references by Venue / Journal"),
+            ("s", "Sort references by Source document"),
+            ("i", "Sort references by Index"),
+            ("t", "Sort references by Title"),
+            ("1 - 5", "Switch to tab"),
+            ("Shift+Tab", "Previous tab"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Clear search filter (or quit if search empty)"),
+            ("Ctrl+S", "Save all settings and project state"),
+        ],
+        HelpMode::PaperDraft => vec![
+            ("j / Down", "Select next manuscript section"),
+            ("k / Up", "Select previous manuscript section"),
+            ("PageUp / PageDown", "Scroll section content preview"),
+            ("e / Enter", "Edit section body in TUI popup editor"),
+            ("v", "Launch external $EDITOR (nvim / helix / vim) on paper_draft.tex"),
+            ("1 - 5", "Switch to tab"),
+            ("Tab / Shift+Tab", "Cycle tabs"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Quit application"),
+            ("Ctrl+S / s", "Save manuscript and re-index draft sections"),
+        ],
+        HelpMode::Settings => vec![
+            ("j / Down", "Move cursor to next setting field"),
+            ("k / Up", "Move cursor to previous setting field"),
+            ("e / Enter", "Edit highlighted setting field value"),
+            ("a", "Add item (modal author/grant or select from cache)"),
+            ("d / Delete", "Remove highlighted cached or local co-author / grant"),
+            ("u", "Import selected cached author/grant into local project settings"),
+            ("1 - 5", "Switch to tab"),
+            ("Tab / Shift+Tab", "Cycle tabs"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("q / Esc", "Quit application"),
+            ("Ctrl+S / s", "Save global settings, local config, and cache"),
+        ],
+        HelpMode::ModalPicker => vec![
+            ("j / Down", "Navigate down cache list"),
+            ("k / Up", "Navigate up cache list"),
+            ("Enter", "Select highlighted item into local project settings"),
+            ("n", "Create new item manually"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Close picker modal"),
+        ],
+        HelpMode::ModalAddAuthor => vec![
+            ("Tab / Down", "Focus next field (Name, Email, Affiliation, ORCID)"),
+            ("Shift+Tab / Up", "Focus previous field"),
+            ("Backspace", "Delete character in active field"),
+            ("Char", "Type text into active field"),
+            ("Enter", "Save co-author to cache and local project settings"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel and close modal"),
+        ],
+        HelpMode::ModalAddGrant => vec![
+            ("Tab / Down", "Focus next field (Funder, Number, Acknowledgment)"),
+            ("Shift+Tab / Up", "Focus previous field"),
+            ("Backspace", "Delete character in active field"),
+            ("Char", "Type text into active field"),
+            ("Enter", "Save grant to cache and local project settings"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel and close modal"),
+        ],
+        HelpMode::ModalAddSourceLink => vec![
+            ("Char", "Type URL / DOI / arXiv link"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Submit and fetch source link"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel and close modal"),
+        ],
+        HelpMode::ModalRenameSource => vec![
+            ("Char", "Type new source title"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Confirm and update source title"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel and close modal"),
+        ],
+        HelpMode::ConfirmDeleteSource => vec![
+            ("y / Enter", "Confirm deletion of source document"),
+            ("n / Esc", "Cancel deletion"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::Editing => vec![
+            ("Char", "Type value into input buffer"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Confirm edit and update field"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel edit"),
+        ],
+        HelpMode::EditingPaper => vec![
+            ("Char", "Type text into section body buffer"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Confirm section edit"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel section edit"),
+        ],
+        HelpMode::SearchingRefs => vec![
+            ("Char", "Type search query for extracted references"),
+            ("Backspace", "Delete character from search query"),
+            ("Enter / Esc", "Finish search mode"),
+            ("F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::SearchingBib => vec![
+            ("Char", "Type search query for references.bib entries"),
+            ("Backspace", "Delete character from search query"),
+            ("Enter / Esc", "Finish search mode"),
+            ("F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::SearchingViewingRefs => vec![
+            ("Char", "Type search query for source references"),
+            ("Backspace", "Delete character from search query"),
+            ("Enter / Esc", "Finish search mode"),
+            ("F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+    }
 }
 
 /// Items present in the unified Settings tab.
@@ -195,6 +440,7 @@ pub enum HydrationOutcome {
 pub struct App {
     pub active_tab: ActiveTab,
     pub input_mode: InputMode,
+    pub saved_input_mode: InputMode,
 
     pub hydration_tx: std::sync::mpsc::Sender<HydrationResult>,
     pub hydration_rx: std::sync::mpsc::Receiver<HydrationResult>,
@@ -301,6 +547,7 @@ impl App {
             active_tab: ActiveTab::Dashboard,
             active_ref_pane: RefPane::RightSources,
             input_mode: InputMode::Normal,
+            saved_input_mode: InputMode::Normal,
 
             source_references: Vec::new(),
             marked_ref_ids: std::collections::HashSet::new(),
@@ -604,6 +851,50 @@ impl App {
         }
     }
 
+    pub fn current_help_mode(&self) -> HelpMode {
+        let mode = if self.input_mode == InputMode::HelpOverlay {
+            self.saved_input_mode
+        } else {
+            self.input_mode
+        };
+
+        match mode {
+            InputMode::HelpOverlay => HelpMode::Dashboard,
+            InputMode::ReadingSourceMd => HelpMode::ReadingSourceMd,
+            InputMode::ViewingSourceRefs => HelpMode::ViewingSourceRefs,
+            InputMode::SearchingViewingRefs => HelpMode::SearchingViewingRefs,
+            InputMode::SearchingRefs => HelpMode::SearchingRefs,
+            InputMode::SearchingBib => HelpMode::SearchingBib,
+            InputMode::ModalPicker => HelpMode::ModalPicker,
+            InputMode::ModalAddAuthor => HelpMode::ModalAddAuthor,
+            InputMode::ModalAddGrant => HelpMode::ModalAddGrant,
+            InputMode::ModalAddSourceLink => HelpMode::ModalAddSourceLink,
+            InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
+            InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
+            InputMode::Editing => HelpMode::Editing,
+            InputMode::EditingPaper => HelpMode::EditingPaper,
+            InputMode::Normal => match self.active_tab {
+                ActiveTab::Dashboard => HelpMode::Dashboard,
+                ActiveTab::Sources => HelpMode::SourcesList,
+                ActiveTab::References => match self.active_ref_pane {
+                    RefPane::LeftBib => HelpMode::ReferencesLeft,
+                    RefPane::RightSources => HelpMode::ReferencesRight,
+                },
+                ActiveTab::PaperDraft => HelpMode::PaperDraft,
+                ActiveTab::Settings => HelpMode::Settings,
+            },
+        }
+    }
+
+    pub fn toggle_help_overlay(&mut self) {
+        if self.input_mode == InputMode::HelpOverlay {
+            self.input_mode = self.saved_input_mode;
+        } else {
+            self.saved_input_mode = self.input_mode;
+            self.input_mode = InputMode::HelpOverlay;
+        }
+    }
+
     pub fn sort_source_references(&mut self) {
         match self.ref_sort_key {
             RefSortKey::Index => self.source_references.sort_by_key(|a| a.ref_index),
@@ -619,6 +910,12 @@ impl App {
             RefSortKey::Source => self
                 .source_references
                 .sort_by(|a, b| a.source_id.as_str().cmp(b.source_id.as_str())),
+            RefSortKey::Title => self.source_references.sort_by(|a, b| {
+                a.title
+                    .as_deref()
+                    .unwrap_or(&a.raw_text)
+                    .cmp(b.title.as_deref().unwrap_or(&b.raw_text))
+            }),
             RefSortKey::Similarity => {
                 let sims = &self.draft_ref_similarities;
                 self.source_references.sort_by(|a, b| {
@@ -976,6 +1273,7 @@ impl App {
 
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
+            InputMode::HelpOverlay => self.handle_help_overlay_mode(key),
             InputMode::Normal => self.handle_normal_mode(key),
             InputMode::Editing => self.handle_editing_mode(key),
             InputMode::EditingPaper => self.handle_editing_paper_mode(key),
@@ -993,6 +1291,10 @@ impl App {
         }
     }
 
+    fn handle_help_overlay_mode(&mut self, _key: KeyEvent) {
+        self.input_mode = self.saved_input_mode;
+    }
+
     fn handle_normal_mode(&mut self, key: KeyEvent) {
         // Global shortcuts
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('s') {
@@ -1001,6 +1303,10 @@ impl App {
         }
 
         match key.code {
+            KeyCode::Char('?') | KeyCode::F1 => {
+                self.toggle_help_overlay();
+                return;
+            }
             KeyCode::Char('q') | KeyCode::Esc => {
                 if self.active_tab == ActiveTab::References
                     && !self.bib_search_query.is_empty()
@@ -1047,10 +1353,19 @@ impl App {
 
             KeyCode::Char('s') => {
                 if self.active_tab == ActiveTab::References {
-                    self.source_references
-                        .sort_by_key(|r| r.source_id.to_string());
+                    self.ref_sort_key = RefSortKey::Source;
+                    self.sort_source_references();
+                    self.clamp_source_ref_selection();
                 } else {
                     self.save_all();
+                }
+            }
+            KeyCode::Char('t') => {
+                if self.active_tab == ActiveTab::References {
+                    self.ref_sort_key = RefSortKey::Title;
+                    self.sort_source_references();
+                    self.clamp_source_ref_selection();
+                    self.status_message = "Sorted references by Title.".to_string();
                 }
             }
             KeyCode::Char('v') => {
@@ -1698,6 +2013,7 @@ impl App {
 
     fn handle_searching_refs_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Enter | KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
@@ -1716,6 +2032,7 @@ impl App {
 
     fn handle_searching_bib_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Enter | KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
@@ -1733,6 +2050,7 @@ impl App {
     }
     fn handle_editing_paper_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Enter => {
                 self.commit_edited_paper();
                 self.input_mode = InputMode::Normal;
@@ -1776,6 +2094,7 @@ impl App {
 
     fn handle_editing_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Enter => {
                 self.commit_edited_field();
                 self.input_mode = InputMode::Normal;
@@ -1883,6 +2202,9 @@ impl App {
 
     fn handle_modal_picker_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => {
+                self.toggle_help_overlay();
+            }
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Picker closed.".to_string();
@@ -1948,6 +2270,7 @@ impl App {
 
     fn handle_modal_add_author_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add co-author cancelled.".to_string();
@@ -2011,6 +2334,7 @@ impl App {
 
     fn handle_modal_add_grant_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add grant cancelled.".to_string();
@@ -2063,6 +2387,7 @@ impl App {
 
     fn handle_modal_add_source_link_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add source cancelled.".to_string();
@@ -2113,6 +2438,7 @@ impl App {
 
     fn handle_modal_rename_source_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Rename cancelled.".to_string();
@@ -2145,6 +2471,9 @@ impl App {
 
     fn handle_confirm_delete_source_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => {
+                self.toggle_help_overlay();
+            }
             KeyCode::Char('y') | KeyCode::Enter => {
                 if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
                     let doc = self.sources.remove(self.selected_source_index);
@@ -2177,6 +2506,9 @@ impl App {
     fn handle_viewing_source_refs_mode(&mut self, key: KeyEvent) {
         let count = self.filtered_viewing_source_references().len();
         match key.code {
+            KeyCode::Char('?') | KeyCode::F1 => {
+                self.toggle_help_overlay();
+            }
             KeyCode::Esc | KeyCode::Char('q') => {
                 if !self.viewing_ref_search_query.is_empty() {
                     self.viewing_ref_search_query.clear();
@@ -2285,6 +2617,7 @@ impl App {
 
     fn handle_searching_viewing_refs_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::F1 => self.toggle_help_overlay(),
             KeyCode::Esc | KeyCode::Enter => {
                 self.input_mode = InputMode::ViewingSourceRefs;
             }
@@ -2302,6 +2635,9 @@ impl App {
 
     fn handle_reading_source_md_mode(&mut self, key: KeyEvent) {
         match key.code {
+            KeyCode::Char('?') | KeyCode::F1 => {
+                self.toggle_help_overlay();
+            }
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.input_mode = InputMode::Normal;
                 self.reading_md_content = None;
@@ -3443,5 +3779,104 @@ mod tests {
         let content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(content.contains("% [sil: tui-added]"));
     }
-}
+    #[test]
+    fn test_keymap_for_all_modes() {
+        let modes = [
+            HelpMode::Dashboard,
+            HelpMode::SourcesList,
+            HelpMode::ReadingSourceMd,
+            HelpMode::ViewingSourceRefs,
+            HelpMode::ReferencesLeft,
+            HelpMode::ReferencesRight,
+            HelpMode::PaperDraft,
+            HelpMode::Settings,
+            HelpMode::ModalPicker,
+            HelpMode::ModalAddAuthor,
+            HelpMode::ModalAddGrant,
+            HelpMode::ModalAddSourceLink,
+            HelpMode::ModalRenameSource,
+            HelpMode::ConfirmDeleteSource,
+            HelpMode::Editing,
+            HelpMode::EditingPaper,
+            HelpMode::SearchingRefs,
+            HelpMode::SearchingBib,
+            HelpMode::SearchingViewingRefs,
+        ];
 
+        for mode in modes {
+            let keymap = keymap_for(mode);
+            assert!(!keymap.is_empty(), "Keymap for {:?} should not be empty", mode);
+            assert!(!mode.title().is_empty());
+            for (key, action) in keymap {
+                assert!(!key.is_empty());
+                assert!(!action.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn test_toggle_help_overlay_and_current_help_mode() {
+        let mut app = App::new(None);
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert_eq!(app.current_help_mode(), HelpMode::Dashboard);
+
+        // Toggle on ?
+        app.handle_key(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::HelpOverlay);
+        assert_eq!(app.current_help_mode(), HelpMode::Dashboard);
+
+        // Toggle off on any key
+        app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::Normal);
+
+        // Test F1 toggle in Sources view
+        app.active_tab = ActiveTab::Sources;
+        assert_eq!(app.current_help_mode(), HelpMode::SourcesList);
+        app.handle_key(KeyEvent::new(KeyCode::F1, KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::HelpOverlay);
+        assert_eq!(app.current_help_mode(), HelpMode::SourcesList);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::empty()));
+        assert_eq!(app.input_mode, InputMode::Normal);
+    }
+
+    #[test]
+    fn test_references_title_sort_binding() {
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::References;
+        app.active_ref_pane = RefPane::RightSources;
+        app.source_references = vec![
+            ReferenceEntry {
+                id: "r1".to_string(),
+                source_id: "s1".into(),
+                ref_index: 1,
+                raw_text: "Raw Z".to_string(),
+                title: Some("Zebra Paper".to_string()),
+                authors: None,
+                year: None,
+                venue: None,
+                doi: None,
+                arxiv_id: None,
+                url: None,
+            },
+            ReferenceEntry {
+                id: "r2".to_string(),
+                source_id: "s1".into(),
+                ref_index: 2,
+                raw_text: "Raw A".to_string(),
+                title: Some("Alpha Paper".to_string()),
+                authors: None,
+                year: None,
+                venue: None,
+                doi: None,
+                arxiv_id: None,
+                url: None,
+            },
+        ];
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::empty()));
+        assert_eq!(app.ref_sort_key, RefSortKey::Title);
+        assert_eq!(app.source_references[0].title.as_deref(), Some("Alpha Paper"));
+        assert_eq!(app.source_references[1].title.as_deref(), Some("Zebra Paper"));
+    }
+}

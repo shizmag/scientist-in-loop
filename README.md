@@ -216,19 +216,27 @@ Sci-Action: fetch-source
 
 ## Interactive TUI Command Center & Settings (`sil tui` / `sil settings`)
 
-`sil tui` (or `sil settings`) opens a 4-tab Ratatui interface:
+`sil tui` (or `sil settings`) opens a 5-tab Ratatui interface:
 
-1. **Dashboard (`1`)**: High-level overview of project status, draft progress, source counts, and recent commits.
-2. **Paper Draft (`2`)**: Interactive section-by-section LaTeX manuscript viewer & editor with `$EDITOR` integration.
-3. **Sources (`3`)**: Comprehensive literature manager for registered documents in `sources/`:
+1. **Dashboard (`1`)**: High-level overview of project status, manuscript completion audit, active `# -- X -- #` ideas, top journal digest feed, and daily scientist helper shortcuts.
+2. **Sources (`2`)**: Comprehensive literature manager for registered documents in `sources/`:
    - Paginated pretty Markdown reader (`Enter`, `j`/`k`, `PageUp`/`PageDown`).
-   - Adding new works via links (`a`).
-   - Real-time parse status indicator (`[✓ Parsed]` / `[  Not Parsed]`).
+   - Add new works via link / URL / DOI / arXiv (`a`).
+   - Append source document to `references.bib` (`b`) with metadata hydration.
+   - Real-time parse status indicator (`[✓ Parsed]` / `[Unparsed]`).
    - Source statistics (word count, extracted reference count).
-   - Extracted references viewer per document (`v`) with `IDs` column badges (`[DOI]`, `[arXiv]`, `[URL]`), DOI/arXiv/URL detail rows, and single-item (`a`) / batch (`A`) append to `references.bib`.
-   - Extracted reference entries added to `references.bib` are auto-marked with `% [status: unproved, incomplete]` until official metadata is fetched.
-   - Deleting sources with confirmation (`d`) and renaming titles (`r`).
-4. **Settings (`4`)**: Unified settings window with distinct vertical section dividers:
+   - Extracted references viewer per document (`v`) with single-item (`c`/`b`/`p`) or batch (`a`) append to `references.bib`.
+   - Rename source titles (`r`) and delete sources with confirmation (`d` / `Delete`).
+3. **References (`3`)**: Split-pane reference manager (`references.bib` vs Extracted References):
+   - Switch active pane (`Tab`).
+   - Search bib entries or extracted references (`/`).
+   - Add selected or marked (`Space`) references to `references.bib` (`p`).
+   - Promote TUI-added bib entries by stripping `% [sil: tui-added]` marker (`P`).
+   - Recompute cosine similarity of extracted references against current `paper_draft.tex` (`X`).
+   - Multi-field reference sorting: Similarity (`m`/`c`), Year (`y`), Venue (`v`), Source (`s`), Index (`i`), and Title (`t`).
+   - Delete entries from `references.bib` (`Delete`).
+4. **Paper Draft (`4`)**: Interactive section-by-section LaTeX manuscript viewer & editor with `$EDITOR` integration (`e` for TUI popup, `v` for external `$EDITOR`).
+5. **Settings (`5`)**: Unified settings window with distinct section dividers:
    - **Global Settings**: Default author requisites, default grant, engine, and template defaults (`~/.config/sil/settings.yaml`).
    - **ONNX & Local RAG Settings**: Model paths, thread allocation, chunk sizes, and execution providers.
    - **Co-Author & Grant Caches**: Fast import/export alias for cached authors and grants (`~/.config/sil/cache.yaml`).
@@ -236,16 +244,23 @@ Sci-Action: fetch-source
 
 ### Keybindings in TUI
 
-- `1`-`4` or `Tab` / `Shift+Tab`: Switch tabs (Dashboard, Paper Draft, Sources, Settings).
-- `↑`/`↓` or `j`/`k`: Navigate sources, fields, or sections.
-- `Enter` / `e`: Edit selected field or read source Markdown.
-- `a`: Add new source link or add co-author / grant.
-- `r`: Rename source title.
-- `d` / `Delete`: Remove source (with confirmation) or remove co-author/grant item.
-- `v`: View extracted references for selected source (in Sources tab) or launch external `$EDITOR` (in Paper Draft tab).
-- `a` / `A` (inside reference viewer `v`): Add selected or ALL references to `references.bib` with `unproved, incomplete` status tagging and smart deduplication.
-- `s` or `Ctrl+S`: Save all global, local, and cache settings.
-- `q` or `Esc`: Quit TUI / close open modal.
+- `1`-`5` or `Tab` / `Shift+Tab`: Switch tabs (1. Dashboard, 2. Sources, 3. References, 4. Paper Draft, 5. Settings).
+- `?` / `F1`: Open mode-aware keyboard help overlay showing actual shortcuts for the current view/modal context.
+- `↑`/`↓` or `j`/`k`: Navigate sources, fields, references, or sections.
+- `Enter` / `e`: Edit selected setting field or section body, or read source Markdown.
+- `a`: Add source link / URL / DOI / arXiv (Sources tab) or add author / grant (Settings tab).
+- `b`: Append selected source document to `references.bib` (Sources tab).
+- `r`: Rename selected source document title.
+- `d` / `Delete`: Delete source document (Sources tab), delete setting item (Settings tab), or remove entry from `references.bib` (References tab).
+- `v`: View extracted references for selected source (Sources tab), launch external `$EDITOR` (Paper Draft tab), or sort by venue (References tab).
+- `p` / `P`: Add extracted reference to `references.bib` (`p`), or promote TUI-added entry (`P`).
+- `m` / `X`: Sort references by draft cosine similarity (`m`), or recompute similarity scores (`X`).
+- `y` / `i` / `s` / `t`: Sort references by Year (`y`), Index (`i`), Source (`s`), or Title (`t`).
+- `u`: Copy selected cached author/grant into local project settings (Settings tab).
+- `Space`: Toggle selection mark on reference item (References tab & Reference viewer).
+- `/` / `f`: Search / filter references or bib entries.
+- `s` or `Ctrl+S`: Save all global settings, local config, and cache.
+- `q` or `Esc`: Quit TUI / close open modal or help overlay.
 
 ---
 
