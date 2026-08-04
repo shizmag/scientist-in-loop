@@ -291,23 +291,85 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
         .map_err(|e| ParseError::Message(format!("Failed to read DOI BibTeX string: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.starts_with('@') || trimmed.contains('@') {
+    if trimmed.lines().any(|l| l.trim_start().starts_with('@') && l.contains('{')) {
         Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
     }
 }
 
-/// Lookup DOI for a paper title and optional author list using Crossref API.
-pub fn lookup_doi_by_title(
+fn tokenize_title(title: &str) -> std::collections::HashSet<String> {
+    title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { ' ' })
+        .collect::<String>()
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+/// Compute token-based Jaccard similarity between two title strings.
+/// Returns a score between 0.0 and 1.0.
+pub fn title_similarity(a: &str, b: &str) -> f64 {
+    let tokens_a = tokenize_title(a);
+    let tokens_b = tokenize_title(b);
+
+    if tokens_a.is_empty() && tokens_b.is_empty() {
+        return 1.0;
+    }
+    if tokens_a.is_empty() || tokens_b.is_empty() {
+        return 0.0;
+    }
+
+    let intersection = tokens_a.intersection(&tokens_b).count();
+    let union = tokens_a.union(&tokens_b).count();
+
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f64 / union as f64
+    }
+}
+
+/// Detailed outcome of DOI lookup by title from Crossref.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TitleLookupOutcome {
+    /// Match found with similarity score above or equal to threshold (0.6).
+    Match {
+        /// Resolved DOI.
+        doi: String,
+        /// Title returned by Crossref.
+        title: String,
+        /// Similarity score.
+        similarity: f64,
+    },
+    /// Match found, but rejected due to low confidence similarity (< 0.6).
+    LowConfidence {
+        /// Title returned by Crossref.
+        found_title: String,
+        /// Similarity score.
+        similarity: f64,
+    },
+    /// No item returned by Crossref.
+    NoMatch,
+}
+
+/// Lookup DOI for paper title with detailed outcome including title similarity checking against Crossref results.
+pub fn lookup_doi_by_title_detailed(
     title: &str,
     authors: Option<&str>,
-) -> Result<Option<String>, ParseError> {
+) -> Result<TitleLookupOutcome, ParseError> {
     enforce_api_ratelimit();
+    let clean_title = title.trim();
+    if clean_title.is_empty() {
+        return Ok(TitleLookupOutcome::NoMatch);
+    }
+
     let query = if let Some(a) = authors {
-        format!("{title} {a}")
+        format!("{clean_title} {a}")
     } else {
-        title.to_string()
+        clean_title.to_string()
     };
 
     let agent = ureq::AgentBuilder::new()
@@ -325,12 +387,12 @@ pub fn lookup_doi_by_title(
         .call()
     {
         Ok(res) => res,
-        Err(_) => return Ok(None),
+        Err(_) => return Ok(TitleLookupOutcome::NoMatch),
     };
 
     let json: serde_json::Value = match response.into_json() {
         Ok(j) => j,
-        Err(_) => return Ok(None),
+        Err(_) => return Ok(TitleLookupOutcome::NoMatch),
     };
 
     if let Some(first_item) = json
@@ -340,10 +402,41 @@ pub fn lookup_doi_by_title(
         .and_then(|a| a.first())
         && let Some(doi) = first_item.get("DOI").and_then(|d| d.as_str())
     {
-        return Ok(Some(doi.to_string()));
+        let found_title = first_item
+            .get("title")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        let sim = title_similarity(clean_title, found_title);
+        if sim >= 0.6 {
+            return Ok(TitleLookupOutcome::Match {
+                doi: doi.to_string(),
+                title: found_title.to_string(),
+                similarity: sim,
+            });
+        } else {
+            return Ok(TitleLookupOutcome::LowConfidence {
+                found_title: found_title.to_string(),
+                similarity: sim,
+            });
+        }
     }
 
-    Ok(None)
+    Ok(TitleLookupOutcome::NoMatch)
+}
+
+/// Lookup DOI for a paper title and optional author list using Crossref API.
+/// Rejects matches with title similarity below 0.6 threshold.
+pub fn lookup_doi_by_title(
+    title: &str,
+    authors: Option<&str>,
+) -> Result<Option<String>, ParseError> {
+    match lookup_doi_by_title_detailed(title, authors)? {
+        TitleLookupOutcome::Match { doi, .. } => Ok(Some(doi)),
+        TitleLookupOutcome::LowConfidence { .. } | TitleLookupOutcome::NoMatch => Ok(None),
+    }
 }
 
 /// Fetch official BibTeX string directly from arXiv API (`https://arxiv.org/bibtex/{clean_id}`).
@@ -380,7 +473,7 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseE
         .map_err(|e| ParseError::Message(format!("Failed to read arXiv BibTeX: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.starts_with('@') || trimmed.contains('@') {
+    if trimmed.lines().any(|l| l.trim_start().starts_with('@') && l.contains('{')) {
         Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
@@ -399,77 +492,98 @@ pub enum ReferenceBibResolution {
 /// Resolve official BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup.
 /// Returns `ReferenceBibResolution::Failed` with a reason if official metadata could not be fetched.
 pub fn resolve_official_bibtex_entry(entry: &sil_core::ReferenceEntry) -> ReferenceBibResolution {
-    // 1. Try fetching via existing entry.doi
+    let mut reasons = Vec::new();
+
+    // 1. Try DOI fetch if present
     if let Some(ref doi) = entry.doi {
-        let clean_doi = doi.trim();
+        let clean_doi = doi
+            .trim_start_matches("doi:")
+            .trim_start_matches("https://doi.org/")
+            .trim_start_matches("http://doi.org/")
+            .trim();
         if !clean_doi.is_empty() {
             match fetch_bibtex_by_doi(clean_doi) {
                 Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
-                Ok(None) => return ReferenceBibResolution::Failed(format!("DOI '{clean_doi}' returned no BibTeX")),
-                Err(e) => return ReferenceBibResolution::Failed(format!("DOI '{clean_doi}' fetch failed: {e}")),
+                Ok(None) => reasons.push(format!("DOI '{clean_doi}' returned no BibTeX")),
+                Err(e) => reasons.push(format!("DOI '{clean_doi}' fetch failed: {e}")),
             }
         }
     }
 
-    // 2. Try fetching via existing entry.arxiv_id
-    if let Some(ref arxiv_id) = entry.arxiv_id {
-        let clean_id = arxiv_id.trim();
+    // 2. Try arXiv ID fetch if present or extractable from DOI/title
+    let arxiv_candidate = entry
+        .arxiv_id
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .or_else(|| entry.doi.as_deref().and_then(sil_regex::extract_arxiv_id))
+        .or_else(|| entry.title.as_deref().and_then(sil_regex::extract_arxiv_id));
+
+    if let Some(arxiv_id) = arxiv_candidate {
+        let clean_id = arxiv_id
+            .trim_start_matches("arxiv:")
+            .trim_start_matches("arXiv:")
+            .trim();
         if !clean_id.is_empty() {
             match fetch_bibtex_by_arxiv_id(clean_id) {
                 Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
-                Ok(None) => return ReferenceBibResolution::Failed(format!("arXiv ID '{clean_id}' returned no BibTeX")),
-                Err(e) => return ReferenceBibResolution::Failed(format!("arXiv ID '{clean_id}' fetch failed: {e}")),
+                Ok(None) => reasons.push(format!("arXiv ID '{clean_id}' returned no BibTeX")),
+                Err(e) => reasons.push(format!("arXiv ID '{clean_id}' fetch failed: {e}")),
             }
         }
     }
 
-    // 3. If no DOI/arXiv ID, try Crossref lookup by title & authors to find DOI
+    // 3. Try title (+ authors) lookup via Crossref to find DOI
     if let Some(ref title) = entry.title {
         let clean_title = title.trim();
         if !clean_title.is_empty() {
-            match lookup_doi_by_title(clean_title, entry.authors.as_deref()) {
-                Ok(Some(doi)) => match fetch_bibtex_by_doi(&doi) {
-                    Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
-                    Ok(None) => {
-                        return ReferenceBibResolution::Failed(format!(
-                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch returned no entry"
-                        ));
+            match lookup_doi_by_title_detailed(clean_title, entry.authors.as_deref()) {
+                Ok(TitleLookupOutcome::Match { doi, similarity, .. }) => {
+                    match fetch_bibtex_by_doi(&doi) {
+                        Ok(Some(bib)) => return ReferenceBibResolution::Resolved(bib),
+                        Ok(None) => reasons.push(format!(
+                            "Crossref found DOI '{doi}' (similarity {similarity:.2}) for title '{clean_title}', but BibTeX fetch returned no entry"
+                        )),
+                        Err(e) => reasons.push(format!(
+                            "Crossref found DOI '{doi}' (similarity {similarity:.2}) for title '{clean_title}', but BibTeX fetch failed: {e}"
+                        )),
                     }
-                    Err(e) => {
-                        return ReferenceBibResolution::Failed(format!(
-                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch failed: {e}"
-                        ));
-                    }
-                },
-                Ok(None) => {
-                    return ReferenceBibResolution::Failed(format!(
-                        "No Crossref match found for title '{clean_title}'"
+                }
+                Ok(TitleLookupOutcome::LowConfidence { found_title, similarity }) => {
+                    reasons.push(format!(
+                        "Crossref match '{found_title}' for title '{clean_title}' rejected due to low confidence (similarity {similarity:.2} < 0.60)"
                     ));
                 }
+                Ok(TitleLookupOutcome::NoMatch) => {
+                    reasons.push(format!("No Crossref match found for title '{clean_title}'"));
+                }
                 Err(e) => {
-                    return ReferenceBibResolution::Failed(format!(
-                        "Crossref lookup failed for title '{clean_title}': {e}"
-                    ));
+                    reasons.push(format!("Crossref lookup failed for title '{clean_title}': {e}"));
                 }
             }
         }
     }
 
-    // 4. Missing required metadata
-    let mut missing = Vec::new();
-    if entry.doi.is_none() {
-        missing.push("DOI");
+    // 4. Missing required metadata or all attempts failed
+    if reasons.is_empty() {
+        let mut missing = Vec::new();
+        if entry.doi.is_none() {
+            missing.push("DOI");
+        }
+        if entry.arxiv_id.is_none() {
+            missing.push("arXiv ID");
+        }
+        if entry.title.is_none() {
+            missing.push("title");
+        }
+        ReferenceBibResolution::Failed(format!(
+            "Missing required metadata to fetch official BibTeX ({})",
+            missing.join(", ")
+        ))
+    } else {
+        ReferenceBibResolution::Failed(reasons.join("; "))
     }
-    if entry.arxiv_id.is_none() {
-        missing.push("arXiv ID");
-    }
-    if entry.title.is_none() {
-        missing.push("title");
-    }
-    ReferenceBibResolution::Failed(format!(
-        "Missing required metadata to fetch official BibTeX ({})",
-        missing.join(", ")
-    ))
 }
 
 /// Resolve official, 100% accurate BibTeX metadata for a reference entry via DOI content negotiation, arXiv API, & Crossref lookup,
@@ -493,12 +607,21 @@ pub enum SourceBibResolution {
 /// Resolve official BibTeX metadata for a `SourceDocument` via DOI content negotiation, arXiv API, or Crossref lookup.
 /// Returns `SourceBibResolution::Failed` with a reason if official metadata could not be fetched.
 pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> SourceBibResolution {
+    let mut reasons = Vec::new();
+
     // 1. Try DOI fetch if present
     if let Some(ref doi) = doc.doi {
-        match fetch_bibtex_by_doi(doi) {
-            Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
-            Ok(None) => {}
-            Err(e) => return SourceBibResolution::Failed(format!("DOI '{doi}' fetch failed: {e}")),
+        let clean_doi = doi
+            .trim_start_matches("doi:")
+            .trim_start_matches("https://doi.org/")
+            .trim_start_matches("http://doi.org/")
+            .trim();
+        if !clean_doi.is_empty() {
+            match fetch_bibtex_by_doi(clean_doi) {
+                Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+                Ok(None) => reasons.push(format!("DOI '{clean_doi}' returned no BibTeX")),
+                Err(e) => reasons.push(format!("DOI '{clean_doi}' fetch failed: {e}")),
+            }
         }
     }
 
@@ -511,11 +634,15 @@ pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> Sou
         .or_else(|| doc.title.as_deref().and_then(sil_regex::extract_arxiv_id));
 
     if let Some(arxiv_id) = arxiv_candidate {
-        match fetch_bibtex_by_arxiv_id(&arxiv_id) {
-            Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
-            Ok(None) => {}
-            Err(e) => {
-                return SourceBibResolution::Failed(format!("arXiv ID '{arxiv_id}' fetch failed: {e}"));
+        let clean_id = arxiv_id
+            .trim_start_matches("arxiv:")
+            .trim_start_matches("arXiv:")
+            .trim();
+        if !clean_id.is_empty() {
+            match fetch_bibtex_by_arxiv_id(clean_id) {
+                Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+                Ok(None) => reasons.push(format!("arXiv ID '{clean_id}' returned no BibTeX")),
+                Err(e) => reasons.push(format!("arXiv ID '{clean_id}' fetch failed: {e}")),
             }
         }
     }
@@ -524,46 +651,49 @@ pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> Sou
     if let Some(ref title) = doc.title {
         let clean_title = title.trim();
         if !clean_title.is_empty() {
-            match lookup_doi_by_title(clean_title, doc.authors.as_deref()) {
-                Ok(Some(doi)) => match fetch_bibtex_by_doi(&doi) {
-                    Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
-                    Ok(None) => {
-                        return SourceBibResolution::Failed(format!(
-                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch returned no entry"
-                        ));
+            match lookup_doi_by_title_detailed(clean_title, doc.authors.as_deref()) {
+                Ok(TitleLookupOutcome::Match { doi, similarity, .. }) => {
+                    match fetch_bibtex_by_doi(&doi) {
+                        Ok(Some(bib)) => return SourceBibResolution::Resolved(bib),
+                        Ok(None) => reasons.push(format!(
+                            "Crossref found DOI '{doi}' (similarity {similarity:.2}) for title '{clean_title}', but BibTeX fetch returned no entry"
+                        )),
+                        Err(e) => reasons.push(format!(
+                            "Crossref found DOI '{doi}' (similarity {similarity:.2}) for title '{clean_title}', but BibTeX fetch failed: {e}"
+                        )),
                     }
-                    Err(e) => {
-                        return SourceBibResolution::Failed(format!(
-                            "Crossref found DOI '{doi}' for title '{clean_title}', but BibTeX fetch failed: {e}"
-                        ));
-                    }
-                },
-                Ok(None) => {
-                    return SourceBibResolution::Failed(format!(
-                        "No Crossref match found for title '{clean_title}'"
+                }
+                Ok(TitleLookupOutcome::LowConfidence { found_title, similarity }) => {
+                    reasons.push(format!(
+                        "Crossref match '{found_title}' for title '{clean_title}' rejected due to low confidence (similarity {similarity:.2} < 0.60)"
                     ));
                 }
+                Ok(TitleLookupOutcome::NoMatch) => {
+                    reasons.push(format!("No Crossref match found for title '{clean_title}'"));
+                }
                 Err(e) => {
-                    return SourceBibResolution::Failed(format!(
-                        "Crossref lookup failed for title '{clean_title}': {e}"
-                    ));
+                    reasons.push(format!("Crossref lookup failed for title '{clean_title}': {e}"));
                 }
             }
         }
     }
 
-    // 4. Missing necessary metadata
-    let mut missing = Vec::new();
-    if doc.doi.is_none() {
-        missing.push("DOI");
+    // 4. Missing necessary metadata or all attempts failed
+    if reasons.is_empty() {
+        let mut missing = Vec::new();
+        if doc.doi.is_none() {
+            missing.push("DOI");
+        }
+        if doc.title.is_none() {
+            missing.push("title");
+        }
+        SourceBibResolution::Failed(format!(
+            "Missing required metadata to fetch official BibTeX ({})",
+            missing.join(", ")
+        ))
+    } else {
+        SourceBibResolution::Failed(reasons.join("; "))
     }
-    if doc.title.is_none() {
-        missing.push("title");
-    }
-    SourceBibResolution::Failed(format!(
-        "Missing required metadata to fetch official BibTeX ({})",
-        missing.join(", ")
-    ))
 }
 
 
@@ -962,6 +1092,90 @@ print(json.dumps([
         match res {
             SourceBibResolution::Failed(reason) => {
                 assert!(reason.contains("Missing required metadata"));
+            }
+            SourceBibResolution::Resolved(_) => panic!("Expected failed resolution"),
+        }
+    }
+
+    #[test]
+    fn test_title_similarity_function() {
+        // Identical titles
+        assert_eq!(
+            title_similarity("Attention Is All You Need", "Attention Is All You Need"),
+            1.0
+        );
+
+        // Case & punctuation insensitivity
+        assert_eq!(
+            title_similarity("Attention Is All You Need!", "attention is all you need."),
+            1.0
+        );
+
+        // Empty titles
+        assert_eq!(title_similarity("", ""), 1.0);
+        assert_eq!(title_similarity("Some Title", ""), 0.0);
+
+        // High similarity (minor differences / extra words)
+        let sim = title_similarity(
+            "Attention Is All You Need",
+            "Attention Is All You Need for Deep Learning",
+        );
+        assert!(sim >= 0.60, "Expected sim >= 0.60, got {sim}");
+
+        // Low similarity
+        let low_sim = title_similarity("Attention Is All You Need", "Quantum Supremacy Processor");
+        assert!(low_sim < 0.60, "Expected low_sim < 0.60, got {low_sim}");
+    }
+
+    #[test]
+    fn test_resolve_official_bibtex_entry_fallback_chain_on_error() {
+        let entry = sil_core::ReferenceEntry {
+            id: "ref-test".to_string(),
+            source_id: sil_core::SourceId::new("paper.pdf"),
+            ref_index: 1,
+            raw_text: "Test entry with bad DOI".to_string(),
+            authors: Some("A. Scientist".to_string()),
+            title: Some("Some Random Nonexistent Paper Title XYZ".to_string()),
+            year: Some(2023),
+            venue: None,
+            doi: Some("10.0000/invalid-doi-test-nonexistent".to_string()),
+            arxiv_id: Some("0000.00000".to_string()),
+            url: None,
+        };
+
+        let res = resolve_official_bibtex_entry(&entry);
+        match res {
+            ReferenceBibResolution::Failed(reason) => {
+                assert!(
+                    reason.contains("DOI '10.0000/invalid-doi-test-nonexistent'"),
+                    "Reason should mention DOI attempt: {reason}"
+                );
+                assert!(
+                    reason.contains("arXiv ID '0000.00000'"),
+                    "Reason should mention arXiv ID attempt: {reason}"
+                );
+            }
+            ReferenceBibResolution::Resolved(_) => panic!("Expected failed resolution"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_official_bibtex_for_source_fallback_chain_on_error() {
+        let mut doc = sil_core::SourceDocument::new("0000.00000.pdf".into());
+        doc.doi = Some("10.0000/invalid-doi-test-nonexistent".to_string());
+        doc.title = Some("Some Random Nonexistent Paper Title XYZ".to_string());
+
+        let res = resolve_official_bibtex_for_source(&doc);
+        match res {
+            SourceBibResolution::Failed(reason) => {
+                assert!(
+                    reason.contains("DOI '10.0000/invalid-doi-test-nonexistent'"),
+                    "Reason should mention DOI attempt: {reason}"
+                );
+                assert!(
+                    reason.contains("arXiv ID '0000.00000'"),
+                    "Reason should mention arXiv ID attempt: {reason}"
+                );
             }
             SourceBibResolution::Resolved(_) => panic!("Expected failed resolution"),
         }

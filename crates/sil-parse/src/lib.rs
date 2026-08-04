@@ -19,9 +19,10 @@ pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,
 };
 pub use journal_digest::{
-    ReferenceBibResolution, SourceBibResolution, fetch_journal_publications,
+    ReferenceBibResolution, SourceBibResolution, TitleLookupOutcome, fetch_journal_publications,
     fetch_journal_publications_native, fetch_work_by_arxiv_id, fetch_work_by_doi,
-    resolve_official_bibtex_entry, resolve_official_bibtex_for_source,
+    lookup_doi_by_title, lookup_doi_by_title_detailed, resolve_official_bibtex_entry,
+    resolve_official_bibtex_for_source, title_similarity,
 };
 pub use marker::{
     CliMarkerRunner, MarkerRunner, PythonMarkerRunner, StubMarkerRunner, discover_marker_runner,
