@@ -422,6 +422,36 @@ fn normalize_title(title: &str) -> String {
         .join(" ")
 }
 
+/// Normalize an arXiv ID by stripping `arxiv:` / `arXiv:` prefixes, URLs, and trailing version tags (`v1`, `v2`).
+pub fn normalize_arxiv_id(input: &str) -> String {
+    let mut s = input
+        .trim()
+        .trim_matches('{')
+        .trim_matches('}')
+        .trim_matches('"')
+        .trim();
+    if let Some(pos) = s.find("arxiv.org/abs/") {
+        s = s[pos + 14..].trim();
+    } else if let Some(pos) = s.find("arxiv.org/pdf/") {
+        s = s[pos + 14..].trim_end_matches(".pdf").trim();
+    }
+    if s.get(..6)
+        .map(|p| p.eq_ignore_ascii_case("arxiv:"))
+        .unwrap_or(false)
+    {
+        s = s[6..].trim();
+    }
+    if let Some(v_pos) = s.rfind(['v', 'V'])
+        && v_pos > 0
+    {
+        let suffix = &s[v_pos + 1..];
+        if !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()) {
+            s = &s[..v_pos];
+        }
+    }
+    s.to_lowercase()
+}
+
 /// Check if two BibTeX entries refer to the same paper.
 pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
     if let (Some(k1), Some(k2)) = (&a.cite_key, &b.cite_key)
@@ -437,15 +467,9 @@ pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
         return true;
     }
     if let (Some(x1), Some(x2)) = (&a.arxiv_id, &b.arxiv_id) {
-        let clean1 = x1
-            .trim_start_matches("arxiv:")
-            .trim_start_matches("arXiv:")
-            .trim();
-        let clean2 = x2
-            .trim_start_matches("arxiv:")
-            .trim_start_matches("arXiv:")
-            .trim();
-        if !clean1.is_empty() && clean1.to_lowercase() == clean2.to_lowercase() {
+        let clean1 = normalize_arxiv_id(x1);
+        let clean2 = normalize_arxiv_id(x2);
+        if !clean1.is_empty() && clean1 == clean2 {
             return true;
         }
     }
@@ -466,6 +490,7 @@ pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
     }
     false
 }
+
 
 /// Split a BibTeX file content into individual entry blocks, preserving associated comments.
 pub fn parse_bib_blocks(content: &str) -> Vec<String> {
@@ -510,38 +535,40 @@ pub fn parse_bib_blocks(content: &str) -> Vec<String> {
 
 /// Upsert a BibTeX entry into an existing `references.bib` string content.
 ///
-/// If an entry for the same paper already exists:
-/// - Replaces the existing entry block with `new_entry` if existing is incomplete or `new_entry` is complete.
-/// - Returns `(updated_bib_content, was_replaced)`.
+/// When an entry for the same paper already exists (`is_same_paper` is true):
+/// - Incomplete existing + any new entry -> replaces existing with `new_entry` (`was_replaced = true`).
+/// - Complete existing + incomplete new entry -> keeps existing entry to avoid demoting data quality (`was_replaced = false`).
+/// - Complete existing + complete new entry -> replaces existing with `new_entry` (`was_replaced = true`).
 ///
-/// If no matching entry exists, appends `new_entry` to the end.
+/// When no matching entry exists, appends `new_entry` to the end (`was_replaced = false`).
+///
+/// Returns `(updated_bib_content, was_replaced)`.
 pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String, bool) {
     let pretty_entry = pretty_format_bibtex(new_entry);
     let new_info = extract_bib_entry_info(&pretty_entry);
     let mut blocks = parse_bib_blocks(existing_bib_content);
 
-    let mut replaced_idx = None;
-    for (idx, block) in blocks.iter().enumerate() {
+    for block in &mut blocks {
         let existing_info = extract_bib_entry_info(block);
         if is_same_paper(&existing_info, &new_info) {
-            replaced_idx = Some(idx);
-            break;
+            if existing_info.is_incomplete || !new_info.is_incomplete {
+                *block = pretty_entry.trim().to_string();
+                return (blocks.join("\n\n") + "\n", true);
+            } else {
+                return (existing_bib_content.to_string(), false);
+            }
         }
     }
 
-    if let Some(idx) = replaced_idx {
-        blocks[idx] = pretty_entry.trim().to_string();
-        (blocks.join("\n\n") + "\n", true)
-    } else {
-        let mut out = existing_bib_content.trim().to_string();
-        if !out.is_empty() {
-            out.push_str("\n\n");
-        }
-        out.push_str(pretty_entry.trim());
-        out.push('\n');
-        (out, false)
+    let mut out = existing_bib_content.trim().to_string();
+    if !out.is_empty() {
+        out.push_str("\n\n");
     }
+    out.push_str(pretty_entry.trim());
+    out.push('\n');
+    (out, false)
 }
+
 
 /// Canonical marker comment for entries added via sil tui.
 pub const TUI_ADDED_MARKER: &str = "% [sil: tui-added]";
@@ -846,8 +873,8 @@ mod tests {
         doc.year = Some(2023);
         let suggestion = suggest_from_source(&doc);
         assert!(suggestion.bibtex.contains("@misc{dataset_title,"));
-        assert!(suggestion.bibtex.contains("author={Author A}"));
-        assert!(suggestion.bibtex.contains("year={2023}"));
+        assert!(suggestion.bibtex.contains("author = {Author A}"));
+        assert!(suggestion.bibtex.contains("year = {2023}"));
     }
 
     #[test]
@@ -980,5 +1007,137 @@ mod tests {
         let stripped_after = strip_tui_added_bib_entries(&promoted);
         assert!(stripped_after.contains("tui_entry"));
     }
-}
 
+    #[test]
+    fn test_normalize_arxiv_id() {
+        assert_eq!(normalize_arxiv_id("arxiv:1234.5678v1"), "1234.5678");
+        assert_eq!(normalize_arxiv_id("arXiv:1234.5678"), "1234.5678");
+        assert_eq!(normalize_arxiv_id("1234.5678v2"), "1234.5678");
+        assert_eq!(normalize_arxiv_id("1234.5678"), "1234.5678");
+        assert_eq!(normalize_arxiv_id("ARXIV:hep-th/9901001v3"), "hep-th/9901001");
+        assert_eq!(normalize_arxiv_id("https://arxiv.org/abs/2501.12948v1"), "2501.12948");
+    }
+
+    #[test]
+    fn test_is_same_paper_arxiv_normalization() {
+        let a = BibEntryInfo {
+            arxiv_id: Some("1234.5678v1".into()),
+            ..Default::default()
+        };
+        let b = BibEntryInfo {
+            arxiv_id: Some("arXiv:1234.5678".into()),
+            ..Default::default()
+        };
+        assert!(is_same_paper(&a, &b));
+    }
+
+    #[test]
+    fn test_upsert_matrix_incomplete_existing_incomplete_new() {
+        let existing = r#"% [status: unproved, incomplete]
+@article{paper1,
+  title={Some Paper},
+  author={Unknown},
+  journal={Unknown}
+}
+"#;
+        let new_entry = r#"% [status: unproved, incomplete]
+@article{paper1_new,
+  title={Some Paper},
+  author={Unknown},
+  journal={Draft Venue}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("paper1_new"));
+    }
+
+    #[test]
+    fn test_upsert_matrix_incomplete_existing_complete_new() {
+        let existing = r#"% [status: unproved, incomplete]
+@article{paper1,
+  title={Some Paper},
+  author={Unknown},
+  journal={Unknown}
+}
+"#;
+        let new_entry = r#"@article{paper1_official,
+  title={Some Paper},
+  author={Alice Smith},
+  journal={Top Conference},
+  year={2024}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("paper1_official"));
+        assert!(updated.contains("Alice Smith"));
+    }
+
+    #[test]
+    fn test_upsert_matrix_complete_existing_incomplete_new() {
+        let existing = r#"@article{paper1_official,
+  title={Some Paper},
+  author={Alice Smith},
+  journal={Top Conference},
+  year={2024}
+}
+"#;
+        let new_entry = r#"% [status: unproved, incomplete]
+@article{paper1_stub,
+  title={Some Paper},
+  author={Unknown},
+  journal={Unknown}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(!replaced);
+        assert!(updated.contains("paper1_official"));
+        assert!(updated.contains("Alice Smith"));
+        assert!(!updated.contains("paper1_stub"));
+    }
+
+    #[test]
+    fn test_upsert_matrix_complete_existing_complete_new() {
+        let existing = r#"@article{paper1_v1,
+  title={Some Paper},
+  author={Alice Smith},
+  journal={Preprint},
+  year={2024}
+}
+"#;
+        let new_entry = r#"@article{paper1_v2,
+  title={Some Paper},
+  author={Alice Smith and Bob Jones},
+  journal={Journal Version},
+  year={2024}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(replaced);
+        assert!(updated.contains("paper1_v2"));
+        assert!(updated.contains("Bob Jones"));
+    }
+
+    #[test]
+    fn test_upsert_matrix_no_match_appends() {
+        let existing = r#"@article{paper1,
+  title={Paper One},
+  author={Alice},
+  journal={Journal},
+  year={2024}
+}
+"#;
+        let new_entry = r#"@article{paper2,
+  title={Paper Two},
+  author={Bob},
+  journal={Journal},
+  year={2024}
+}
+"#;
+        let (updated, replaced) = upsert_bib_entry(existing, new_entry);
+        assert!(!replaced);
+        assert!(updated.contains("paper1"));
+        assert!(updated.contains("paper2"));
+    }
+}

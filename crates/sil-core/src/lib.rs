@@ -26,7 +26,7 @@ pub mod todo;
 
 pub use bib::{
     BibEntryInfo, BibSuggestion, TUI_ADDED_MARKER, extract_bib_entry_info, format_bibtex_article,
-    format_cite_command, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry,
+    format_cite_command, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry, normalize_arxiv_id,
     parse_bib_blocks, pretty_format_bibtex, slug_cite_key, strip_tui_added_bib_entries, suggest_from_filename_title,
     suggest_from_query, suggest_from_reference_entry, suggest_from_source,
     unmark_tui_added_bib_entry, upsert_bib_entry,
