@@ -1,3 +1,4 @@
+#![allow(clippy::manual_div_ceil)]
 //! Single- and multi-PDF parse orchestration.
 
 use camino::{Utf8Path, Utf8PathBuf};

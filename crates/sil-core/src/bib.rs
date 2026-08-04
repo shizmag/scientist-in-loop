@@ -184,6 +184,60 @@ pub fn pretty_format_bibtex(bibtex: &str) -> String {
     out_lines.join("\n") + "\n"
 }
 
+/// Rewrite the cite key of a BibTeX entry block string to `new_key`.
+pub fn rewrite_bib_cite_key(bibtex: &str, new_key: &str) -> String {
+    let trimmed_key = new_key.trim();
+    if trimmed_key.is_empty() {
+        return pretty_format_bibtex(bibtex);
+    }
+
+    let at_pos = match bibtex.find('@') {
+        Some(pos) => pos,
+        None => return pretty_format_bibtex(bibtex),
+    };
+
+    let open_pos = match bibtex[at_pos..].find(['{', '(']) {
+        Some(pos) => at_pos + pos,
+        None => return pretty_format_bibtex(bibtex),
+    };
+
+    let body_str = &bibtex[open_pos + 1..];
+    let mut key_end_pos = None;
+    let mut brace_depth = 0usize;
+    let mut in_quotes = false;
+
+    for (i, ch) in body_str.char_indices() {
+        match ch {
+            '"' if brace_depth == 0 => in_quotes = !in_quotes,
+            '{' if !in_quotes => brace_depth += 1,
+            '}' if !in_quotes => {
+                if brace_depth > 0 {
+                    brace_depth -= 1;
+                } else {
+                    break;
+                }
+            }
+            ',' if brace_depth == 0 && !in_quotes => {
+                key_end_pos = Some(i);
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    let key_end_offset = match key_end_pos {
+        Some(pos) => open_pos + 1 + pos,
+        None => return pretty_format_bibtex(bibtex),
+    };
+
+    let mut result = String::new();
+    result.push_str(&bibtex[..open_pos + 1]);
+    result.push_str(trimmed_key);
+    result.push_str(&bibtex[key_end_offset..]);
+
+    pretty_format_bibtex(&result)
+}
+
 /// Build a filesystem/cite-safe key from a title or filename stem.
 pub fn slug_cite_key(input: &str) -> String {
     let stem = input
@@ -372,20 +426,28 @@ pub struct BibEntryInfo {
 
 /// Extract metadata fields and status from a BibTeX entry block string.
 pub fn extract_bib_entry_info(entry_str: &str) -> BibEntryInfo {
+    let pretty = pretty_format_bibtex(entry_str);
+    let target_str = if pretty.trim().is_empty() { entry_str } else { &pretty };
+
     let mut info = BibEntryInfo::default();
 
-    let lower = entry_str.to_lowercase();
+    let lower = target_str.to_lowercase();
     info.is_incomplete = lower.contains("unproved, incomplete")
         || lower.contains("status: unproved")
         || lower.contains("journal={unknown}")
         || lower.contains("author={unknown}");
 
-    for line in entry_str.lines() {
+    for line in target_str.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with('@') && trimmed.contains('{') {
             if let Some(start) = trimmed.find('{') {
                 let key_part = trimmed[start + 1..].trim();
-                let key = key_part.trim_end_matches(',').trim().to_string();
+                let key = key_part
+                    .split(',')
+                    .next()
+                    .unwrap_or(key_part)
+                    .trim()
+                    .to_string();
                 if !key.is_empty() {
                     info.cite_key = Some(key);
                 }
@@ -543,7 +605,32 @@ pub fn parse_bib_blocks(content: &str) -> Vec<String> {
 /// When no matching entry exists, appends `new_entry` to the end (`was_replaced = false`).
 ///
 /// Returns `(updated_bib_content, was_replaced)`.
-pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String, bool) {
+/// Options for upserting BibTeX entries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct UpsertOptions {
+    /// If true and an existing matching entry is replaced, keep the existing entry's cite key
+    /// instead of overwriting it with the new entry's cite key.
+    pub preserve_cite_key: bool,
+}
+
+/// Upsert a BibTeX entry into an existing `references.bib` string content with specified options.
+///
+/// When an entry for the same paper already exists (`is_same_paper` is true):
+/// - Incomplete existing + any new entry -> replaces existing with `new_entry` (`was_replaced = true`).
+/// - Complete existing + incomplete new entry -> keeps existing entry to avoid demoting data quality (`was_replaced = false`).
+/// - Complete existing + complete new entry -> replaces existing with `new_entry` (`was_replaced = true`).
+///
+/// When replacing an existing entry and `options.preserve_cite_key` is true:
+/// keeps the existing entry's cite key while upgrading fields with official entry and applying pretty-format rules.
+///
+/// When no matching entry exists, appends `new_entry` to the end (`was_replaced = false`).
+///
+/// Returns `(updated_bib_content, was_replaced)`.
+pub fn upsert_bib_entry_with_options(
+    existing_bib_content: &str,
+    new_entry: &str,
+    options: UpsertOptions,
+) -> (String, bool) {
     let pretty_entry = pretty_format_bibtex(new_entry);
     let new_info = extract_bib_entry_info(&pretty_entry);
     let mut blocks = parse_bib_blocks(existing_bib_content);
@@ -552,7 +639,16 @@ pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String,
         let existing_info = extract_bib_entry_info(block);
         if is_same_paper(&existing_info, &new_info) {
             if existing_info.is_incomplete || !new_info.is_incomplete {
-                *block = pretty_entry.trim().to_string();
+                let entry_to_insert = if options.preserve_cite_key {
+                    if let Some(ref existing_key) = existing_info.cite_key {
+                        rewrite_bib_cite_key(&pretty_entry, existing_key)
+                    } else {
+                        pretty_entry.clone()
+                    }
+                } else {
+                    pretty_entry.clone()
+                };
+                *block = entry_to_insert.trim().to_string();
                 return (blocks.join("\n\n") + "\n", true);
             } else {
                 return (existing_bib_content.to_string(), false);
@@ -567,6 +663,19 @@ pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String,
     out.push_str(pretty_entry.trim());
     out.push('\n');
     (out, false)
+}
+
+/// Upsert a BibTeX entry into an existing `references.bib` string content.
+///
+/// Calls `upsert_bib_entry_with_options` with `preserve_cite_key: false`.
+pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String, bool) {
+    upsert_bib_entry_with_options(
+        existing_bib_content,
+        new_entry,
+        UpsertOptions {
+            preserve_cite_key: false,
+        },
+    )
 }
 
 
@@ -863,6 +972,93 @@ mod tests {
         assert!(updated.contains("paper2_official"));
         assert!(updated.contains("paper3"));
         assert!(!updated.contains("paper2_raw"));
+    }
+
+    #[test]
+    fn test_rewrite_bib_cite_key() {
+        let raw = "@article{Vaswani2017,\n  title={Attention is All you Need},\n  author={Vaswani, Ashish}\n}";
+        let rewritten = rewrite_bib_cite_key(raw, "attention_is_all_you_need");
+        assert!(rewritten.contains("@article{attention_is_all_you_need,"));
+        assert!(rewritten.contains("author = {Vaswani, Ashish}"));
+        assert!(!rewritten.contains("Vaswani2017"));
+    }
+
+    #[test]
+    fn test_rewrite_bib_cite_key_preserves_comments() {
+        let raw = "% [sil: tui-added]\n@article{Vaswani2017,\n  title={Attention is All you Need}\n}";
+        let rewritten = rewrite_bib_cite_key(raw, "attention_is_all_you_need");
+        assert!(rewritten.starts_with("% [sil: tui-added]\n@article{attention_is_all_you_need,"));
+    }
+
+    #[test]
+    fn test_upsert_bib_entry_preserve_cite_key_requirement_4() {
+        let stub_bib = r#"% [status: unproved, incomplete]
+@article{attention_is_all_you_need,
+  title={Attention Is All You Need},
+  author={Unknown},
+  journal={Unknown},
+  year={n.d.}
+}
+"#;
+        let official_bib = r#"@article{Vaswani2017,
+  title={Attention Is All You Need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki},
+  journal={Advances in Neural Information Processing Systems},
+  year={2017}
+}
+"#;
+
+        let (updated, replaced) = upsert_bib_entry_with_options(
+            stub_bib,
+            official_bib,
+            UpsertOptions {
+                preserve_cite_key: true,
+            },
+        );
+
+        assert!(replaced);
+        assert!(
+            updated.contains("@article{attention_is_all_you_need,"),
+            "Expected output to preserve cite key 'attention_is_all_you_need', got:\n{updated}"
+        );
+        assert!(
+            updated.contains("author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki}"),
+            "Expected official author field, got:\n{updated}"
+        );
+        assert!(
+            updated.contains("journal = {Advances in Neural Information Processing Systems}"),
+            "Expected official journal field, got:\n{updated}"
+        );
+        assert!(updated.contains("year = {2017}"));
+        assert!(!updated.contains("Vaswani2017"));
+    }
+
+    #[test]
+    fn test_upsert_bib_entry_preserve_cite_key_false_replaces_key() {
+        let stub_bib = r#"% [status: unproved, incomplete]
+@article{attention_is_all_you_need,
+  title={Attention Is All You Need},
+  author={Unknown}
+}
+"#;
+        let official_bib = r#"@article{Vaswani2017,
+  title={Attention Is All You Need},
+  author={Vaswani, Ashish},
+  year={2017}
+}
+"#;
+
+        let (updated, replaced) = upsert_bib_entry_with_options(
+            stub_bib,
+            official_bib,
+            UpsertOptions {
+                preserve_cite_key: false,
+            },
+        );
+
+        assert!(replaced);
+        assert!(updated.contains("@article{Vaswani2017,"));
+        assert!(!updated.contains("attention_is_all_you_need"));
     }
 
     #[test]

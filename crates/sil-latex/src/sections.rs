@@ -55,6 +55,7 @@ pub fn split_tex_sections(source: &str) -> Vec<TexSection> {
     sections
 }
 
+#[allow(clippy::question_mark)]
 fn parse_heading_line(line: &str) -> Option<(String, String, u8)> {
     let trimmed = line.trim();
     let rest = trimmed.strip_prefix('\\')?;
