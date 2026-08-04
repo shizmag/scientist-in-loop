@@ -15,8 +15,7 @@ pub fn run(query: &str, limit: usize, ui: &dyn SilUi) -> Result<()> {
         "Fetching top journal publication digest for '{query}' (max {limit})..."
     ));
 
-    let script_path = camino::Utf8Path::new("python/fetch_journal_digest.py");
-    let items = fetch_journal_publications(query, limit, Some(script_path), None)?;
+    let items = fetch_journal_publications(query, limit, None, None)?;
 
     if items.is_empty() {
         ui.warn("No top journal publications retrieved (or script returned empty list).");
