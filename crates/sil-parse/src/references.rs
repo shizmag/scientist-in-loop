@@ -257,7 +257,12 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
                 && current_trimmed.ends_with(',')
                 && sil_regex::extract_year(current_trimmed).is_none();
 
-            if sil_regex::is_reference_entry_start(line) && !is_incomplete_author_line {
+            let is_continuation = is_continuation_line(line, current_trimmed);
+
+            if sil_regex::is_reference_entry_start(line)
+                && !is_incomplete_author_line
+                && !is_continuation
+            {
                 if !current.is_empty() {
                     entries.push(current.trim().to_string());
                     current.clear();
@@ -276,6 +281,71 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
         split_by_paragraphs(block)
     }
 }
+
+fn is_continuation_line(line: &str, current_trimmed: &str) -> bool {
+    if current_trimmed.is_empty() {
+        return false;
+    }
+
+    let cleaned = clean_spans(line);
+    let trimmed = cleaned
+        .trim()
+        .trim_start_matches('-')
+        .trim_start_matches('*')
+        .trim_start_matches('•')
+        .trim();
+
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let lower = trimmed.to_lowercase();
+
+    let is_prefix = lower.starts_with("in *")
+        || lower.starts_with("in:")
+        || lower.starts_with("in ")
+        || lower.starts_with("pp.")
+        || lower.starts_with("p.")
+        || lower.starts_with("pages ")
+        || lower.starts_with("pages:")
+        || lower.starts_with("vol.")
+        || lower.starts_with("vol ")
+        || lower.starts_with("volume ")
+        || lower.starts_with("proceedings")
+        || lower.starts_with("proc.")
+        || lower.starts_with("journal")
+        || lower.starts_with("transactions");
+
+    if is_prefix {
+        return true;
+    }
+
+    let has_real_new_entry_markers = extract_year(line).is_some()
+        || extract_doi(line).is_some()
+        || sil_regex::extract_arxiv_id(line).is_some();
+
+    if has_real_new_entry_markers {
+        return false;
+    }
+
+    if trimmed.chars().next().is_some_and(|c| c.is_lowercase()) {
+        return true;
+    }
+
+    let is_mid_title_fragment = lower.contains("in *")
+        || lower.contains(". in ")
+        || lower.contains("in: ")
+        || lower.contains("proceedings")
+        || lower.contains("pp.")
+        || lower.contains("vol.");
+
+    if is_mid_title_fragment {
+        return true;
+    }
+
+    false
+}
+
 
 /// Check if a line is LaTeX math noise.
 fn is_math_line(line: &str) -> bool {
@@ -876,5 +946,30 @@ This is not a reference, it's trailing text from the paper.
         assert_eq!(title_qw.as_deref(), Some("Qwen3 technical report"));
         assert_eq!(authors_qw.as_deref(), Some("Qwen Team"));
         assert_eq!(year_qw, Some(2025));
+    }
+
+    #[test]
+    fn test_bee_rag_line_wrap_continuation_joining() {
+        let sid = SourceId::new("BEE-RAG.pdf");
+        let raw = r#"
+- Ratner, N.; Levine, Y.; Belinkov, Y.; Ram, O.; Magar, I.; Abend, O.; Karpas, E. D.; Shashua, A.; Leyton-Brown, K.; and Shoham, Y. 2023. Parallel Context Windows for Large
+
+- Language Models. In *The 61st Annual Meeting Of The Association For Computational Linguistics*.
+- Ren, R.; Wang, Y.; Qu, Y.; Zhao, W. X.; Liu, J.; Tian, H.; Wu, H.; Wen, J.-R.; and Wang, H. 2023. Investigating the factual knowledge boundary of large language models with retrieval augmentation. *arXiv preprint arXiv:2307.11019*.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(
+            entries.len(),
+            2,
+            "Ratner et al. line-wrap continuation should be joined into 1 reference entry"
+        );
+        assert!(entries[0].raw_text.contains("Parallel Context Windows for Large"));
+        assert!(entries[0]
+            .raw_text
+            .contains("Language Models. In *The 61st Annual Meeting"));
+        assert!(!entries
+            .iter()
+            .any(|e| e.raw_text.contains("Language Models. In *The 61st Annual Meeting")
+                && e.ref_index != 1));
     }
 }

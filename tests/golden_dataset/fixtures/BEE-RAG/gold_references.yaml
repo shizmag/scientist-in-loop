@@ -1,152 +1,190 @@
-source_stem: "BEE-RAG"
-filename: "BEE-RAG.pdf"
+source_stem: BEE-RAG
+filename: BEE-RAG.pdf
 references_present: true
 references_heading_examples:
-  - "## References"
+- '## References'
 ref_numbering_style: author_year
 expected_ref_count:
   min: 38
   max: 38
-  notes: "38 true author-year references."
+  notes: 38 true author-year references.
 anchors:
-  - key: "asai_self_rag_2023"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Self-RAG: Learning to Retrieve, Generate, and Critique"
-      year: 2023
-    expected:
-      authors_contains: ["Asai", "Wu", "Wang", "Sil", "Hajishirzi"]
-      title: "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection"
-      year: 2023
-      venue_contains: null
-      doi: null
-    position_hint: early
-  - key: "chiang_overcoming_limitation_2022"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Overcoming a Theoretical Limitation of Self-Attention"
-      year: 2022
-    expected:
-      authors_contains: ["Chiang", "Cholak"]
-      title: "Overcoming a Theoretical Limitation of Self-Attention"
-      year: 2022
-      venue_contains: "Proceedings"
-      doi: null
-    position_hint: early
-  - key: "dubey_llama_3_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "The Llama 3 Herd of Models"
-      year: 2024
-    expected:
-      authors_contains: ["Dubey", "Jauhri", "Pandey"]
-      title: "The Llama 3 Herd of Models"
-      year: 2024
-      venue_contains: null
-      doi: null
-    position_hint: early
-  - key: "hu_lora_2022"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "LoRA: Low-Rank Adaptation of Large Language Models"
-      year: 2022
-    expected:
-      authors_contains: ["Hu", "Wallis", "Allen-Zhu"]
-      title: "LoRA: Low-Rank Adaptation of Large Language Models"
-      year: 2022
-      venue_contains: null
-      doi: null
-    position_hint: middle
-  - key: "jeong_adaptive_rag_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Adaptive-RAG: Learning to Adapt Retrieval-Augmented"
-      year: 2024
-    expected:
-      authors_contains: ["Jeong", "Baek", "Cho", "Hwang", "Park"]
-      title: "Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Reasoning Complexity"
-      year: 2024
-      venue_contains: null
-      doi: null
-    position_hint: middle
-  - key: "karpukhin_dpr_2020"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Dense Passage Retrieval for Open-Domain Question Answering"
-      year: 2020
-    expected:
-      authors_contains: ["Karpukhin", "Oguz", "Min", "Lewis"]
-      title: "Dense Passage Retrieval for Open-Domain Question Answering"
-      year: 2020
-      venue_contains: null
-      doi: null
-    position_hint: middle
-  - key: "lewis_rag_2020"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
-      year: 2020
-    expected:
-      authors_contains: ["Lewis", "Perez", "Piktus"]
-      title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
-      year: 2020
-      venue_contains: "NeurIPS"
-      doi: null
-    position_hint: middle
-  - key: "ratner_parallel_context_2023"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Parallel Context Windows for Large"
-      year: 2023
-    expected:
-      authors_contains: ["Ratner", "Levine", "Belinkov"]
-      title: "Parallel Context Windows for Large Language Models"
-      year: 2023
-      venue_contains: "ACL"
-      doi: null
-    position_hint: late
-  - key: "waswani_attention_2017"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "Attention is all you need"
-      year: 2017
-    expected:
-      authors_contains: ["Waswani", "Shazeer", "Parmar"]
-      title: "Attention is all you need"
-      year: 2017
-      venue_contains: "NIPS"
-      doi: null
-    position_hint: late
-  - key: "zhuang_setwise_reranking_2024"
-    match:
-      doi: null
-      arxiv_id: null
-      title_contains: "A setwise approach for effective and highly efficient zeroshot"
-      year: 2024
-    expected:
-      authors_contains: ["Zhuang", "Zhuang", "Koopman", "Zuccon"]
-      title: "A setwise approach for effective and highly efficient zeroshot document re-ranking"
-      year: 2024
-      venue_contains: null
-      doi: null
-    position_hint: late
+- key: asai_self_rag_2023
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: 'Self-RAG: Learning to Retrieve, Generate, and Critique'
+    year: 2023
+  expected:
+    authors_contains:
+    - Asai
+    - Wu
+    - Wang
+    - Sil
+    - Hajishirzi
+    title: 'Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection'
+    year: 2023
+    venue_contains: null
+    doi: null
+  position_hint: early
+- key: chiang_overcoming_limitation_2022
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: Overcoming a Theoretical Limitation of Self-Attention
+    year: 2022
+  expected:
+    authors_contains:
+    - Chiang
+    - Cholak
+    title: Overcoming a Theoretical Limitation of Self-Attention
+    year: 2022
+    venue_contains: Proceedings
+    doi: null
+  position_hint: early
+- key: dubey_llama_3_2024
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: The Llama 3 Herd of Models
+    year: 2024
+  expected:
+    authors_contains:
+    - Dubey
+    - Jauhri
+    - Pandey
+    title: The Llama 3 Herd of Models
+    year: 2024
+    venue_contains: null
+    doi: null
+  position_hint: early
+- key: hu_lora_2022
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: 'LoRA: Low-Rank Adaptation of Large Language Models'
+    year: 2022
+  expected:
+    authors_contains:
+    - Hu
+    - Wallis
+    - Allen-Zhu
+    title: 'LoRA: Low-Rank Adaptation of Large Language Models'
+    year: 2022
+    venue_contains: null
+    doi: null
+  position_hint: middle
+- key: jeong_adaptive_rag_2024
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: 'Adaptive-RAG: Learning to Adapt Retrieval-Augmented'
+    year: 2024
+  expected:
+    authors_contains:
+    - Jeong
+    - Baek
+    - Cho
+    - Hwang
+    - Park
+    title: 'Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models
+      through Reasoning Complexity'
+    year: 2024
+    venue_contains: null
+    doi: null
+  position_hint: middle
+- key: karpukhin_dpr_2020
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: Dense Passage Retrieval for Open-Domain Question Answering
+    year: 2020
+  expected:
+    authors_contains:
+    - Karpukhin
+    - Oguz
+    - Min
+    - Lewis
+    title: Dense Passage Retrieval for Open-Domain Question Answering
+    year: 2020
+    venue_contains: null
+    doi: null
+  position_hint: middle
+- key: lewis_rag_2020
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
+    year: 2020
+  expected:
+    authors_contains:
+    - Lewis
+    - Perez
+    - Piktus
+    title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
+    year: 2020
+    venue_contains: NeurIPS
+    doi: null
+  position_hint: middle
+- key: ratner_parallel_context_2023
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: Parallel Context Windows for Large
+    year: 2023
+  expected:
+    authors_contains:
+    - Ratner
+    - Levine
+    - Belinkov
+    title: Parallel Context Windows for Large Language Models
+    year: 2023
+    venue_contains: ACL
+    doi: null
+  position_hint: late
+- key: waswani_attention_2017
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: Attention is all you need
+    year: 2017
+  expected:
+    authors_contains:
+    - Waswani
+    - Shazeer
+    - Parmar
+    title: Attention is all you need
+    year: 2017
+    venue_contains: NIPS
+    doi: null
+  position_hint: late
+- key: zhuang_setwise_reranking_2024
+  match:
+    doi: null
+    arxiv_id: null
+    title_contains: A setwise approach for effective and highly efficient zeroshot
+    year: 2024
+  expected:
+    authors_contains:
+    - Zhuang
+    - Zhuang
+    - Koopman
+    - Zuccon
+    title: A setwise approach for effective and highly efficient zeroshot document
+      re-ranking
+    year: 2024
+    venue_contains: null
+    doi: null
+  position_hint: late
 must_not_extract_as_reference:
-  - contains: "Language Models. In *The 61st Annual Meeting"
-    reason: "wrapped continuation line of Ratner et al. entry"
+- pattern: ^\s*(?:-\s*)?Language Models\. In \*The 61st Annual Meeting
+  reason: wrapped continuation line of Ratner et al. entry
 split_errors_observed_in_current:
-  - "current_extraction.json has 39 entries; oversplit Ratner et al. entry into 2 entries due to line break before 'Language Models.'"
+- current_extraction.json has 39 entries; oversplit Ratner et al. entry into 2 entries
+  due to line break before 'Language Models.'
 label_confidence: high
-label_notes: "38 true items identified by rejoining line-wrapped entry."
+label_notes: 38 true items identified by rejoining line-wrapped entry.
 difficulty_tags:
-  - author_year_style
-  - multiline_wrapping
-  - oversplit_entry
+- author_year_style
+- multiline_wrapping
+- oversplit_entry
