@@ -18,6 +18,173 @@ pub struct BibSuggestion {
 }
 
 /// Build a filesystem/cite-safe key from a title or filename stem.
+/// Format a BibTeX entry string cleanly with 2-space indented fields and preserved leading comments.
+pub fn pretty_format_bibtex(bibtex: &str) -> String {
+    let trimmed = bibtex.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let lines: Vec<&str> = bibtex.lines().collect();
+    let mut leading_comments = Vec::new();
+    let mut line_idx = 0;
+    while line_idx < lines.len() {
+        let line = lines[line_idx];
+        let line_trimmed = line.trim();
+        if line_trimmed.starts_with('%') || line_trimmed.starts_with('#') {
+            leading_comments.push(line_trimmed);
+            line_idx += 1;
+        } else if line_trimmed.is_empty() {
+            line_idx += 1;
+        } else if line_trimmed.contains('@') {
+            break;
+        } else {
+            leading_comments.push(line_trimmed);
+            line_idx += 1;
+        }
+    }
+
+    let remaining = if line_idx < lines.len() {
+        lines[line_idx..].join("\n")
+    } else {
+        String::new()
+    };
+
+    let at_pos = match remaining.find('@') {
+        Some(pos) => pos,
+        None => return trimmed.to_string(),
+    };
+
+    let entry_str = &remaining[at_pos..];
+
+    let open_pos = match entry_str.find(['{', '(']) {
+        Some(pos) => pos,
+        None => return trimmed.to_string(),
+    };
+
+    let entry_type = entry_str[1..open_pos].trim().to_lowercase();
+    if entry_type.is_empty() {
+        return trimmed.to_string();
+    }
+
+    let body_str = &entry_str[open_pos + 1..];
+
+    let mut key_end_pos = None;
+    let mut brace_depth = 0usize;
+    let mut in_quotes = false;
+
+    for (i, ch) in body_str.char_indices() {
+        match ch {
+            '"' if brace_depth == 0 => in_quotes = !in_quotes,
+            '{' if !in_quotes => brace_depth += 1,
+            '}' if !in_quotes => {
+                if brace_depth > 0 {
+                    brace_depth -= 1;
+                } else {
+                    break;
+                }
+            }
+            ',' if brace_depth == 0 && !in_quotes => {
+                key_end_pos = Some(i);
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    let key_end_pos = match key_end_pos {
+        Some(pos) => pos,
+        None => return trimmed.to_string(),
+    };
+
+    let cite_key = body_str[..key_end_pos].trim();
+    if cite_key.is_empty() {
+        return trimmed.to_string();
+    }
+
+    let fields_str = &body_str[key_end_pos + 1..];
+
+    let mut raw_fields = Vec::new();
+    let mut current_field = String::new();
+    brace_depth = 0;
+    in_quotes = false;
+    let mut entry_closed = false;
+
+    for ch in fields_str.chars() {
+        if entry_closed {
+            break;
+        }
+        match ch {
+            '"' if brace_depth == 0 => {
+                in_quotes = !in_quotes;
+                current_field.push(ch);
+            }
+            '{' if !in_quotes => {
+                brace_depth += 1;
+                current_field.push(ch);
+            }
+            '}' if !in_quotes => {
+                if brace_depth > 0 {
+                    brace_depth -= 1;
+                    current_field.push(ch);
+                } else {
+                    entry_closed = true;
+                }
+            }
+            ',' if brace_depth == 0 && !in_quotes => {
+                let f = current_field.trim().to_string();
+                if !f.is_empty() {
+                    raw_fields.push(f);
+                }
+                current_field.clear();
+            }
+            _ => {
+                current_field.push(ch);
+            }
+        }
+    }
+
+    let last_f = current_field.trim().to_string();
+    if !last_f.is_empty() {
+        raw_fields.push(last_f);
+    }
+
+    let mut formatted_fields = Vec::new();
+    for raw_field in raw_fields {
+        let trimmed_f = raw_field.trim();
+        if trimmed_f.is_empty() {
+            continue;
+        }
+        if let Some(eq_pos) = trimmed_f.find('=') {
+            let f_key = trimmed_f[..eq_pos].trim().to_lowercase();
+            let f_val = trimmed_f[eq_pos + 1..].trim();
+            if !f_key.is_empty() && !f_val.is_empty() {
+                formatted_fields.push(format!("  {f_key} = {f_val}"));
+            }
+        }
+    }
+
+    let mut out_lines = Vec::new();
+    if !leading_comments.is_empty() {
+        out_lines.extend(leading_comments.into_iter().map(String::from));
+    }
+
+    out_lines.push(format!("@{entry_type}{{{cite_key},"));
+
+    let num_fields = formatted_fields.len();
+    for (i, ff) in formatted_fields.into_iter().enumerate() {
+        if i + 1 < num_fields {
+            out_lines.push(format!("{ff},"));
+        } else {
+            out_lines.push(ff);
+        }
+    }
+
+    out_lines.push("}".to_string());
+    out_lines.join("\n") + "\n"
+}
+
+/// Build a filesystem/cite-safe key from a title or filename stem.
 pub fn slug_cite_key(input: &str) -> String {
     let stem = input
         .trim()
@@ -137,7 +304,7 @@ pub fn suggest_from_source(doc: &SourceDocument) -> BibSuggestion {
     BibSuggestion {
         cite_command: format_cite_command(&cite_key),
         cite_key,
-        bibtex,
+        bibtex: pretty_format_bibtex(&bibtex),
         note,
     }
 }
@@ -349,7 +516,8 @@ pub fn parse_bib_blocks(content: &str) -> Vec<String> {
 ///
 /// If no matching entry exists, appends `new_entry` to the end.
 pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String, bool) {
-    let new_info = extract_bib_entry_info(new_entry);
+    let pretty_entry = pretty_format_bibtex(new_entry);
+    let new_info = extract_bib_entry_info(&pretty_entry);
     let mut blocks = parse_bib_blocks(existing_bib_content);
 
     let mut replaced_idx = None;
@@ -362,14 +530,14 @@ pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String,
     }
 
     if let Some(idx) = replaced_idx {
-        blocks[idx] = new_entry.trim().to_string();
+        blocks[idx] = pretty_entry.trim().to_string();
         (blocks.join("\n\n") + "\n", true)
     } else {
         let mut out = existing_bib_content.trim().to_string();
         if !out.is_empty() {
             out.push_str("\n\n");
         }
-        out.push_str(new_entry.trim());
+        out.push_str(pretty_entry.trim());
         out.push('\n');
         (out, false)
     }
@@ -386,11 +554,12 @@ pub fn is_tui_added_bib_block(block: &str) -> bool {
 /// Prepend `% [sil: tui-added]` comment to a BibTeX entry string if not already present.
 /// Idempotent: returns unchanged if the marker is already present.
 pub fn mark_tui_added_bib_entry(bibtex: &str) -> String {
-    let trimmed = bibtex.trim();
+    let pretty = pretty_format_bibtex(bibtex);
+    let trimmed = pretty.trim();
     if is_tui_added_bib_block(trimmed) {
-        return trimmed.to_string();
+        return format!("{trimmed}\n");
     }
-    format!("{TUI_ADDED_MARKER}\n{trimmed}")
+    format!("{TUI_ADDED_MARKER}\n{trimmed}\n")
 }
 
 /// Remove `% [sil: tui-added]` marker line(s) from a BibTeX entry string.
@@ -428,6 +597,38 @@ pub fn strip_tui_added_bib_entries(bib_content: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_pretty_format_bibtex_single_line_crossref() {
+        let raw = "@article{Vaswani_2017, title={Attention is All you Need}, volume={30}, ISSN={1234}, url={http://example.com}, DOI={10.5555/123}, journal={Advances in NIPS}, author={Vaswani, Ashish and Shazeer, Noam}, year={2017} }";
+        let formatted = pretty_format_bibtex(raw);
+        let expected = "@article{Vaswani_2017,\n  title = {Attention is All you Need},\n  volume = {30},\n  issn = {1234},\n  url = {http://example.com},\n  doi = {10.5555/123},\n  journal = {Advances in NIPS},\n  author = {Vaswani, Ashish and Shazeer, Noam},\n  year = {2017}\n}\n";
+        assert_eq!(formatted, expected);
+    }
+
+    #[test]
+    fn test_pretty_format_bibtex_preserves_comments() {
+        let raw = "% [status: unproved, incomplete]\n# Hash comment\n@misc{key,\n  title={Title},\n  author={Author}\n}";
+        let formatted = pretty_format_bibtex(raw);
+        assert!(formatted.starts_with("% [status: unproved, incomplete]\n# Hash comment\n@misc{key,"));
+        assert!(formatted.contains("  title = {Title},"));
+        assert!(formatted.contains("  author = {Author}"));
+        assert!(formatted.ends_with("}\n"));
+    }
+
+    #[test]
+    fn test_pretty_format_bibtex_unparseable() {
+        let raw = "   Just raw text without at symbol   ";
+        assert_eq!(pretty_format_bibtex(raw), "Just raw text without at symbol");
+    }
+
+    #[test]
+    fn test_pretty_format_bibtex_multiline() {
+        let raw = "@article{key,\n  AUTHOR={John Doe},\n  TITLE={A Great Paper},\n  YEAR={2024}\n}";
+        let formatted = pretty_format_bibtex(raw);
+        let expected = "@article{key,\n  author = {John Doe},\n  title = {A Great Paper},\n  year = {2024}\n}\n";
+        assert_eq!(formatted, expected);
+    }
+
     use super::*;
 
     #[test]
@@ -480,11 +681,11 @@ mod tests {
         assert!(
             suggestion
                 .bibtex
-                .contains("author={Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun}")
+                .contains("author = {Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun}")
         );
-        assert!(suggestion.bibtex.contains("journal={CVPR}"));
-        assert!(suggestion.bibtex.contains("year={2016}"));
-        assert!(suggestion.bibtex.contains("doi={10.1109/CVPR.2016.90}"));
+        assert!(suggestion.bibtex.contains("journal = {CVPR}"));
+        assert!(suggestion.bibtex.contains("year = {2016}"));
+        assert!(suggestion.bibtex.contains("doi = {10.1109/CVPR.2016.90}"));
     }
 
     #[test]
@@ -502,7 +703,7 @@ mod tests {
 
         let official_bib = r#"@misc{deepseek2025deepseekr1,
   title={Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning},
-  author={DeepSeek-AI and Daya Guo and Dejian Yang},
+  author = {DeepSeek-AI and Daya Guo and Dejian Yang},
   year={2025},
   eprint={2501.12948},
   archivePrefix={arXiv},
@@ -513,7 +714,7 @@ mod tests {
         let (updated, replaced) = upsert_bib_entry(unproved_bib, official_bib);
         assert!(replaced);
         assert!(updated.contains("@misc{deepseek2025deepseekr1,"));
-        assert!(updated.contains("author={DeepSeek-AI and Daya Guo and Dejian Yang}"));
+        assert!(updated.contains("author = {DeepSeek-AI and Daya Guo and Dejian Yang}"));
         assert!(!updated.contains("note={unproved, incomplete}"));
     }
 
@@ -575,8 +776,8 @@ mod tests {
         let new_entry = r#"@article{he2016deep_official,
   title={Deep residual learning for image recognition},
   author={He, Kaiming and Zhang, Xiangyu},
-  journal={CVPR},
-  year={2016}
+  journal = {CVPR},
+  year = {2016}
 }
 "#;
         let (updated, replaced) = upsert_bib_entry(existing, new_entry);

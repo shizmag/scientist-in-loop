@@ -215,11 +215,11 @@ pub struct SourceDocument {
 impl SourceDocument {
     /// Return true if source doc has resolvable identifiers (DOI, arXiv ID, or non-empty title) suitable for network hydration.
     pub fn should_attempt_metadata_fetch(&self) -> bool {
-        let has_doi = self.doi.as_ref().map_or(false, |s| !s.trim().is_empty());
-        let has_title = self.title.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_doi = self.doi.as_ref().is_some_and(|s| !s.trim().is_empty());
+        let has_title = self.title.as_ref().is_some_and(|t| !t.trim().is_empty());
         let has_arxiv = self.filename.to_lowercase().contains("arxiv")
-            || self.doi.as_deref().map_or(false, |d| d.to_lowercase().contains("arxiv"))
-            || self.title.as_deref().map_or(false, |t| t.to_lowercase().contains("arxiv"));
+            || self.doi.as_deref().is_some_and(|d| d.to_lowercase().contains("arxiv"))
+            || self.title.as_deref().is_some_and(|t| t.to_lowercase().contains("arxiv"));
         has_doi || has_title || has_arxiv
     }
 }
@@ -264,9 +264,9 @@ pub struct ReferenceEntry {
 impl ReferenceEntry {
     /// Return true if entry has resolvable identifiers (DOI, arXiv ID, or non-empty title) suitable for network hydration.
     pub fn should_attempt_metadata_fetch(&self) -> bool {
-        let has_doi = self.doi.as_ref().map_or(false, |s| !s.trim().is_empty());
-        let has_arxiv = self.arxiv_id.as_ref().map_or(false, |s| !s.trim().is_empty());
-        let has_title = self.title.as_ref().map_or(false, |s| !s.trim().is_empty());
+        let has_doi = self.doi.as_ref().is_some_and(|s| !s.trim().is_empty());
+        let has_arxiv = self.arxiv_id.as_ref().is_some_and(|s| !s.trim().is_empty());
+        let has_title = self.title.as_ref().is_some_and(|t| !t.trim().is_empty());
         has_doi || has_arxiv || has_title
     }
 
@@ -383,6 +383,121 @@ pub fn probe_source(path: &Utf8Path) -> Result<DocumentStatus, ValidationError> 
 /// Validate a filesystem path as a PDF candidate (backward compatibility wrapper for probe_source).
 pub fn validate_pdf_path(path: &Utf8Path) -> Result<DocumentStatus, ValidationError> {
     probe_source(path)
+}
+
+/// Strip LaTeX comments, macros, and markup to isolate clean prose for text embedding.
+pub fn strip_latex_for_embed(tex: &str) -> String {
+    let mut out = String::with_capacity(tex.len());
+    for line in tex.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('%') {
+            continue;
+        }
+        let line_without_comment = if let Some(idx) = find_unescaped_percent(line) {
+            &line[..idx]
+        } else {
+            line
+        };
+
+        let clean = strip_latex_commands(line_without_comment);
+        if !clean.trim().is_empty() {
+            out.push_str(clean.trim());
+            out.push(' ');
+        }
+    }
+    out.trim().to_string()
+}
+
+fn find_unescaped_percent(line: &str) -> Option<usize> {
+    let mut prev_backslash = false;
+    for (i, ch) in line.char_indices() {
+        if ch == '%' && !prev_backslash {
+            return Some(i);
+        }
+        prev_backslash = ch == '\\' && !prev_backslash;
+    }
+    None
+}
+
+fn strip_latex_commands(text: &str) -> String {
+    let mut res = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let mut cmd = String::new();
+            while let Some(&next_c) = chars.peek() {
+                if next_c.is_alphabetic() {
+                    cmd.push(next_c);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if cmd == "cite"
+                || cmd == "ref"
+                || cmd == "label"
+                || cmd == "bibliography"
+                || cmd == "bibliographystyle"
+            {
+                if let Some(&'{') = chars.peek() {
+                    chars.next();
+                    let mut depth = 1;
+                    while depth > 0 && let Some(ch) = chars.next() {
+                        if ch == '{' {
+                            depth += 1;
+                        } else if ch == '}' {
+                            depth -= 1;
+                        }
+                    }
+                }
+            } else if let Some(&' ') = chars.peek() {
+                chars.next();
+            }
+        } else if c != '{' && c != '}' {
+            res.push(c);
+        }
+    }
+    res
+}
+
+/// Format reference entry into a single dense string representation suitable for text embedding.
+pub fn ref_text_for_embed(entry: &ReferenceEntry) -> String {
+    let mut parts = Vec::new();
+    if let Some(ref title) = entry.title {
+        let t = title.trim();
+        if !t.is_empty() {
+            parts.push(t.to_string());
+        }
+    }
+    if let Some(ref authors) = entry.authors {
+        let a = authors.trim();
+        if !a.is_empty() {
+            parts.push(a.to_string());
+        }
+    }
+    if let Some(ref venue) = entry.venue {
+        let v = venue.trim();
+        if !v.is_empty() {
+            parts.push(v.to_string());
+        }
+    }
+    if let Some(year) = entry.year {
+        parts.push(year.to_string());
+    }
+
+    if parts.is_empty() {
+        entry.raw_text.trim().to_string()
+    } else {
+        parts.join(" ")
+    }
+}
+
+/// Compute 16-character hex hash of paper draft text for staleness detection.
+pub fn compute_draft_hash(text: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
 }
 
 #[cfg(test)]
@@ -592,126 +707,6 @@ mod tests {
         };
         assert_eq!(ref_text_for_embed(&empty_entry), "Full raw citation string");
     }
-}
-
-/// Strip LaTeX comments, macros, and markup to isolate clean prose for text embedding.
-pub fn strip_latex_for_embed(tex: &str) -> String {
-    let mut out = String::with_capacity(tex.len());
-    for line in tex.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('%') {
-            continue;
-        }
-        let line_without_comment = if let Some(idx) = find_unescaped_percent(line) {
-            &line[..idx]
-        } else {
-            line
-        };
-
-        let clean = strip_latex_commands(line_without_comment);
-        if !clean.trim().is_empty() {
-            out.push_str(clean.trim());
-            out.push(' ');
-        }
-    }
-    out.trim().to_string()
-}
-
-fn find_unescaped_percent(line: &str) -> Option<usize> {
-    let mut prev_backslash = false;
-    for (i, ch) in line.char_indices() {
-        if ch == '%' && !prev_backslash {
-            return Some(i);
-        }
-        prev_backslash = ch == '\\' && !prev_backslash;
-    }
-    None
-}
-
-fn strip_latex_commands(text: &str) -> String {
-    let mut res = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            let mut cmd = String::new();
-            while let Some(&next_c) = chars.peek() {
-                if next_c.is_alphabetic() {
-                    cmd.push(next_c);
-                    chars.next();
-                } else {
-                    break;
-                }
-            }
-            if cmd == "cite"
-                || cmd == "ref"
-                || cmd == "label"
-                || cmd == "bibliography"
-                || cmd == "bibliographystyle"
-            {
-                if let Some(&'{') = chars.peek() {
-                    chars.next();
-                    let mut depth = 1;
-                    while depth > 0 && let Some(ch) = chars.next() {
-                        if ch == '{' {
-                            depth += 1;
-                        } else if ch == '}' {
-                            depth -= 1;
-                        }
-                    }
-                }
-            } else if let Some(&' ') = chars.peek() {
-                chars.next();
-            }
-        } else if c != '{' && c != '}' {
-            res.push(c);
-        }
-    }
-    res
-}
-
-/// Format reference entry into a single dense string representation suitable for text embedding.
-pub fn ref_text_for_embed(entry: &ReferenceEntry) -> String {
-    let mut parts = Vec::new();
-    if let Some(ref title) = entry.title {
-        let t = title.trim();
-        if !t.is_empty() {
-            parts.push(t.to_string());
-        }
-    }
-    if let Some(ref authors) = entry.authors {
-        let a = authors.trim();
-        if !a.is_empty() {
-            parts.push(a.to_string());
-        }
-    }
-    if let Some(ref venue) = entry.venue {
-        let v = venue.trim();
-        if !v.is_empty() {
-            parts.push(v.to_string());
-        }
-    }
-    if let Some(year) = entry.year {
-        parts.push(year.to_string());
-    }
-
-    if parts.is_empty() {
-        entry.raw_text.trim().to_string()
-    } else {
-        parts.join(" ")
-    }
-}
-
-/// Compute 16-character hex hash of paper draft text for staleness detection.
-pub fn compute_draft_hash(text: &str) -> String {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    text.hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn test_should_attempt_metadata_fetch() {
@@ -756,5 +751,3 @@ mod tests {
         assert!(!should_attempt_metadata_fetch(&blank_title_entry));
     }
 }
-
-

@@ -291,8 +291,8 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
         .map_err(|e| ParseError::Message(format!("Failed to read DOI BibTeX string: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.starts_with('@') {
-        Ok(Some(trimmed.to_string()))
+    if trimmed.starts_with('@') || trimmed.contains('@') {
+        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
     }
@@ -380,8 +380,8 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseE
         .map_err(|e| ParseError::Message(format!("Failed to read arXiv BibTeX: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.starts_with('@') {
-        Ok(Some(trimmed.to_string()))
+    if trimmed.starts_with('@') || trimmed.contains('@') {
+        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
     }
