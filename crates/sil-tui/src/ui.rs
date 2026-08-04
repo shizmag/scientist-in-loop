@@ -38,6 +38,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     // Modals overlay
     match app.input_mode {
+        InputMode::HelpOverlay => draw_help_overlay(frame, app),
         InputMode::Editing => draw_editing_popup(frame, app),
         InputMode::EditingPaper => draw_editing_paper_popup(frame, app),
         InputMode::ModalPicker => draw_modal_picker(frame, app),
@@ -893,11 +894,28 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             .add_modifier(Modifier::BOLD)
     };
 
+    let mode = app.current_help_mode();
+    let hints_str = match mode {
+        crate::app::HelpMode::Dashboard => "[?] Help | [1-5] Tabs | [Ctrl+S] Save | [q] Quit",
+        crate::app::HelpMode::SourcesList => "[?] Help | [Enter] Read | [v] Refs | [a] Add | [r] Rename | [d] Del",
+        crate::app::HelpMode::ReadingSourceMd => "[?] Help | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit",
+        crate::app::HelpMode::ViewingSourceRefs => "[?] Help | [c] Add Bib | [a] Add All | [Space] Mark | [/] Filter",
+        crate::app::HelpMode::ReferencesLeft => "[?] Help | [Tab] Switch Pane | [P] Promote | [/] Search | [Del] Delete",
+        crate::app::HelpMode::ReferencesRight => "[?] Help | [Tab] Switch Pane | [p] Add Bib | [m] Sim Sort | [X] Recompute",
+        crate::app::HelpMode::PaperDraft => "[?] Help | [e] Edit | [v] $EDITOR | [1-5] Tabs",
+        crate::app::HelpMode::Settings => "[?] Help | [e] Edit | [a] Add | [d] Delete | [u] Use Cache",
+        _ => "[?] / [F1] Help Overlay | [Esc] Cancel",
+    };
+
     let footer_text = Paragraph::new(Line::from(vec![
         Span::styled(&app.status_message, msg_style),
         Span::styled(
             dirty_indicator,
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("  |  Hints: {hints_str}"),
+            Style::default().fg(Color::DarkGray),
         ),
     ]))
     .block(
@@ -905,10 +923,64 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Color::Cyan))
-            .title(" Status & Help "),
+            .title(" Status & Key Hints (Press '?' / F1 for Help) "),
     );
 
     frame.render_widget(footer_text, area);
+}
+
+fn draw_help_overlay(frame: &mut Frame, app: &App) {
+    let mode = app.current_help_mode();
+    let keymap = crate::app::keymap_for(mode);
+
+    let area = centered_rect(75, 75, frame.area());
+    frame.render_widget(Clear, area);
+
+    let title_line = format!(
+        " ❓ Keyboard Help: {} (Press Esc / '?' / F1 / Any key to close) ",
+        mode.title()
+    );
+
+    let popup_block = Block::default()
+        .title(Span::styled(
+            title_line,
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let rows: Vec<Row> = keymap
+        .into_iter()
+        .map(|(key, action)| {
+            Row::new(vec![
+                Span::styled(
+                    key,
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(action, Style::default().fg(Color::White)),
+            ])
+        })
+        .collect();
+
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(30), Constraint::Percentage(70)],
+    )
+    .header(
+        Row::new(vec!["Key / Shortcut", "Action / Description"]).style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        ),
+    )
+    .block(popup_block);
+
+    frame.render_widget(table, area);
 }
 
 fn draw_editing_popup(frame: &mut Frame, app: &App) {
@@ -1150,6 +1222,7 @@ fn draw_viewing_source_refs(frame: &mut Frame, app: &App) {
         crate::app::RefSortKey::Source => "Source 📄",
         crate::app::RefSortKey::Venue => "Venue 🏛️",
         crate::app::RefSortKey::Similarity => "Similarity 🎯",
+        crate::app::RefSortKey::Title => "Title 📝",
     };
 
     let filtered = app.filtered_viewing_source_references();
@@ -1649,51 +1722,51 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
     // 4. Scientist Command Center & Shortcut Guide
     let guide_lines = vec![
         Line::from(vec![Span::styled(
-            "Daily Scientist Helper Shortcuts",
+            "Daily Scientist Helper Shortcuts (5 Navigation Tabs)",
             Style::default()
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         )]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
+            Span::styled("  1-5 / Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "  Switch between Dashboard, Paper Draft, Sources, and Settings",
+                "  Switch: 1.Dash, 2.Sources, 3.Refs, 4.Draft, 5.Settings",
                 Style::default().fg(Color::Reset),
             ),
         ]),
         Line::from(vec![
-            Span::styled("  'e' / 'v'", Style::default().fg(Color::Yellow)),
+            Span::styled("  ? / F1", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "        Edit section in TUI ('e') or open $EDITOR (nvim/helix) ('v')",
+                "               Open mode-aware keyboard help overlay anywhere",
                 Style::default().fg(Color::Reset),
             ),
         ]),
         Line::from(vec![
-            Span::styled("  sil doctor", Style::default().fg(Color::Yellow)),
+            Span::styled("  b / p / P", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "       Run full host + manuscript health audit",
+                "            Sources/Refs: Add source (b), Add ref (p), Promote (P)",
                 Style::default().fg(Color::Reset),
             ),
         ]),
         Line::from(vec![
-            Span::styled("  sil digest <q>", Style::default().fg(Color::Yellow)),
+            Span::styled("  v / e", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "    Fetch top journal publications",
+                "                View refs/sort venue (v), Edit field/section (e)",
                 Style::default().fg(Color::Reset),
             ),
         ]),
         Line::from(vec![
-            Span::styled("  sil todo", Style::default().fg(Color::Yellow)),
+            Span::styled("  m / X", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "          List all # -- X -- # ideas in draft",
+                "                Sort by draft similarity (m), Recompute scores (X)",
                 Style::default().fg(Color::Reset),
             ),
         ]),
         Line::from(vec![
-            Span::styled("  sil propose", Style::default().fg(Color::Yellow)),
+            Span::styled("  y / i / s / t", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "       Create git commit proposal with Sci-Action",
+                "        Sort references: Year (y), Index (i), Source (s), Title (t)",
                 Style::default().fg(Color::Reset),
             ),
         ]),
@@ -1985,6 +2058,7 @@ mod tests {
             InputMode::ModalRenameSource,
             InputMode::ConfirmDeleteSource,
             InputMode::ViewingSourceRefs,
+            InputMode::HelpOverlay,
         ];
 
         for mode in modes {
