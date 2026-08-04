@@ -1,3 +1,4 @@
+#![allow(clippy::collapsible_if)]
 //! Extract, clean, and split reference sections into structured ReferenceEntry items.
 
 use sil_core::{ReferenceEntry, SourceId};

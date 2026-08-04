@@ -1,3 +1,4 @@
+#![allow(clippy::collapsible_if)]
 //! Structured metadata extraction using the `xberg` crate.
 
 use camino::Utf8Path;

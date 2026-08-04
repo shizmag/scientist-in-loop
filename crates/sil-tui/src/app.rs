@@ -692,7 +692,13 @@ impl App {
                         let bib_path = root.join(sil_core::paths::rel::REFERENCES);
                         let current =
                             std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-                        let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
+                        let (updated, _) = sil_core::bib::upsert_bib_entry_with_options(
+                            &current,
+                            &marked,
+                            sil_core::bib::UpsertOptions {
+                                preserve_cite_key: true,
+                            },
+                        );
                         if let Ok(()) = std::fs::write(bib_path.as_std_path(), updated) {
                             self.load_project_references_bib();
                             self.status_message = format!("✓ Official metadata for '{}'", res.label);
@@ -1303,9 +1309,8 @@ impl App {
         }
 
         match key.code {
-            KeyCode::Char('?') | KeyCode::F1 => {
+            KeyCode::Char('?') | KeyCode::F(1) => {
                 self.toggle_help_overlay();
-                return;
             }
             KeyCode::Char('q') | KeyCode::Esc => {
                 if self.active_tab == ActiveTab::References
@@ -2013,7 +2018,7 @@ impl App {
 
     fn handle_searching_refs_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Enter | KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
@@ -2032,7 +2037,7 @@ impl App {
 
     fn handle_searching_bib_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Enter | KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string();
@@ -2050,7 +2055,7 @@ impl App {
     }
     fn handle_editing_paper_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Enter => {
                 self.commit_edited_paper();
                 self.input_mode = InputMode::Normal;
@@ -2094,7 +2099,7 @@ impl App {
 
     fn handle_editing_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Enter => {
                 self.commit_edited_field();
                 self.input_mode = InputMode::Normal;
@@ -2202,7 +2207,7 @@ impl App {
 
     fn handle_modal_picker_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => {
+            KeyCode::F(1) => {
                 self.toggle_help_overlay();
             }
             KeyCode::Esc => {
@@ -2270,7 +2275,7 @@ impl App {
 
     fn handle_modal_add_author_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add co-author cancelled.".to_string();
@@ -2334,7 +2339,7 @@ impl App {
 
     fn handle_modal_add_grant_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add grant cancelled.".to_string();
@@ -2387,7 +2392,7 @@ impl App {
 
     fn handle_modal_add_source_link_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Add source cancelled.".to_string();
@@ -2438,7 +2443,7 @@ impl App {
 
     fn handle_modal_rename_source_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Rename cancelled.".to_string();
@@ -2471,7 +2476,7 @@ impl App {
 
     fn handle_confirm_delete_source_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => {
+            KeyCode::F(1) => {
                 self.toggle_help_overlay();
             }
             KeyCode::Char('y') | KeyCode::Enter => {
@@ -2506,7 +2511,7 @@ impl App {
     fn handle_viewing_source_refs_mode(&mut self, key: KeyEvent) {
         let count = self.filtered_viewing_source_references().len();
         match key.code {
-            KeyCode::Char('?') | KeyCode::F1 => {
+            KeyCode::Char('?') | KeyCode::F(1) => {
                 self.toggle_help_overlay();
             }
             KeyCode::Esc | KeyCode::Char('q') => {
@@ -2617,7 +2622,7 @@ impl App {
 
     fn handle_searching_viewing_refs_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::F1 => self.toggle_help_overlay(),
+            KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc | KeyCode::Enter => {
                 self.input_mode = InputMode::ViewingSourceRefs;
             }
@@ -2635,7 +2640,7 @@ impl App {
 
     fn handle_reading_source_md_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Char('?') | KeyCode::F1 => {
+            KeyCode::Char('?') | KeyCode::F(1) => {
                 self.toggle_help_overlay();
             }
             KeyCode::Esc | KeyCode::Char('q') => {
@@ -3691,6 +3696,49 @@ mod tests {
     }
 
     #[test]
+    fn test_background_hydration_preserves_stub_cite_key() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(
+            bib_path.as_std_path(),
+            "% [sil: tui-added]
+@article{stub_key, title={Attention Is All You Need}, doi={10.1000/182}}
+",
+        )
+        .unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/182".to_string());
+
+        let official_bib = "@article{Vaswani2017,
+  title={Attention Is All You Need},
+  author={Vaswani, Ashish},
+  doi={10.1000/182}
+}";
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/182".to_string(),
+                label: "Attention Is All You Need".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: official_bib.to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        assert!(!app.in_flight_hydration_keys.contains("doi:10.1000/182"));
+        let updated_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(updated_content.contains("@article{stub_key,"));
+        assert!(updated_content.contains("author = {Vaswani, Ashish}"));
+        assert!(!updated_content.contains("Vaswani2017"));
+    }
+
+    #[test]
     fn test_background_hydration_failure_warns_and_retains_local() {
         use camino::Utf8Path;
         use tempfile::tempdir;
@@ -3832,7 +3880,7 @@ mod tests {
         // Test F1 toggle in Sources view
         app.active_tab = ActiveTab::Sources;
         assert_eq!(app.current_help_mode(), HelpMode::SourcesList);
-        app.handle_key(KeyEvent::new(KeyCode::F1, KeyModifiers::empty()));
+        app.handle_key(KeyEvent::new(KeyCode::F(1), KeyModifiers::empty()));
         assert_eq!(app.input_mode, InputMode::HelpOverlay);
         assert_eq!(app.current_help_mode(), HelpMode::SourcesList);
 
