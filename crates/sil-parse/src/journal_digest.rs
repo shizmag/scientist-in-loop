@@ -157,20 +157,47 @@ pub fn parse_crossref_item(item: &serde_json::Value) -> Option<JournalPublicatio
     })
 }
 
+fn urlencode(s: &str) -> String {
+    let mut encoded = String::new();
+    for byte in s.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(byte as char);
+            }
+            b' ' => encoded.push_str("%20"),
+            _ => encoded.push_str(&format!("%{:02X}", byte)),
+        }
+    }
+    encoded
+}
+
+/// Build Crossref API request URL for fetching top journal publications digest (`filter=type:journal-article`).
+pub fn build_crossref_digest_url(query: &str, limit: usize) -> String {
+    format!(
+        "https://api.crossref.org/works?query={}&filter=type:journal-article&rows={}&sort=relevance",
+        urlencode(query),
+        limit
+    )
+}
+
 /// Fetch publications directly from Crossref API natively in Rust using `ureq`.
 pub fn fetch_journal_publications_native(
     query: &str,
     limit: usize,
 ) -> Result<Vec<JournalPublication>, ParseError> {
+    enforce_api_ratelimit();
+    let url = build_crossref_digest_url(query, limit);
+
     let agent = ureq::AgentBuilder::new()
         .timeout(std::time::Duration::from_secs(10))
         .build();
 
     let response = agent
-        .get("https://api.crossref.org/works")
-        .set("User-Agent", "scientist-in-loop/0.1.0")
-        .query("query", query)
-        .query("rows", &limit.to_string())
+        .get(&url)
+        .set(
+            "User-Agent",
+            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+        )
         .call()
         .map_err(|e| ParseError::Message(format!("Crossref API request failed: {e}")))?;
 
@@ -800,14 +827,14 @@ pub fn fetch_journal_publications(
     script_path: Option<&Utf8Path>,
     python_bin: Option<&str>,
 ) -> Result<Vec<JournalPublication>, ParseError> {
-    if script_path.is_some() {
-        return fetch_journal_publications_python(query, limit, script_path, python_bin);
+    if script_path.is_none() {
+        match fetch_journal_publications_native(query, limit) {
+            Ok(pubs) if !pubs.is_empty() => return Ok(pubs),
+            _ => {}
+        }
     }
 
-    match fetch_journal_publications_native(query, limit) {
-        Ok(pubs) if !pubs.is_empty() => Ok(pubs),
-        _ => fetch_journal_publications_python(query, limit, script_path, python_bin),
-    }
+    fetch_journal_publications_python(query, limit, script_path, python_bin)
 }
 
 /// Fallback runner calling Python script `fetch_journal_digest.py`.
@@ -1179,5 +1206,14 @@ print(json.dumps([
             }
             SourceBibResolution::Resolved(_) => panic!("Expected failed resolution"),
         }
+    }
+    #[test]
+    fn test_build_crossref_digest_url_parameters() {
+        let url = build_crossref_digest_url("quantum computing", 10);
+        assert!(url.starts_with("https://api.crossref.org/works"));
+        assert!(url.contains("query=quantum%20computing"));
+        assert!(url.contains("filter=type:journal-article"));
+        assert!(url.contains("rows=10"));
+        assert!(url.contains("sort=relevance"));
     }
 }
