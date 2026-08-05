@@ -74,6 +74,54 @@ pub enum RefSortKey {
     Title,
 }
 
+/// Classification of user input in the Add Source Link modal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceInputKind {
+    Doi,
+    Arxiv,
+    Url,
+    Filename,
+}
+
+impl SourceInputKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            SourceInputKind::Doi => "DOI",
+            SourceInputKind::Arxiv => "arXiv ID",
+            SourceInputKind::Url => "URL",
+            SourceInputKind::Filename => "Filename",
+        }
+    }
+}
+
+/// Classify an input string as a DOI, arXiv ID, URL, or plain Filename.
+pub fn classify_source_input(input: &str) -> SourceInputKind {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return SourceInputKind::Filename;
+    }
+    let lower = trimmed.to_lowercase();
+    if lower.starts_with("arxiv:")
+        || lower.contains("arxiv.org/")
+        || sil_regex::extract_arxiv_id(trimmed).is_some()
+    {
+        SourceInputKind::Arxiv
+    } else if lower.starts_with("doi:")
+        || trimmed.starts_with("10.")
+        || lower.contains("doi.org/")
+        || sil_regex::extract_doi(trimmed).is_some()
+    {
+        SourceInputKind::Doi
+    } else if lower.starts_with("http://")
+        || lower.starts_with("https://")
+        || sil_regex::extract_url(trimmed).is_some()
+    {
+        SourceInputKind::Url
+    } else {
+        SourceInputKind::Filename
+    }
+}
+
 /// Helper context mode for keyboard help overlays.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HelpMode {
@@ -143,6 +191,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("a", "Add new source document via link / URL / DOI / arXiv"),
             ("b", "Append selected source to references.bib (hydrates metadata if DOI/arXiv)"),
             ("r", "Rename selected source document title"),
+            ("R", "Reload sources from disk and database"),
             ("d / Delete", "Delete selected source document (requires confirmation)"),
             ("1 - 5", "Switch to tab"),
             ("Tab / Shift+Tab", "Cycle tabs"),
@@ -266,7 +315,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
         HelpMode::ModalAddSourceLink => vec![
             ("Char", "Type URL / DOI / arXiv link"),
             ("Backspace", "Delete character"),
-            ("Enter", "Submit and fetch source link"),
+            ("Enter", "Submit link stub (no download)"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc", "Cancel and close modal"),
         ],
@@ -1659,7 +1708,7 @@ impl App {
                     self.new_source_link_buffer.clear();
                     self.input_mode = InputMode::ModalAddSourceLink;
                     self.status_message =
-                        "Enter URL / DOI / arXiv link to fetch (Enter to submit, Esc to cancel)"
+                        "Register link stub (no download) — Enter URL / DOI / arXiv / filename (Enter to submit, Esc to cancel)"
                             .to_string();
                 }
                 ActiveTab::Settings => {
@@ -1704,8 +1753,19 @@ impl App {
                 }
                 _ => {}
             },
+            KeyCode::Char('R') => {
+                if self.active_tab == ActiveTab::Sources {
+                    self.reload_sources();
+                    self.status_message = "✓ Reloaded sources".to_string();
+                }
+            }
             KeyCode::Char('r') => {
-                if self.active_tab == ActiveTab::Sources
+                if key.modifiers.contains(KeyModifiers::SHIFT) {
+                    if self.active_tab == ActiveTab::Sources {
+                        self.reload_sources();
+                        self.status_message = "✓ Reloaded sources".to_string();
+                    }
+                } else if self.active_tab == ActiveTab::Sources
                     && !self.sources.is_empty()
                     && self.selected_source_index < self.sources.len()
                 {
@@ -2529,6 +2589,7 @@ impl App {
             KeyCode::Enter => {
                 let link = self.new_source_link_buffer.trim().to_string();
                 if !link.is_empty() {
+                    let kind = classify_source_input(&link);
                     if let Some(ref root) = self.project_root {
                         let paths = ProjectPaths::new(root);
                         let sources_dir = root.join("sources");
@@ -2556,7 +2617,8 @@ impl App {
                         self.sources.push(doc);
                     }
                     self.reload_sources();
-                    self.status_message = format!("Added source link: {link}");
+                    self.status_message =
+                        format!("✓ Registered {} link stub (no download): {link}", kind.label());
                 }
                 self.input_mode = InputMode::Normal;
             }
@@ -4298,5 +4360,71 @@ mod tests {
         assert_eq!(app.recent_hydration_outcomes.len(), 20);
         assert_eq!(app.recent_hydration_outcomes.front().unwrap().label, "Paper 5");
         assert_eq!(app.recent_hydration_outcomes.back().unwrap().label, "Paper 24");
+    }
+
+    #[test]
+    fn test_classify_source_input() {
+        assert_eq!(
+            classify_source_input("10.1038/s41586-020-2649-2"),
+            SourceInputKind::Doi
+        );
+        assert_eq!(
+            classify_source_input("doi:10.1145/1234567"),
+            SourceInputKind::Doi
+        );
+        assert_eq!(
+            classify_source_input("https://doi.org/10.1145/1234567"),
+            SourceInputKind::Doi
+        );
+
+        assert_eq!(
+            classify_source_input("2103.12345"),
+            SourceInputKind::Arxiv
+        );
+        assert_eq!(
+            classify_source_input("arXiv:2103.12345v1"),
+            SourceInputKind::Arxiv
+        );
+        assert_eq!(
+            classify_source_input("https://arxiv.org/abs/2103.12345"),
+            SourceInputKind::Arxiv
+        );
+
+        assert_eq!(
+            classify_source_input("https://example.com/paper.pdf"),
+            SourceInputKind::Url
+        );
+        assert_eq!(
+            classify_source_input("http://site.org/resource"),
+            SourceInputKind::Url
+        );
+
+        assert_eq!(
+            classify_source_input("paper_notes.md"),
+            SourceInputKind::Filename
+        );
+        assert_eq!(
+            classify_source_input(""),
+            SourceInputKind::Filename
+        );
+    }
+
+    #[test]
+    fn test_sources_reload_action_key_R() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let mut app = App::new(Some(root));
+
+        app.active_tab = ActiveTab::Sources;
+        app.status_message = "Initial status".to_string();
+
+        // Press 'R' key in Sources tab
+        app.handle_key(KeyEvent::new(KeyCode::Char('R'), KeyModifiers::empty()));
+        assert_eq!(app.status_message, "✓ Reloaded sources");
+
+        // Press Shift+'r' in Sources tab
+        app.status_message = "Initial status".to_string();
+        app.handle_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::SHIFT));
+        assert_eq!(app.status_message, "✓ Reloaded sources");
     }
 }
