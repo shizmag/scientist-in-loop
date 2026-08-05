@@ -2,7 +2,7 @@
 
 #![deny(missing_docs)]
 
-mod batch;
+pub mod batch;
 mod error;
 mod fetch;
 mod interactive;
