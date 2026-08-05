@@ -437,7 +437,14 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default()
             };
 
-            let status_span = if src.parsed {
+            let status_span = if app.in_flight_parse_ids.contains(&src.id) {
+                Span::styled(
+                    "[⏳ Parsing...] ",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )
+            } else if src.parsed {
                 Span::styled(
                     "[✓ Parsed] ",
                     Style::default()
@@ -467,7 +474,7 @@ fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
-        .title(" 📚 Source Documents ('a': Add Link, 'b': Add to Bib, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
+        .title(" 📚 Source Documents ('e'/'E': Parse, 'a': Add Link, 'b': Add to Bib, 'r': Rename, 'd': Delete, 'v': Refs, Enter: Read) ");
 
     let list = List::new(items).block(list_block);
     let mut sources_state = ListState::default();
@@ -889,7 +896,11 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         Style::default()
             .fg(Color::LightRed)
             .add_modifier(Modifier::BOLD)
-    } else if app.status_message.starts_with('⏳') || app.status_message.contains("Hydrating") {
+    } else if app.status_message.starts_with('⏳')
+        || app.status_message.contains("Hydrating")
+        || app.status_message.contains("Parsing")
+        || app.status_message.starts_with('ℹ')
+    {
         Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD)
@@ -902,7 +913,7 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let mode = app.current_help_mode();
     let hints_str = match mode {
         crate::app::HelpMode::Dashboard => "[?] Help | [1-5] Tabs | [Ctrl+S] Save | [q] Quit",
-        crate::app::HelpMode::SourcesList => "[?] Help | [Enter] Read | [v] Refs | [a] Add | [r] Rename | [d] Del",
+        crate::app::HelpMode::SourcesList => "[?] Help | [e/E] Parse | [Enter] Read | [v] Refs | [a] Add | [r] Rename | [d] Del",
         crate::app::HelpMode::ReadingSourceMd => "[?] Help | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit",
         crate::app::HelpMode::ViewingSourceRefs => "[?] Help | [c] Add Bib | [a] Add All | [Space] Mark | [/] Filter",
         crate::app::HelpMode::ReferencesLeft => "[?] Help | [Tab] Switch Pane | [P] Promote | [/] Search | [Del] Delete",

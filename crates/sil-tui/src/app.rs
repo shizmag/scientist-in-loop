@@ -187,6 +187,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Select previous source document"),
             ("PageUp / PageDown", "Scroll source list by 5 items"),
             ("Enter", "Read full source document in Markdown viewer"),
+            ("e / E", "Parse/extract text and references for selected source ('E' / Shift+E for force re-parse)"),
             ("v", "View extracted reference citations for selected source"),
             ("a", "Add new source document via link / URL / DOI / arXiv"),
             ("b", "Append selected source to references.bib (hydrates metadata if DOI/arXiv)"),
@@ -493,6 +494,14 @@ pub struct HydrationHistoryEntry {
     pub detail: String,
 }
 
+/// Result of a background parse job.
+#[derive(Debug)]
+pub struct ParseJobResult {
+    pub source_id: sil_core::SourceId,
+    pub label: String,
+    pub result: Result<sil_parse::batch::ParseResult, String>,
+}
+
 /// Application state struct for TUI.
 pub struct App {
     pub active_tab: ActiveTab,
@@ -502,6 +511,9 @@ pub struct App {
     pub hydration_tx: std::sync::mpsc::Sender<HydrationResult>,
     pub hydration_rx: std::sync::mpsc::Receiver<HydrationResult>,
     pub in_flight_hydration_keys: std::collections::HashSet<String>,
+    pub parse_tx: std::sync::mpsc::Sender<ParseJobResult>,
+    pub parse_rx: std::sync::mpsc::Receiver<ParseJobResult>,
+    pub in_flight_parse_ids: std::collections::HashSet<sil_core::SourceId>,
     pub hydration_batch_succeeded: usize,
     pub hydration_batch_failed: usize,
     pub recent_hydration_outcomes: std::collections::VecDeque<HydrationHistoryEntry>,
@@ -594,11 +606,15 @@ impl App {
         };
 
         let (hydration_tx, hydration_rx) = std::sync::mpsc::channel();
+        let (parse_tx, parse_rx) = std::sync::mpsc::channel();
 
         let mut app = Self {
             hydration_tx,
             hydration_rx,
             in_flight_hydration_keys: std::collections::HashSet::new(),
+            parse_tx,
+            parse_rx,
+            in_flight_parse_ids: std::collections::HashSet::new(),
             hydration_batch_succeeded: 0,
             hydration_batch_failed: 0,
             recent_hydration_outcomes: std::collections::VecDeque::with_capacity(20),
@@ -779,7 +795,90 @@ impl App {
         });
     }
 
+    pub fn queue_source_parse(&mut self, doc: SourceDocument, force: bool) {
+        let label = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
+
+        let is_already_parsed =
+            doc.parsed || matches!(doc.status, Some(sil_core::DocumentStatus::AlreadyParsed));
+        if is_already_parsed && !force {
+            self.status_message =
+                "ℹ Source is already parsed (use 'E' / Shift+E to re-parse)".to_string();
+            return;
+        }
+
+        if self.in_flight_parse_ids.contains(&doc.id) {
+            self.status_message = format!("already parsing '{label}'...");
+            return;
+        }
+
+        self.in_flight_parse_ids.insert(doc.id.clone());
+        self.status_message = format!("⏳ Parsing source '{label}'...");
+
+        let tx = self.parse_tx.clone();
+        let project_root = self.project_root.clone();
+        let doc_id = doc.id.clone();
+        let path = doc.path.clone();
+
+        std::thread::spawn(move || {
+            let result = (|| -> Result<sil_parse::batch::ParseResult, String> {
+                let Some(root) = project_root else {
+                    return Err("No project root directory available".to_string());
+                };
+                let paths = ProjectPaths::new(&root);
+                let db = sil_db::SilDb::open(&paths.db())
+                    .map_err(|e| format!("Database error: {e}"))?;
+
+                if force {
+                    let _ = db.remove_source(&doc_id);
+                }
+
+                let runner = sil_parse::discover_marker_runner().unwrap_or_else(|_| {
+                    Box::new(sil_parse::StubMarkerRunner {
+                        content: String::new(),
+                    })
+                });
+                let null_ui = sil_core::NullUi::new();
+
+                sil_parse::batch::parse_one(&path, &db, runner.as_ref(), &null_ui)
+                    .map_err(|e| e.to_string())
+            })();
+
+            let _ = tx.send(ParseJobResult {
+                source_id: doc_id,
+                label,
+                result,
+            });
+        });
+    }
+
+    pub fn poll_background_parse(&mut self) {
+        let mut polled_any = false;
+        while let Ok(res) = self.parse_rx.try_recv() {
+            polled_any = true;
+            self.in_flight_parse_ids.remove(&res.source_id);
+            match res.result {
+                Ok(_parse_res) => {
+                    self.reload_sources();
+                    self.load_all_source_references();
+                    self.status_message = format!("✓ Parsed source '{}'", res.label);
+                }
+                Err(err_msg) => {
+                    self.status_message =
+                        format!("⚠ Failed parsing source '{}': {}", res.label, err_msg);
+                }
+            }
+        }
+
+        if polled_any && !self.in_flight_parse_ids.is_empty() {
+            self.status_message = format!(
+                "⏳ Parsing ({} in flight)...",
+                self.in_flight_parse_ids.len()
+            );
+        }
+    }
+
     pub fn poll_background_hydration(&mut self) {
+        self.poll_background_parse();
         let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
             polled_any = true;
@@ -878,10 +977,29 @@ impl App {
 
         if polled_any {
             if self.in_flight_hydration_keys.is_empty() {
-                self.status_message = format!(
-                    "✓ Hydration complete: {} succeeded, {} failed",
-                    self.hydration_batch_succeeded, self.hydration_batch_failed
-                );
+                if self.hydration_batch_succeeded == 1 && self.hydration_batch_failed == 0 {
+                    let last = self.recent_hydration_outcomes.back();
+                    if let Some(h) = last && h.success {
+                        self.status_message = format!("✓ Official metadata for '{}'", h.label);
+                    } else {
+                        self.status_message = format!(
+                            "✓ Hydration complete: {} succeeded, {} failed",
+                            self.hydration_batch_succeeded, self.hydration_batch_failed
+                        );
+                    }
+                } else if self.hydration_batch_failed == 1 && self.hydration_batch_succeeded == 0 {
+                    let (last_label, reason) = self
+                        .recent_hydration_outcomes
+                        .back()
+                        .map(|h| (h.label.as_str(), h.detail.as_str()))
+                        .unwrap_or(("source", "unknown error"));
+                    self.status_message = format!("⚠ Metadata fetch failed for '{last_label}': {reason}");
+                } else {
+                    self.status_message = format!(
+                        "✓ Hydration complete: {} succeeded, {} failed",
+                        self.hydration_batch_succeeded, self.hydration_batch_failed
+                    );
+                }
             } else {
                 self.status_message = format!(
                     "⏳ Hydrating ({} in flight)...",
@@ -1187,9 +1305,9 @@ impl App {
         }
 
         if doc.should_attempt_metadata_fetch() {
+            self.queue_source_hydration(doc);
             self.status_message =
                 format!("✓ Added '{doc_name}' to references.bib; fetching official metadata…");
-            self.queue_source_hydration(doc);
         } else {
             self.status_message = format!(
                 "✓ Added '{doc_name}' to references.bib (⚠ No DOI/arXiv/title — cannot hydrate)"
@@ -1700,7 +1818,20 @@ impl App {
                 ActiveTab::Settings => self.start_editing_selected_field(),
                 _ => {}
             },
-            KeyCode::Char('e') => self.start_editing_selected_field(),
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                if self.active_tab == ActiveTab::Sources {
+                    if !self.sources.is_empty()
+                        && self.selected_source_index < self.sources.len()
+                    {
+                        let force = key.code == KeyCode::Char('E')
+                            || key.modifiers.contains(KeyModifiers::SHIFT);
+                        let doc = self.sources[self.selected_source_index].clone();
+                        self.queue_source_parse(doc, force);
+                    }
+                } else if key.code == KeyCode::Char('e') {
+                    self.start_editing_selected_field();
+                }
+            }
 
             // Actions for Sources & Settings
             KeyCode::Char('a') => match self.active_tab {
@@ -4196,7 +4327,7 @@ mod tests {
         let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(content_after.is_empty());
         assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
-        assert!(app.recent_hydration_outcomes.last().unwrap().detail.contains("Skipped hydration for 'Paper Title': entry was deleted"));
+        assert!(app.recent_hydration_outcomes.back().unwrap().detail.contains("Skipped hydration for 'Paper Title': entry was deleted"));
     }
 
     #[test]
@@ -4260,7 +4391,7 @@ mod tests {
         let _ = std::fs::set_permissions(bib_path.as_std_path(), perms);
 
         assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
-        assert!(app.recent_hydration_outcomes.last().unwrap().detail.contains("Error writing references.bib:"));
+        assert!(app.recent_hydration_outcomes.back().unwrap().detail.contains("Error writing references.bib:"));
     }
 
     #[test]
@@ -4349,7 +4480,7 @@ mod tests {
                     dedup_key: format!("doi:10.1000/{i}"),
                     label: format!("Paper {i}"),
                     outcome: HydrationOutcome::Success {
-                        official_bib: format!("@article{{p{i}, title={{Paper {i}}}}}}"),
+                        official_bib: format!("@article{{p{i}, title={{Paper {i}}}}}"),
                     },
                 })
                 .unwrap();
@@ -4410,7 +4541,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sources_reload_action_key_R() {
+    fn test_sources_reload_action_key_r() {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
         let mut app = App::new(Some(root));
@@ -4426,5 +4557,115 @@ mod tests {
         app.status_message = "Initial status".to_string();
         app.handle_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::SHIFT));
         assert_eq!(app.status_message, "✓ Reloaded sources");
+    }
+
+    #[test]
+    fn test_sources_parse_keymap() {
+        let keymap = keymap_for(HelpMode::SourcesList);
+        let parse_entry = keymap.iter().find(|(key, _)| *key == "e / E");
+        assert!(parse_entry.is_some(), "Keymap for SourcesList missing 'e / E'");
+    }
+
+    #[test]
+    fn test_sources_parse_already_parsed_status() {
+        let mut app = App::new(None);
+        app.active_tab = ActiveTab::Sources;
+        let mut doc = SourceDocument::new(camino::Utf8PathBuf::from("test.txt"));
+        doc.parsed = true;
+        app.sources.push(doc);
+
+        app.handle_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()));
+        assert_eq!(
+            app.status_message,
+            "ℹ Source is already parsed (use 'E' / Shift+E to re-parse)"
+        );
+        assert!(app.in_flight_parse_ids.is_empty());
+    }
+
+    #[test]
+    fn test_sources_parse_queueing_normal_and_force() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf()).unwrap();
+        let sources_dir = root.join("sources");
+        std::fs::create_dir_all(sources_dir.as_std_path()).unwrap();
+        let file_path = sources_dir.join("sample.txt");
+        std::fs::write(
+            file_path.as_std_path(),
+            "Title: Sample Paper\nAbstract: Test abstract\n\nReferences:\n[1] A. Author, Sample Reference, 2024.",
+        )
+        .unwrap();
+
+        let mut app = App::new(Some(root.clone()));
+        app.active_tab = ActiveTab::Sources;
+        app.reload_sources();
+        assert_eq!(app.sources.len(), 1);
+        assert!(!app.sources[0].parsed);
+
+        // Queue normal parse with 'e'
+        app.handle_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()));
+        assert!(app.in_flight_parse_ids.contains(&app.sources[0].id));
+        assert!(app.status_message.starts_with("⏳ Parsing source"));
+
+        // Wait for background parse thread to complete
+        for _ in 0..50 {
+            app.poll_background_hydration();
+            if app.in_flight_parse_ids.is_empty() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        assert!(app.in_flight_parse_ids.is_empty());
+        assert!(app.status_message.starts_with("✓ Parsed source"));
+        assert!(app.sources[0].parsed);
+
+        // Pressing 'e' now should inform user that it's already parsed
+        app.handle_key(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty()));
+        assert_eq!(
+            app.status_message,
+            "ℹ Source is already parsed (use 'E' / Shift+E to re-parse)"
+        );
+
+        // Pressing Shift+E ('E') should force re-parse
+        app.handle_key(KeyEvent::new(KeyCode::Char('E'), KeyModifiers::SHIFT));
+        assert!(app.in_flight_parse_ids.contains(&app.sources[0].id));
+        assert!(app.status_message.starts_with("⏳ Parsing source"));
+
+        for _ in 0..50 {
+            app.poll_background_hydration();
+            if app.in_flight_parse_ids.is_empty() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        assert!(app.in_flight_parse_ids.is_empty());
+        assert!(app.status_message.starts_with("✓ Parsed source"));
+    }
+
+    #[test]
+    fn test_sources_parse_failure_status() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(temp_dir.path().to_path_buf()).unwrap();
+
+        let mut app = App::new(Some(root));
+        app.active_tab = ActiveTab::Sources;
+        let doc = SourceDocument::new(Utf8PathBuf::from("/nonexistent/file.pdf"));
+        app.sources.push(doc);
+
+        // Queue force parse on non-existent file
+        app.handle_key(KeyEvent::new(KeyCode::Char('E'), KeyModifiers::SHIFT));
+        assert!(!app.in_flight_parse_ids.is_empty());
+
+        for _ in 0..50 {
+            app.poll_background_hydration();
+            if app.in_flight_parse_ids.is_empty() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        assert!(app.in_flight_parse_ids.is_empty());
+        assert!(app.status_message.starts_with("⚠ Failed parsing source"));
     }
 }
