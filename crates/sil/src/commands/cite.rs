@@ -108,7 +108,9 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
         }
     };
 
-    if let Some(sil_parse::SourceBibResolution::Failed(ref reason)) = official_resolution {
+    if !json
+        && let Some(sil_parse::SourceBibResolution::Failed(ref reason)) = official_resolution
+    {
         ui.warn(&format!("⚠ Could not resolve official metadata: {reason}"));
     }
 
