@@ -651,8 +651,22 @@ impl App {
 
     pub fn queue_source_hydration(&mut self, doc: SourceDocument) {
         let label = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
-        let dedup_key = if let Some(ref doi) = doc.doi {
+        let arxiv_candidate = doc
+            .doi
+            .as_deref()
+            .and_then(sil_regex::extract_arxiv_id)
+            .or_else(|| sil_regex::extract_arxiv_id(&doc.filename))
+            .or_else(|| doc.title.as_deref().and_then(sil_regex::extract_arxiv_id));
+
+        let dedup_key = if let Some(doi) = doc.doi.as_ref().filter(|s| !s.trim().is_empty()) {
             format!("doi:{}", doi.trim())
+        } else if let Some(ref arxiv) = arxiv_candidate {
+            let clean = arxiv
+                .trim_start_matches("arxiv:")
+                .trim_start_matches("arXiv:")
+                .trim_start_matches("ARXIV:")
+                .trim();
+            format!("arxiv:{clean}")
         } else {
             format!("source_id:{}", doc.id)
         };
@@ -687,21 +701,51 @@ impl App {
             self.in_flight_hydration_keys.remove(&res.dedup_key);
             match res.outcome {
                 HydrationOutcome::Success { official_bib } => {
-                    let marked = sil_core::mark_tui_added_bib_entry(&official_bib);
                     if let Some(ref root) = self.project_root {
                         let bib_path = root.join(sil_core::paths::rel::REFERENCES);
-                        let current =
-                            std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-                        let (updated, _) = sil_core::bib::upsert_bib_entry_with_options(
-                            &current,
-                            &marked,
-                            sil_core::bib::UpsertOptions {
-                                preserve_cite_key: true,
-                            },
-                        );
-                        if let Ok(()) = std::fs::write(bib_path.as_std_path(), updated) {
-                            self.load_project_references_bib();
-                            self.status_message = format!("✓ Official metadata for '{}'", res.label);
+                        let current = match std::fs::read_to_string(bib_path.as_std_path()) {
+                            Ok(c) => c,
+                            Err(e) => {
+                                self.status_message = format!("Error reading references.bib: {e}");
+                                continue;
+                            }
+                        };
+
+                        let official_info = sil_core::extract_bib_entry_info(&official_bib);
+                        let blocks = sil_core::parse_bib_blocks(&current);
+                        let existing_block = blocks.iter().find(|block| {
+                            let info = sil_core::extract_bib_entry_info(block);
+                            sil_core::is_same_paper(&info, &official_info)
+                        });
+
+                        if let Some(matching_block) = existing_block {
+                            let is_tui_added = sil_core::is_tui_added_bib_block(matching_block);
+                            let entry_to_upsert = if is_tui_added {
+                                sil_core::mark_tui_added_bib_entry(&official_bib)
+                            } else {
+                                sil_core::unmark_tui_added_bib_entry(&official_bib)
+                            };
+
+                            let (updated, _) = sil_core::bib::upsert_bib_entry_with_options(
+                                &current,
+                                &entry_to_upsert,
+                                sil_core::bib::UpsertOptions {
+                                    preserve_cite_key: true,
+                                },
+                            );
+
+                            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+                                self.status_message = format!("Error writing references.bib: {e}");
+                            } else {
+                                self.load_project_references_bib();
+                                self.status_message =
+                                    format!("✓ Official metadata for '{}'", res.label);
+                            }
+                        } else {
+                            self.status_message = format!(
+                                "ℹ Skipped hydration for '{}': entry was deleted from references.bib",
+                                res.label
+                            );
                         }
                     }
                 }
@@ -3926,5 +3970,147 @@ mod tests {
         assert_eq!(app.ref_sort_key, RefSortKey::Title);
         assert_eq!(app.source_references[0].title.as_deref(), Some("Alpha Paper"));
         assert_eq!(app.source_references[1].title.as_deref(), Some("Zebra Paper"));
+    }
+
+    #[test]
+    fn test_hydration_promote_during_flight() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(
+            bib_path.as_std_path(),
+            "% [sil: tui-added]\n@article{stub_key, title={Paper Title}, doi={10.1000/race}}\n",
+        )
+        .unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys.insert("doi:10.1000/race".to_string());
+
+        app.active_tab = ActiveTab::References;
+        app.active_ref_pane = RefPane::LeftBib;
+        app.selected_bib_index = 0;
+        app.promote_selected_bib_entry();
+
+        let promoted_before = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(!promoted_before.contains("tui-added"));
+
+        let official_bib = "@article{OfficialKey,\n  title={Paper Title},\n  author={Smith, John},\n  doi={10.1000/race}\n}";
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/race".to_string(),
+                label: "Paper Title".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: official_bib.to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        let updated = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(updated.contains("@article{stub_key,"));
+        assert!(updated.contains("author = {Smith, John}"));
+        assert!(!updated.contains("tui-added"));
+    }
+
+    #[test]
+    fn test_hydration_deleted_during_flight() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(
+            bib_path.as_std_path(),
+            "% [sil: tui-added]\n@article{stub_key, title={Paper Title}, doi={10.1000/deleted}}\n",
+        )
+        .unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys.insert("doi:10.1000/deleted".to_string());
+
+        std::fs::write(bib_path.as_std_path(), "").unwrap();
+
+        let official_bib = "@article{OfficialKey, title={Paper Title}, doi={10.1000/deleted}}";
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/deleted".to_string(),
+                label: "Paper Title".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: official_bib.to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+        assert!(content_after.is_empty());
+        assert!(app.status_message.contains("ℹ Skipped hydration for 'Paper Title': entry was deleted"));
+    }
+
+    #[test]
+    fn test_arxiv_only_source_dedup_key() {
+        let mut app = App::new(None);
+        let doc = SourceDocument {
+            id: "src_arxiv".into(),
+            path: "2103.12345.pdf".into(),
+            filename: "2103.12345.pdf".to_string(),
+            kind: sil_core::SourceKind::Pdf,
+            parsed: true,
+            status: None,
+            title: Some("Attention Is All You Need".to_string()),
+            authors: None,
+            abstract_text: None,
+            doi: None,
+            year: None,
+            venue: None,
+            references_text: None,
+        };
+
+        app.queue_source_hydration(doc);
+        assert!(app.in_flight_hydration_keys.contains("arxiv:2103.12345"));
+    }
+
+    #[test]
+    #[allow(clippy::permissions_set_readonly_false)]
+    fn test_hydration_write_failure_status_message() {
+        use camino::Utf8Path;
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let bib_path = root.join("references.bib");
+        std::fs::write(
+            bib_path.as_std_path(),
+            "% [sil: tui-added]\n@article{stub, title={Stub}, doi={10.1000/writeerr}}\n",
+        )
+        .unwrap();
+
+        let mut app = App::new(Some(root.to_path_buf()));
+        app.in_flight_hydration_keys.insert("doi:10.1000/writeerr".to_string());
+
+        let mut perms = std::fs::metadata(bib_path.as_std_path()).unwrap().permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(bib_path.as_std_path(), perms.clone()).unwrap();
+
+        let official_bib = "@article{stub, title={Stub}, author={Tester}, doi={10.1000/writeerr}}";
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/writeerr".to_string(),
+                label: "Stub".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: official_bib.to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        perms.set_readonly(false);
+        let _ = std::fs::set_permissions(bib_path.as_std_path(), perms);
+
+        assert!(app.status_message.contains("Error writing references.bib:"));
     }
 }
