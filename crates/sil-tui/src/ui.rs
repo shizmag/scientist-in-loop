@@ -1132,7 +1132,7 @@ fn draw_modal_add_source_link(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, area);
 
     let block = Block::default()
-        .title(" Add Source via Link / DOI / arXiv (Enter to fetch, Esc to cancel) ")
+        .title(" Register Source Link Stub (no download) (Enter to submit, Esc to cancel) ")
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(Color::Cyan));
