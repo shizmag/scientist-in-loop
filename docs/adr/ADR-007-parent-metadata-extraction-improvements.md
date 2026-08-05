@@ -16,7 +16,7 @@ Prior to this work:
 2. **Byline Scoping & Author Line Cleaning**:
    - Byline scanning begins strictly after the selected title header line.
    - Double-blind papers containing `"Anonymous authors"` or `"Paper under double-blind review"` map directly to `"Anonymous authors"`.
-   - `clean_author_byline_line` strips split markdown links (`She[n](...)`), ORCID badges (`[ID](...)`), inline emails (`user@domain.com`), TeX math superscripts (`$^{1*\dagger}$`), HTML `<sup>` tags, IEEE badges (`Senior Member, IEEE`), and affiliation suffixes.
+   - `clean_author_byline_line` strips split markdown links (`She[n] (...)`), ORCID badges (`[ID] (...)`), inline emails (`user@domain.com`), TeX math superscripts (`$^{1*\dagger}$`), HTML `<sup>` tags, IEEE badges (`Senior Member, IEEE`), and affiliation suffixes.
    - `split_author_names` handles multi-author lines both with standard delimiters (`,`, `;`, `and`, `&`) and un-delimited capitalized name pairs.
    - `is_valid_author_name` filters out affiliations, locations, email fragments, month names, and non-author keywords.
 

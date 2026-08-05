@@ -64,3 +64,19 @@ To enhance scientific paper workspace capabilities in `scientist-in-loop`, two n
   - `sil build release` and submission zip creation (`create_submission_archive`) strip `% [sil: tui-added]` entries from `references.bib` when generating publication artifacts.
   - Workspace `references.bib` on disk is kept intact for normal draft workflows.
 
+
+### Feature D: Pretty BibTeX Formatting, Completeness-Aware Upsert, arXiv ID Normalization, and Cite-Key Preservation
+
+- **Pretty BibTeX Formatting Foundation (PR-A1)**:
+  - `format_bib_entry_pretty` in `sil-core::bib` establishes a clean, canonical BibTeX string representation.
+  - Standardized field ordering: `title`, `author`, `journal`/`booktitle`, `year`, `volume`, `number`, `pages`, `doi`, `url`, `arxiv_id`, `abstract`, `eprint`, `archiveprefix`, `primaryclass`.
+  - Enforces 2-space indented key-value pairs, lower-case normalized field keys, clean brace wrapping, and trailing commas.
+- **Completeness-Aware Upsert Logic (PR-A2)**:
+  - `compute_bib_entry_completeness` calculates a numeric completeness score based on the presence of essential bibliographic fields (title, author, year, venue, DOI).
+  - `upsert_bib_entry_with_options` compares incoming candidate completeness against the existing entry in `references.bib`. Incoming official entries replace stubs or lower-completeness records, while existing rich fields are preserved without downgrading.
+- **arXiv ID Normalization (PR-A2)**:
+  - `normalize_arxiv_id` standardizes raw arXiv identifiers across URL schemes (`http://arxiv.org/abs/2103.12345`), prefixes (`arxiv:2103.12345`), and version tags (`2103.12345v2`).
+  - Converts inputs into canonical format (`YYMM.NNNNN` or legacy `category/YYMMNNN`), unifying deduplication keys (`arxiv:{id}`) across hydration pipelines.
+- **Cite-Key Preservation (PR-A3)**:
+  - Supported via `UpsertOptions { preserve_cite_key: true }`.
+  - When official background hydration or manual upsert upgrades a local stub entry in `references.bib`, the existing cite-key (e.g. `stub_key` already cited in `paper_draft.tex` as `\cite{stub_key}`) is preserved rather than overwritten by the remote entry's cite-key.
