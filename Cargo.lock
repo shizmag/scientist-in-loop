@@ -5399,6 +5399,7 @@ dependencies = [
  "sil-db",
  "sil-latex",
  "sil-parse",
+ "sil-regex",
  "tempfile",
  "textwrap",
 ]

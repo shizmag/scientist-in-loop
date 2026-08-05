@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 sil-core = { workspace = true }
 sil-parse = { workspace = true }
+sil-regex = { workspace = true }
 sil-latex = { workspace = true }
 sil-db = { workspace = true }
 ratatui = { workspace = true }
