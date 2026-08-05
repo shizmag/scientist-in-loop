@@ -884,9 +884,14 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if app.status_message.contains("cannot")
         || app.status_message.contains("Error")
         || app.status_message.contains("failed")
+        || app.status_message.contains('⚠')
     {
         Style::default()
             .fg(Color::LightRed)
+            .add_modifier(Modifier::BOLD)
+    } else if app.status_message.starts_with('⏳') || app.status_message.contains("Hydrating") {
+        Style::default()
+            .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default()

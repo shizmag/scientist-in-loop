@@ -436,6 +436,14 @@ pub enum HydrationOutcome {
     Failure { reason: String },
 }
 
+/// Recent outcome of background metadata hydration.
+#[derive(Debug, Clone)]
+pub struct HydrationHistoryEntry {
+    pub label: String,
+    pub success: bool,
+    pub detail: String,
+}
+
 /// Application state struct for TUI.
 pub struct App {
     pub active_tab: ActiveTab,
@@ -445,6 +453,9 @@ pub struct App {
     pub hydration_tx: std::sync::mpsc::Sender<HydrationResult>,
     pub hydration_rx: std::sync::mpsc::Receiver<HydrationResult>,
     pub in_flight_hydration_keys: std::collections::HashSet<String>,
+    pub hydration_batch_succeeded: usize,
+    pub hydration_batch_failed: usize,
+    pub recent_hydration_outcomes: std::collections::VecDeque<HydrationHistoryEntry>,
 
     pub active_ref_pane: RefPane,
     pub bib_file_entries: Vec<String>,
@@ -539,6 +550,9 @@ impl App {
             hydration_tx,
             hydration_rx,
             in_flight_hydration_keys: std::collections::HashSet::new(),
+            hydration_batch_succeeded: 0,
+            hydration_batch_failed: 0,
+            recent_hydration_outcomes: std::collections::VecDeque::with_capacity(20),
             project_root,
             loaded_config,
             global_settings,
@@ -625,10 +639,20 @@ impl App {
         };
 
         if self.in_flight_hydration_keys.contains(&dedup_key) {
+            self.status_message = format!("already hydrating '{label}'...");
             return;
         }
 
+        if self.in_flight_hydration_keys.is_empty() {
+            self.hydration_batch_succeeded = 0;
+            self.hydration_batch_failed = 0;
+        }
+
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.status_message = format!(
+            "⏳ Hydrating ({} in flight)...",
+            self.in_flight_hydration_keys.len()
+        );
         let tx = self.hydration_tx.clone();
 
         std::thread::spawn(move || {
@@ -672,10 +696,20 @@ impl App {
         };
 
         if self.in_flight_hydration_keys.contains(&dedup_key) {
+            self.status_message = format!("already hydrating '{label}'...");
             return;
         }
 
+        if self.in_flight_hydration_keys.is_empty() {
+            self.hydration_batch_succeeded = 0;
+            self.hydration_batch_failed = 0;
+        }
+
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.status_message = format!(
+            "⏳ Hydrating ({} in flight)...",
+            self.in_flight_hydration_keys.len()
+        );
         let tx = self.hydration_tx.clone();
 
         std::thread::spawn(move || {
@@ -697,16 +731,28 @@ impl App {
     }
 
     pub fn poll_background_hydration(&mut self) {
+        let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
+            polled_any = true;
             self.in_flight_hydration_keys.remove(&res.dedup_key);
             match res.outcome {
                 HydrationOutcome::Success { official_bib } => {
+                    self.hydration_batch_succeeded += 1;
+                    if self.recent_hydration_outcomes.len() >= 20 {
+                        self.recent_hydration_outcomes.pop_front();
+                    }
+
                     if let Some(ref root) = self.project_root {
                         let bib_path = root.join(sil_core::paths::rel::REFERENCES);
                         let current = match std::fs::read_to_string(bib_path.as_std_path()) {
                             Ok(c) => c,
                             Err(e) => {
-                                self.status_message = format!("Error reading references.bib: {e}");
+                                let err_msg = format!("Error reading references.bib: {e}");
+                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                    label: res.label.clone(),
+                                    success: false,
+                                    detail: err_msg,
+                                });
                                 continue;
                             }
                         };
@@ -735,24 +781,63 @@ impl App {
                             );
 
                             if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
-                                self.status_message = format!("Error writing references.bib: {e}");
+                                let err_msg = format!("Error writing references.bib: {e}");
+                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                    label: res.label.clone(),
+                                    success: false,
+                                    detail: err_msg,
+                                });
                             } else {
                                 self.load_project_references_bib();
-                                self.status_message =
-                                    format!("✓ Official metadata for '{}'", res.label);
+                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                    label: res.label.clone(),
+                                    success: true,
+                                    detail: format!("Official metadata for '{}'", res.label),
+                                });
                             }
                         } else {
-                            self.status_message = format!(
-                                "ℹ Skipped hydration for '{}': entry was deleted from references.bib",
-                                res.label
-                            );
+                            self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                label: res.label.clone(),
+                                success: false,
+                                detail: format!(
+                                    "Skipped hydration for '{}': entry was deleted from references.bib",
+                                    res.label
+                                ),
+                            });
                         }
+                    } else {
+                        self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                            label: res.label.clone(),
+                            success: true,
+                            detail: format!("Official metadata for '{}'", res.label),
+                        });
                     }
                 }
                 HydrationOutcome::Failure { reason } => {
-                    self.status_message =
-                        format!("⚠ Metadata fetch failed for '{}': {reason}", res.label);
+                    self.hydration_batch_failed += 1;
+                    if self.recent_hydration_outcomes.len() >= 20 {
+                        self.recent_hydration_outcomes.pop_front();
+                    }
+                    self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                        label: res.label.clone(),
+                        success: false,
+                        detail: reason,
+                    });
                 }
+            }
+        }
+
+        if polled_any {
+            if self.in_flight_hydration_keys.is_empty() {
+                self.status_message = format!(
+                    "✓ Hydration complete: {} succeeded, {} failed",
+                    self.hydration_batch_succeeded, self.hydration_batch_failed
+                );
+            } else {
+                self.status_message = format!(
+                    "⏳ Hydrating ({} in flight)...",
+                    self.in_flight_hydration_keys.len()
+                );
             }
         }
     }
@@ -4048,7 +4133,8 @@ mod tests {
 
         let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(content_after.is_empty());
-        assert!(app.status_message.contains("ℹ Skipped hydration for 'Paper Title': entry was deleted"));
+        assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
+        assert!(app.recent_hydration_outcomes.last().unwrap().detail.contains("Skipped hydration for 'Paper Title': entry was deleted"));
     }
 
     #[test]
@@ -4111,6 +4197,106 @@ mod tests {
         perms.set_readonly(false);
         let _ = std::fs::set_permissions(bib_path.as_std_path(), perms);
 
-        assert!(app.status_message.contains("Error writing references.bib:"));
+        assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
+        assert!(app.recent_hydration_outcomes.last().unwrap().detail.contains("Error writing references.bib:"));
+    }
+
+    #[test]
+    fn test_poll_multiple_results_in_one_tick_and_batch_drain() {
+        let mut app = App::new(None);
+        app.in_flight_hydration_keys.insert("doi:10.1000/a".to_string());
+        app.in_flight_hydration_keys.insert("doi:10.1000/b".to_string());
+        app.in_flight_hydration_keys.insert("doi:10.1000/c".to_string());
+
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/a".to_string(),
+                label: "Paper A".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: "@article{a, title={Paper A}}".to_string(),
+                },
+            })
+            .unwrap();
+
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/b".to_string(),
+                label: "Paper B".to_string(),
+                outcome: HydrationOutcome::Failure {
+                    reason: "HTTP 404".to_string(),
+                },
+            })
+            .unwrap();
+
+        app.hydration_tx
+            .send(HydrationResult {
+                dedup_key: "doi:10.1000/c".to_string(),
+                label: "Paper C".to_string(),
+                outcome: HydrationOutcome::Success {
+                    official_bib: "@article{c, title={Paper C}}".to_string(),
+                },
+            })
+            .unwrap();
+
+        app.poll_background_hydration();
+
+        assert!(app.in_flight_hydration_keys.is_empty());
+        assert_eq!(app.hydration_batch_succeeded, 2);
+        assert_eq!(app.hydration_batch_failed, 1);
+        assert_eq!(app.recent_hydration_outcomes.len(), 3);
+        assert_eq!(
+            app.status_message,
+            "✓ Hydration complete: 2 succeeded, 1 failed"
+        );
+    }
+
+    #[test]
+    fn test_already_hydrating_dedup_and_status() {
+        let mut app = App::new(None);
+        let entry = sil_core::ReferenceEntry {
+            id: "ref_1".to_string(),
+            source_id: "src_1".into(),
+            ref_index: 1,
+            raw_text: "Test Reference".to_string(),
+            title: Some("Duplicate Test Paper".to_string()),
+            authors: None,
+            year: None,
+            venue: None,
+            doi: Some("10.1000/dup".to_string()),
+            arxiv_id: None,
+            url: None,
+        };
+
+        app.queue_ref_hydration(entry.clone());
+        assert!(app.in_flight_hydration_keys.contains("doi:10.1000/dup"));
+        assert_eq!(app.status_message, "⏳ Hydrating (1 in flight)...");
+
+        // Request again while in flight
+        app.queue_ref_hydration(entry);
+        assert_eq!(app.status_message, "already hydrating 'Duplicate Test Paper'...");
+        assert_eq!(app.in_flight_hydration_keys.len(), 1);
+    }
+
+    #[test]
+    fn test_recent_hydration_outcomes_bounded_to_20() {
+        let mut app = App::new(None);
+        for i in 0..25 {
+            app.in_flight_hydration_keys.insert(format!("doi:10.1000/{i}"));
+            app.hydration_tx
+                .send(HydrationResult {
+                    dedup_key: format!("doi:10.1000/{i}"),
+                    label: format!("Paper {i}"),
+                    outcome: HydrationOutcome::Success {
+                        official_bib: format!("@article{{p{i}, title={{Paper {i}}}}}}"),
+                    },
+                })
+                .unwrap();
+        }
+
+        app.poll_background_hydration();
+
+        assert_eq!(app.recent_hydration_outcomes.len(), 20);
+        assert_eq!(app.recent_hydration_outcomes.front().unwrap().label, "Paper 5");
+        assert_eq!(app.recent_hydration_outcomes.back().unwrap().label, "Paper 24");
     }
 }
