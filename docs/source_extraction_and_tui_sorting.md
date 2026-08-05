@@ -18,12 +18,22 @@ To comply with external provider policies (Crossref, OpenAlex, ArXiv):
 - All outgoing HTTP requests are throttled with a mandatory delay (min 250ms between calls).
 - User-Agent header includes polite pool metadata (`scientist-in-loop/0.1.0`).
 
-### 4. Interactive Reference Sorting in TUI
-`sil-tui` supports dynamic sorting of reference lists by:
-- `y`: Publication Year
-- `s`: Source Document
-- `v` / `j`: Venue (Journal / Conference)
-- `i` / `n`: Original Citation Index
+### 4. Interactive Reference Sorting & Keybindings in TUI (PR-B1..PR-B4, PR-C3)
+`sil-tui` provides interactive shortcuts across views:
+- **`?` / `F1`**: Open mode-aware keyboard help overlay displaying active keybindings for current view/modal (PR-B1).
+- **`R`**: Reload project sources and bibliography entries from disk into TUI memory (PR-B3).
+- **`e` / `E`**: Parse actions in Sources tab (`e` parses selected unparsed source document; `E` / `Shift+E` parses all unparsed sources) (PR-B4).
+- **Reference Sorting Options**:
+  - `t`: Sort by **Title** (alphabetical) (PR-C3).
+  - `y`: Sort by **Publication Year**.
+  - `s`: Sort by **Source Document ID**.
+  - `v` / `j`: Sort by **Venue** (Journal / Conference).
+  - `i` / `n`: Reset to **Original Citation Index**.
+  - `m` / `c`: Sort by **Draft Cosine Similarity**.
+
+### 5. Native-First Journal Digest CLI Behavior (PR-C3)
+- `sil source digest [query]` executes a native Rust Crossref query builder in `sil-parse::journal_digest`.
+- Operates zero-dependency without invoking Python scripts, resolving top peer-reviewed journal publications directly via REST API with polite rate-limiting.
 
 ### 5. Pure Rust / Fast Parser Fallback
 Heavy Python marker dependencies are decoupled from core reference/author extraction, allowing `sil source doctor` to run reliably and rapidly from scratch across all environments.

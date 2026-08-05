@@ -212,7 +212,7 @@ All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` i
 
 4. **Quoted Titles**:
    ```regex
-   ["“]([^"”\r\n]{2,})[”"]
+   ["“] [^"”\r\n]{2,} [”"]
    ```
    - Captures titles wrapped in straight double quotes (`"..."`) or curly quotes (`“...”`).
 
@@ -260,6 +260,10 @@ All regular expressions are compiled lazily using `std::sync::LazyLock<Regex>` i
    ```
    - Converts inline bullet points (`. - Author Name`) into newline-delimited entries.
 
+4. **BEE-RAG Line-Wrap Continuation Joining (PR-C1)**:
+   - When processing unstructured PDF or Markdown reference lists, citations often span across multiple wrapped physical lines without an explicit entry boundary.
+   - `sil-parse::references` tests non-boundary candidate lines against `REF_ENTRY_START_REGEX`. If a line is not a new reference entry start, it is joined into the active citation buffer with normalized spacing and hyphenation repair, preventing fragmented references on complex documents (such as `BEE-RAG` benchmarks).
+
 ---
 
 ## 5. API Interaction Patterns & Network Control Protocol
@@ -296,14 +300,18 @@ pub fn enforce_api_ratelimit() {
 
 ---
 
-## 6. Metadata Hydration Protocol (`resolve_official_bibtex`)
+## 6. Metadata Hydration Protocol (`resolve_official_bibtex`) (PR-C2)
 
-When generating or resolving references, `sil-parse` attempts network hydration in strict precedence order:
+When resolving official BibTeX metadata for an extracted reference or source document, `sil-parse` executes a hardened fallback chain with Jaccard similarity validation:
 
-1. **Direct DOI Negotiation**: If `entry.doi` is present, fetch BibTeX via `https://doi.org/{doi}` with `Accept: application/x-bibtex`.
-2. **Direct ArXiv Lookup**: If `entry.arxiv_id` is present, fetch BibTeX from `https://arxiv.org/bibtex/{arxiv_id}`.
-3. **Crossref Title & Author Search**: If no DOI/ArXiv ID exists, perform bibliographic search on `https://api.crossref.org/works?query.bibliographic=...`. If a DOI is resolved, negotiate BibTeX via `https://doi.org/{doi}`.
-4. **Local Fallback (`entry.to_bibtex()`)**: Construct a synthetic BibTeX block from extracted local fields if offline or if API lookups fail.
+1. **Direct DOI Content Negotiation**: If `doi` is available (e.g. `10.xxxx/...`), attempt direct BibTeX fetch via `https://doi.org/{doi}` with header `Accept: application/x-bibtex`.
+2. **Direct arXiv BibTeX Fetch**: If `arxiv_id` is present (or normalized from DOI/URL), query `https://arxiv.org/bibtex/{arxiv_id}`.
+3. **Crossref Title & Author Search with Jaccard Gating**:
+   - If no direct identifier exists, construct a Crossref bibliographic search query: `https://api.crossref.org/works?query.bibliographic={title}+{authors}&rows=1`.
+   - **Jaccard Similarity Gating ($\ge 0.60$)**: Before accepting the top Crossref result, `sil-parse` computes token-based Jaccard similarity between the search title and the candidate paper title.
+   - If `Jaccard(query_title, candidate_title) >= 0.60`, the candidate DOI is accepted and official BibTeX is fetched via DOI content negotiation.
+   - If `Jaccard < 0.60`, the candidate is rejected as a false positive, avoiding incorrect metadata hydration.
+4. **Local Fallback (`entry.to_bibtex()`)**: If network requests fail, identifiers are absent, or Jaccard validation fails, `sil-parse` safely constructs a synthetic local BibTeX stub from extracted local fields, marked with `% [sil: tui-added]`.
 
 ---
 

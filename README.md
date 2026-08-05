@@ -187,7 +187,7 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil source list [--json]` | List sources with format tags (`[pdf/parsed/on-disk]`, `[md/parsed/on-disk]`), metadata, and visibility |
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil source cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
-| `sil source digest [query]` | Fetch top peer-reviewed journal publications digest (Crossref API) |
+| `sil source digest [query]` | Fetch top peer-reviewed journal publications digest via native Rust Crossref query builder |
 | `sil source doctor [id]` | Heal parsed sources: re-extract reference entries and hydrate missing metadata via DOI |
 | `sil paper build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
 | `sil paper template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
@@ -246,8 +246,10 @@ Sci-Action: fetch-source
 
 - `1`-`5` or `Tab` / `Shift+Tab`: Switch tabs (1. Dashboard, 2. Sources, 3. References, 4. Paper Draft, 5. Settings).
 - `?` / `F1`: Open mode-aware keyboard help overlay showing actual shortcuts for the current view/modal context.
+- `R`: Reload project sources and bibliography entries from disk.
 - `↑`/`↓` or `j`/`k`: Navigate sources, fields, references, or sections.
-- `Enter` / `e`: Edit selected setting field or section body, or read source Markdown.
+- `Enter` / `e`: Edit selected setting field or section body, read source Markdown, or parse selected unparsed source (Sources tab).
+- `E` / `Shift+E`: Parse all unparsed source documents (Sources tab).
 - `a`: Add source link / URL / DOI / arXiv (Sources tab) or add author / grant (Settings tab).
 - `b`: Append selected source document to `references.bib` (Sources tab).
 - `r`: Rename selected source document title.
