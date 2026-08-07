@@ -4880,7 +4880,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7281,9 +7281,9 @@ dependencies = [
 
 [[package]]
 name = "xberg"
-version = "1.0.6"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f434f7b3c6cc669dc2b8a83e2138dea32c5b65740998329dad797272a317c460"
+checksum = "68568d75a993709564cb27361409b46988ec585f9fb59c8f91a113ff7f6b4e29"
 dependencies = [
  "ahash",
  "async-trait",
@@ -7351,9 +7351,9 @@ dependencies = [
 
 [[package]]
 name = "xberg-gliner"
-version = "1.0.8"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db5bce8f87e1e3f6ad2d21a8abc94355d519940e7c0709383337020cdb10f3fb"
+checksum = "e552646e88a209fab1ed91957f32f81fc4fd80843f37adf70d38bbfd66fcdc91"
 dependencies = [
  "getrandom 0.2.17",
  "getrandom 0.3.4",
@@ -7367,9 +7367,9 @@ dependencies = [
 
 [[package]]
 name = "xberg-tesseract"
-version = "1.0.8"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a550a46bb0cab89ec6cb60493b07076f411b5517891d6a7d7c9ceda456337d7c"
+checksum = "ace6b1450e05eca5873efcfe126358d1ada6947dff1f1d75c9fde19049d1bb52"
 dependencies = [
  "cc",
  "cmake",
