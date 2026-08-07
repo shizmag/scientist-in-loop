@@ -218,8 +218,14 @@ impl SourceDocument {
         let has_doi = self.doi.as_ref().is_some_and(|s| !s.trim().is_empty());
         let has_title = self.title.as_ref().is_some_and(|t| !t.trim().is_empty());
         let has_arxiv = self.filename.to_lowercase().contains("arxiv")
-            || self.doi.as_deref().is_some_and(|d| d.to_lowercase().contains("arxiv"))
-            || self.title.as_deref().is_some_and(|t| t.to_lowercase().contains("arxiv"));
+            || self
+                .doi
+                .as_deref()
+                .is_some_and(|d| d.to_lowercase().contains("arxiv"))
+            || self
+                .title
+                .as_deref()
+                .is_some_and(|t| t.to_lowercase().contains("arxiv"));
         has_doi || has_title || has_arxiv
     }
 }
@@ -442,7 +448,9 @@ fn strip_latex_commands(text: &str) -> String {
                 if let Some(&'{') = chars.peek() {
                     chars.next();
                     let mut depth = 1;
-                    while depth > 0 && let Some(ch) = chars.next() {
+                    while depth > 0
+                        && let Some(ch) = chars.next()
+                    {
                         if ch == '{' {
                             depth += 1;
                         } else if ch == '}' {
@@ -690,7 +698,10 @@ mod tests {
             url: None,
         };
         let text = ref_text_for_embed(&entry);
-        assert_eq!(text, "Attention Is All You Need Vaswani et al. NeurIPS 2017");
+        assert_eq!(
+            text,
+            "Attention Is All You Need Vaswani et al. NeurIPS 2017"
+        );
 
         let empty_entry = ReferenceEntry {
             id: "ref-2".into(),

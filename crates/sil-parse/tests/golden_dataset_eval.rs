@@ -46,9 +46,11 @@ fn generate_candidate_extractions_for_golden_dataset() {
             doc.references_text = sil_parse::references::extract_references_block(&content);
         }
 
-        let raw_refs = doc.references_text.as_ref().map(|b| {
-            sil_parse::references::parse_reference_entries(&doc.id, b)
-        }).unwrap_or_default();
+        let raw_refs = doc
+            .references_text
+            .as_ref()
+            .map(|b| sil_parse::references::parse_reference_entries(&doc.id, b))
+            .unwrap_or_default();
 
         let refs_json: Vec<_> = raw_refs
             .iter()
@@ -78,7 +80,11 @@ fn generate_candidate_extractions_for_golden_dataset() {
         });
 
         let out_path = out_dir.join(format!("{stem}.json"));
-        std::fs::write(&out_path, serde_json::to_string_pretty(&extraction).unwrap()).unwrap();
+        std::fs::write(
+            &out_path,
+            serde_json::to_string_pretty(&extraction).unwrap(),
+        )
+        .unwrap();
         count += 1;
     }
 

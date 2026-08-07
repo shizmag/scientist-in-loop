@@ -31,3 +31,7 @@ root README, final e2e suite.
 ## Stage 7 — Interactive TUI Refactoring: Sources & Unified Settings ✅
 Interactive 4-tab Ratatui TUI command center. Dedicated Sources tab (#3) with paginated pretty Markdown reading, auto-fetch link modal, parse status indicators, word/reference statistics, reference viewer, renaming, and deletion confirmation. Unified vertical Settings window (#4) combining Global, RAG, Caches, and Local settings with visual section dividers.
 
+## Stage 8 — Wave D: ONNX RAG Truth, Agent Bib Write, TUI Finish, Quality & Release Hygiene ✅
+Feature-gated real ONNX inference for embedder and reranker (`--features onnx`) with default hash fallback and honest doctor diagnostics (`sil project doctor`). Comprehensive agent bib write path via MCP tools (`sil_upsert_bib`, `sil_promote_bib`, `sil_parse_source`, `sil_set_structure`, `sil_rank_draft`). Finished TUI async job chrome with Sources fetch on `a`, job history log and retry modal on `J`, and non-blocking draft-reference similarity computation on `X`/`m`. Lifted BEE-RAG/HiChunk parent author F1 and anchor field precision, CI golden gate and formatting enforcement (`cargo fmt --check`).
+
+

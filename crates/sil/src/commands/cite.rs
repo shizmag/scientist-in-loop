@@ -28,7 +28,8 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
         for block in &mut blocks {
             let block_info = sil_core::extract_bib_entry_info(block);
             if sil_core::is_same_paper(&block_info, &target_info)
-                || block_info.cite_key.as_deref().unwrap_or("").to_lowercase() == target.to_lowercase()
+                || block_info.cite_key.as_deref().unwrap_or("").to_lowercase()
+                    == target.to_lowercase()
             {
                 let cite_key = block_info.cite_key.as_deref().unwrap_or(target).to_string();
                 *block = sil_core::unmark_tui_added_bib_entry(block);
@@ -44,7 +45,9 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
                 blocks.join("\n\n") + "\n"
             };
             std::fs::write(bib_path.as_str(), updated)?;
-            ui.success(&format!("✓ Promoted entry '{key}' in {bib_path} (removed % [sil: tui-added])"));
+            ui.success(&format!(
+                "✓ Promoted entry '{key}' in {bib_path} (removed % [sil: tui-added])"
+            ));
             return Ok(());
         } else {
             bail!("No entry matching '{target}' found in {bib_path} to promote");
@@ -68,7 +71,9 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
         match res {
             sil_parse::SourceBibResolution::Resolved(ref bib) => {
                 let info = sil_core::extract_bib_entry_info(bib);
-                let cite_key = info.cite_key.unwrap_or_else(|| sil_core::slug_cite_key(doc.title.as_deref().unwrap_or(&doc.filename)));
+                let cite_key = info.cite_key.unwrap_or_else(|| {
+                    sil_core::slug_cite_key(doc.title.as_deref().unwrap_or(&doc.filename))
+                });
                 let sug = sil_core::BibSuggestion {
                     cite_key: cite_key.clone(),
                     cite_command: sil_core::format_cite_command(&cite_key),
@@ -77,9 +82,7 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
                 };
                 (sug, Some(res))
             }
-            sil_parse::SourceBibResolution::Failed(_) => {
-                (suggest_from_source(&doc), Some(res))
-            }
+            sil_parse::SourceBibResolution::Failed(_) => (suggest_from_source(&doc), Some(res)),
         }
     } else if let Ok(ref_hits) = db.search_references(target, 1)
         && let Some(ref_entry) = ref_hits.first()
@@ -95,7 +98,9 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
         match res {
             sil_parse::SourceBibResolution::Resolved(ref bib) => {
                 let info = sil_core::extract_bib_entry_info(bib);
-                let cite_key = info.cite_key.unwrap_or_else(|| sil_core::slug_cite_key(&doc.filename));
+                let cite_key = info
+                    .cite_key
+                    .unwrap_or_else(|| sil_core::slug_cite_key(&doc.filename));
                 let sug = sil_core::BibSuggestion {
                     cite_key: cite_key.clone(),
                     cite_command: sil_core::format_cite_command(&cite_key),
@@ -108,9 +113,7 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
         }
     };
 
-    if !json
-        && let Some(sil_parse::SourceBibResolution::Failed(ref reason)) = official_resolution
-    {
+    if !json && let Some(sil_parse::SourceBibResolution::Failed(ref reason)) = official_resolution {
         ui.warn(&format!("⚠ Could not resolve official metadata: {reason}"));
     }
 

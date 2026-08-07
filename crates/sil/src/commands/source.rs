@@ -528,8 +528,12 @@ pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<
         })?;
     spinner.finish_success(&format!("Computed similarity for {count} reference(s)"));
 
-    let scores = db.get_draft_ref_similarities().map_err(|e| anyhow::anyhow!("{e}"))?;
-    let all_refs = db.get_all_references().map_err(|e| anyhow::anyhow!("{e}"))?;
+    let scores = db
+        .get_draft_ref_similarities()
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let all_refs = db
+        .get_all_references()
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     let threshold = min_score.unwrap_or(0.0);
     let mut hits: Vec<SimilarityRankHit> = all_refs
@@ -551,12 +555,19 @@ pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<
         })
         .collect();
 
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     if json {
         println!("{}", serde_json::to_string_pretty(&hits)?);
     } else {
-        ui.info(&format!("Draft Cosine Similarity Rankings (total: {})", hits.len()));
+        ui.info(&format!(
+            "Draft Cosine Similarity Rankings (total: {})",
+            hits.len()
+        ));
         for hit in &hits {
             let title = hit.title.as_deref().unwrap_or(&hit.raw_text);
             let year = hit.year.map(|y| format!(" ({y})")).unwrap_or_default();
@@ -565,4 +576,3 @@ pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<
     }
     Ok(())
 }
-

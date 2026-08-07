@@ -47,7 +47,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | **Python 3** | `sil parse`, `sil source fetch` | Helpers under `python/`; override with `SIL_PYTHON` |
 | **[uv](https://docs.astral.sh/uv/)** | Project Python env | Root `pyproject.toml` + `uv.lock`; install via [astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
 | **uv packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `uv sync` (pypdf); `uv sync --extra marker` for Marker quality |
-| **xberg** (Rust Crate) | Structured PDF Metadata & Citation Extraction | Extracts `title`, `authors`, and `citations` via LLM/NER schema. Models cached at `/Volumes/happy-disk/models/xberg/huggingface` |
+| **xberg** (Rust Crate) | Structured PDF Metadata & Citation Extraction | Extracts `title`, `authors`, and `citations` via LLM/NER schema. Models cached under `~/.cache/sil/models/xberg` |
 | **C toolchain** | Building `sil` (bundled SQLite) | Xcode CLT (macOS), `build-essential` (Debian/Ubuntu), MinGW or MSVC (Windows) |
 | **LaTeX engine** | `sil build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
 

@@ -133,10 +133,10 @@ For PDF files, `sil-parse` integrates the `xberg` crate, utilizing an ONNX-backe
 To maintain deterministic execution across environments, `xberg` sets its HuggingFace cache directory to a local dedicated path:
 
 ```rust
-let cache_dir = Path::new("/Volumes/happy-disk/models/xberg/huggingface");
-if let Ok(_) = std::fs::create_dir_all(cache_dir) {
+let cache_dir = dirs::cache_dir().unwrap().join("sil/models/xberg");
+if let Ok(_) = std::fs::create_dir_all(&cache_dir) {
     unsafe {
-        std::env::set_var("HF_HOME", cache_dir);
+        std::env::set_var("HF_HOME", &cache_dir);
     }
 }
 ```

@@ -427,7 +427,11 @@ pub struct BibEntryInfo {
 /// Extract metadata fields and status from a BibTeX entry block string.
 pub fn extract_bib_entry_info(entry_str: &str) -> BibEntryInfo {
     let pretty = pretty_format_bibtex(entry_str);
-    let target_str = if pretty.trim().is_empty() { entry_str } else { &pretty };
+    let target_str = if pretty.trim().is_empty() {
+        entry_str
+    } else {
+        &pretty
+    };
 
     let mut info = BibEntryInfo::default();
 
@@ -553,7 +557,6 @@ pub fn is_same_paper(a: &BibEntryInfo, b: &BibEntryInfo) -> bool {
     false
 }
 
-
 /// Split a BibTeX file content into individual entry blocks, preserving associated comments.
 pub fn parse_bib_blocks(content: &str) -> Vec<String> {
     let mut blocks = Vec::new();
@@ -678,7 +681,6 @@ pub fn upsert_bib_entry(existing_bib_content: &str, new_entry: &str) -> (String,
     )
 }
 
-
 /// Canonical marker comment for entries added via sil tui.
 pub const TUI_ADDED_MARKER: &str = "% [sil: tui-added]";
 
@@ -730,7 +732,6 @@ pub fn strip_tui_added_bib_entries(bib_content: &str) -> String {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -745,7 +746,9 @@ mod tests {
     fn test_pretty_format_bibtex_preserves_comments() {
         let raw = "% [status: unproved, incomplete]\n# Hash comment\n@misc{key,\n  title={Title},\n  author={Author}\n}";
         let formatted = pretty_format_bibtex(raw);
-        assert!(formatted.starts_with("% [status: unproved, incomplete]\n# Hash comment\n@misc{key,"));
+        assert!(
+            formatted.starts_with("% [status: unproved, incomplete]\n# Hash comment\n@misc{key,")
+        );
         assert!(formatted.contains("  title = {Title},"));
         assert!(formatted.contains("  author = {Author}"));
         assert!(formatted.ends_with("}\n"));
@@ -985,7 +988,8 @@ mod tests {
 
     #[test]
     fn test_rewrite_bib_cite_key_preserves_comments() {
-        let raw = "% [sil: tui-added]\n@article{Vaswani2017,\n  title={Attention is All you Need}\n}";
+        let raw =
+            "% [sil: tui-added]\n@article{Vaswani2017,\n  title={Attention is All you Need}\n}";
         let rewritten = rewrite_bib_cite_key(raw, "attention_is_all_you_need");
         assert!(rewritten.starts_with("% [sil: tui-added]\n@article{attention_is_all_you_need,"));
     }
@@ -1210,8 +1214,14 @@ mod tests {
         assert_eq!(normalize_arxiv_id("arXiv:1234.5678"), "1234.5678");
         assert_eq!(normalize_arxiv_id("1234.5678v2"), "1234.5678");
         assert_eq!(normalize_arxiv_id("1234.5678"), "1234.5678");
-        assert_eq!(normalize_arxiv_id("ARXIV:hep-th/9901001v3"), "hep-th/9901001");
-        assert_eq!(normalize_arxiv_id("https://arxiv.org/abs/2501.12948v1"), "2501.12948");
+        assert_eq!(
+            normalize_arxiv_id("ARXIV:hep-th/9901001v3"),
+            "hep-th/9901001"
+        );
+        assert_eq!(
+            normalize_arxiv_id("https://arxiv.org/abs/2501.12948v1"),
+            "2501.12948"
+        );
     }
 
     #[test]

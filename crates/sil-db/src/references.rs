@@ -219,7 +219,6 @@ pub fn get_draft_similarity_hash(conn: &Connection) -> Result<Option<String>, Db
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,7 +373,9 @@ mod tests {
 
         let embedder = crate::onnx::OnnxEmbedder::default();
         let draft = "\\section{Intro} Deep Learning for Natural Language Processing";
-        let count = db.recompute_draft_ref_similarities(draft, &embedder).unwrap();
+        let count = db
+            .recompute_draft_ref_similarities(draft, &embedder)
+            .unwrap();
         assert_eq!(count, 1);
 
         let scores = db.get_draft_ref_similarities().unwrap();

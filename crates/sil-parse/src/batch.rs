@@ -177,9 +177,7 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
 
         // Stop at bibliography / abstract / intro even when Marker wraps headings
         // in bold (`#### **Abstract**`, `## **1 Introduction**`).
-        if sil_regex::is_reference_heading(&clean)
-            || sil_regex::is_frontmatter_section_stop(line)
-        {
+        if sil_regex::is_reference_heading(&clean) || sil_regex::is_frontmatter_section_stop(line) {
             break;
         }
         header_lines.push(line.to_string());
@@ -306,7 +304,11 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
             doc.title.as_ref().and_then(|t| {
                 let t_clean = t.trim().to_lowercase();
                 header_lines.iter().position(|l| {
-                    let clean = sil_regex::strip_html_spans(l).trim().trim_start_matches('#').trim().to_lowercase();
+                    let clean = sil_regex::strip_html_spans(l)
+                        .trim()
+                        .trim_start_matches('#')
+                        .trim()
+                        .to_lowercase();
                     !t_clean.is_empty() && (clean == t_clean || clean.contains(&t_clean))
                 })
             })
@@ -751,11 +753,7 @@ Jorge Yero Salazar [ID](https://orcid.org/0000-0002-5033-4805) Department of Com
 *Abstract*—Concerns regarding the propensity of Large Language Models (LLMs) to produce inaccurate outputs.
 "#;
 
-        hydrate_source_document_metadata(
-            &mut doc,
-            content,
-            Utf8Path::new("Token_probability.pdf"),
-        );
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("Token_probability.pdf"));
 
         let authors = doc.authors.expect("authors");
         for expected in ["Ernesto Quevedo", "Pablo Rivas", "Jorge Yero Salazar"] {

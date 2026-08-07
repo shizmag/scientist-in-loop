@@ -318,7 +318,10 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
         .map_err(|e| ParseError::Message(format!("Failed to read DOI BibTeX string: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.lines().any(|l| l.trim_start().starts_with('@') && l.contains('{')) {
+    if trimmed
+        .lines()
+        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
+    {
         Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
@@ -500,7 +503,10 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseE
         .map_err(|e| ParseError::Message(format!("Failed to read arXiv BibTeX: {e}")))?;
 
     let trimmed = body.trim();
-    if trimmed.lines().any(|l| l.trim_start().starts_with('@') && l.contains('{')) {
+    if trimmed
+        .lines()
+        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
+    {
         Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
     } else {
         Ok(None)
@@ -722,7 +728,6 @@ pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> Sou
         SourceBibResolution::Failed(reasons.join("; "))
     }
 }
-
 
 /// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
 pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {

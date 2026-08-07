@@ -4,11 +4,11 @@
 use camino::Utf8Path;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use sil_core::{ReferenceEntry, SourceId};
 use std::path::Path;
 use xberg::core::config::ner::{NerBackendKind, NerConfig};
 use xberg::types::entity::EntityCategory;
 use xberg::{ExtractInput, ExtractionConfig, extract};
-use sil_core::{ReferenceEntry, SourceId};
 
 /// Strongly typed target struct for xberg metadata extraction.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -192,7 +192,8 @@ pub fn map_entities_to_reference_entries(
             }
 
             let id = format!("{}_ref_{}", source_id.as_str(), idx);
-            let (authors, year, title, venue, doi, arxiv_id, url) = crate::references::parse_entry_metadata(&raw_text);
+            let (authors, year, title, venue, doi, arxiv_id, url) =
+                crate::references::parse_entry_metadata(&raw_text);
 
             entries.push(ReferenceEntry {
                 id,

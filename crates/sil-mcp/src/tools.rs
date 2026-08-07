@@ -1,4 +1,4 @@
-//! Implementation and registration of the 12 core `sil` MCP tools.
+//! Implementation and registration of the core `sil` MCP tools.
 
 use camino::Utf8PathBuf;
 use serde_json::json;
@@ -6,8 +6,10 @@ use sil_agent::{
     ContextFlags, ContextInput, SkillSelection, generate_context, load_skill, sources_summary,
 };
 use sil_core::{
-    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, project_root_from_cwd,
-    suggest_from_query, suggest_from_source,
+    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, UpsertOptions,
+    extract_bib_entry_info, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry,
+    parse_bib_blocks, project_root_from_cwd, suggest_from_query, suggest_from_source,
+    unmark_tui_added_bib_entry, upsert_bib_entry_with_options,
 };
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
@@ -16,12 +18,12 @@ use std::fs;
 
 use crate::protocol::{CallToolResult, Tool, ToolInputSchema};
 
-/// Returns all 12 core `sil` registered tools with valid JSON schemas.
+/// Returns all registered `sil` tools with valid JSON schemas.
 pub fn list_tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "sil_search_sources".to_string(),
-            description: "Hybrid RAG search (BM25 + Local ONNX Dense RRF + HyDE + Parent expansion)".to_string(),
+            description: "Hybrid RAG search (BM25 + dense RRF when onnx feature+models available, else hash fallback; HyDE + parent expansion)".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
                     "query": { "type": "string", "description": "Search query string" },
@@ -116,13 +118,31 @@ pub fn list_tools() -> Vec<Tool> {
         },
         Tool {
             name: "sil_get_structure".to_string(),
-            description: "Read/update completion in structure.yaml".to_string(),
+            description: "Read or update section completion/claims in structure.yaml (four-state completion: empty|outline|draft|polished)".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
-                    "action": { "type": "string", "description": "'read' or 'update'" },
-                    "section_id": { "type": "string", "description": "Section ID to update" },
-                    "completed": { "type": "boolean", "description": "Completion status" },
-                    "word_count": { "type": "integer", "description": "Optional target word count" }
+                    "action": { "type": "string", "description": "'read' (default) or 'update'" },
+                    "section_id": { "type": "string", "description": "Section ID (required for update)" },
+                    "completion": {
+                        "type": "string",
+                        "enum": ["empty", "outline", "draft", "polished"],
+                        "description": "Four-state section completion (preferred over completed)"
+                    },
+                    "completed": {
+                        "type": "boolean",
+                        "description": "Deprecated compat: true→draft, false→empty when completion absent"
+                    },
+                    "main_claim": { "type": "string", "description": "Optional primary claim for the section" },
+                    "secondary_points": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Optional secondary bullet points (replaces existing list)"
+                    },
+                    "required_content": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Optional required-content checklist (replaces existing list)"
+                    }
                 }),
                 vec![],
             ),
@@ -160,6 +180,51 @@ pub fn list_tools() -> Vec<Tool> {
                 vec!["target"],
             ),
         },
+        Tool {
+            name: "sil_upsert_bib".to_string(),
+            description: "Upsert a BibTeX entry into references.bib (never git commits; returns Sci-Action proposal)".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "entry": { "type": "string", "description": "Full BibTeX entry block (string only)" },
+                    "draft": { "type": "boolean", "description": "Mark as TUI-added draft (default false)" },
+                    "preserve_cite_key": { "type": "boolean", "description": "Keep existing cite key when replacing (default true)" }
+                }),
+                vec!["entry"],
+            ),
+        },
+        Tool {
+            name: "sil_promote_bib".to_string(),
+            description: "Promote a bibliography entry by removing % [sil: tui-added] (never git commits)".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "cite_key": { "type": "string", "description": "Cite key (or DOI/arXiv id) of the entry to promote" }
+                }),
+                vec!["cite_key"],
+            ),
+        },
+        Tool {
+            name: "sil_parse_source".to_string(),
+            description: "Parse an existing PDF/MD/text under sources/ into SQLite (no download); path, source_id, or all_unparsed".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "source_id": { "type": "string", "description": "Source id or filename under sources/" },
+                    "path": { "type": "string", "description": "Path to source file (absolute, relative, or under sources/)" },
+                    "all_unparsed": { "type": "boolean", "description": "Parse all unparsed sources under sources/ (default false)" }
+                }),
+                vec![],
+            ),
+        },
+        Tool {
+            name: "sil_rank_draft".to_string(),
+            description: "Rank extracted references by cosine similarity against paper_draft.tex".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "min_score": { "type": "number", "description": "Minimum similarity score to include (default 0.0)" },
+                    "limit": { "type": "integer", "description": "Max ranked hits to return (default 50)" }
+                }),
+                vec![],
+            ),
+        },
     ]
 }
 
@@ -180,6 +245,10 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
         "sil_build_and_doctor" => handle_build_and_doctor(args),
         "sil_propose_commit" => handle_propose_commit(args),
         "sil_fetch_source" => handle_fetch_source(args),
+        "sil_upsert_bib" => handle_upsert_bib(args),
+        "sil_promote_bib" => handle_promote_bib(args),
+        "sil_parse_source" => handle_parse_source(args),
+        "sil_rank_draft" => handle_rank_draft(args),
         _ => CallToolResult::error(format!("Unknown tool: {name}")),
     }
 }
@@ -595,13 +664,42 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
     }
 }
 
+fn parse_string_array(value: Option<&serde_json::Value>) -> Option<Result<Vec<String>, String>> {
+    value.map(|v| {
+        let arr = v
+            .as_array()
+            .ok_or_else(|| "expected a JSON array of strings".to_string())?;
+        let mut out = Vec::with_capacity(arr.len());
+        for item in arr {
+            let s = item
+                .as_str()
+                .ok_or_else(|| "array items must be strings".to_string())?;
+            out.push(s.to_string());
+        }
+        Ok(out)
+    })
+}
+
 fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
     let action = args
         .get("action")
         .and_then(|v| v.as_str())
         .unwrap_or("read");
     let section_id = args.get("section_id").and_then(|v| v.as_str());
+    let completion_arg = args.get("completion").and_then(|v| v.as_str());
     let completed = args.get("completed").and_then(|v| v.as_bool());
+    let main_claim = args.get("main_claim").and_then(|v| v.as_str());
+    let secondary_points = match parse_string_array(args.get("secondary_points")) {
+        Some(Ok(v)) => Some(v),
+        Some(Err(e)) => return CallToolResult::error(format!("Invalid secondary_points: {e}")),
+        None => None,
+    };
+    let required_content = match parse_string_array(args.get("required_content")) {
+        Some(Ok(v)) => Some(v),
+        Some(Err(e)) => return CallToolResult::error(format!("Invalid required_content: {e}")),
+        None => None,
+    };
+    // word_count is intentionally ignored (field does not exist on Section; non-goal for E2).
 
     let (_root, paths) = match get_project_paths() {
         Ok(p) => p,
@@ -613,32 +711,97 @@ fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
         Err(e) => return CallToolResult::error(format!("Failed to load structure.yaml: {e}")),
     };
 
+    let mut proposal_msg: Option<String> = None;
+
     if action == "update" {
         let sid = match section_id {
             Some(s) => s,
             None => return CallToolResult::error("Missing section_id for update action"),
         };
-        let is_comp = match completed {
-            Some(c) => c,
-            None => return CallToolResult::error("Missing completed status for update action"),
-        };
 
-        if let Some(sec) = struct_obj.sections.iter_mut().find(|s| s.id == sid) {
-            sec.completion = if is_comp {
-                SectionCompletion::Draft
-            } else {
-                SectionCompletion::Empty
-            };
-            if let Err(e) = struct_obj.save(&paths.structure()) {
-                return CallToolResult::error(format!("Failed to save structure.yaml: {e}"));
+        let new_completion = if let Some(c) = completion_arg {
+            match c.parse::<SectionCompletion>() {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    return CallToolResult::error(format!(
+                        "Invalid completion '{c}' (expected empty|outline|draft|polished): {e}"
+                    ));
+                }
             }
         } else {
-            return CallToolResult::error(format!("Section '{sid}' not found in structure.yaml"));
+            completed.map(|is_comp| {
+                if is_comp {
+                    SectionCompletion::Draft
+                } else {
+                    SectionCompletion::Empty
+                }
+            })
+        };
+
+        let has_field_update = main_claim.is_some()
+            || secondary_points.is_some()
+            || required_content.is_some()
+            || new_completion.is_some();
+        if !has_field_update {
+            return CallToolResult::error(
+                "update requires completion, completed, main_claim, secondary_points, and/or required_content",
+            );
         }
+
+        let sec = match struct_obj.sections.iter_mut().find(|s| s.id == sid) {
+            Some(s) => s,
+            None => {
+                return CallToolResult::error(format!(
+                    "Section '{sid}' not found in structure.yaml"
+                ));
+            }
+        };
+
+        let mut changes = Vec::new();
+        if let Some(c) = new_completion {
+            if sec.completion != c {
+                changes.push(format!("completion {} → {}", sec.completion, c));
+            }
+            sec.completion = c;
+        }
+        if let Some(claim) = main_claim {
+            sec.main_claim = claim.to_string();
+            changes.push("main_claim".to_string());
+        }
+        if let Some(points) = secondary_points {
+            sec.secondary_points = points;
+            changes.push("secondary_points".to_string());
+        }
+        if let Some(req) = required_content {
+            sec.required_content = req;
+            changes.push("required_content".to_string());
+        }
+
+        if let Err(e) = struct_obj.save(&paths.structure()) {
+            return CallToolResult::error(format!("Failed to save structure.yaml: {e}"));
+        }
+
+        let proposal = proposal_for_action(
+            SciAction::UpdateStructure,
+            Some(&format!("Update structure: {sid}")),
+            Some(&format!(
+                "Updated section `{sid}` ({})",
+                if changes.is_empty() {
+                    "no-op".to_string()
+                } else {
+                    changes.join(", ")
+                }
+            )),
+        );
+        proposal_msg = Some(proposal.message());
+    } else if action != "read" {
+        return CallToolResult::error(format!(
+            "Invalid action '{action}' (expected 'read' or 'update')"
+        ));
     }
 
     let summary = struct_obj.completion_summary();
-    let res = json!({
+    let mut res = json!({
         "structure": struct_obj,
         "completion_summary": {
             "total": summary.total,
@@ -649,6 +812,10 @@ fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
             "summary": summary.to_string(),
         },
     });
+    if let Some(msg) = proposal_msg {
+        res["proposal"] = json!(msg);
+        res["never_committed"] = json!(true);
+    }
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
 }
 
@@ -804,6 +971,462 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
         }
     });
 
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
+    let entry = match args.get("entry").and_then(|v| v.as_str()) {
+        Some(e) => e,
+        None => return CallToolResult::error("Missing required parameter: entry"),
+    };
+    if entry.trim().is_empty() {
+        return CallToolResult::error("entry must not be empty");
+    }
+    if !entry.contains('@') {
+        return CallToolResult::error("entry is not valid BibTeX (missing @type{key, ...})");
+    }
+
+    let draft = args.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
+    let preserve_cite_key = args
+        .get("preserve_cite_key")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+
+    let (_root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
+    // Re-read disk before write (same concurrency model as TUI).
+    let current = fs::read_to_string(bib_path.as_str()).unwrap_or_default();
+
+    let entry_for_upsert = if draft {
+        mark_tui_added_bib_entry(entry)
+    } else {
+        entry.to_string()
+    };
+
+    let (updated, replaced) = upsert_bib_entry_with_options(
+        &current,
+        &entry_for_upsert,
+        UpsertOptions { preserve_cite_key },
+    );
+
+    let new_info = extract_bib_entry_info(&entry_for_upsert);
+    let cite_key = parse_bib_blocks(&updated)
+        .into_iter()
+        .find(|block| is_same_paper(&extract_bib_entry_info(block), &new_info))
+        .and_then(|block| extract_bib_entry_info(&block).cite_key)
+        .or_else(|| new_info.cite_key.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    if let Err(e) = fs::write(bib_path.as_str(), &updated) {
+        return CallToolResult::error(format!("Failed to write {}: {e}", bib_path));
+    }
+
+    let proposal = proposal_for_action(
+        SciAction::UpdateBibliography,
+        Some(&format!("Update bibliography: {cite_key}")),
+        Some(&format!(
+            "Upserted BibTeX entry '{cite_key}' into {} (draft={draft}, preserve_cite_key={preserve_cite_key}, replaced={replaced})",
+            sil_core::paths::rel::REFERENCES
+        )),
+    );
+
+    let res = json!({
+        "wrote": true,
+        "cite_key": cite_key,
+        "replaced": replaced,
+        "path": bib_path.as_str(),
+        "draft": draft,
+        "proposal": proposal.message(),
+        "never_committed": true,
+    });
+
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
+    let cite_key = match args.get("cite_key").and_then(|v| v.as_str()) {
+        Some(k) if !k.trim().is_empty() => k.trim(),
+        _ => return CallToolResult::error("Missing required parameter: cite_key"),
+    };
+
+    let (_root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
+    if !bib_path.is_file() {
+        return CallToolResult::error(format!("references.bib not found at {bib_path}"));
+    }
+
+    // Re-read disk before write.
+    let current = match fs::read_to_string(bib_path.as_str()) {
+        Ok(c) => c,
+        Err(e) => return CallToolResult::error(format!("Failed to read {bib_path}: {e}")),
+    };
+
+    let target_info = sil_core::BibEntryInfo {
+        cite_key: Some(cite_key.to_string()),
+        title: Some(cite_key.to_string()),
+        doi: Some(cite_key.to_string()),
+        arxiv_id: Some(cite_key.to_string()),
+        is_incomplete: false,
+    };
+
+    let mut blocks = parse_bib_blocks(&current);
+    let mut promoted_key: Option<String> = None;
+    let mut had_marker = false;
+
+    for block in &mut blocks {
+        let block_info = extract_bib_entry_info(block);
+        let key_match = block_info
+            .cite_key
+            .as_deref()
+            .unwrap_or("")
+            .eq_ignore_ascii_case(cite_key);
+        if is_same_paper(&block_info, &target_info) || key_match {
+            let key = block_info
+                .cite_key
+                .as_deref()
+                .unwrap_or(cite_key)
+                .to_string();
+            had_marker = is_tui_added_bib_block(block);
+            *block = unmark_tui_added_bib_entry(block);
+            promoted_key = Some(key);
+            break;
+        }
+    }
+
+    let Some(key) = promoted_key else {
+        return CallToolResult::error(format!(
+            "No entry matching '{cite_key}' found in {bib_path} to promote"
+        ));
+    };
+
+    let updated = if blocks.is_empty() {
+        String::new()
+    } else {
+        blocks.join("\n\n") + "\n"
+    };
+
+    if let Err(e) = fs::write(bib_path.as_str(), &updated) {
+        return CallToolResult::error(format!("Failed to write {bib_path}: {e}"));
+    }
+
+    let proposal = proposal_for_action(
+        SciAction::PromoteBibliography,
+        Some(&format!("Promote bibliography entry: {key}")),
+        Some(&format!(
+            "Removed % [sil: tui-added] from '{key}' in {}",
+            sil_core::paths::rel::REFERENCES
+        )),
+    );
+
+    let res = json!({
+        "wrote": true,
+        "cite_key": key,
+        "replaced": had_marker,
+        "path": bib_path.as_str(),
+        "proposal": proposal.message(),
+        "never_committed": true,
+    });
+
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+/// Resolve a filesystem path for parse: absolute, relative to cwd, or under sources/.
+fn resolve_parse_path(
+    raw: &str,
+    sources_dir: &camino::Utf8Path,
+    root: &camino::Utf8Path,
+) -> Result<Utf8PathBuf, String> {
+    let candidate = Utf8PathBuf::from(raw);
+    if candidate.is_absolute() {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+        return Err(format!("path not found: {raw}"));
+    }
+
+    // relative to cwd
+    if candidate.exists() {
+        return Ok(candidate);
+    }
+
+    // under sources/ as filename or relative subpath
+    let under_sources = sources_dir.join(raw.trim_start_matches("sources/"));
+    if under_sources.exists() {
+        return Ok(under_sources);
+    }
+
+    // under project root
+    let under_root = root.join(raw);
+    if under_root.exists() {
+        return Ok(under_root);
+    }
+
+    Err(format!(
+        "path not found: {raw} (tried cwd, sources/, and project root)"
+    ))
+}
+
+/// Resolve source_id (DB id or filename) to a file under sources/.
+fn resolve_source_id_path(
+    source_id: &str,
+    sources_dir: &camino::Utf8Path,
+    root: &camino::Utf8Path,
+    db: &SilDb,
+) -> Result<Utf8PathBuf, String> {
+    // Prefer filesystem under sources/
+    if let Ok(p) = resolve_parse_path(source_id, sources_dir, root) {
+        return Ok(p);
+    }
+
+    // DB row may store path even if not yet on disk under expected name
+    if let Ok(Some((doc, _))) = db.get_source_content(source_id) {
+        let stored = Utf8PathBuf::from(doc.path.as_str());
+        if stored.is_absolute() && stored.exists() {
+            return Ok(stored);
+        }
+        let under_root = root.join(&stored);
+        if under_root.exists() {
+            return Ok(under_root);
+        }
+        let under_sources = sources_dir.join(&doc.filename);
+        if under_sources.exists() {
+            return Ok(under_sources);
+        }
+        return Err(format!(
+            "source_id '{source_id}' found in DB but file missing on disk (path={})",
+            doc.path
+        ));
+    }
+
+    Err(format!(
+        "source_id '{source_id}' not found under sources/ or in the database"
+    ))
+}
+
+fn parse_result_json(r: &sil_parse::batch::ParseResult) -> serde_json::Value {
+    json!({
+        "source_id": r.document.id.as_str(),
+        "filename": r.document.filename,
+        "parsed": r.document.parsed,
+        "title": r.document.title,
+        "doi": r.document.doi,
+        "authors": r.document.authors,
+        "reference_count": r.reference_count,
+        "content_chars": r.content.len(),
+        "duration_ms": r.duration.as_millis() as u64,
+    })
+}
+
+fn handle_parse_source(args: serde_json::Value) -> CallToolResult {
+    let source_id = args.get("source_id").and_then(|v| v.as_str());
+    let path_arg = args.get("path").and_then(|v| v.as_str());
+    let all_unparsed = args
+        .get("all_unparsed")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if source_id.is_none() && path_arg.is_none() && !all_unparsed {
+        return CallToolResult::error("Provide path, source_id, or set all_unparsed=true");
+    }
+
+    let (root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let config = sil_core::Config::load(&paths.config()).unwrap_or_default();
+    let sources_dir = paths.sources(&config);
+
+    let db = match SilDb::open(&paths.db()) {
+        Ok(d) => d,
+        Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
+    };
+
+    let runner = match sil_parse::discover_marker_runner() {
+        Ok(r) => r,
+        Err(e) => {
+            // Fall back to stub so agents can parse non-PDF text sources without Marker installed.
+            // PDF parse via stub still succeeds with placeholder content (tests set SIL_MARKER_STUB).
+            let _ = e;
+            Box::new(sil_parse::StubMarkerRunner {
+                content: std::env::var("SIL_MARKER_STUB").unwrap_or_else(|_| {
+                    "# sil-mcp stub parse\n\n(no Marker runner available)\n".to_string()
+                }),
+            })
+        }
+    };
+    let null_ui = sil_core::NullUi::new();
+
+    let to_parse: Vec<Utf8PathBuf> = if all_unparsed {
+        match sil_parse::list_unparsed_pdfs(&sources_dir, &db) {
+            Ok(list) => list,
+            Err(e) => {
+                return CallToolResult::error(format!("Failed to list unparsed sources: {e}"));
+            }
+        }
+    } else if let Some(p) = path_arg {
+        match resolve_parse_path(p, &sources_dir, &root) {
+            Ok(abs) => vec![abs],
+            Err(e) => return CallToolResult::error(e),
+        }
+    } else if let Some(sid) = source_id {
+        match resolve_source_id_path(sid, &sources_dir, &root, &db) {
+            Ok(abs) => vec![abs],
+            Err(e) => return CallToolResult::error(e),
+        }
+    } else {
+        Vec::new()
+    };
+
+    if to_parse.is_empty() {
+        return CallToolResult::error("Nothing to parse (no matching unparsed sources)");
+    }
+
+    if to_parse.len() == 1 {
+        let path = &to_parse[0];
+        match sil_parse::parse_one(path, &db, runner.as_ref(), &null_ui) {
+            Ok(r) => {
+                let proposal = proposal_for_action(
+                    SciAction::ParsePdf,
+                    Some(&format!("Parse source: {}", r.document.filename)),
+                    Some(&format!(
+                        "Ingested {} into SQLite + FTS5 ({} refs).",
+                        r.document.filename, r.reference_count
+                    )),
+                );
+                let res = json!({
+                    "ok": true,
+                    "parsed_count": 1,
+                    "failed_count": 0,
+                    "results": [parse_result_json(&r)],
+                    "proposal": proposal.message(),
+                    "never_committed": true,
+                });
+                CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+            }
+            Err(e) => CallToolResult::error(format!("Parse failed for {path}: {e}")),
+        }
+    } else {
+        let (ok, failed, errors) = sil_parse::parse_many(&to_parse, &db, runner.as_ref(), &null_ui);
+        let mut results = Vec::new();
+        // parse_many does not return per-file results; report counts + errors only.
+        for (p, err) in &errors {
+            results.push(json!({
+                "path": p.as_str(),
+                "ok": false,
+                "error": err,
+            }));
+        }
+        if ok == 0 {
+            return CallToolResult::error(format!(
+                "Batch parse failed: 0 parsed, {failed} failed: {}",
+                errors
+                    .iter()
+                    .map(|(p, e)| format!("{}: {e}", p.file_name().unwrap_or(p.as_str())))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            ));
+        }
+        let proposal = proposal_for_action(
+            SciAction::ParsePdf,
+            Some(&format!("Parse {ok} source(s)")),
+            Some(&format!("Parsed {ok} file(s), {failed} failed.")),
+        );
+        let res = json!({
+            "ok": true,
+            "parsed_count": ok,
+            "failed_count": failed,
+            "errors": results,
+            "proposal": proposal.message(),
+            "never_committed": true,
+        });
+        CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+    }
+}
+
+fn handle_rank_draft(args: serde_json::Value) -> CallToolResult {
+    let min_score = args
+        .get("min_score")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0) as f32;
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
+
+    let (_root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let draft_path = paths.paper_draft();
+    if !draft_path.exists() {
+        return CallToolResult::error(format!("paper_draft.tex not found at {draft_path}"));
+    }
+    let draft_text = match fs::read_to_string(draft_path.as_str()) {
+        Ok(t) => t,
+        Err(e) => return CallToolResult::error(format!("Failed to read {draft_path}: {e}")),
+    };
+
+    let db = match SilDb::open(&paths.db()) {
+        Ok(d) => d,
+        Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
+    };
+
+    let embedder = sil_db::OnnxEmbedder::default();
+    let count = match db.recompute_draft_ref_similarities(&draft_text, &embedder) {
+        Ok(n) => n,
+        Err(e) => {
+            return CallToolResult::error(format!("Failed to recompute draft similarities: {e}"));
+        }
+    };
+
+    let scores = match db.get_draft_ref_similarities() {
+        Ok(s) => s,
+        Err(e) => return CallToolResult::error(format!("Failed to read similarities: {e}")),
+    };
+    let all_refs = match db.get_all_references() {
+        Ok(r) => r,
+        Err(e) => return CallToolResult::error(format!("Failed to list references: {e}")),
+    };
+
+    let mut hits: Vec<serde_json::Value> = all_refs
+        .into_iter()
+        .filter_map(|r| {
+            let score = *scores.get(&r.id).unwrap_or(&0.0);
+            if score >= min_score {
+                Some(json!({
+                    "ref_id": r.id,
+                    "title": r.title,
+                    "authors": r.authors,
+                    "year": r.year,
+                    "score": score,
+                    "raw_text": r.raw_text,
+                }))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    hits.sort_by(|a, b| {
+        let sa = a["score"].as_f64().unwrap_or(0.0);
+        let sb = b["score"].as_f64().unwrap_or(0.0);
+        sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    hits.truncate(limit);
+
+    let res = json!({
+        "computed": count,
+        "min_score": min_score,
+        "hits": hits,
+        "count": hits.len(),
+    });
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
 }
 
@@ -1585,7 +2208,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_get_structure_update_missing_completed_error() {
+    fn test_get_structure_update_missing_fields_error() {
         let env = TestEnv::new();
 
         let struct_yaml = "title: \"Paper\"\nstatus: \"draft\"\nsections: []\n";
@@ -1593,7 +2216,7 @@ pub(crate) mod tests {
 
         let res = handle_get_structure(json!({ "action": "update", "section_id": "sec_1" }));
         assert_eq!(res.is_error, Some(true));
-        assert!(extract_text(&res).contains("Missing completed status for update action"));
+        assert!(extract_text(&res).contains("update requires completion"));
     }
 
     #[test]
@@ -1621,7 +2244,7 @@ pub(crate) mod tests {
         let struct_yaml = "title: \"Paper\"\nstatus: \"draft\"\nsections:\n  - id: \"sec_1\"\n    title: \"Intro\"\n    level: 1\n    completion: \"empty\"\n";
         fs::write(env.project_root.join(".sil/structure.yaml"), struct_yaml).unwrap();
 
-        // 1. Set completion to true
+        // 1. Set completion to true (deprecated bool → draft)
         let res_true = handle_get_structure(json!({
             "action": "update",
             "section_id": "sec_1",
@@ -1631,7 +2254,7 @@ pub(crate) mod tests {
         let val_true: serde_json::Value = serde_json::from_str(extract_text(&res_true)).unwrap();
         assert_eq!(val_true["completion_summary"]["draft"], 1);
 
-        // 2. Set completion to false
+        // 2. Set completion to false (deprecated bool → empty)
         let res_false = handle_get_structure(json!({
             "action": "update",
             "section_id": "sec_1",
@@ -1640,6 +2263,96 @@ pub(crate) mod tests {
         assert!(res_false.is_error.is_none() || res_false.is_error == Some(false));
         let val_false: serde_json::Value = serde_json::from_str(extract_text(&res_false)).unwrap();
         assert_eq!(val_false["completion_summary"]["empty"], 1);
+    }
+
+    #[test]
+    fn test_get_structure_update_four_state_and_claims() {
+        let env = TestEnv::new();
+
+        let struct_yaml = r#"title: "Paper"
+status: draft
+sections:
+  - id: intro
+    title: Introduction
+    level: 1
+    completion: empty
+    main_claim: ""
+    secondary_points: []
+    required_content: []
+"#;
+        fs::write(env.project_root.join(".sil/structure.yaml"), struct_yaml).unwrap();
+
+        let res = handle_get_structure(json!({
+            "action": "update",
+            "section_id": "intro",
+            "completion": "polished",
+            "main_claim": "Transformers beat RNNs",
+            "secondary_points": ["self-attention", "parallelism"],
+            "required_content": ["problem statement"]
+        }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["completion_summary"]["polished"], 1);
+        assert_eq!(val["structure"]["sections"][0]["completion"], "polished");
+        assert_eq!(
+            val["structure"]["sections"][0]["main_claim"],
+            "Transformers beat RNNs"
+        );
+        assert_eq!(
+            val["structure"]["sections"][0]["secondary_points"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            val["structure"]["sections"][0]["required_content"][0],
+            "problem statement"
+        );
+        assert!(
+            val["proposal"]
+                .as_str()
+                .unwrap()
+                .contains("Sci-Action: update-structure")
+        );
+        assert_eq!(val["never_committed"], true);
+
+        // completion enum preferred over completed bool
+        let res2 = handle_get_structure(json!({
+            "action": "update",
+            "section_id": "intro",
+            "completion": "outline",
+            "completed": true
+        }));
+        let val2: serde_json::Value = serde_json::from_str(extract_text(&res2)).unwrap();
+        assert_eq!(val2["structure"]["sections"][0]["completion"], "outline");
+
+        // invalid completion string
+        let bad = handle_get_structure(json!({
+            "action": "update",
+            "section_id": "intro",
+            "completion": "done"
+        }));
+        assert_eq!(bad.is_error, Some(true));
+        assert!(extract_text(&bad).contains("Invalid completion"));
+    }
+
+    #[test]
+    fn test_get_structure_schema_has_no_word_count() {
+        let tools = list_tools();
+        let tool = tools
+            .iter()
+            .find(|t| t.name == "sil_get_structure")
+            .expect("sil_get_structure registered");
+        let props = tool.input_schema.properties.as_object().unwrap();
+        assert!(
+            !props.contains_key("word_count"),
+            "word_count must be removed from schema"
+        );
+        assert!(props.contains_key("completion"));
+        assert!(props.contains_key("main_claim"));
+        assert!(props.contains_key("secondary_points"));
+        assert!(props.contains_key("required_content"));
     }
 
     // --- handle_build_and_doctor ---
@@ -1823,5 +2536,204 @@ pub(crate) mod tests {
         assert!(val["proposal_subject"].is_string());
         assert!(val["full_commit_message"].is_string());
         assert_eq!(val["action_trailer"], "edit-draft");
+    }
+
+    // --- handle_upsert_bib / handle_promote_bib ---
+
+    fn git_head(dir: &Utf8PathBuf) -> Option<String> {
+        let out = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(dir.as_str())
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    }
+
+    fn init_git_repo(dir: &Utf8PathBuf) {
+        let run = |args: &[&str]| {
+            let status = std::process::Command::new("git")
+                .args(args)
+                .current_dir(dir.as_str())
+                .status()
+                .expect("git available");
+            assert!(status.success(), "git {args:?} failed");
+        };
+        run(&["init"]);
+        run(&["config", "user.email", "test@example.com"]);
+        run(&["config", "user.name", "Test"]);
+        run(&["add", "-A"]);
+        run(&["commit", "-m", "initial"]);
+    }
+
+    #[test]
+    fn test_upsert_bib_missing_entry_error() {
+        let res = handle_upsert_bib(json!({}));
+        assert_eq!(res.is_error, Some(true));
+        assert!(extract_text(&res).contains("Missing required parameter: entry"));
+    }
+
+    #[test]
+    fn test_upsert_bib_empty_and_invalid_entry() {
+        let _env = TestEnv::new();
+        let empty = handle_upsert_bib(json!({ "entry": "   " }));
+        assert_eq!(empty.is_error, Some(true));
+        assert!(extract_text(&empty).contains("empty"));
+
+        let bad = handle_upsert_bib(json!({ "entry": "not bibtex at all" }));
+        assert_eq!(bad.is_error, Some(true));
+        assert!(extract_text(&bad).contains("not valid BibTeX"));
+    }
+
+    #[test]
+    fn test_upsert_bib_writes_and_never_commits() {
+        let env = TestEnv::new();
+        init_git_repo(&env.project_root);
+        let head_before = git_head(&env.project_root).expect("HEAD after init");
+
+        let entry = r#"@article{smith2024,
+  title = {A Test Paper},
+  author = {Smith, A.},
+  year = {2024},
+  journal = {J. Test}
+}"#;
+        let res = handle_upsert_bib(json!({ "entry": entry }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["wrote"], true);
+        assert_eq!(val["cite_key"], "smith2024");
+        assert_eq!(val["replaced"], false);
+        assert_eq!(val["never_committed"], true);
+        assert_eq!(val["draft"], false);
+        let proposal = val["proposal"].as_str().unwrap();
+        assert!(proposal.contains("Sci-Action: update-bibliography"));
+
+        let bib_path = env.project_root.join("references.bib");
+        let content = fs::read_to_string(bib_path.as_str()).unwrap();
+        assert!(content.contains("smith2024"));
+        assert!(content.contains("A Test Paper"));
+        assert!(!content.contains("tui-added"));
+
+        let head_after = git_head(&env.project_root).expect("HEAD after tool");
+        assert_eq!(
+            head_before, head_after,
+            "sil_upsert_bib must not create a git commit"
+        );
+    }
+
+    #[test]
+    fn test_upsert_bib_draft_marks_tui_added() {
+        let env = TestEnv::new();
+
+        let entry =
+            "@article{draftkey,\n  title = {Draft Only},\n  author = {X},\n  year = {2020}\n}";
+        let res = handle_upsert_bib(json!({ "entry": entry, "draft": true }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["draft"], true);
+        assert_eq!(val["cite_key"], "draftkey");
+
+        let content = fs::read_to_string(env.project_root.join("references.bib").as_str()).unwrap();
+        assert!(content.contains("% [sil: tui-added]"));
+        assert!(content.contains("draftkey"));
+    }
+
+    #[test]
+    fn test_upsert_bib_preserve_cite_key() {
+        let env = TestEnv::new();
+        let bib_path = env.project_root.join("references.bib");
+        fs::write(
+            bib_path.as_str(),
+            "@article{oldkey,\n  title = {Same Paper},\n  doi = {10.1000/abc}\n}\n",
+        )
+        .unwrap();
+
+        let entry =
+            "@article{newkey,\n  title = {Same Paper},\n  doi = {10.1000/abc},\n  year = {2021}\n}";
+        let res = handle_upsert_bib(json!({
+            "entry": entry,
+            "preserve_cite_key": true
+        }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["replaced"], true);
+        assert_eq!(val["cite_key"], "oldkey");
+
+        let content = fs::read_to_string(bib_path.as_str()).unwrap();
+        assert!(content.contains("@article{oldkey"));
+        assert!(!content.contains("@article{newkey"));
+    }
+
+    #[test]
+    fn test_promote_bib_strips_marker_and_never_commits() {
+        let env = TestEnv::new();
+        init_git_repo(&env.project_root);
+        let head_before = git_head(&env.project_root).expect("HEAD after init");
+
+        let bib_path = env.project_root.join("references.bib");
+        fs::write(
+            bib_path.as_str(),
+            "% [sil: tui-added]\n@article{promotekey,\n  title = {To Promote},\n  year = {2022}\n}\n",
+        )
+        .unwrap();
+
+        let res = handle_promote_bib(json!({ "cite_key": "promotekey" }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["wrote"], true);
+        assert_eq!(val["cite_key"], "promotekey");
+        assert_eq!(val["replaced"], true);
+        assert_eq!(val["never_committed"], true);
+        let proposal = val["proposal"].as_str().unwrap();
+        assert!(proposal.contains("Sci-Action: promote-bibliography"));
+
+        let content = fs::read_to_string(bib_path.as_str()).unwrap();
+        assert!(content.contains("promotekey"));
+        assert!(!content.contains("tui-added"));
+
+        let head_after = git_head(&env.project_root).expect("HEAD after tool");
+        assert_eq!(
+            head_before, head_after,
+            "sil_promote_bib must not create a git commit"
+        );
+    }
+
+    #[test]
+    fn test_promote_bib_missing_and_not_found() {
+        let env = TestEnv::new();
+        let missing = handle_promote_bib(json!({}));
+        assert_eq!(missing.is_error, Some(true));
+        assert!(extract_text(&missing).contains("Missing required parameter: cite_key"));
+
+        let no_file = handle_promote_bib(json!({ "cite_key": "ghost" }));
+        assert_eq!(no_file.is_error, Some(true));
+        assert!(extract_text(&no_file).contains("not found"));
+
+        fs::write(
+            env.project_root.join("references.bib").as_str(),
+            "@article{other,\n  title = {Other}\n}\n",
+        )
+        .unwrap();
+        let not_found = handle_promote_bib(json!({ "cite_key": "ghost" }));
+        assert_eq!(not_found.is_error, Some(true));
+        assert!(extract_text(&not_found).contains("No entry matching"));
+    }
+
+    #[test]
+    fn test_call_tool_routes_bib_tools() {
+        let env = TestEnv::new();
+        let entry = "@article{routekey,\n  title = {Routed},\n  year = {2019}\n}";
+        let res = call_tool(
+            "sil_upsert_bib",
+            Some(json!({ "entry": entry, "draft": true })),
+        );
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+
+        let res = call_tool("sil_promote_bib", Some(json!({ "cite_key": "routekey" })));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let content = fs::read_to_string(env.project_root.join("references.bib").as_str()).unwrap();
+        assert!(!content.contains("tui-added"));
     }
 }

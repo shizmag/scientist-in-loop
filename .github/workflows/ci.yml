@@ -11,6 +11,17 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
   test:
     name: Test (ubuntu)
     runs-on: ubuntu-latest
@@ -35,3 +46,35 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Test workspace
         run: cargo test --workspace
+
+  golden:
+    name: Golden dataset (PR-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install Python dev group
+        run: uv sync --group dev
+      - name: Validate golden fixtures
+        run: uv run tests/golden_dataset/scripts/validate_dataset.py
+      - name: Score current_extraction vs gold (fail on **FAIL** gates or pollution)
+        run: |
+          set -euo pipefail
+          uv run tests/golden_dataset/scripts/score_against_current.py \
+            --report-path tests/golden_dataset/reports/ci_scorecard.md
+          REPORT=tests/golden_dataset/reports/ci_scorecard.md
+          # Macro gate rows use | **Name** | ... | PASS|**FAIL** |
+          if grep -E '^\| \*\*.*\*\* \|' "$REPORT" | grep -q '\*\*FAIL\*\*'; then
+            echo "One or more golden macro gates FAILED — see $REPORT"
+            cat "$REPORT"
+            exit 1
+          fi
+          # Pollution row: "N/M refs polluted" must be 0/M
+          if grep -E 'refs polluted' "$REPORT" | grep -vE '0/[0-9]+ refs polluted'; then
+            echo "Negative-pattern pollution non-zero"
+            cat "$REPORT"
+            exit 1
+          fi
+          echo "Golden gates OK"

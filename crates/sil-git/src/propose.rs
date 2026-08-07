@@ -83,6 +83,8 @@ mod tests {
             SciAction::EditDraft,
             SciAction::PromoteToFinal,
             SciAction::FetchSource,
+            SciAction::UpdateBibliography,
+            SciAction::PromoteBibliography,
         ] {
             let p = CommitProposal::new("subject", a);
             assert!(p.message().contains(&a.trailer_line()));

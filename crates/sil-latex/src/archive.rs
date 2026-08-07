@@ -43,16 +43,19 @@ pub fn create_submission_archive(
 
         let ext = abs_path.extension().unwrap_or_default().to_lowercase();
         let buffer = if ext == "bib" {
-            let content = fs::read_to_string(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
-                engine: "tectonic".to_string(),
-                message: format!("Could not read {abs_path}: {e}"),
+            let content = fs::read_to_string(abs_path.as_std_path()).map_err(|e| {
+                LatexError::BuildFailed {
+                    engine: "tectonic".to_string(),
+                    message: format!("Could not read {abs_path}: {e}"),
+                }
             })?;
             sil_core::bib::strip_tui_added_bib_entries(&content).into_bytes()
         } else {
-            let mut f = File::open(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
-                engine: "tectonic".to_string(),
-                message: format!("Could not open {abs_path} for zip creation: {e}"),
-            })?;
+            let mut f =
+                File::open(abs_path.as_std_path()).map_err(|e| LatexError::BuildFailed {
+                    engine: "tectonic".to_string(),
+                    message: format!("Could not open {abs_path} for zip creation: {e}"),
+                })?;
 
             let mut buf = Vec::new();
             f.read_to_end(&mut buf)
@@ -243,4 +246,3 @@ mod tests {
         assert!(workspace_bib.contains("tui_candidate"));
     }
 }
-

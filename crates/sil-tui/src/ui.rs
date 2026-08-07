@@ -47,6 +47,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalAddSourceLink => draw_modal_add_source_link(frame, app),
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
+        InputMode::JobHistory => draw_job_history(frame, app),
         InputMode::ViewingSourceRefs | InputMode::SearchingViewingRefs => {
             draw_viewing_source_refs(frame, app)
         }
@@ -899,6 +900,8 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     } else if app.status_message.starts_with('⏳')
         || app.status_message.contains("Hydrating")
         || app.status_message.contains("Parsing")
+        || app.status_message.contains("fetching")
+        || app.status_message.contains("Recomputing")
         || app.status_message.starts_with('ℹ')
     {
         Style::default()
@@ -912,14 +915,33 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
 
     let mode = app.current_help_mode();
     let hints_str = match mode {
-        crate::app::HelpMode::Dashboard => "[?] Help | [1-5] Tabs | [Ctrl+S] Save | [q] Quit",
-        crate::app::HelpMode::SourcesList => "[?] Help | [e/E] Parse | [Enter] Read | [v] Refs | [a] Add | [r] Rename | [d] Del",
-        crate::app::HelpMode::ReadingSourceMd => "[?] Help | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit",
-        crate::app::HelpMode::ViewingSourceRefs => "[?] Help | [c] Add Bib | [a] Add All | [Space] Mark | [/] Filter",
-        crate::app::HelpMode::ReferencesLeft => "[?] Help | [Tab] Switch Pane | [P] Promote | [/] Search | [Del] Delete",
-        crate::app::HelpMode::ReferencesRight => "[?] Help | [Tab] Switch Pane | [p] Add Bib | [m] Sim Sort | [X] Recompute",
-        crate::app::HelpMode::PaperDraft => "[?] Help | [e] Edit | [v] $EDITOR | [1-5] Tabs",
-        crate::app::HelpMode::Settings => "[?] Help | [e] Edit | [a] Add | [d] Delete | [u] Use Cache",
+        crate::app::HelpMode::Dashboard => {
+            "[?] Help | [J] Jobs | [1-5] Tabs | [Ctrl+S] Save | [q] Quit"
+        }
+        crate::app::HelpMode::SourcesList => {
+            "[?] Help | [e/E] Parse | [a] Fetch | [J] Jobs | [Enter] Read | [v] Refs | [d] Del"
+        }
+        crate::app::HelpMode::ReadingSourceMd => {
+            "[?] Help | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit"
+        }
+        crate::app::HelpMode::ViewingSourceRefs => {
+            "[?] Help | [c] Add Bib | [a] Add All | [Space] Mark | [/] Filter"
+        }
+        crate::app::HelpMode::ReferencesLeft => {
+            "[?] Help | [Tab] Switch Pane | [P] Promote | [J] Jobs | [/] Search | [Del] Delete"
+        }
+        crate::app::HelpMode::ReferencesRight => {
+            "[?] Help | [Tab] Pane | [p] Add Bib | [m] Sort | [X] Recompute | [J] Jobs"
+        }
+        crate::app::HelpMode::PaperDraft => {
+            "[?] Help | [e] Edit | [v] $EDITOR | [J] Jobs | [1-5] Tabs"
+        }
+        crate::app::HelpMode::Settings => {
+            "[?] Help | [e] Edit | [a] Add | [d] Delete | [J] Jobs | [u] Use Cache"
+        }
+        crate::app::HelpMode::JobHistory => {
+            "[?] Help | [j/k] Navigate | [Enter/r] Retry failed | [Esc] Close"
+        }
         _ => "[?] / [F1] Help Overlay | [Esc] Cancel",
     };
 
@@ -1143,7 +1165,7 @@ fn draw_modal_add_source_link(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, area);
 
     let block = Block::default()
-        .title(" Register Source Link Stub (no download) (Enter to submit, Esc to cancel) ")
+        .title(" Fetch / download source (URL / DOI / arXiv) — Enter to start, Esc to cancel ")
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(Color::Cyan));
@@ -1157,6 +1179,97 @@ fn draw_modal_add_source_link(frame: &mut Frame, app: &App) {
         .block(block);
 
     frame.render_widget(paragraph, area);
+}
+
+fn draw_job_history(frame: &mut Frame, app: &App) {
+    let area = centered_rect(80, 70, frame.area());
+    frame.render_widget(Clear, area);
+
+    let title = " Background Job History (↑/↓ navigate, Enter/r retry failed, Esc close) ";
+    let block = Block::default()
+        .title(Span::styled(
+            title,
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    if app.recent_job_outcomes.is_empty() {
+        let paragraph = Paragraph::new("No background jobs recorded yet.")
+            .style(Style::default().fg(Color::DarkGray))
+            .block(block)
+            .alignment(Alignment::Center);
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    // Newest last in deque — show newest at bottom, reverse for list with newest first.
+    let rows: Vec<ListItem> = app
+        .recent_job_outcomes
+        .iter()
+        .enumerate()
+        .rev()
+        .map(|(idx, o)| {
+            let is_sel = idx == app.selected_job_history_index;
+            let status = if o.ok { "OK" } else { "FAIL" };
+            let status_style = if o.ok {
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+                    .fg(Color::LightRed)
+                    .add_modifier(Modifier::BOLD)
+            };
+            let retry_hint = if !o.ok && o.retry_payload.is_some() {
+                " [retryable]"
+            } else {
+                ""
+            };
+            let dur = o
+                .duration_ms
+                .map(|ms| format!(" {ms}ms"))
+                .unwrap_or_default();
+            let detail: String = o.detail.chars().take(90).collect();
+            let prefix = if is_sel { "► " } else { "  " };
+            let base_style = if is_sel {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(prefix, base_style),
+                Span::styled(
+                    format!("[{}] ", o.kind.label()),
+                    Style::default().fg(Color::Magenta),
+                ),
+                Span::styled(format!("{status}{retry_hint} "), status_style),
+                Span::styled(format!("{} — ", o.label), base_style),
+                Span::styled(detail, Style::default().fg(Color::DarkGray)),
+                Span::styled(dur, Style::default().fg(Color::Cyan)),
+            ]))
+        })
+        .collect();
+
+    // Map selected index (0=oldest) to reverse list selection.
+    let n = app.recent_job_outcomes.len();
+    let list_sel = n
+        .saturating_sub(1)
+        .saturating_sub(app.selected_job_history_index);
+
+    let list = List::new(rows).block(block).highlight_style(
+        Style::default()
+            .bg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD),
+    );
+    let mut state = ListState::default();
+    state.select(Some(list_sel));
+    frame.render_stateful_widget(list, area, &mut state);
 }
 
 fn draw_modal_rename_source(frame: &mut Frame, app: &App) {
@@ -1745,7 +1858,10 @@ fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         )]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  1-5 / Tab / Shift+Tab", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                "  1-5 / Tab / Shift+Tab",
+                Style::default().fg(Color::Yellow),
+            ),
             Span::styled(
                 "  Switch: 1.Dash, 2.Sources, 3.Refs, 4.Draft, 5.Settings",
                 Style::default().fg(Color::Reset),
@@ -2073,6 +2189,7 @@ mod tests {
             InputMode::ModalAddSourceLink,
             InputMode::ModalRenameSource,
             InputMode::ConfirmDeleteSource,
+            InputMode::JobHistory,
             InputMode::ViewingSourceRefs,
             InputMode::HelpOverlay,
         ];

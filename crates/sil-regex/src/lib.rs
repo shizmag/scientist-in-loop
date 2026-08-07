@@ -224,12 +224,10 @@ pub fn clean_reference_text(text: &str) -> String {
     // Balanced-paren aware: preserve DOI/arXiv markdown links, drop ACL noise, keep link text.
     cleaned = map_markdown_links(&cleaned, |text_content, url| {
         let url_lower = url.to_lowercase();
-        if url.contains("10.")
-            || url_lower.contains("arxiv")
-            || extract_arxiv_id(url).is_some()
-        {
+        if url.contains("10.") || url_lower.contains("arxiv") || extract_arxiv_id(url).is_some() {
             format!("[{text_content}]({url})")
-        } else if text_content.contains("aclanthology.org") || url_lower.contains("aclanthology.org")
+        } else if text_content.contains("aclanthology.org")
+            || url_lower.contains("aclanthology.org")
         {
             String::new()
         } else if url_lower.contains("refhub.elsevier.com") || url_lower.contains("refhub") {
@@ -263,9 +261,7 @@ pub fn clean_reference_text(text: &str) -> String {
     cleaned = cleaned.replace("– ", "–").replace("— ", "—");
     static SPACE_BEFORE_PUNCT: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"\s+([,.;:!?])").unwrap());
-    cleaned = SPACE_BEFORE_PUNCT
-        .replace_all(&cleaned, "$1")
-        .to_string();
+    cleaned = SPACE_BEFORE_PUNCT.replace_all(&cleaned, "$1").to_string();
 
     let mut trimmed = cleaned.trim();
     if let Some(idx) = trimmed.find(']') {
@@ -411,7 +407,12 @@ pub fn is_affiliation_or_noise_line(line: &str) -> bool {
 /// Check if a candidate line is publisher chrome or a known journal title header.
 pub fn is_journal_or_publisher_title(line: &str) -> bool {
     let clean = strip_html_spans(line).trim().to_string();
-    let raw = clean.trim_start_matches('#').trim().trim_matches('*').trim_matches('_').trim();
+    let raw = clean
+        .trim_start_matches('#')
+        .trim()
+        .trim_matches('*')
+        .trim_matches('_')
+        .trim();
     let lower = raw.to_lowercase();
 
     if lower.is_empty() {
@@ -509,11 +510,11 @@ pub fn clean_author_byline_line(line: &str) -> String {
     // would erase intervening author names (Jing Liu between `$^2$` and `$^{2}$`).
     static TEX_MATH_NOISE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(concat!(
-            r"\$\^\{[^}]*\}\$",           // $^{1*\dagger}$
+            r"\$\^\{[^}]*\}\$",          // $^{1*\dagger}$
             r"|\$\^[A-Za-z0-9*†‡\\]+\$", // $^2$, $^1*$
-            r"|\$[^$]{1,24}\$",            // other short inline math
-            r"|\^\{[^}]*\}",               // ^{1} without dollars
-            r"|\^\[[^\]]*\]",              // ^[1]
+            r"|\$[^$]{1,24}\$",          // other short inline math
+            r"|\^\{[^}]*\}",             // ^{1} without dollars
+            r"|\^\[[^\]]*\]",            // ^[1]
         ))
         .unwrap()
     });
@@ -524,8 +525,8 @@ pub fn clean_author_byline_line(line: &str) -> String {
 
     // Strip footnote/superscript characters
     static NOISE_CHARS: &[char] = &[
-        '*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶',
-        '⁷', 'ⁿ', '՞', 'ã', 'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        '*', '⋈', '†', '‡', '§', '¶', '♯', '♠', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', 'ⁿ', '՞', 'ã',
+        'ゥ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     ];
     s = s.replace(NOISE_CHARS, "");
 
@@ -535,12 +536,12 @@ pub fn clean_author_byline_line(line: &str) -> String {
     // Marker often separates authors with multi-spaces (or spaces left after
     // stripping `$^{…}$`). Promote those gaps to commas before collapse so
     // "Yuhao Wang  Ruiyang Ren  Wayne Xin Zhao" splits correctly.
-    static MULTI_SPACE_SEP: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"[ \t]{2,}").unwrap());
+    static MULTI_SPACE_SEP: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[ \t]{2,}").unwrap());
     s = MULTI_SPACE_SEP.replace_all(&s, ", ").to_string();
 
     s = s.split_whitespace().collect::<Vec<_>>().join(" ");
-    s.trim_matches(|c: char| c == ',' || c == ';' || c == '-' || c.is_whitespace()).to_string()
+    s.trim_matches(|c: char| c == ',' || c == ';' || c == '-' || c.is_whitespace())
+        .to_string()
 }
 
 fn find_affiliation_keyword_idx(text: &str) -> Option<usize> {
@@ -761,7 +762,9 @@ pub fn is_margin_line_number(line: &str) -> bool {
         return false;
     }
     let t = clean.trim_start_matches("**").trim_end_matches("**").trim();
-    !t.is_empty() && t.split_whitespace().all(|w| w.chars().all(|c| c.is_ascii_digit()))
+    !t.is_empty()
+        && t.split_whitespace()
+            .all(|w| w.chars().all(|c| c.is_ascii_digit()))
 }
 
 /// Check if text has strong publication / citation markers (doi, arxiv, in:, pp., vol., journal/conf keywords).
@@ -1033,8 +1036,7 @@ mod tests {
             ]
         );
         // Odd count: place the First Middle Last triple on the best middle token.
-        let with_middle =
-            split_author_names("Yuhao Wang Ruiyang Ren Wayne Xin Zhao Hua Wu");
+        let with_middle = split_author_names("Yuhao Wang Ruiyang Ren Wayne Xin Zhao Hua Wu");
         assert_eq!(
             with_middle,
             vec![

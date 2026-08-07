@@ -192,7 +192,8 @@ fn split_raw_entries(block: &str) -> Vec<String> {
     for raw_line in block.lines() {
         let cleaned = clean_spans(raw_line);
         let trimmed = cleaned.trim();
-        if trimmed.is_empty() || is_noise_line(trimmed) || sil_regex::is_margin_line_number(trimmed) {
+        if trimmed.is_empty() || is_noise_line(trimmed) || sil_regex::is_margin_line_number(trimmed)
+        {
             continue;
         }
         if let Some(d) = detect_number_format(trimmed) {
@@ -207,7 +208,13 @@ fn split_raw_entries(block: &str) -> Vec<String> {
             .lines()
             .map(clean_spans)
             .map(|l| l.trim().to_string())
-            .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l) && !sil_regex::is_margin_line_number(l))
+            .filter(|l| {
+                !l.is_empty()
+                    && l != "-"
+                    && !is_noise_line(l)
+                    && !is_math_line(l)
+                    && !sil_regex::is_margin_line_number(l)
+            })
             .collect();
         split_by_sequential_markers(&lines, fmt, start_n)
     } else {
@@ -239,7 +246,13 @@ fn split_by_regex_or_paragraphs(block: &str) -> Vec<String> {
         .lines()
         .map(clean_spans)
         .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty() && l != "-" && !is_noise_line(l) && !is_math_line(l) && !sil_regex::is_margin_line_number(l))
+        .filter(|l| {
+            !l.is_empty()
+                && l != "-"
+                && !is_noise_line(l)
+                && !is_math_line(l)
+                && !sil_regex::is_margin_line_number(l)
+        })
         .collect();
 
     let matches_count = lines
@@ -345,7 +358,6 @@ fn is_continuation_line(line: &str, current_trimmed: &str) -> bool {
 
     false
 }
-
 
 /// Check if a line is LaTeX math noise.
 fn is_math_line(line: &str) -> bool {
@@ -517,7 +529,12 @@ fn is_initials_author_segment(seg: &str) -> bool {
     while let Some((initial, after)) = rest.split_once('.') {
         let initial = initial.trim();
         // Single-letter initial (ASCII); allow "t" in "W.t."
-        if initial.len() != 1 || !initial.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) {
+        if initial.len() != 1
+            || !initial
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
+        {
             return false;
         }
         saw_initial = true;
@@ -654,12 +671,10 @@ fn extract_initials_comma_title(text: &str) -> Option<String> {
         .iter()
         .take_while(|p| {
             let s = p.trim();
-            is_initials_author_segment(s)
-                || title_after_initials_author_period(s).is_some()
-                || {
-                    let l = s.to_lowercase();
-                    l == "et al" || l == "et al." || l.starts_with("et al")
-                }
+            is_initials_author_segment(s) || title_after_initials_author_period(s).is_some() || {
+                let l = s.to_lowercase();
+                l == "et al" || l == "et al." || l.starts_with("et al")
+            }
         })
         .count();
     if author_seg_count == 0 {
@@ -1317,12 +1332,16 @@ This is not a reference, it's trailing text from the paper.
             entries[1].title.as_deref(),
             Some("Detecting hallucinations in large language models using semantic entropy")
         );
-        assert!(entries[0]
-            .raw_text
-            .contains("hallucinations via autonomous"));
-        assert!(entries[1]
-            .raw_text
-            .contains("Detecting hallucinations in large language models"));
+        assert!(
+            entries[0]
+                .raw_text
+                .contains("hallucinations via autonomous")
+        );
+        assert!(
+            entries[1]
+                .raw_text
+                .contains("Detecting hallucinations in large language models")
+        );
     }
 
     #[test]
@@ -1340,13 +1359,20 @@ This is not a reference, it's trailing text from the paper.
             2,
             "Ratner et al. line-wrap continuation should be joined into 1 reference entry"
         );
-        assert!(entries[0].raw_text.contains("Parallel Context Windows for Large"));
-        assert!(entries[0]
-            .raw_text
-            .contains("Language Models. In *The 61st Annual Meeting"));
-        assert!(!entries
-            .iter()
-            .any(|e| e.raw_text.contains("Language Models. In *The 61st Annual Meeting")
-                && e.ref_index != 1));
+        assert!(
+            entries[0]
+                .raw_text
+                .contains("Parallel Context Windows for Large")
+        );
+        assert!(
+            entries[0]
+                .raw_text
+                .contains("Language Models. In *The 61st Annual Meeting")
+        );
+        assert!(!entries.iter().any(|e| {
+            e.raw_text
+                .contains("Language Models. In *The 61st Annual Meeting")
+                && e.ref_index != 1
+        }));
     }
 }

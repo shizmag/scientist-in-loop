@@ -220,7 +220,11 @@ mod ort_engine {
                 .map_err(|_| "ort session mutex poisoned".to_string())?;
 
             // Bind by common HF export names; fall back to positional via ort::inputs! order.
-            let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
+            let input_names: Vec<String> = session
+                .inputs()
+                .iter()
+                .map(|i| i.name().to_string())
+                .collect();
             let outputs = if input_names.iter().any(|n| n == "token_type_ids") {
                 session
                     .run(ort::inputs![
@@ -277,7 +281,11 @@ mod ort_engine {
                 .lock()
                 .map_err(|_| "ort session mutex poisoned".to_string())?;
 
-            let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
+            let input_names: Vec<String> = session
+                .inputs()
+                .iter()
+                .map(|i| i.name().to_string())
+                .collect();
             let outputs = if input_names.iter().any(|n| n == "token_type_ids") {
                 session
                     .run(ort::inputs![
@@ -321,10 +329,7 @@ mod ort_engine {
                 // [batch, dim]
                 let dim = shape[1] as usize;
                 if data.len() < dim {
-                    return Err(format!(
-                        "output len {} smaller than dim {dim}",
-                        data.len()
-                    ));
+                    return Err(format!("output len {} smaller than dim {dim}", data.len()));
                 }
                 Ok(data[..dim].to_vec())
             }
@@ -395,19 +400,16 @@ impl std::fmt::Debug for OnnxEmbedder {
             .field("model_path", &self.model_path)
             .field("dim", &self.dim)
             .field("backend", &self.backend)
-            .field(
-                "engine_loaded",
-                &{
-                    #[cfg(feature = "onnx")]
-                    {
-                        self.engine.is_some()
-                    }
-                    #[cfg(not(feature = "onnx"))]
-                    {
-                        false
-                    }
-                },
-            )
+            .field("engine_loaded", &{
+                #[cfg(feature = "onnx")]
+                {
+                    self.engine.is_some()
+                }
+                #[cfg(not(feature = "onnx"))]
+                {
+                    false
+                }
+            })
             .finish()
     }
 }
@@ -492,7 +494,12 @@ impl OnnxEmbedder {
     }
 
     #[cfg(feature = "onnx")]
-    fn try_load(model_path: &Path, default_dim: usize, num_threads: usize, is_reranker: bool) -> Self {
+    fn try_load(
+        model_path: &Path,
+        default_dim: usize,
+        num_threads: usize,
+        is_reranker: bool,
+    ) -> Self {
         let model_path_buf = model_path.to_path_buf();
         if !model_path.is_file() {
             return Self {
@@ -687,19 +694,16 @@ impl std::fmt::Debug for OnnxReranker {
         f.debug_struct("OnnxReranker")
             .field("model_path", &self.model_path)
             .field("backend", &self.backend)
-            .field(
-                "engine_loaded",
-                &{
-                    #[cfg(feature = "onnx")]
-                    {
-                        self.engine.is_some()
-                    }
-                    #[cfg(not(feature = "onnx"))]
-                    {
-                        false
-                    }
-                },
-            )
+            .field("engine_loaded", &{
+                #[cfg(feature = "onnx")]
+                {
+                    self.engine.is_some()
+                }
+                #[cfg(not(feature = "onnx"))]
+                {
+                    false
+                }
+            })
             .finish()
     }
 }
@@ -1004,7 +1008,10 @@ mod tests {
         assert!(resolve_tokenizer_path(&model).is_none());
         let tok = dir.path().join("tokenizer.json");
         std::fs::write(&tok, b"{}").unwrap();
-        assert_eq!(resolve_tokenizer_path(&model).as_deref(), Some(tok.as_path()));
+        assert_eq!(
+            resolve_tokenizer_path(&model).as_deref(),
+            Some(tok.as_path())
+        );
     }
 
     #[test]

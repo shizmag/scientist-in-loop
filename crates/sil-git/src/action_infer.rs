@@ -87,6 +87,8 @@ pub fn proposal_for_action(
         SciAction::EditDraft => "Edit paper draft",
         SciAction::PromoteToFinal => "Promote draft to final manuscript",
         SciAction::FetchSource => "Fetch source PDF",
+        SciAction::UpdateBibliography => "Update bibliography",
+        SciAction::PromoteBibliography => "Promote bibliography entry",
     };
     let mut p = CommitProposal::new(subject.unwrap_or(default_subject), action);
     if let Some(b) = body

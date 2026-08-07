@@ -61,6 +61,7 @@ pub enum InputMode {
     ReadingSourceMd,
     SearchingViewingRefs,
     HelpOverlay,
+    JobHistory,
 }
 
 /// Sorting key for references display in TUI.
@@ -144,6 +145,7 @@ pub enum HelpMode {
     SearchingRefs,
     SearchingBib,
     SearchingViewingRefs,
+    JobHistory,
 }
 
 impl HelpMode {
@@ -168,6 +170,7 @@ impl HelpMode {
             HelpMode::SearchingRefs => "Searching Extracted References",
             HelpMode::SearchingBib => "Searching references.bib",
             HelpMode::SearchingViewingRefs => "Searching Source References",
+            HelpMode::JobHistory => "Background Job History",
         }
     }
 }
@@ -176,8 +179,15 @@ impl HelpMode {
 pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
     match mode {
         HelpMode::Dashboard => vec![
-            ("1 - 5", "Switch directly to tab (Dashboard, Sources, References, Draft, Settings)"),
+            (
+                "1 - 5",
+                "Switch directly to tab (Dashboard, Sources, References, Draft, Settings)",
+            ),
             ("Tab / Shift+Tab", "Cycle forward / backward through tabs"),
+            (
+                "J",
+                "Open background job history (hydrate / fetch / parse / similarity) + retry",
+            ),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Quit application"),
             ("Ctrl+S / s", "Save all settings and project state"),
@@ -187,13 +197,29 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Select previous source document"),
             ("PageUp / PageDown", "Scroll source list by 5 items"),
             ("Enter", "Read full source document in Markdown viewer"),
-            ("e / E", "Parse/extract text and references for selected source ('E' / Shift+E for force re-parse)"),
-            ("v", "View extracted reference citations for selected source"),
-            ("a", "Add new source document via link / URL / DOI / arXiv"),
-            ("b", "Append selected source to references.bib (hydrates metadata if DOI/arXiv)"),
+            (
+                "e / E",
+                "Parse/extract text and references for selected source ('E' / Shift+E for force re-parse)",
+            ),
+            (
+                "v",
+                "View extracted reference citations for selected source",
+            ),
+            (
+                "a",
+                "Fetch/download source via URL / DOI / arXiv (background job)",
+            ),
+            (
+                "b",
+                "Append selected source to references.bib (hydrates metadata if DOI/arXiv)",
+            ),
             ("r", "Rename selected source document title"),
             ("R", "Reload sources from disk and database"),
-            ("d / Delete", "Delete selected source document (requires confirmation)"),
+            (
+                "d / Delete",
+                "Delete selected source document (requires confirmation)",
+            ),
+            ("J", "Open background job history + retry failed jobs"),
             ("1 - 5", "Switch to tab"),
             ("Tab / Shift+Tab", "Cycle tabs"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
@@ -214,7 +240,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("g / Home", "Jump to first reference"),
             ("G / End", "Jump to last reference"),
             ("Space", "Toggle selection mark on highlighted reference"),
-            ("c / b / p", "Append marked (or highlighted) reference to references.bib"),
+            (
+                "c / b / p",
+                "Append marked (or highlighted) reference to references.bib",
+            ),
             ("a", "Append ALL filtered references to references.bib"),
             ("d / e", "Toggle reference inspector card & BibTeX preview"),
             ("/ / f", "Search / filter references by text query"),
@@ -224,7 +253,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("i / n", "Sort references by original Index"),
             ("t", "Sort references by Title"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
-            ("q / Esc", "Close references viewer (or clear search filter)"),
+            (
+                "q / Esc",
+                "Close references viewer (or clear search filter)",
+            ),
         ],
         HelpMode::ReferencesLeft => vec![
             ("j / Down", "Select next entry in references.bib"),
@@ -232,7 +264,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("PageUp / PageDown", "Jump 5 entries up / down"),
             ("Tab", "Switch focus to Right Pane (Extracted References)"),
             ("/ / f", "Search references.bib entries"),
-            ("P", "Promote TUI-added entry (strip % [sil: tui-added] marker)"),
+            (
+                "P",
+                "Promote TUI-added entry (strip % [sil: tui-added] marker)",
+            ),
             ("Delete", "Delete selected entry from references.bib"),
             ("1 - 5", "Switch to tab"),
             ("Shift+Tab", "Previous tab"),
@@ -246,16 +281,26 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("PageUp / PageDown", "Jump 5 references up / down"),
             ("Tab", "Switch focus to Left Pane (references.bib)"),
             ("Space", "Toggle selection mark on highlighted reference"),
-            ("p", "Add marked (or highlighted) reference to references.bib"),
+            (
+                "p",
+                "Add marked (or highlighted) reference to references.bib",
+            ),
             ("P", "Promote highlighted entry in references.bib"),
             ("/ / f", "Search extracted references"),
-            ("m / c", "Sort references by Draft Cosine Similarity (highest score first)"),
-            ("X", "Recompute draft similarity scores against ONNX embeddings"),
+            (
+                "m / c",
+                "Sort references by existing Draft Cosine Similarity scores (no recompute)",
+            ),
+            (
+                "X",
+                "Enqueue background recompute of draft–ref similarity (settings embedder / hash fallback)",
+            ),
             ("y", "Sort references by Year (descending)"),
             ("v", "Sort references by Venue / Journal"),
             ("s", "Sort references by Source document"),
             ("i", "Sort references by Index"),
             ("t", "Sort references by Title"),
+            ("J", "Open background job history + retry failed jobs"),
             ("1 - 5", "Switch to tab"),
             ("Shift+Tab", "Previous tab"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
@@ -267,7 +312,11 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Select previous manuscript section"),
             ("PageUp / PageDown", "Scroll section content preview"),
             ("e / Enter", "Edit section body in TUI popup editor"),
-            ("v", "Launch external $EDITOR (nvim / helix / vim) on paper_draft.tex"),
+            (
+                "v",
+                "Launch external $EDITOR (nvim / helix / vim) on paper_draft.tex",
+            ),
+            ("J", "Open background job history + retry failed jobs"),
             ("1 - 5", "Switch to tab"),
             ("Tab / Shift+Tab", "Cycle tabs"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
@@ -279,33 +328,55 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Move cursor to previous setting field"),
             ("e / Enter", "Edit highlighted setting field value"),
             ("a", "Add item (modal author/grant or select from cache)"),
-            ("d / Delete", "Remove highlighted cached or local co-author / grant"),
-            ("u", "Import selected cached author/grant into local project settings"),
+            (
+                "d / Delete",
+                "Remove highlighted cached or local co-author / grant",
+            ),
+            (
+                "u",
+                "Import selected cached author/grant into local project settings",
+            ),
+            ("J", "Open background job history + retry failed jobs"),
             ("1 - 5", "Switch to tab"),
             ("Tab / Shift+Tab", "Cycle tabs"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Quit application"),
-            ("Ctrl+S / s", "Save global settings, local config, and cache"),
+            (
+                "Ctrl+S / s",
+                "Save global settings, local config, and cache",
+            ),
         ],
         HelpMode::ModalPicker => vec![
             ("j / Down", "Navigate down cache list"),
             ("k / Up", "Navigate up cache list"),
-            ("Enter", "Select highlighted item into local project settings"),
+            (
+                "Enter",
+                "Select highlighted item into local project settings",
+            ),
             ("n", "Create new item manually"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc", "Close picker modal"),
         ],
         HelpMode::ModalAddAuthor => vec![
-            ("Tab / Down", "Focus next field (Name, Email, Affiliation, ORCID)"),
+            (
+                "Tab / Down",
+                "Focus next field (Name, Email, Affiliation, ORCID)",
+            ),
             ("Shift+Tab / Up", "Focus previous field"),
             ("Backspace", "Delete character in active field"),
             ("Char", "Type text into active field"),
-            ("Enter", "Save co-author to cache and local project settings"),
+            (
+                "Enter",
+                "Save co-author to cache and local project settings",
+            ),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc", "Cancel and close modal"),
         ],
         HelpMode::ModalAddGrant => vec![
-            ("Tab / Down", "Focus next field (Funder, Number, Acknowledgment)"),
+            (
+                "Tab / Down",
+                "Focus next field (Funder, Number, Acknowledgment)",
+            ),
             ("Shift+Tab / Up", "Focus previous field"),
             ("Backspace", "Delete character in active field"),
             ("Char", "Type text into active field"),
@@ -316,7 +387,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
         HelpMode::ModalAddSourceLink => vec![
             ("Char", "Type URL / DOI / arXiv link"),
             ("Backspace", "Delete character"),
-            ("Enter", "Submit link stub (no download)"),
+            ("Enter", "Start background fetch/download of the source"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc", "Cancel and close modal"),
         ],
@@ -363,6 +434,16 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("Backspace", "Delete character from search query"),
             ("Enter / Esc", "Finish search mode"),
             ("F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::JobHistory => vec![
+            ("j / Down", "Select next job outcome"),
+            ("k / Up", "Select previous job outcome"),
+            (
+                "Enter / r",
+                "Retry selected failed job (when retry payload available)",
+            ),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc / q / J", "Close job history modal"),
         ],
     }
 }
@@ -471,12 +552,58 @@ fn resolve_onnx_from_dir(val: &str) -> String {
     val.to_string()
 }
 
+/// Cap for the unified background job history ring buffer.
+pub const JOB_HISTORY_CAP: usize = 20;
+
+/// Kind of background job recorded in job history.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum JobKind {
+    Hydrate,
+    Fetch,
+    Parse,
+    Similarity,
+}
+
+impl JobKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            JobKind::Hydrate => "hydrate",
+            JobKind::Fetch => "fetch",
+            JobKind::Parse => "parse",
+            JobKind::Similarity => "similarity",
+        }
+    }
+}
+
+/// Payload needed to re-enqueue a failed background job.
+#[derive(Debug, Clone)]
+pub enum RetryPayload {
+    HydrateRef { entry: ReferenceEntry },
+    HydrateSource { doc: SourceDocument },
+    Fetch { target: String },
+    Parse { doc: SourceDocument, force: bool },
+    Similarity,
+}
+
+/// Unified recent outcome for hydrate / fetch / parse / similarity jobs.
+#[derive(Debug, Clone)]
+pub struct JobOutcome {
+    pub id: u64,
+    pub kind: JobKind,
+    pub label: String,
+    pub ok: bool,
+    pub detail: String,
+    pub duration_ms: Option<u64>,
+    pub retry_payload: Option<RetryPayload>,
+}
+
 /// Result message from background metadata hydration thread.
 #[derive(Debug, Clone)]
 pub struct HydrationResult {
     pub dedup_key: String,
     pub label: String,
     pub outcome: HydrationOutcome,
+    pub duration_ms: Option<u64>,
 }
 
 /// Outcome of background metadata fetch.
@@ -486,20 +613,32 @@ pub enum HydrationOutcome {
     Failure { reason: String },
 }
 
-/// Recent outcome of background metadata hydration.
-#[derive(Debug, Clone)]
-pub struct HydrationHistoryEntry {
-    pub label: String,
-    pub success: bool,
-    pub detail: String,
-}
-
 /// Result of a background parse job.
 #[derive(Debug)]
 pub struct ParseJobResult {
     pub source_id: sil_core::SourceId,
     pub label: String,
     pub result: Result<sil_parse::batch::ParseResult, String>,
+    pub duration_ms: Option<u64>,
+    pub force: bool,
+}
+
+/// Result of a background source fetch job.
+#[derive(Debug)]
+pub struct FetchJobResult {
+    pub target: String,
+    pub label: String,
+    pub result: Result<camino::Utf8PathBuf, String>,
+    pub duration_ms: Option<u64>,
+}
+
+/// Result of a background draft–ref similarity recompute job.
+#[derive(Debug)]
+pub struct SimilarityJobResult {
+    pub draft_hash: String,
+    pub backend_summary: String,
+    pub result: Result<usize, String>,
+    pub duration_ms: Option<u64>,
 }
 
 /// Application state struct for TUI.
@@ -511,12 +650,23 @@ pub struct App {
     pub hydration_tx: std::sync::mpsc::Sender<HydrationResult>,
     pub hydration_rx: std::sync::mpsc::Receiver<HydrationResult>,
     pub in_flight_hydration_keys: std::collections::HashSet<String>,
+    pub hydrate_retry_payloads: std::collections::HashMap<String, RetryPayload>,
     pub parse_tx: std::sync::mpsc::Sender<ParseJobResult>,
     pub parse_rx: std::sync::mpsc::Receiver<ParseJobResult>,
     pub in_flight_parse_ids: std::collections::HashSet<sil_core::SourceId>,
+    pub parse_retry_payloads: std::collections::HashMap<sil_core::SourceId, RetryPayload>,
+    pub fetch_tx: std::sync::mpsc::Sender<FetchJobResult>,
+    pub fetch_rx: std::sync::mpsc::Receiver<FetchJobResult>,
+    pub in_flight_fetch_targets: std::collections::HashSet<String>,
+    pub similarity_tx: std::sync::mpsc::Sender<SimilarityJobResult>,
+    pub similarity_rx: std::sync::mpsc::Receiver<SimilarityJobResult>,
+    pub in_flight_similarity: bool,
     pub hydration_batch_succeeded: usize,
     pub hydration_batch_failed: usize,
-    pub recent_hydration_outcomes: std::collections::VecDeque<HydrationHistoryEntry>,
+    /// Unified job history ring (hydrate | fetch | parse | similarity). Cap [`JOB_HISTORY_CAP`].
+    pub recent_job_outcomes: std::collections::VecDeque<JobOutcome>,
+    pub next_job_id: u64,
+    pub selected_job_history_index: usize,
 
     pub active_ref_pane: RefPane,
     pub bib_file_entries: Vec<String>,
@@ -607,17 +757,29 @@ impl App {
 
         let (hydration_tx, hydration_rx) = std::sync::mpsc::channel();
         let (parse_tx, parse_rx) = std::sync::mpsc::channel();
+        let (fetch_tx, fetch_rx) = std::sync::mpsc::channel();
+        let (similarity_tx, similarity_rx) = std::sync::mpsc::channel();
 
         let mut app = Self {
             hydration_tx,
             hydration_rx,
             in_flight_hydration_keys: std::collections::HashSet::new(),
+            hydrate_retry_payloads: std::collections::HashMap::new(),
             parse_tx,
             parse_rx,
             in_flight_parse_ids: std::collections::HashSet::new(),
+            parse_retry_payloads: std::collections::HashMap::new(),
+            fetch_tx,
+            fetch_rx,
+            in_flight_fetch_targets: std::collections::HashSet::new(),
+            similarity_tx,
+            similarity_rx,
+            in_flight_similarity: false,
             hydration_batch_succeeded: 0,
             hydration_batch_failed: 0,
-            recent_hydration_outcomes: std::collections::VecDeque::with_capacity(20),
+            recent_job_outcomes: std::collections::VecDeque::with_capacity(JOB_HISTORY_CAP),
+            next_job_id: 1,
+            selected_job_history_index: 0,
             project_root,
             loaded_config,
             global_settings,
@@ -693,8 +855,38 @@ impl App {
         app
     }
 
+    fn alloc_job_id(&mut self) -> u64 {
+        let id = self.next_job_id;
+        self.next_job_id = self.next_job_id.saturating_add(1);
+        id
+    }
+
+    fn push_job_outcome(&mut self, outcome: JobOutcome) {
+        if self.recent_job_outcomes.len() >= JOB_HISTORY_CAP {
+            self.recent_job_outcomes.pop_front();
+        }
+        self.recent_job_outcomes.push_back(outcome);
+        if self.selected_job_history_index >= self.recent_job_outcomes.len()
+            && !self.recent_job_outcomes.is_empty()
+        {
+            self.selected_job_history_index = self.recent_job_outcomes.len() - 1;
+        }
+    }
+
+    /// Effective RAG settings: local config override, else global.
+    pub fn effective_rag_settings(&self) -> sil_core::RagSettings {
+        self.loaded_config
+            .as_ref()
+            .and_then(|c| c.rag.clone())
+            .unwrap_or_else(|| self.global_settings.rag.clone())
+    }
+
     pub fn queue_ref_hydration(&mut self, entry: ReferenceEntry) {
-        let label = entry.title.as_deref().unwrap_or(&entry.raw_text).to_string();
+        let label = entry
+            .title
+            .as_deref()
+            .unwrap_or(&entry.raw_text)
+            .to_string();
         let dedup_key = if let Some(ref doi) = entry.doi {
             format!("doi:{}", doi.trim())
         } else if let Some(ref arxiv_id) = entry.arxiv_id {
@@ -714,6 +906,12 @@ impl App {
         }
 
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.hydrate_retry_payloads.insert(
+            dedup_key.clone(),
+            RetryPayload::HydrateRef {
+                entry: entry.clone(),
+            },
+        );
         self.status_message = format!(
             "⏳ Hydrating ({} in flight)...",
             self.in_flight_hydration_keys.len()
@@ -721,6 +919,7 @@ impl App {
         let tx = self.hydration_tx.clone();
 
         std::thread::spawn(move || {
+            let started = std::time::Instant::now();
             let res = sil_parse::journal_digest::resolve_official_bibtex_entry(&entry);
             let outcome = match res {
                 sil_parse::journal_digest::ReferenceBibResolution::Resolved(official_bib) => {
@@ -734,6 +933,7 @@ impl App {
                 dedup_key,
                 label,
                 outcome,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
             });
         });
     }
@@ -771,6 +971,10 @@ impl App {
         }
 
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.hydrate_retry_payloads.insert(
+            dedup_key.clone(),
+            RetryPayload::HydrateSource { doc: doc.clone() },
+        );
         self.status_message = format!(
             "⏳ Hydrating ({} in flight)...",
             self.in_flight_hydration_keys.len()
@@ -778,6 +982,7 @@ impl App {
         let tx = self.hydration_tx.clone();
 
         std::thread::spawn(move || {
+            let started = std::time::Instant::now();
             let res = sil_parse::journal_digest::resolve_official_bibtex_for_source(&doc);
             let outcome = match res {
                 sil_parse::SourceBibResolution::Resolved(official_bib) => {
@@ -791,6 +996,7 @@ impl App {
                 dedup_key,
                 label,
                 outcome,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
             });
         });
     }
@@ -812,6 +1018,13 @@ impl App {
         }
 
         self.in_flight_parse_ids.insert(doc.id.clone());
+        self.parse_retry_payloads.insert(
+            doc.id.clone(),
+            RetryPayload::Parse {
+                doc: doc.clone(),
+                force,
+            },
+        );
         self.status_message = format!("⏳ Parsing source '{label}'...");
 
         let tx = self.parse_tx.clone();
@@ -820,13 +1033,14 @@ impl App {
         let path = doc.path.clone();
 
         std::thread::spawn(move || {
+            let started = std::time::Instant::now();
             let result = (|| -> Result<sil_parse::batch::ParseResult, String> {
                 let Some(root) = project_root else {
                     return Err("No project root directory available".to_string());
                 };
                 let paths = ProjectPaths::new(&root);
-                let db = sil_db::SilDb::open(&paths.db())
-                    .map_err(|e| format!("Database error: {e}"))?;
+                let db =
+                    sil_db::SilDb::open(&paths.db()).map_err(|e| format!("Database error: {e}"))?;
 
                 if force {
                     let _ = db.remove_source(&doc_id);
@@ -847,6 +1061,112 @@ impl App {
                 source_id: doc_id,
                 label,
                 result,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
+                force,
+            });
+        });
+    }
+
+    /// Enqueue a background download via `sil_parse::fetch_source_target` (DOI/arXiv/URL).
+    pub fn queue_source_fetch(&mut self, target: String) {
+        let target = target.trim().to_string();
+        if target.is_empty() {
+            self.status_message = "Empty fetch target".to_string();
+            return;
+        }
+        if self.project_root.is_none() {
+            self.status_message = "No active project — cannot fetch source".to_string();
+            return;
+        }
+        if self.in_flight_fetch_targets.contains(&target) {
+            self.status_message = format!("already fetching '{target}'...");
+            return;
+        }
+
+        let kind = classify_source_input(&target);
+        let label = target.clone();
+        self.in_flight_fetch_targets.insert(target.clone());
+        self.status_message = format!("⏳ fetching… ({})", kind.label());
+
+        let tx = self.fetch_tx.clone();
+        let project_root = self.project_root.clone();
+        let loaded_config = self.loaded_config.clone();
+
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let result = (|| -> Result<camino::Utf8PathBuf, String> {
+                let root = project_root.ok_or_else(|| "No project root".to_string())?;
+                let paths = ProjectPaths::new(&root);
+                let config = loaded_config.unwrap_or_default();
+                let sources_dir = paths.sources(&config);
+                sil_parse::fetch_source_target(&target, &sources_dir).map_err(|e| e.to_string())
+            })();
+            let _ = tx.send(FetchJobResult {
+                target,
+                label,
+                result,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
+            });
+        });
+    }
+
+    /// Enqueue background draft–ref similarity recompute (used only by `X`).
+    pub fn enqueue_similarity_job(&mut self) {
+        let root = match self.project_root.as_ref() {
+            Some(r) => r.clone(),
+            None => {
+                self.status_message = "No active project loaded to compute similarity".to_string();
+                return;
+            }
+        };
+
+        if self.in_flight_similarity {
+            self.status_message = "already recomputing draft similarity...".to_string();
+            return;
+        }
+
+        let paths = ProjectPaths::new(&root);
+        let draft_path = paths.paper_draft();
+        if !draft_path.exists() {
+            self.status_message = format!(
+                "⚠ Paper draft not found at {}",
+                draft_path.file_name().unwrap_or(draft_path.as_str())
+            );
+            return;
+        }
+
+        let draft_text = match std::fs::read_to_string(draft_path.as_std_path()) {
+            Ok(t) => t,
+            Err(e) => {
+                self.status_message = format!("⚠ Failed reading paper draft: {e}");
+                return;
+            }
+        };
+
+        let clean = sil_core::strip_latex_for_embed(&draft_text);
+        let draft_hash = sil_core::compute_draft_hash(&clean);
+        let rag = self.effective_rag_settings();
+        let db_path = paths.db();
+
+        self.in_flight_similarity = true;
+        self.status_message = "⏳ Recomputing draft similarity…".to_string();
+        let tx = self.similarity_tx.clone();
+
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let embedder = sil_db::OnnxEmbedder::from_rag_settings(&rag);
+            let backend_summary = embedder.backend().summary();
+            let result = (|| -> Result<usize, String> {
+                let db =
+                    sil_db::SilDb::open(&db_path).map_err(|e| format!("Database error: {e}"))?;
+                db.recompute_draft_ref_similarities(&draft_text, &embedder)
+                    .map_err(|e| e.to_string())
+            })();
+            let _ = tx.send(SimilarityJobResult {
+                draft_hash,
+                backend_summary,
+                result,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
             });
         });
     }
@@ -856,15 +1176,36 @@ impl App {
         while let Ok(res) = self.parse_rx.try_recv() {
             polled_any = true;
             self.in_flight_parse_ids.remove(&res.source_id);
+            let retry = self.parse_retry_payloads.remove(&res.source_id);
             match res.result {
                 Ok(_parse_res) => {
                     self.reload_sources();
                     self.load_all_source_references();
                     self.status_message = format!("✓ Parsed source '{}'", res.label);
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Parse,
+                        label: res.label.clone(),
+                        ok: true,
+                        detail: format!("Parsed source '{}'", res.label),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
                 }
                 Err(err_msg) => {
                     self.status_message =
                         format!("⚠ Failed parsing source '{}': {}", res.label, err_msg);
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Parse,
+                        label: res.label.clone(),
+                        ok: false,
+                        detail: err_msg,
+                        duration_ms: res.duration_ms,
+                        retry_payload: retry,
+                    });
                 }
             }
         }
@@ -877,18 +1218,204 @@ impl App {
         }
     }
 
+    pub fn poll_background_fetch(&mut self) {
+        let mut polled_any = false;
+        while let Ok(res) = self.fetch_rx.try_recv() {
+            polled_any = true;
+            self.in_flight_fetch_targets.remove(&res.target);
+            match res.result {
+                Ok(saved_path) => {
+                    // Best-effort DB upsert so list_sources picks up metadata quickly.
+                    if let Some(ref root) = self.project_root {
+                        let paths = ProjectPaths::new(root);
+                        let config = self.loaded_config.clone().unwrap_or_default();
+                        let sources_dir = paths.sources(&config);
+                        let pdf_path = if saved_path.is_absolute() {
+                            saved_path.clone()
+                        } else if sources_dir
+                            .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+                            .exists()
+                        {
+                            sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+                        } else {
+                            root.join(&saved_path)
+                        };
+                        if pdf_path.exists()
+                            && let Ok(db) = sil_db::SilDb::open(&paths.db())
+                        {
+                            let doc = SourceDocument::new(pdf_path);
+                            let _ = db.upsert_parsed(&doc, "");
+                        }
+                    }
+                    self.reload_sources();
+                    self.status_message = format!("✓ Fetched source '{}'", res.label);
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Fetch,
+                        label: res.label.clone(),
+                        ok: true,
+                        detail: format!("Downloaded → {saved_path}"),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+                Err(err_msg) => {
+                    self.status_message = format!("⚠ Fetch failed for '{}': {err_msg}", res.label);
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Fetch,
+                        label: res.label.clone(),
+                        ok: false,
+                        detail: err_msg,
+                        duration_ms: res.duration_ms,
+                        retry_payload: Some(RetryPayload::Fetch {
+                            target: res.target.clone(),
+                        }),
+                    });
+                }
+            }
+        }
+        if polled_any && !self.in_flight_fetch_targets.is_empty() {
+            self.status_message = format!(
+                "⏳ fetching… ({} in flight)",
+                self.in_flight_fetch_targets.len()
+            );
+        }
+    }
+
+    pub fn poll_background_similarity(&mut self) {
+        while let Ok(res) = self.similarity_rx.try_recv() {
+            self.in_flight_similarity = false;
+
+            // Staleness: discard if draft changed while job ran.
+            let current_hash = self.current_draft_hash();
+            if current_hash.as_ref() != Some(&res.draft_hash) {
+                let id = self.alloc_job_id();
+                self.push_job_outcome(JobOutcome {
+                    id,
+                    kind: JobKind::Similarity,
+                    label: "draft–ref similarity".to_string(),
+                    ok: false,
+                    detail: "Discarded stale similarity results (draft changed mid-job)"
+                        .to_string(),
+                    duration_ms: res.duration_ms,
+                    retry_payload: Some(RetryPayload::Similarity),
+                });
+                self.status_message =
+                    "⚠ Draft changed — discarded stale similarity results (press X to recompute)"
+                        .to_string();
+                continue;
+            }
+
+            match res.result {
+                Ok(count) => {
+                    if let Some(ref root) = self.project_root {
+                        let paths = ProjectPaths::new(root);
+                        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                            if let Ok(sims) = db.get_draft_ref_similarities() {
+                                self.draft_ref_similarities = sims;
+                            }
+                            if let Ok(hash) = db.get_draft_similarity_hash() {
+                                self.draft_similarity_hash = hash;
+                            }
+                        }
+                    }
+                    self.sort_source_references();
+                    self.status_message = format!(
+                        "✓ Recomputed draft similarity for {count} reference(s) [{}]",
+                        res.backend_summary
+                    );
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Similarity,
+                        label: "draft–ref similarity".to_string(),
+                        ok: true,
+                        detail: format!(
+                            "Recomputed scores for {count} reference(s) [{}]",
+                            res.backend_summary
+                        ),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+                Err(err_msg) => {
+                    self.status_message =
+                        format!("⚠ Failed computing similarity scores: {err_msg}");
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Similarity,
+                        label: "draft–ref similarity".to_string(),
+                        ok: false,
+                        detail: err_msg,
+                        duration_ms: res.duration_ms,
+                        retry_payload: Some(RetryPayload::Similarity),
+                    });
+                }
+            }
+        }
+    }
+
+    fn current_draft_hash(&self) -> Option<String> {
+        let root = self.project_root.as_ref()?;
+        let paths = ProjectPaths::new(root);
+        let draft_path = paths.paper_draft();
+        if !draft_path.exists() {
+            return None;
+        }
+        let text = std::fs::read_to_string(draft_path.as_std_path()).ok()?;
+        let clean = sil_core::strip_latex_for_embed(&text);
+        Some(sil_core::compute_draft_hash(&clean))
+    }
+
+    pub fn retry_job_outcome(&mut self, index: usize) {
+        let payload = match self.recent_job_outcomes.get(index) {
+            Some(o) if !o.ok => o.retry_payload.clone(),
+            _ => None,
+        };
+        match payload {
+            Some(RetryPayload::HydrateRef { entry }) => {
+                self.status_message = "Retrying hydration…".to_string();
+                self.queue_ref_hydration(entry);
+            }
+            Some(RetryPayload::HydrateSource { doc }) => {
+                self.status_message = "Retrying source hydration…".to_string();
+                self.queue_source_hydration(doc);
+            }
+            Some(RetryPayload::Fetch { target }) => {
+                self.status_message = "Retrying fetch…".to_string();
+                self.queue_source_fetch(target);
+            }
+            Some(RetryPayload::Parse { doc, force }) => {
+                self.status_message = "Retrying parse…".to_string();
+                self.queue_source_parse(doc, force);
+            }
+            Some(RetryPayload::Similarity) => {
+                self.status_message = "Retrying similarity recompute…".to_string();
+                self.enqueue_similarity_job();
+            }
+            None => {
+                self.status_message =
+                    "Selected job cannot be retried (success or no payload)".to_string();
+            }
+        }
+    }
+
     pub fn poll_background_hydration(&mut self) {
         self.poll_background_parse();
+        self.poll_background_fetch();
+        self.poll_background_similarity();
         let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
             polled_any = true;
             self.in_flight_hydration_keys.remove(&res.dedup_key);
+            let retry = self.hydrate_retry_payloads.remove(&res.dedup_key);
             match res.outcome {
                 HydrationOutcome::Success { official_bib } => {
                     self.hydration_batch_succeeded += 1;
-                    if self.recent_hydration_outcomes.len() >= 20 {
-                        self.recent_hydration_outcomes.pop_front();
-                    }
 
                     if let Some(ref root) = self.project_root {
                         let bib_path = root.join(sil_core::paths::rel::REFERENCES);
@@ -896,10 +1423,15 @@ impl App {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error reading references.bib: {e}");
-                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                let id = self.alloc_job_id();
+                                self.push_job_outcome(JobOutcome {
+                                    id,
+                                    kind: JobKind::Hydrate,
                                     label: res.label.clone(),
-                                    success: false,
+                                    ok: false,
                                     detail: err_msg,
+                                    duration_ms: res.duration_ms,
+                                    retry_payload: retry,
                                 });
                                 continue;
                             }
@@ -930,46 +1462,68 @@ impl App {
 
                             if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
                                 let err_msg = format!("Error writing references.bib: {e}");
-                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                let id = self.alloc_job_id();
+                                self.push_job_outcome(JobOutcome {
+                                    id,
+                                    kind: JobKind::Hydrate,
                                     label: res.label.clone(),
-                                    success: false,
+                                    ok: false,
                                     detail: err_msg,
+                                    duration_ms: res.duration_ms,
+                                    retry_payload: retry,
                                 });
                             } else {
                                 self.load_project_references_bib();
-                                self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                                let id = self.alloc_job_id();
+                                self.push_job_outcome(JobOutcome {
+                                    id,
+                                    kind: JobKind::Hydrate,
                                     label: res.label.clone(),
-                                    success: true,
+                                    ok: true,
                                     detail: format!("Official metadata for '{}'", res.label),
+                                    duration_ms: res.duration_ms,
+                                    retry_payload: None,
                                 });
                             }
                         } else {
-                            self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                            let id = self.alloc_job_id();
+                            self.push_job_outcome(JobOutcome {
+                                id,
+                                kind: JobKind::Hydrate,
                                 label: res.label.clone(),
-                                success: false,
+                                ok: false,
                                 detail: format!(
                                     "Skipped hydration for '{}': entry was deleted from references.bib",
                                     res.label
                                 ),
+                                duration_ms: res.duration_ms,
+                                retry_payload: None,
                             });
                         }
                     } else {
-                        self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                        let id = self.alloc_job_id();
+                        self.push_job_outcome(JobOutcome {
+                            id,
+                            kind: JobKind::Hydrate,
                             label: res.label.clone(),
-                            success: true,
+                            ok: true,
                             detail: format!("Official metadata for '{}'", res.label),
+                            duration_ms: res.duration_ms,
+                            retry_payload: None,
                         });
                     }
                 }
                 HydrationOutcome::Failure { reason } => {
                     self.hydration_batch_failed += 1;
-                    if self.recent_hydration_outcomes.len() >= 20 {
-                        self.recent_hydration_outcomes.pop_front();
-                    }
-                    self.recent_hydration_outcomes.push_back(HydrationHistoryEntry {
+                    let id = self.alloc_job_id();
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Hydrate,
                         label: res.label.clone(),
-                        success: false,
+                        ok: false,
                         detail: reason,
+                        duration_ms: res.duration_ms,
+                        retry_payload: retry,
                     });
                 }
             }
@@ -978,8 +1532,10 @@ impl App {
         if polled_any {
             if self.in_flight_hydration_keys.is_empty() {
                 if self.hydration_batch_succeeded == 1 && self.hydration_batch_failed == 0 {
-                    let last = self.recent_hydration_outcomes.back();
-                    if let Some(h) = last && h.success {
+                    let last = self.recent_job_outcomes.back();
+                    if let Some(h) = last
+                        && h.ok
+                    {
                         self.status_message = format!("✓ Official metadata for '{}'", h.label);
                     } else {
                         self.status_message = format!(
@@ -989,11 +1545,12 @@ impl App {
                     }
                 } else if self.hydration_batch_failed == 1 && self.hydration_batch_succeeded == 0 {
                     let (last_label, reason) = self
-                        .recent_hydration_outcomes
+                        .recent_job_outcomes
                         .back()
                         .map(|h| (h.label.as_str(), h.detail.as_str()))
                         .unwrap_or(("source", "unknown error"));
-                    self.status_message = format!("⚠ Metadata fetch failed for '{last_label}': {reason}");
+                    self.status_message =
+                        format!("⚠ Metadata fetch failed for '{last_label}': {reason}");
                 } else {
                     self.status_message = format!(
                         "✓ Hydration complete: {} succeeded, {} failed",
@@ -1146,7 +1703,8 @@ impl App {
                 let current_hash = sil_core::compute_draft_hash(&clean);
                 if let Some(ref db_hash) = self.draft_similarity_hash {
                     if db_hash != &current_hash {
-                        self.status_message = "⚠ Draft updated — press 'm' / 'X' to recompute similarity".to_string();
+                        self.status_message =
+                            "⚠ Draft updated — press 'm' / 'X' to recompute similarity".to_string();
                     }
                 }
             }
@@ -1173,6 +1731,7 @@ impl App {
             InputMode::ModalAddSourceLink => HelpMode::ModalAddSourceLink,
             InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
             InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
+            InputMode::JobHistory => HelpMode::JobHistory,
             InputMode::Editing => HelpMode::Editing,
             InputMode::EditingPaper => HelpMode::EditingPaper,
             InputMode::Normal => match self.active_tab {
@@ -1223,7 +1782,9 @@ impl App {
                 self.source_references.sort_by(|a, b| {
                     let score_a = sims.get(&a.id).copied().unwrap_or(0.0);
                     let score_b = sims.get(&b.id).copied().unwrap_or(0.0);
-                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
         }
@@ -1247,7 +1808,11 @@ impl App {
             .iter()
             .filter(|r| {
                 if let Some(min) = self.min_similarity_filter {
-                    let score = self.draft_ref_similarities.get(&r.id).copied().unwrap_or(0.0);
+                    let score = self
+                        .draft_ref_similarities
+                        .get(&r.id)
+                        .copied()
+                        .unwrap_or(0.0);
                     if score < min {
                         return false;
                     }
@@ -1275,7 +1840,9 @@ impl App {
             refs.sort_by(|a, b| {
                 let score_a = sims.get(&a.id).copied().unwrap_or(0.0);
                 let score_b = sims.get(&b.id).copied().unwrap_or(0.0);
-                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                score_b
+                    .partial_cmp(&score_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
         refs
@@ -1350,7 +1917,8 @@ impl App {
             }
         };
 
-        let embedder = sil_db::OnnxEmbedder::default();
+        let embedder = sil_db::OnnxEmbedder::from_rag_settings(&self.effective_rag_settings());
+        let backend = embedder.backend().summary();
         match db.recompute_draft_ref_similarities(&draft_text, &embedder) {
             Ok(count) => {
                 if let Ok(sims) = db.get_draft_ref_similarities() {
@@ -1360,8 +1928,9 @@ impl App {
                     self.draft_similarity_hash = hash;
                 }
                 self.sort_source_references();
-                self.status_message =
-                    format!("✓ Recomputed draft similarity scores for {count} reference(s)");
+                self.status_message = format!(
+                    "✓ Recomputed draft similarity scores for {count} reference(s) [{backend}]"
+                );
             }
             Err(e) => {
                 self.status_message = format!("⚠ Failed computing similarity scores: {e}");
@@ -1502,8 +2071,9 @@ impl App {
                     self.status_message =
                         format!("✓ Added ALL {count} ref(s); fetching official metadata…");
                 } else {
-                    self.status_message =
-                        format!("✓ Added ALL {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                    self.status_message = format!(
+                        "✓ Added ALL {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)"
+                    );
                 }
             }
         }
@@ -1547,9 +2117,11 @@ impl App {
                 return;
             }
             self.load_project_references_bib();
-            self.status_message = format!("✓ Promoted '{cite_key}' (removed % [sil: tui-added] marker)");
+            self.status_message =
+                format!("✓ Promoted '{cite_key}' (removed % [sil: tui-added] marker)");
         } else {
-            self.status_message = format!("✓ Promoted '{cite_key}' (no project root loaded to save)");
+            self.status_message =
+                format!("✓ Promoted '{cite_key}' (no project root loaded to save)");
         }
     }
 
@@ -1585,6 +2157,7 @@ impl App {
             InputMode::ModalAddSourceLink => self.handle_modal_add_source_link_mode(key),
             InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
+            InputMode::JobHistory => self.handle_job_history_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
             InputMode::SearchingRefs => self.handle_searching_refs_mode(key),
             InputMode::SearchingBib => self.handle_searching_bib_mode(key),
@@ -1763,45 +2336,14 @@ impl App {
                     }
                 }
             },
-            KeyCode::Down | KeyCode::Char('j') => match self.active_tab {
-                ActiveTab::Dashboard => {}
-                ActiveTab::References => match self.active_ref_pane {
-                    RefPane::LeftBib => {
-                        let count = self.filtered_bib_entries().len();
-                        if count > 0 && self.selected_bib_index + 1 < count {
-                            self.selected_bib_index += 1;
-                        }
-                    }
-                    RefPane::RightSources => {
-                        let count = self.filtered_source_references().len();
-                        if count > 0 && self.selected_source_ref_index + 1 < count {
-                            self.selected_source_ref_index += 1;
-                        }
-                    }
-                },
-                ActiveTab::PaperDraft => {
-                    if !self.paper_sections.is_empty()
-                        && self.paper_section_index + 1 < self.paper_sections.len()
-                    {
-                        self.paper_section_index += 1;
-                        self.paper_scroll_offset = 0;
-                    }
-                }
-                ActiveTab::Sources => {
-                    if !self.sources.is_empty()
-                        && self.selected_source_index + 1 < self.sources.len()
-                    {
-                        self.selected_source_index += 1;
-                        self.source_scroll_offset = 0;
-                    }
-                }
-                ActiveTab::Settings => {
-                    let total = self.setting_items().len();
-                    if total > 0 && self.selected_setting_index + 1 < total {
-                        self.selected_setting_index += 1;
-                    }
-                }
-            },
+            // Uppercase J / Shift+j: job history (before lowercase j navigation).
+            KeyCode::Char('J') => {
+                self.open_job_history();
+            }
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                self.open_job_history();
+            }
+            KeyCode::Down | KeyCode::Char('j') => self.navigate_down(),
             KeyCode::Enter => match self.active_tab {
                 ActiveTab::PaperDraft => self.start_editing_selected_field(),
                 ActiveTab::Sources => {
@@ -1820,9 +2362,7 @@ impl App {
             },
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 if self.active_tab == ActiveTab::Sources {
-                    if !self.sources.is_empty()
-                        && self.selected_source_index < self.sources.len()
-                    {
+                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
                         let force = key.code == KeyCode::Char('E')
                             || key.modifiers.contains(KeyModifiers::SHIFT);
                         let doc = self.sources[self.selected_source_index].clone();
@@ -1839,7 +2379,7 @@ impl App {
                     self.new_source_link_buffer.clear();
                     self.input_mode = InputMode::ModalAddSourceLink;
                     self.status_message =
-                        "Register link stub (no download) — Enter URL / DOI / arXiv / filename (Enter to submit, Esc to cancel)"
+                        "Fetch/download source — enter URL / DOI / arXiv (Enter to start fetch, Esc to cancel)"
                             .to_string();
                 }
                 ActiveTab::Settings => {
@@ -2020,7 +2560,8 @@ impl App {
                             for e in &entries_to_add {
                                 let local_bib = e.to_bibtex();
                                 let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
-                                let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
+                                let (updated, _) =
+                                    sil_core::bib::upsert_bib_entry(&current, &marked);
                                 current = updated;
                                 if e.should_attempt_metadata_fetch() {
                                     fetch_count += 1;
@@ -2035,8 +2576,9 @@ impl App {
                                 self.status_message =
                                     format!("✓ Added {count} ref(s); fetching official metadata…");
                             } else {
-                                self.status_message =
-                                    format!("✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                                self.status_message = format!(
+                                    "✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)"
+                                );
                             }
                         }
                     }
@@ -2078,7 +2620,7 @@ impl App {
             }
             KeyCode::Char('X') => {
                 if self.active_tab == ActiveTab::References {
-                    self.recompute_draft_ref_similarities();
+                    self.enqueue_similarity_job();
                 }
             }
             KeyCode::Char('y') => {
@@ -2710,6 +3252,88 @@ impl App {
         }
     }
 
+    fn navigate_down(&mut self) {
+        match self.active_tab {
+            ActiveTab::Dashboard => {}
+            ActiveTab::References => match self.active_ref_pane {
+                RefPane::LeftBib => {
+                    let count = self.filtered_bib_entries().len();
+                    if count > 0 && self.selected_bib_index + 1 < count {
+                        self.selected_bib_index += 1;
+                    }
+                }
+                RefPane::RightSources => {
+                    let count = self.filtered_source_references().len();
+                    if count > 0 && self.selected_source_ref_index + 1 < count {
+                        self.selected_source_ref_index += 1;
+                    }
+                }
+            },
+            ActiveTab::PaperDraft => {
+                if !self.paper_sections.is_empty()
+                    && self.paper_section_index + 1 < self.paper_sections.len()
+                {
+                    self.paper_section_index += 1;
+                    self.paper_scroll_offset = 0;
+                }
+            }
+            ActiveTab::Sources => {
+                if !self.sources.is_empty() && self.selected_source_index + 1 < self.sources.len() {
+                    self.selected_source_index += 1;
+                    self.source_scroll_offset = 0;
+                }
+            }
+            ActiveTab::Settings => {
+                let total = self.setting_items().len();
+                if total > 0 && self.selected_setting_index + 1 < total {
+                    self.selected_setting_index += 1;
+                }
+            }
+        }
+    }
+
+    fn open_job_history(&mut self) {
+        if self.recent_job_outcomes.is_empty() {
+            self.selected_job_history_index = 0;
+        } else if self.selected_job_history_index >= self.recent_job_outcomes.len() {
+            self.selected_job_history_index = self.recent_job_outcomes.len() - 1;
+        }
+        self.input_mode = InputMode::JobHistory;
+        self.status_message =
+            "Job history — ↑/↓ navigate, Enter/r retry failed, Esc close".to_string();
+    }
+
+    fn handle_job_history_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::F(1) | KeyCode::Char('?') => self.toggle_help_overlay(),
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('J') => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Closed job history.".to_string();
+            }
+            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Closed job history.".to_string();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !self.recent_job_outcomes.is_empty()
+                    && self.selected_job_history_index + 1 < self.recent_job_outcomes.len()
+                {
+                    self.selected_job_history_index += 1;
+                }
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if self.selected_job_history_index > 0 {
+                    self.selected_job_history_index -= 1;
+                }
+            }
+            KeyCode::Enter | KeyCode::Char('r') => {
+                let idx = self.selected_job_history_index;
+                self.retry_job_outcome(idx);
+            }
+            _ => {}
+        }
+    }
+
     fn handle_modal_add_source_link_mode(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::F(1) => self.toggle_help_overlay(),
@@ -2720,36 +3344,9 @@ impl App {
             KeyCode::Enter => {
                 let link = self.new_source_link_buffer.trim().to_string();
                 if !link.is_empty() {
-                    let kind = classify_source_input(&link);
-                    if let Some(ref root) = self.project_root {
-                        let paths = ProjectPaths::new(root);
-                        let sources_dir = root.join("sources");
-                        std::fs::create_dir_all(sources_dir.as_std_path()).ok();
-                        let filename = Utf8PathBuf::from(&link)
-                            .file_name()
-                            .unwrap_or("new_source.md")
-                            .to_string();
-                        let file_path = sources_dir.join(&filename);
-                        if !file_path.exists() {
-                            let _ = std::fs::write(
-                                file_path.as_std_path(),
-                                format!("# Source: {filename}\nLink: {link}\n"),
-                            );
-                        }
-                        let doc = SourceDocument::new(file_path);
-                        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
-                            let _ = db.upsert_parsed(
-                                &doc,
-                                &format!("# Source: {filename}\nLink: {link}\n"),
-                            );
-                        }
-                    } else {
-                        let doc = SourceDocument::new(Utf8PathBuf::from(&link));
-                        self.sources.push(doc);
-                    }
-                    self.reload_sources();
-                    self.status_message =
-                        format!("✓ Registered {} link stub (no download): {link}", kind.label());
+                    self.queue_source_fetch(link);
+                } else {
+                    self.status_message = "Empty URL / DOI / arXiv — nothing to fetch".to_string();
                 }
                 self.input_mode = InputMode::Normal;
             }
@@ -3472,7 +4069,15 @@ mod tests {
         app.new_source_link_buffer = "https://example.com/paper.pdf".to_string();
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
         assert_eq!(app.input_mode, InputMode::Normal);
-        assert_eq!(app.sources.len(), 1);
+        assert!(
+            app.in_flight_fetch_targets
+                .contains("https://example.com/paper.pdf")
+        );
+
+        // Push a source to test rename and delete
+        let mut doc = sil_core::SourceDocument::new(camino::Utf8PathBuf::from("sources/paper.pdf"));
+        doc.title = Some("Original Title".to_string());
+        app.sources.push(doc);
 
         // Rename source modal
         app.selected_source_index = 0;
@@ -3992,10 +4597,15 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = Utf8Path::from_path(dir.path()).unwrap();
         let bib_path = root.join("references.bib");
-        std::fs::write(bib_path.as_std_path(), "% [sil: tui-added]\n@article{stub, title={Stub}}\n").unwrap();
+        std::fs::write(
+            bib_path.as_std_path(),
+            "% [sil: tui-added]\n@article{stub, title={Stub}}\n",
+        )
+        .unwrap();
 
         let mut app = App::new(Some(root.to_path_buf()));
-        app.in_flight_hydration_keys.insert("doi:10.1000/182".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/182".to_string());
 
         let official_bib = "@article{stub,\n  title={Official Title},\n  doi={10.1000/182}\n}";
         app.hydration_tx
@@ -4005,6 +4615,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: official_bib.to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4014,7 +4625,10 @@ mod tests {
         let updated_content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(updated_content.contains("% [sil: tui-added]"));
         assert!(updated_content.contains("Official Title"));
-        assert!(app.status_message.contains("✓ Official metadata for 'Official Title'"));
+        assert!(
+            app.status_message
+                .contains("✓ Official metadata for 'Official Title'")
+        );
     }
 
     #[test]
@@ -4048,6 +4662,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: official_bib.to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4071,7 +4686,8 @@ mod tests {
         std::fs::write(bib_path.as_std_path(), initial_bib).unwrap();
 
         let mut app = App::new(Some(root.to_path_buf()));
-        app.in_flight_hydration_keys.insert("doi:10.1000/invalid".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/invalid".to_string());
 
         app.hydration_tx
             .send(HydrationResult {
@@ -4080,6 +4696,7 @@ mod tests {
                 outcome: HydrationOutcome::Failure {
                     reason: "HTTP 404 Not Found".to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4088,7 +4705,10 @@ mod tests {
         assert!(!app.in_flight_hydration_keys.contains("doi:10.1000/invalid"));
         let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert_eq!(content_after, initial_bib);
-        assert!(app.status_message.contains("⚠ Metadata fetch failed for 'Stub Title': HTTP 404 Not Found"));
+        assert!(
+            app.status_message
+                .contains("⚠ Metadata fetch failed for 'Stub Title': HTTP 404 Not Found")
+        );
     }
 
     #[test]
@@ -4145,7 +4765,10 @@ mod tests {
         app.append_selected_viewing_ref_to_bib();
 
         assert!(app.in_flight_hydration_keys.is_empty());
-        assert!(app.status_message.contains("⚠ No DOI/arXiv/title — cannot hydrate"));
+        assert!(
+            app.status_message
+                .contains("⚠ No DOI/arXiv/title — cannot hydrate")
+        );
         let content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(content.contains("% [sil: tui-added]"));
     }
@@ -4171,11 +4794,16 @@ mod tests {
             HelpMode::SearchingRefs,
             HelpMode::SearchingBib,
             HelpMode::SearchingViewingRefs,
+            HelpMode::JobHistory,
         ];
 
         for mode in modes {
             let keymap = keymap_for(mode);
-            assert!(!keymap.is_empty(), "Keymap for {:?} should not be empty", mode);
+            assert!(
+                !keymap.is_empty(),
+                "Keymap for {:?} should not be empty",
+                mode
+            );
             assert!(!mode.title().is_empty());
             for (key, action) in keymap {
                 assert!(!key.is_empty());
@@ -4246,8 +4874,14 @@ mod tests {
 
         app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::empty()));
         assert_eq!(app.ref_sort_key, RefSortKey::Title);
-        assert_eq!(app.source_references[0].title.as_deref(), Some("Alpha Paper"));
-        assert_eq!(app.source_references[1].title.as_deref(), Some("Zebra Paper"));
+        assert_eq!(
+            app.source_references[0].title.as_deref(),
+            Some("Alpha Paper")
+        );
+        assert_eq!(
+            app.source_references[1].title.as_deref(),
+            Some("Zebra Paper")
+        );
     }
 
     #[test]
@@ -4264,7 +4898,8 @@ mod tests {
         .unwrap();
 
         let mut app = App::new(Some(root.to_path_buf()));
-        app.in_flight_hydration_keys.insert("doi:10.1000/race".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/race".to_string());
 
         app.active_tab = ActiveTab::References;
         app.active_ref_pane = RefPane::LeftBib;
@@ -4282,6 +4917,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: official_bib.to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4307,7 +4943,8 @@ mod tests {
         .unwrap();
 
         let mut app = App::new(Some(root.to_path_buf()));
-        app.in_flight_hydration_keys.insert("doi:10.1000/deleted".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/deleted".to_string());
 
         std::fs::write(bib_path.as_std_path(), "").unwrap();
 
@@ -4319,6 +4956,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: official_bib.to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4326,8 +4964,17 @@ mod tests {
 
         let content_after = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
         assert!(content_after.is_empty());
-        assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
-        assert!(app.recent_hydration_outcomes.back().unwrap().detail.contains("Skipped hydration for 'Paper Title': entry was deleted"));
+        assert_eq!(
+            app.status_message,
+            "✓ Hydration complete: 1 succeeded, 0 failed"
+        );
+        assert!(
+            app.recent_job_outcomes
+                .back()
+                .unwrap()
+                .detail
+                .contains("Skipped hydration for 'Paper Title': entry was deleted")
+        );
     }
 
     #[test]
@@ -4368,9 +5015,12 @@ mod tests {
         .unwrap();
 
         let mut app = App::new(Some(root.to_path_buf()));
-        app.in_flight_hydration_keys.insert("doi:10.1000/writeerr".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/writeerr".to_string());
 
-        let mut perms = std::fs::metadata(bib_path.as_std_path()).unwrap().permissions();
+        let mut perms = std::fs::metadata(bib_path.as_std_path())
+            .unwrap()
+            .permissions();
         perms.set_readonly(true);
         std::fs::set_permissions(bib_path.as_std_path(), perms.clone()).unwrap();
 
@@ -4382,6 +5032,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: official_bib.to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4390,16 +5041,28 @@ mod tests {
         perms.set_readonly(false);
         let _ = std::fs::set_permissions(bib_path.as_std_path(), perms);
 
-        assert_eq!(app.status_message, "✓ Hydration complete: 1 succeeded, 0 failed");
-        assert!(app.recent_hydration_outcomes.back().unwrap().detail.contains("Error writing references.bib:"));
+        assert_eq!(
+            app.status_message,
+            "✓ Hydration complete: 1 succeeded, 0 failed"
+        );
+        assert!(
+            app.recent_job_outcomes
+                .back()
+                .unwrap()
+                .detail
+                .contains("Error writing references.bib:")
+        );
     }
 
     #[test]
     fn test_poll_multiple_results_in_one_tick_and_batch_drain() {
         let mut app = App::new(None);
-        app.in_flight_hydration_keys.insert("doi:10.1000/a".to_string());
-        app.in_flight_hydration_keys.insert("doi:10.1000/b".to_string());
-        app.in_flight_hydration_keys.insert("doi:10.1000/c".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/a".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/b".to_string());
+        app.in_flight_hydration_keys
+            .insert("doi:10.1000/c".to_string());
 
         app.hydration_tx
             .send(HydrationResult {
@@ -4408,6 +5071,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: "@article{a, title={Paper A}}".to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4418,6 +5082,7 @@ mod tests {
                 outcome: HydrationOutcome::Failure {
                     reason: "HTTP 404".to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4428,6 +5093,7 @@ mod tests {
                 outcome: HydrationOutcome::Success {
                     official_bib: "@article{c, title={Paper C}}".to_string(),
                 },
+                duration_ms: None,
             })
             .unwrap();
 
@@ -4436,7 +5102,7 @@ mod tests {
         assert!(app.in_flight_hydration_keys.is_empty());
         assert_eq!(app.hydration_batch_succeeded, 2);
         assert_eq!(app.hydration_batch_failed, 1);
-        assert_eq!(app.recent_hydration_outcomes.len(), 3);
+        assert_eq!(app.recent_job_outcomes.len(), 3);
         assert_eq!(
             app.status_message,
             "✓ Hydration complete: 2 succeeded, 1 failed"
@@ -4466,15 +5132,19 @@ mod tests {
 
         // Request again while in flight
         app.queue_ref_hydration(entry);
-        assert_eq!(app.status_message, "already hydrating 'Duplicate Test Paper'...");
+        assert_eq!(
+            app.status_message,
+            "already hydrating 'Duplicate Test Paper'..."
+        );
         assert_eq!(app.in_flight_hydration_keys.len(), 1);
     }
 
     #[test]
-    fn test_recent_hydration_outcomes_bounded_to_20() {
+    fn test_recent_job_outcomes_bounded_to_20() {
         let mut app = App::new(None);
         for i in 0..25 {
-            app.in_flight_hydration_keys.insert(format!("doi:10.1000/{i}"));
+            app.in_flight_hydration_keys
+                .insert(format!("doi:10.1000/{i}"));
             app.hydration_tx
                 .send(HydrationResult {
                     dedup_key: format!("doi:10.1000/{i}"),
@@ -4482,15 +5152,16 @@ mod tests {
                     outcome: HydrationOutcome::Success {
                         official_bib: format!("@article{{p{i}, title={{Paper {i}}}}}"),
                     },
+                    duration_ms: None,
                 })
                 .unwrap();
         }
 
         app.poll_background_hydration();
 
-        assert_eq!(app.recent_hydration_outcomes.len(), 20);
-        assert_eq!(app.recent_hydration_outcomes.front().unwrap().label, "Paper 5");
-        assert_eq!(app.recent_hydration_outcomes.back().unwrap().label, "Paper 24");
+        assert_eq!(app.recent_job_outcomes.len(), 20);
+        assert_eq!(app.recent_job_outcomes.front().unwrap().label, "Paper 5");
+        assert_eq!(app.recent_job_outcomes.back().unwrap().label, "Paper 24");
     }
 
     #[test]
@@ -4508,10 +5179,7 @@ mod tests {
             SourceInputKind::Doi
         );
 
-        assert_eq!(
-            classify_source_input("2103.12345"),
-            SourceInputKind::Arxiv
-        );
+        assert_eq!(classify_source_input("2103.12345"), SourceInputKind::Arxiv);
         assert_eq!(
             classify_source_input("arXiv:2103.12345v1"),
             SourceInputKind::Arxiv
@@ -4534,10 +5202,7 @@ mod tests {
             classify_source_input("paper_notes.md"),
             SourceInputKind::Filename
         );
-        assert_eq!(
-            classify_source_input(""),
-            SourceInputKind::Filename
-        );
+        assert_eq!(classify_source_input(""), SourceInputKind::Filename);
     }
 
     #[test]
@@ -4563,7 +5228,10 @@ mod tests {
     fn test_sources_parse_keymap() {
         let keymap = keymap_for(HelpMode::SourcesList);
         let parse_entry = keymap.iter().find(|(key, _)| *key == "e / E");
-        assert!(parse_entry.is_some(), "Keymap for SourcesList missing 'e / E'");
+        assert!(
+            parse_entry.is_some(),
+            "Keymap for SourcesList missing 'e / E'"
+        );
     }
 
     #[test]

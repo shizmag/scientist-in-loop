@@ -28,6 +28,10 @@ pub enum SciAction {
     PromoteToFinal,
     /// Source PDF fetched.
     FetchSource,
+    /// Bibliography entry upserted (`references.bib`).
+    UpdateBibliography,
+    /// Bibliography entry promoted (removed tui-added marker).
+    PromoteBibliography,
 }
 
 impl SciAction {
@@ -43,6 +47,8 @@ impl SciAction {
             Self::EditDraft => "edit-draft",
             Self::PromoteToFinal => "promote-to-final",
             Self::FetchSource => "fetch-source",
+            Self::UpdateBibliography => "update-bibliography",
+            Self::PromoteBibliography => "promote-bibliography",
         }
     }
 
@@ -82,6 +88,8 @@ impl FromStr for SciAction {
             "edit-draft" => Ok(Self::EditDraft),
             "promote-to-final" => Ok(Self::PromoteToFinal),
             "fetch-source" => Ok(Self::FetchSource),
+            "update-bibliography" => Ok(Self::UpdateBibliography),
+            "promote-bibliography" => Ok(Self::PromoteBibliography),
             other => Err(ValidationError::InvalidSciAction(other.to_string())),
         }
     }
@@ -109,6 +117,14 @@ mod tests {
         assert_eq!(
             SciAction::FetchSource.trailer_line(),
             "Sci-Action: fetch-source"
+        );
+        assert_eq!(
+            SciAction::UpdateBibliography.trailer_line(),
+            "Sci-Action: update-bibliography"
+        );
+        assert_eq!(
+            SciAction::PromoteBibliography.trailer_line(),
+            "Sci-Action: promote-bibliography"
         );
     }
 
@@ -143,6 +159,8 @@ mod tests {
             SciAction::EditDraft,
             SciAction::PromoteToFinal,
             SciAction::FetchSource,
+            SciAction::UpdateBibliography,
+            SciAction::PromoteBibliography,
         ];
         for a in actions {
             assert_eq!(SciAction::from_str(a.as_str()).unwrap(), a);
