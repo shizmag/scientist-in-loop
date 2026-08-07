@@ -1,19 +1,661 @@
 {
   "source": {
-    "id": "semantic entropy.pdf",
-    "filename": "semantic entropy.pdf",
-    "path": "sources/semantic entropy.pdf",
     "title": "Detecting hallucinations in large language models using semantic entropy",
-    "authors": "Sebastian Farquhar1",
+    "authors": "Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, Yarin Gal",
     "year": 2024,
     "doi": "10.1038/s41586-024-07421-0",
-    "venue": "Nature",
-    "abstract_text": "AbstractLarge language model (LLM) systems, such as ChatGPT1or Gemini2, can show impressive reasoning and question-answering capabilities but often ‘hallucinate’ false outputs and unsubstantiated answers3,4. Answering unreliably or without the necessary information prevents adoption in diverse fields, with problems including fabrication of legal precedents5or untrue facts in news articles6and even posing a risk to human life in medical domains such as radiology7. Encouraging truthfulness through supervision or reinforcement has been only partially successful8. Researchers need a general method for detecting hallucinations in LLMs that works even with new and unseen questions to which humans might not know the answer. Here we develop new methods grounded in statistics, proposing entropy-based uncertainty estimators for LLMs to detect a subset of hallucinations—confabulations—which are arbitrary and incorrect generations. Our method addresses the fact that one idea can be expressed in many ways by computing uncertainty at the level of meaning rather than specific sequences of words. Our method works across datasets and tasks without a priori knowledge of the task, requires no task-specific data and robustly generalizes to new tasks not seen before. By detecting when a prompt is likely to produce a confabulation, our method helps users understand when they must take extra care with LLMs and opens up new possibilities for using LLMs that are otherwise prevented by their unreliability.",
-    "kind": "pdf",
-    "status": "Valid(Pdf)",
-    "parsed": 1,
-    "created_at": "2026-07-31 10:04:29",
-    "updated_at": "2026-08-02 10:22:02"
+    "venue": "Nature"
   },
-  "references": []
+  "references": [
+    {
+      "ref_index": 1,
+      "raw_text": "GPT-4 technical report. Preprint at<https://arxiv.org/abs/2303.08774>(2023).",
+      "title": "GPT-4 technical report",
+      "authors": "GPT-4 technical report. Preprint at<https://arxiv.org/abs/2303.08774>",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": "2303.08774",
+      "venue": null
+    },
+    {
+      "ref_index": 2,
+      "raw_text": "2. Gemini: a family of highly capable multimodal models. Preprint at [https://arxiv.org/abs/](https://arxiv.org/abs/2312.11805) [2312.11805](https://arxiv.org/abs/2312.11805) (2023).",
+      "title": "Gemini: a family of highly capable multimodal models",
+      "authors": "2",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": "2312.11805",
+      "venue": null
+    },
+    {
+      "ref_index": 3,
+      "raw_text": "Xiao, Y. & Wang, W. Y. On hallucination and predictive uncertainty in conditional language generation. In *Proc. 16th Conference of the European Chapter of the Association for Computational Linguistics* 2734–2744 (Association for Computational Linguistics, 2021).",
+      "title": "On hallucination and predictive uncertainty in conditional language generation",
+      "authors": "Xiao, Y. & Wang, W. Y",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 4,
+      "raw_text": "Rohrbach, A., Hendricks, L. A., Burns, K., Darrell, T. & Saenko, K. Object hallucination in image captioning. In *Proc. 2018 Conference on Empirical Methods in Natural Language Processing* (eds Riloff, E., Chiang, D., Hockenmaier, J. & Tsujii, J.) 4035–4045 (Association for Computational Linguistics, 2018).",
+      "title": "Object hallucination in image captioning",
+      "authors": "Rohrbach, A., Hendricks, L. A., Burns, K., Darrell, T. & Saenko, K",
+      "year": 2018,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 5,
+      "raw_text": "Weiser, B. Lawyer who used ChatGPT faces penalty for made up citations. *The New York Times* (8 Jun 2023).",
+      "title": "Lawyer who used ChatGPT faces penalty for made up citations",
+      "authors": "Weiser, B",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 6,
+      "raw_text": "Opdahl, A. L. et al. Trustworthy journalism through AI. *Data Knowl. Eng*. **146**, 102182 (2023).",
+      "title": "Trustworthy journalism through AI",
+      "authors": "Opdahl, A. L. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 7,
+      "raw_text": "Shen, Y. et al. ChatGPT and other large language models are double-edged swords. *Radiology* **307**, e230163 (2023).",
+      "title": "ChatGPT and other large language models are double-edged swords",
+      "authors": "Shen, Y. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 8,
+      "raw_text": "Schulman, J. Reinforcement learning from human feedback: progress and challenges. Presented at the Berkeley EECS Colloquium. *YouTube* www.youtube.com/ watch?v=hhiLw5Q\\\\_UFg (2023).",
+      "title": "Reinforcement learning from human feedback: progress and challenges",
+      "authors": "Schulman, J",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 9,
+      "raw_text": "Ji, Z. et al. Survey of hallucination in natural language generation. *ACM Comput. Surv.***55**, 248 (2023).",
+      "title": "Survey of hallucination in natural language generation",
+      "authors": "Ji, Z. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 10,
+      "raw_text": "Maynez, J., Narayan, S., Bohnet, B. & McDonald, R. On faithfulness and factuality in abstractive summarization. In *Proc. 58th Annual Meeting of the Association for Computational Linguistics* (eds Jurafsky, D., Chai, J., Schluter, N. & Tetreault, J.) 1906–1919 (Association for Computational Linguistics, 2020).",
+      "title": "On faithfulness and factuality in abstractive summarization",
+      "authors": "Maynez, J., Narayan, S., Bohnet, B. & McDonald, R",
+      "year": 1906,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 11,
+      "raw_text": "Filippova, K. Controlled hallucinations: learning to generate faithfully from noisy data. In *Findings of the Association for Computational Linguistics: EMNLP 2020* (eds Webber, B., Cohn, T., He, Y. & Liu, Y.) 864–870 (Association for Computational Linguistics, 2020).",
+      "title": "Controlled hallucinations: learning to generate faithfully from noisy data",
+      "authors": "Filippova, K",
+      "year": 2020,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Findings of the Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 12,
+      "raw_text": "Berrios, G. Confabulations: a conceptual history. *J. Hist. Neurosci.* **7**, 225–241 (1998).",
+      "title": "Confabulations: a conceptual history",
+      "authors": "Berrios, G",
+      "year": 1998,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 13,
+      "raw_text": "Lin, S., Hilton, J. & Evans, O. Teaching models to express their uncertainty in words. *Transact. Mach. Learn. Res.* (2022).",
+      "title": "Teaching models to express their uncertainty in words",
+      "authors": "Lin, S., Hilton, J. & Evans, O",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 14,
+      "raw_text": "Evans, O. et al. Truthful AI: developing and governing AI that does not lie. Preprint at <https://arxiv.org/abs/2110.06674>(2021).",
+      "title": "Truthful AI: developing and governing AI that does not lie",
+      "authors": "Evans, O. et al",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": "2110.06674",
+      "venue": null
+    },
+    {
+      "ref_index": 15,
+      "raw_text": "15. Amodei, D. et al. Concrete problems in AI safety. Preprint at [https://arxiv.org/abs/](https://arxiv.org/abs/1606.06565) [1606.06565](https://arxiv.org/abs/1606.06565) (2016).",
+      "title": "Concrete problems in AI safety",
+      "authors": "15. Amodei, D. et al",
+      "year": 2016,
+      "doi": null,
+      "arxiv_id": "1606.06565",
+      "venue": null
+    },
+    {
+      "ref_index": 16,
+      "raw_text": "Jiang, Z., Araki, J., Ding, H. & Neubig, G. How can we know when language models know? On the calibration of language models for question answering. *Transact. Assoc. Comput. Linguist.* **9**, 962–977 (2021).",
+      "title": "How can we know when language models know? On the calibration of language models for question answering",
+      "authors": "Jiang, Z., Araki, J., Ding, H. & Neubig, G",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 17,
+      "raw_text": "Desai, S. & Durrett, G. Calibration of pre-trained transformers. In *Proc. 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)* (eds Webber, B., Cohn, T., He, Y. & Liu, Y.) 295–302 (Association for Computational Linguistics, 2020).",
+      "title": "Calibration of pre-trained transformers",
+      "authors": "Desai, S. & Durrett, G",
+      "year": 2020,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 18,
+      "raw_text": "Glushkova, T., Zerva, C., Rei, R. & Martins, A. F. Uncertainty-aware machine translation evaluation. In *Findings of the Association for Computational Linguistics: EMNLP 2021* (eds Moens, M-F., Huang, X., Specia, L. & Yih, S.) 3920–3938 (Association for Computational Linguistics, 2021).",
+      "title": "Uncertainty-aware machine translation evaluation",
+      "authors": "Glushkova, T., Zerva, C., Rei, R. & Martins, A. F",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Findings of the Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 19,
+      "raw_text": "Wang, Y., Beck, D., Baldwin, T. & Verspoor, K. Uncertainty estimation and reduction of pre-trained models for text regression. *Transact. Assoc. Comput. Linguist.* **10**, 680–696 (2022).",
+      "title": "Uncertainty estimation and reduction of pre-trained models for text regression",
+      "authors": "Wang, Y., Beck, D., Baldwin, T. & Verspoor, K",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 20,
+      "raw_text": "Baker, S. & Kanade, T. Hallucinating faces. In *Proc. Fourth IEEE International Conference on Automatic Face and Gesture Recognition*. 83–88 (IEEE, Catalogue no PR00580, 2002).",
+      "title": "Hallucinating faces",
+      "authors": "Baker, S. & Kanade, T",
+      "year": 2002,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 21,
+      "raw_text": "Eliot, L. AI ethics lucidly questioning this whole hallucinating AI popularized trend that has got to stop. *Forbes Magazine* (24 August 2022).",
+      "title": "AI ethics lucidly questioning this whole hallucinating AI popularized trend that has got to stop",
+      "authors": "Eliot, L",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 22,
+      "raw_text": "Shanahan, M. Talking about large language models. *Commun. Assoc. Comp. Machinery* **67**, 68–79 (2024).",
+      "title": "Talking about large language models",
+      "authors": "Shanahan, M",
+      "year": 2024,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 23,
+      "raw_text": "MacKay, D. J. C. Information-based objective functions for active data selection. *Neural Comput.* **4**, 590–604 (1992).",
+      "title": "Information-based objective functions for active data selection",
+      "authors": "MacKay, D. J. C",
+      "year": 1992,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 24,
+      "raw_text": "24. Kadavath, S. et al. Language models (mostly) know what they know. Preprint at [https://](https://arxiv.org/abs/2207.05221) [arxiv.org/abs/2207.05221](https://arxiv.org/abs/2207.05221) (2022).",
+      "title": "Language models (mostly) know what they know",
+      "authors": "24. Kadavath, S. et al",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": "2207.05221",
+      "venue": null
+    },
+    {
+      "ref_index": 25,
+      "raw_text": "Lindley, D. V. On a measure of the information provided by an experiment. *Ann. Math. Stat.* **27**, 986–1005 (1956).",
+      "title": "On a measure of the information provided by an experiment",
+      "authors": "Lindley, D. V",
+      "year": 1956,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 26,
+      "raw_text": "Xiao, T. Z., Gomez, A. N. & Gal, Y. Wat zei je? Detecting out-of-distribution translations with variational transformers. In *Workshop on Bayesian Deep Learning at the Conference on Neural Information Processing Systems* (NeurIPS, Vancouver, 2019).",
+      "title": "Wat zei je? Detecting out-of-distribution translations with variational transformers",
+      "authors": "Xiao, T. Z., Gomez, A. N. & Gal, Y",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "NeurIPS"
+    },
+    {
+      "ref_index": 27,
+      "raw_text": "Christiano, P., Cotra, A. & Xu, M. *Eliciting Latent Knowledge* (Alignment Research Center, 2021); https://docs.google.com/document/d/1WwsnJQstPq91\\\\_Yh-Ch2XRL8H\\\\_ EpsnjrC1dwZXR37PC8/edit.",
+      "title": "*Eliciting Latent Knowledge* (Alignment Research Center, 2021);",
+      "authors": "Christiano, P., Cotra, A. & Xu, M",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 28,
+      "raw_text": "Negri, M., Bentivogli, L., Mehdad, Y., Giampiccolo, D. & Marchetti, A. Divide and conquer: crowdsourcing the creation of cross-lingual textual entailment corpora. In *Proc. 2011 Conference on Empirical Methods in Natural Language Processing* 670–679 (Association for Computational Linguistics, 2011).",
+      "title": "Divide and conquer: crowdsourcing the creation of cross-lingual textual entailment corpora",
+      "authors": "Negri, M., Bentivogli, L., Mehdad, Y., Giampiccolo, D. & Marchetti, A",
+      "year": 2011,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 29,
+      "raw_text": "Honovich, O. et al. TRUE: Re-evaluating factual consistency evaluation. In *Proc. Second DialDoc Workshop on Document-grounded Dialogue and Conversational Question Answering* 161–175 (Association for Computational Linguistics, 2022).",
+      "title": "TRUE: Re-evaluating factual consistency evaluation",
+      "authors": "Honovich, O. et al",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 30,
+      "raw_text": "Falke, T., Ribeiro, L. F. R., Utama, P. A., Dagan, I. & Gurevych, I. Ranking generated summaries by correctness: an interesting but challenging application for natural language inference. In *Proc. 57th Annual Meeting of the Association for Computational Linguistics* 2214–2220 (Association for Computational Linguistics, 2019).",
+      "title": "Ranking generated summaries by correctness: an interesting but challenging application for natural language inference",
+      "authors": "Falke, T., Ribeiro, L. F. R., Utama, P. A., Dagan, I. & Gurevych, I",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 31,
+      "raw_text": "Laban, P., Schnabel, T., Bennett, P. N. & Hearst, M. A. SummaC: re-visiting NLI-based models for inconsistency detection in summarization. *Trans. Assoc. Comput. Linguist.* **10**, 163–177 (2022).",
+      "title": "SummaC: re-visiting NLI-based models for inconsistency detection in summarization",
+      "authors": "Laban, P., Schnabel, T., Bennett, P. N. & Hearst, M. A",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 32,
+      "raw_text": "Joshi, M., Choi, E., Weld, D. S. & Zettlemoyer, L. TriviaQA: a large scale distantly supervised challenge dataset for reading comprehension. In *Proc. 55th Annual Meeting of the Association for Computational Linguistics* 1601–1611 (Association for Computational Linguistics. 2017).",
+      "title": "TriviaQA: a large scale distantly supervised challenge dataset for reading comprehension",
+      "authors": "Joshi, M., Choi, E., Weld, D. S. & Zettlemoyer, L",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 33,
+      "raw_text": "Rajpurkar, P., Zhang, J., Lopyrev, K. & Liang, P. SQuAD: 100,000+ questions for machine compression of text. In *Proc. 2016 Conference on Empirical Methods in Natural Language Processing* (eds Su, J., Duh, K. & Carreras, X.) 2383–2392 (Association for Computational Linguistics, 2016).",
+      "title": "SQuAD: 100,000+ questions for machine compression of text",
+      "authors": "Rajpurkar, P., Zhang, J., Lopyrev, K. & Liang, P",
+      "year": 2016,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 34,
+      "raw_text": "Tsatsaronis, G. et al. An overview of the BIOASQ large-scale biomedical semantic indexing and question answering competition. *BMC Bioinformatics* **16**, 138 (2015).",
+      "title": "An overview of the BIOASQ large-scale biomedical semantic indexing and question answering competition",
+      "authors": "Tsatsaronis, G. et al",
+      "year": 2015,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 35,
+      "raw_text": "Lee, K., Chang, M.-W. & Toutanova, K. Latent retrieval for weakly supervised open domain question answering. In *Proc. 57th Annual Meeting of the Association for Computational Linguistics* 6086–6096 (Association for Computational Linguistics, 2019).",
+      "title": "Latent retrieval for weakly supervised open domain question answering",
+      "authors": "Lee, K., Chang, M.-W. & Toutanova, K",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 36,
+      "raw_text": "Kwiatkowski, T. et al. Natural questions: a benchmark for question answering research. *Transact. Assoc. Comput. Linguist.* **7**, 452–466 (2019).",
+      "title": "Natural questions: a benchmark for question answering research",
+      "authors": "Kwiatkowski, T. et al",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 37,
+      "raw_text": "Patel, A., Bhattamishra, S. & Goyal, N. Are NLP models really able to solve simple math word problems? In *Proc. 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies* (eds Toutanova, K. et al.) 2080–2094 (Assoc. Comp. Linguistics, 2021).",
+      "title": "Are NLP models really able to solve simple math word problems? In *Proc",
+      "authors": "Patel, A., Bhattamishra, S. & Goyal, N",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 38,
+      "raw_text": "Touvron, H. et al. Llama 2: open foundation and fine-tuned chat models. Preprint at <https://arxiv.org/abs/2307.09288>(2023).",
+      "title": "Llama 2: open foundation and fine-tuned chat models",
+      "authors": "Touvron, H. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": "2307.09288",
+      "venue": null
+    },
+    {
+      "ref_index": 39,
+      "raw_text": "Penedo, G. et al. The RefinedWeb dataset for Falcon LLM: outperforming curated corpora with web data, and web data only. In *Proc. 36th Conference on Neural Information Processing Systems* (eds Oh, A. et al.) 79155–79172 (Curran Associates, 2023)",
+      "title": "The RefinedWeb dataset for Falcon LLM: outperforming curated corpora with web data, and web data only",
+      "authors": "Penedo, G. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 40,
+      "raw_text": "Jiang, A. Q. et al. Mistral 7B. Preprint at<https://arxiv.org/abs/2310.06825>(2023).",
+      "title": "Mistral 7B",
+      "authors": "Jiang, A. Q. et al",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": "2310.06825",
+      "venue": null
+    },
+    {
+      "ref_index": 41,
+      "raw_text": "Manakul, P., Liusie, A. & Gales, M. J. F. SelfCheckGPT: Zero-Resource Black-Box hallucination detection for generative large language models. In *Findings of the Association for Computational Linguistics: EMNLP 2023* (eds Bouamor, H., Pino, J. & Bali, K.) 9004–9017 (Assoc. Comp. Linguistics, 2023).",
+      "title": "SelfCheckGPT: Zero-Resource Black-Box hallucination detection for generative large language models",
+      "authors": "Manakul, P., Liusie, A. & Gales, M. J. F",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Findings of the Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 42,
+      "raw_text": "Mukhoti, J., Kirsch, A., van Amersfoort, J., Torr, P. H. & Gal, Y. Deep deterministic uncertainty: a new simple baseline. In *IEEE/CVF Conference on Computer Vision and Pattern Recognition* 24384–24394 (Computer Vision Foundation, 2023).",
+      "title": "Deep deterministic uncertainty: a new simple baseline",
+      "authors": "Mukhoti, J., Kirsch, A., van Amersfoort, J., Torr, P. H. & Gal, Y",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "IEEE/CVF Conference on Computer Vision and Pattern Recognition"
+    },
+    {
+      "ref_index": 43,
+      "raw_text": "Schuster, T., Chen, S., Buthpitiya, S., Fabrikant, A. & Metzler, D. Stretching sentence-pair NLI models to reason over long documents and clusters. In *Findings of the Association for Computational Linguistics: EMNLP 2022* (eds Goldberg, Y. et al.) 394–412 (Association for Computational Linguistics, 2022).",
+      "title": "Stretching sentence-pair NLI models to reason over long documents and clusters",
+      "authors": "Schuster, T., Chen, S., Buthpitiya, S., Fabrikant, A. & Metzler, D",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Findings of the Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 44,
+      "raw_text": "Barnes, B. & Christiano, P. Progress on AI Safety via Debate. *AI Alignment Forum* www.alignmentforum.org/posts/Br4xDbYu4Frwrb64a/writeup-progress-on-ai-safety-viadebate-1 (2020).",
+      "title": "Progress on AI Safety via Debate",
+      "authors": "Barnes, B. & Christiano, P",
+      "year": 2020,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 45,
+      "raw_text": "45. Irving, G., Christiano, P. & Amodei, D. AI safety via debate. Preprint at [https://arxiv.org/](https://arxiv.org/abs/1805.00899) [abs/1805.00899](https://arxiv.org/abs/1805.00899) (2018). **Publisher's note** Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations. **Open Access** This article is licensed under a Creative Commons Attribution 4.0 International License, which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or other third party material in this article are included in the article's Creative Commons licence, unless indicated otherwise in a credit line to the material. If material is not included in the article's Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit http://creativecommons.org/licenses/by/4.0/. © The Author(s) 2024 #### **Methods** Semantic entropy as a strategy for overcoming confabulation builds on probabilistic tools for uncertainty estimation. It can be applied directly to any LLM or similar foundation model without requiring any modifications to the architecture. Our 'discrete' variant of semantic uncertainty can be applied even when the predicted probabilities for the generations are not available, for example, because access to the internals of the model is limited. In this section we introduce background on probabilistic methods and uncertainty in machine learning, discuss how it applies to language models and then discuss our contribution, semantic entropy, in detail. #### **Background** **Uncertainty and machine learning.** We aim to detect confabulations in LLMs, using the principle that the model will be uncertain about generations for which its output is going to be arbitrary. (1) A low predictive entropy indicates an output distribution which is heavily concentrated whereas a high predictive entropy indicates that many possible outputs are similarly likely. Aleatoric and epistemic uncertainty. We do not distinguish between aleatoric and epistemic uncertainty in our analysis. Researchers sometimes separate aleatoric uncertainty (uncertainty in the underlying data distribution) from epistemic uncertainty (caused by having only limited information)<sup>46</sup>. Further advances in uncertainty estimation which separate these kinds of uncertainty would enhance the potential for our semantic uncertainty approach by allowing extensions beyond entropy. #### **Principles of semantic uncertainty** If we naively calculate the predictive entropy directly from the probabilities of the generated sequence of tokens, we conflate the uncertainty of the model over the meaning of its answer with the uncertainty over the exact tokens used to express that meaning. For example, even if the model is confident in the meaning of a generation, there are still usually many different ways for phrasing that generation without changing its meaning. For the purposes of detecting confabulations, the uncertainty of the LLM over meanings is more important than the uncertainty over the exact tokens used to express those meanings. Our semantic uncertainty method therefore seeks to estimate only the uncertainty the LLM has over the meaning of its generation, not the choice of words. To do this, we introduce an algorithm that clusters model generations by meaning and subsequently calculates semantic uncertainty. At a high level this involves three steps: - Generation: sample output sequences of tokens from the predictive distribution of a LLM given a context x. - Clustering: cluster sequences by their meaning using our clustering algorithm based on bidirectional entailment. - Entropy estimation: estimate semantic entropy by summing probabilities of sequences that share a meaning following equation (2) and compute their entropy. **Clustering by semantic equivalence.** To estimate semantic entropy we need to cluster generated outputs from the model into groups of outputs that mean the same thing as each other. We operationalize $E(\\cdot,\\cdot)$ using the idea of bidirectional entailment, which has a long history in linguistics<sup>52</sup> and natural language processing<sup>28,53,54</sup>. A sequence, **s**, means the same thing as a second sequence, **s**', only if the sequences entail (that is, logically imply) each other. For example, 'The capital of France is Paris' entails 'Paris is the capital of France' and vice versa because they mean the same thing. (See later for a discussion of soft equivalence and cases in which bidirectional entailment does not guarantee equivalent meanings). Importantly, we require that the sequences mean the same thing with respect to the context—key meaning is sometimes contained in the context. For example, 'Paris' does not entail 'The capital of France is Paris' because 'Paris' is not a declarative sentence without context. But in the context of the question 'What is the capital of France?', the one-word answer does entail the longer answer. Detecting entailment has been the object of study of a great deal of research in NLI<sup>55</sup>. We rely on language models to predict entailment, such as DeBERTa-Large-MNLI<sup>56</sup>, which has been trained to predict entailment, or general-purpose LLMs such as GPT-3.5 (ref. 57), which can predict entailment given suitable prompts. We then cluster sentences according to whether they bidirectionally entail each other using the algorithm presented in Extended Data Fig. 1. Note that, to check if a sequence should be added to an existing cluster, it is sufficient to check if the sequence bidirectionally entails any of the existing sequences in that cluster (we arbitrarily pick the first one), given the transitivity of semantic equivalence. If a sequence does not share meaning with any existing cluster, we assign it its own cluster. Computing the semantic entropy. Having determined the classes of generated sequences that mean the same thing, we can estimate the likelihood that a sequence generated by the LLM belongs to a given class by computing the sum of the probabilities of all the possible sequences of tokens which can be considered to express the same meaning as (2) Formally, this treats the output as a random variable whose event-space is the space of all possible meaning-classes, C, a sub- $\\sigma$ -algebra of the standard event-space S. We can then estimate the semantic entropy (SE) as the entropy over the meaning-distribution, (3) There is a complication which prevents direct computation: we do not have access to every possible meaning-class c. Instead, we can only sample c from the sequence-generating distribution induced by the model. To handle this, we estimate the expectation in equation (3) using a Rao-Blackwellized Monte Carlo integration over the semantic equivalence classes C, We provide a worked example of the computation of semantic entropy in Supplementary Note 1. #### Detecting confabulations in QA and math Semantic entropy is designed to detect confabulations, that is, model outputs with arbitrary meaning. In our experiments, we use semantic uncertainty to predict model accuracy, demonstrating that confabulations make up a notable fraction of model mistakes. We further show that semantic uncertainty can be used to improve model accuracy by refusing to answer questions when semantic uncertainty is high. Last, semantic uncertainty can be used to give users a way to know when model generations are probably unreliable. Tasks. We use the datasets BioASQ<sup>34</sup>, SQuAD<sup>33</sup>, TriviaQA<sup>32</sup>, SVAMP<sup>37</sup> and NQ-Open<sup>35</sup>. BioASQ is a life-sciences question-answering dataset based on the annual challenge of the same name. The specific dataset we use is based on the QA dataset from Task B of the 2023 BioASQ challenge (11B). SQuAD is a reading comprehension dataset whose context passages are drawn from Wikipedia and for which the answers to questions can be found in these passages. We use SQuAD 1.1 which excludes the unanswerable questions added in v.2.0 that are deliberately constructed to induce mistakes so they do not in practice cause confabulations to occur. TriviaQA is a trivia question-answering dataset. SVAMP is a word-problem maths dataset containing elementary-school mathematical reasoning tasks. NQ-Open is a dataset of realistic questions aggregated from Google Search which have been chosen to be answerable without reference to a source text. For each dataset, we use 400 train examples and 400 test examples randomly sampled from the original larger dataset. Note that only some of the methods require training, for example semantic entropy does not use the training data. If the datasets themselves are already split into train and test (or validation) samples, we sample our examples from within the corresponding split. All these datasets are free-form, rather than multiple choice, because this better captures the opportunities created by LLMs to produce free-form sentences as answers. We refer to this default scenario as our 'sentence-length' experiments. In Supplementary Note 7, we also present results for confabulation detection in a 'short-phrase' scenario, in which we constrain model answers on these datasets to be as concise as possible. To make the problems more difficult and induce confabulations, we do not provide the context passages for any of the datasets. When the context passages are provided, the accuracy rate is too high for these datasets for the latest generations of models to meaningfully study confabulations. **Models.** For sentence-length generations we use: Falcon<sup>39</sup> Instruct (7B and 40B), LLaMA 2 Chat<sup>38</sup> (7B, 13B and 70B) and Mistral<sup>40</sup> Instruct (7B). **Baselines.** In addition to reporting results for semantic entropy, discrete semantic entropy and naive entropy, we consider two strong baselines. Embedding regression is a supervised baseline inspired by the P(IK) method<sup>24</sup>. In that paper, the authors fine-tune their proprietary LLM on a dataset of questions to predict whether the model would have been correct. This requires access to a dataset of ground-truth answers to the questions. Rather than fine-tuning the entire LLM in this way, we simply take the final hidden units and train a logistic regression classifier to make the same prediction. By contrast to their method, this is much simpler because it does not require fine-tuning the entire language model, as well as being more reproducible because the solution to the logistic regression optimization problem is not as seed-dependent as the fine-tuning procedure. As expected, this supervised approach performs well in-distribution but fails when the distribution of questions is different from that on which the classifier is trained. The second baseline we consider is the *P*(True) method24, in which the model first samples *M* answers (identically to our semantic entropy approach) and then is prompted with the list of all answers generated followed by the highest probability answer and a question whether this answer is \"(a) True\" or \"(b) False\". The confidence score is then taken to be the probability with which the LLM responds with 'a' to the multiple-choice question. The performance of this method is boosted with a few-shot prompt, in which up to 20 examples from the training set are randomly chosen, filled in as above, but then provided with the actual ground truth of whether the proposed answer was true or false. In this way, the method can be considered as supervised 'in-context' because it makes use of some ground-truth training labels but can be used without retraining the model. Because of context-size constraints, this method cannot fit a full 20 few-shot examples in the context when input questions are long or large numbers of generations are used. As a result, we sometimes have to reduce the number of few-shot examples to suit the context size and we note this in the Supplementary Material. **Entailment estimator.** Any NLI classification system could be used for our bidirectional entailment clustering algorithm. We consider two different kinds of entailment detector. One option is to use an instruction-tuned LLM such as LLaMA 2, GPT-3.5 (Turbo 1106) or GPT-4 to predict entailment between generations. We use the following prompt: We are evaluating answers to the question {question} Here are two possible answers: Possible Answer 1: {text1} Possible Answer 2: {text2} Does Possible Answer 1 semantically entail Possible Answer 2? Respond with entailment, contradiction, or neutral. Alternatively, we consider using a language model trained for entailment prediction, specifically the DeBERTa-large model56 fine-tuned on the NLI dataset MNLI58. This builds on past work towards paraphrase identification based on embedding similarity59,60 and BERT-style models61,62. We template more simply, checking if DeBERTa predicts entailment between the concatenation of the question and one answer and the concatenation of the question and another answer. Note that DeBERTa-large is a relatively lightweight model with only 1.5B parameters which is much less powerful than most of the LLMs under study. In Supplementary Note 2, we carefully evaluate the benefits and drawbacks of these methods for entailment prediction. We settle on using GPT-3.5 with the above prompt, as its entailment predictions agree well with human raters and lead to good confabulation detection performance. In Supplementary Note 3, we provide a discussion of the computational cost and choosing the number of generations for reliable clustering. **Prompting templates.** We use a simple generation template for all sentence-length answer datasets: Answer the following question in a single brief but complete sentence. Question: {question} Answer: **Metrics and accuracy measurements.** We use three main metrics to evaluate our method: AUROC, rejection accuracy and AURAC. Each of these is grounded in an automated factuality estimation measurement relative to the reference answers provided by the datasets that we use. **AUROC, rejection accuracy and AURAC.** First, we use the AUROC curve, which measures the reliability of a classifier accounting for both precision and recall. The AUROC can be interpreted as the probability that a randomly chosen correct answer has been assigned a higher confidence score than a randomly chosen incorrect answer. For a perfect classifier, this is 1. Second, we compute the 'rejection accuracy at *X*%', which is the question-answering accuracy of the model on the most-confident *X*% of the inputs as identified by the respective uncertainty method. If an uncertainty method works well, predictions on the confident subset should be more accurate than predictions on the excluded subset and the rejection accuracy should increase as we reject more inputs. To summarize this statistic we compute the AURAC—the total area enclosed by the accuracies at all cut-off percentages *X*%. This should increase towards 1 as given uncertainty method becomes more accurate and better at detecting likely-inaccurate responses but it is more sensitive to the overall accuracy of the model than the AUROC metric. In Supplementary Note 5, we provide the unaggregated rejection accuracies for sentence-length generations. **Assessing accuracy.** For the short-phrase-length generation setting presented in Supplementary Note 7, we simply assess the accuracy of the generations by checking if the F1 score of the commonly used SQuAD metric exceeds 0.5. There are limitations to such simple scoring rules63 but this method is widely used in practice and its error is comparatively small on these standard datasets. For our default scenario, the longer sentence-length generations, this measure fails, as the overlap between the short reference answer and our long model answer is invariably too small. For sentence-length generations, we therefore automatically determine whether an answer to the question is correct or incorrect by using GPT-4 to compare the given answer to the reference answer. We use the template: We are assessing the quality of answers to the following question: {question} The expected answer is: {reference answer} The proposed answer is: {predicted answer} Within the context of the question, does the proposed answer mean the same as the expected answer? Respond only with yes or no. We make a small modification for datasets with several reference answers: line two becomes \"The following are expected answers to this question:\" and the final line asks \"does the proposed answer mean the same as any of the expected answers?\". In Supplementary Note 6, we check the quality of our automated ground-truth evaluations against human judgement by hand. We find that GPT-4 gives the best results for determining model accuracy and thus use it in all our sentence-length experiments. #### **Detecting confabulations in biographies** In this section we describe the application of semantic entropy to confabulation detection in longer model generations, specifically paragraph-length biographies. We introduce a biography-generation dataset—FactualBio available alongside this paper. FactualBio is a collection of biographies of individuals who are notable enough to have Wikipedia pages but not notable enough to have large amounts of detailed coverage, generated by GPT-4 (v.0613). To generate the dataset, we randomly sampled 21 individuals from the WikiBio dataset64. For each biography, we generated a list of factual claims contained in each biography using GPT-4, with 150 total factual claims (the total number is only coincidentally a round number). For each of these factual claims, we manually determined whether the claim was correct or incorrect. Out of 150 claims, 45 were incorrect. As before, we apply confabulation detection to detect incorrect model predictions, even though there may be model errors which are not confabulations. **Prompting and generation.** Given a paragraph-length piece of LLMgenerated text, we apply the following sequence of steps: - 1. Automatically decompose the paragraph into specific factual claims using an LLM (not necessarily the same as the original). - 2. For each factual claim, use an LLM to automatically construct *Q* questions which might have produced that claim. - 3. For each question, prompt the original LLM to generate *M* answers. - 4. For each question, compute the semantic entropy of the answers, including the original factual claim. - 5. Average the semantic entropies over the questions to arrive at a score for the original factual claim. We pursue this slightly indirect way of generating answers because we find that simply resampling each sentence creates variation unrelated to the uncertainty of the model about the factual claim, such as differences in paragraph structure. We decompose the paragraph into factual claims using the following prompt: Please list the specific factual propositions included in the answer above. Be complete and do not leave any factual claims out. Provide each claim as a separate sentence in a separate bullet point. We found that we agreed with the decompositions in all cases in the dataset. We then generate six questions for each of the facts from the decomposition. We generate these questions by prompting the model twice with the following: Following this text: {text so far} You see the sentence: {proposition} Generate a list of three questions, that might have generated the sentence in the context of the preceding original text, as well as their answers. Please do not use specific facts that appear in the follow-up sentence when formulating the question. Make the questions and answers diverse. Avoid yes-no questions. The answers should not be a full sentence and as short as possible, e.g. only a name, place, or thing. Use the format \"1. {question} –{answer}\". These questions are not necessarily well-targeted and the difficulty of this step is the main source of errors in the procedure. We generate three questions with each prompt, as this encourages diversity of the questions, each question targeting a different aspect of the fact. However, we observed that the generated questions will sometimes miss obvious aspects of the fact. Executing the above prompt twice (for a total of six questions) can improve coverage. We also ask for brief answers because the current version of GPT-4 tends to give long, convoluted and highly hedged answers unless explicitly told not to. Then, for each question, we generate three new answers using the following prompt: We are writing an answer to the question \"{user question}\". So far we have written: {text so far} The next sentence should be the answer to the following question: {question} Please answer this question. Do not answer in a full sentence. Answer with as few words as possible, e.g. only a name, place, or thing. We then compute the semantic entropy over these answers plus the original factual claim. Including the original fact ensures that the estimator remains grounded in the original claim and helps detect situations in which the question has been interpreted completely differently from the original context. We make a small modification to handle the fact that GPT-4 generations often include refusals to answer questions. These refusals were not something we commonly observe in our experiments with LLaMA 2, Falcon or Mistral models. If more than half of the answers include one of the strings 'not available', 'not provided', 'unknown' or 'unclear' then we treat the semantic uncertainty as maximal. We then average the semantic entropies for each question corresponding to the factual claim to get an entropy for this factual claim. Despite the extra assumptions and complexity, we find that this method greatly outperforms the baselines. **Entailment estimator.** To compute semantic entailment between the original claim and regenerated answers, we rely on the DeBERTa entailment prediction model as we find empirically that DeBERTa predictions result in higher train-set AUROC than other methods. Because DeBERTa has slightly lower recall than GPT-3.5/4, we use a modified set-up for which we say the answers mean the same as each other if at least one of them entails the other and neither is seen to contradict the other a kind of 'non-defeating' bidirectional entailment check rather than true bidirectional entailment. The good performance of DeBERTa in this scenario is not surprising as both factual claims and regenerated answers are relatively short. We refer to Supplementary Notes 2 and 3 for ablations and experiments regarding our choice of entailment estimator for paragraph-length generations. **Baselines.** We implement two baselines. First, we implement a variant of the *P*(True) method, which is adapted to the new setting. For each factoid, we generate a question with answers in the same way as for semantic entropy. We then use the following prompt: Question: {question} Here are some brainstormed ideas: {list of regenerated answers} Possible answer: {original answer} Is the possible answer true? Respond with \"yes\" or \"no\". As we cannot access the probabilities GPT-4 assigns to predicting 'yes' and 'no' as the next token, we approximate this using Monte Carlo samples. Concretely, we execute the above prompt ten times (at temperature 1) and then take the fraction of answers which was 'yes' as our unbiased Monte Carlo estimate of the token probability GPT-4 assigns to 'yes'. As a second, simpler, baseline we check if the model thinks the answer is true. We simply ask: Following this text: {text so far} You see this statement: {proposition} Is it likely that the statement is true? Respond with 'yes' or 'no'. It is interesting that this method ought to perform very well if we think that the model has good 'self-knowledge' (that is, if \"models mostly know what they don't know\"24\\) but in fact semantic entropy is much better at detecting confabulations. #### **Data availability** The data used for the short-phrase and sentence-length generations are publicly available and the released code details how to access it. We release a public version of the FactualBio dataset as part of the code base for reproducing the paragraph-length experiments. #### **Code availability** We release all code used to produce the main experiments. The code for short-phrase and sentence-length experiments can be found at github.com/jlko/semantic\\\\_uncertainty and [https://doi.org/10.5281/](https://doi.org/10.5281/zenodo.10964366) [zenodo.10964366](https://doi.org/10.5281/zenodo.10964366) (ref. 65). The code for paragraph-length experiments can be found at github.com/jlko/long\\\\_hallucinations and [https://doi.](https://doi.org/10.5281/zenodo.10964366) [org/10.5281/zenodo.10964366](https://doi.org/10.5281/zenodo.10964366) (ref. 65).",
+      "title": "(a) True",
+      "authors": "45. Irving, G., Christiano, P. & Amodei, D. AI safety via debate. Preprint at [https://arxiv.org/](https://arxiv.org/abs/",
+      "year": 1805,
+      "doi": "10.5281/zenodo.10964366",
+      "arxiv_id": "1805.00899",
+      "venue": "Nature"
+    },
+    {
+      "ref_index": 46,
+      "raw_text": "Der Kiureghian, A. & Ditlevsen, O. Aleatory or epistemic? Does it matter? *Struct. Saf.* **31**, 105–112 (2009).",
+      "title": "Aleatory or epistemic? Does it matter? *Struct",
+      "authors": "Der Kiureghian, A. & Ditlevsen, O",
+      "year": 2009,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 47,
+      "raw_text": "Malinin, A. & Gales, M. Uncertainty estimation in autoregressive structured prediction. In *Proceedings of the International Conference on Learning Representations* https:// openreview.net/forum?id=jN5y-zb5Q7m (2021).",
+      "title": "Uncertainty estimation in autoregressive structured prediction",
+      "authors": "Malinin, A. & Gales, M",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Learning Representations"
+    },
+    {
+      "ref_index": 48,
+      "raw_text": "Murray, K. & Chiang, D. Correcting length bias in neural machine translation. In *Proc. Third Conference on Machine Translation* (eds Bojar, O. et al.) 212–223 (Assoc. Comp. Linguistics, 2018).",
+      "title": "Correcting length bias in neural machine translation",
+      "authors": "Murray, K. & Chiang, D",
+      "year": 2018,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 49,
+      "raw_text": "Holtzman, A., Buys, J., Du, L., Forbes, M. & Choi, Y. The curious case of neural text degeneration. In *Proceedings of the International Conference on Learning Representations* <https://openreview.net/forum?id=rygGQyrFvH>(2020).",
+      "title": "The curious case of neural text degeneration",
+      "authors": "Holtzman, A., Buys, J., Du, L., Forbes, M. & Choi, Y",
+      "year": 2020,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Learning Representations"
+    },
+    {
+      "ref_index": 50,
+      "raw_text": "Fan, A., Lewis, M. & Dauphin, Y. Hierarchical neural story generation. In *Proc. 56th Annual Meeting of the Association for Computational Linguistics* (eds Gurevych, I. & Miyao, Y.) 889–898 (Association for Computational Linguistics, 2018).",
+      "title": "Hierarchical neural story generation",
+      "authors": "Fan, A., Lewis, M. & Dauphin, Y",
+      "year": 2018,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 51,
+      "raw_text": "Speaks, J. in *The Stanford Encyclopedia of Philosophy* (ed. Zalta, E. N.) (Metaphysics Research Lab, Stanford Univ., 2021).",
+      "title": "in *The Stanford Encyclopedia of Philosophy* (ed",
+      "authors": "Speaks, J",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 52,
+      "raw_text": "Culicover, P. W. Paraphrase generation and information retrieval from stored text. *Mech. Transl. Comput. Linguist.* **11**, 78–88 (1968).",
+      "title": "Paraphrase generation and information retrieval from stored text",
+      "authors": "Culicover, P. W",
+      "year": 1968,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 53,
+      "raw_text": "Padó, S., Cer, D., Galley, M., Jurafsky, D. & Manning, C. D. Measuring machine translation quality as semantic equivalence: a metric based on entailment features. *Mach. Transl.* **23**, 181–193 (2009).",
+      "title": "Measuring machine translation quality as semantic equivalence: a metric based on entailment features",
+      "authors": "Padó, S., Cer, D., Galley, M., Jurafsky, D. & Manning, C. D",
+      "year": 2009,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 54,
+      "raw_text": "Androutsopoulos, I. & Malakasiotis, P. A survey of paraphrasing and textual entailment methods. *J. Artif. Intell. Res.* **38**, 135–187 (2010).",
+      "title": "A survey of paraphrasing and textual entailment methods",
+      "authors": "Androutsopoulos, I. & Malakasiotis, P",
+      "year": 2010,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 55,
+      "raw_text": "MacCartney, B. *Natural Language Inference* (Stanford Univ., 2009).",
+      "title": "*Natural Language Inference* (Stanford Univ., 2009)",
+      "authors": "MacCartney, B",
+      "year": 2009,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 56,
+      "raw_text": "He, P., Liu, X., Gao, J. & Chen, W. Deberta: decoding-enhanced BERT with disentangled attention. In *International Conference on Learning Representations* https://openreview. net/forum?id=XPZIaotutsD (2021).",
+      "title": "Deberta: decoding-enhanced BERT with disentangled attention",
+      "authors": "He, P., Liu, X., Gao, J. & Chen, W",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Learning Representations"
+    },
+    {
+      "ref_index": 57,
+      "raw_text": "Brown, T. et al. Language models are few-shot learners. *Adv. Neural Inf. Process. Syst.* **33**, 1877–1901 (2020).",
+      "title": "Language models are few-shot learners",
+      "authors": "Brown, T. et al",
+      "year": 1877,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 58,
+      "raw_text": "Williams, A., Nangia, N. & Bowman, S. R. A broad-coverage challenge corpus for sentence understanding through inference. In *Proc. 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies* (eds Walker, M. et al.) 1112–1122 (Assoc. Comp. Linguistics, 2018).",
+      "title": "A broad-coverage challenge corpus for sentence understanding through inference",
+      "authors": "Williams, A., Nangia, N. & Bowman, S. R",
+      "year": 2018,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 59,
+      "raw_text": "Yu, L., Hermann, K. M., Blunsom, P. & Pulman, S. Deep learning for answer sentence selection. Preprint at<https://arxiv.org/abs/1412.1632>(2014).",
+      "title": "Deep learning for answer sentence selection",
+      "authors": "Yu, L., Hermann, K. M., Blunsom, P. & Pulman, S",
+      "year": 2014,
+      "doi": null,
+      "arxiv_id": "1412.1632",
+      "venue": null
+    },
+    {
+      "ref_index": 60,
+      "raw_text": "Socher, R., Huang, E., Pennin, J., Manning, C. D. & Ng, A. Dynamic pooling and unfolding recursive autoencoders for paraphrase detection. In *Proceedings of the 24th Conference on Neural Information Processing Systems* (eds Shawe-Taylor, J. et al.) (2011)",
+      "title": "Dynamic pooling and unfolding recursive autoencoders for paraphrase detection",
+      "authors": "Socher, R., Huang, E., Pennin, J., Manning, C. D. & Ng, A",
+      "year": 2011,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Proceedings of the 24th Conference on Neural Information Processing Systems* (eds Shawe-Taylor, J"
+    },
+    {
+      "ref_index": 61,
+      "raw_text": "He, R., Ravula, A., Kanagal, B. & Ainslie, J. Realformer: Transformer likes residual attention. In *Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021* (eds Zhong, C., et al.) 929–943 (Assoc. Comp. Linguistics, 2021).",
+      "title": "Realformer: Transformer likes residual attention",
+      "authors": "He, R., Ravula, A., Kanagal, B. & Ainslie, J",
+      "year": 2021,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Findings of the Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 62,
+      "raw_text": "Tay, Y. et al. Charformer: fast character transformers via gradient-based subword tokenization. In *Proceedings of the International Conference on Learning Representations* <https://openreview.net/forum?id=JtBRnrlOEFN>(2022).",
+      "title": "Charformer: fast character transformers via gradient-based subword tokenization",
+      "authors": "Tay, Y. et al",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Learning Representations"
+    },
+    {
+      "ref_index": 63,
+      "raw_text": "Kane, H., Kocyigit, Y., Abdalla, A., Ajanoh, P. & Coulibali, M. Towards neural similarity evaluators. In *Workshop on Document Intelligence at the 32nd conference on Neural Information Processing* (2019).",
+      "title": "Towards neural similarity evaluators",
+      "authors": "Kane, H., Kocyigit, Y., Abdalla, A., Ajanoh, P. & Coulibali, M",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 64,
+      "raw_text": "Lebret, R., Grangier, D. & Auli, M. Neural text generation from structured data with application to the biography domain. In *Proc. 2016 Conference on Empirical Methods in Natural Language Processing* (eds Su, J. et al.) 1203–1213 (Association for Computational Linguistics, 2016).",
+      "title": "Neural text generation from structured data with application to the biography domain",
+      "authors": "Lebret, R., Grangier, D. & Auli, M",
+      "year": 2016,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Association for Computational Linguistics"
+    },
+    {
+      "ref_index": 65,
+      "raw_text": "65. Kossen, J., jlko/semantic\\_uncertainty: Initial release v.1.0.0. *Zenodo* [https://doi.org/](https://doi.org/10.5281/zenodo.10964366) [10.5281/zenodo.10964366](https://doi.org/10.5281/zenodo.10964366) (2024).",
+      "title": "Kossen, J., jlko/semantic\\_uncertainty: Initial release v.1.0.0",
+      "authors": "65",
+      "year": 2024,
+      "doi": "10.5281/zenodo.10964366",
+      "arxiv_id": null,
+      "venue": null
+    }
+  ]
 }

@@ -1,19 +1,10 @@
 {
   "source": {
-    "id": "BEE-RAG.pdf",
-    "filename": "BEE-RAG.pdf",
-    "path": "sources/BEE-RAG.pdf",
     "title": "BEE-RAG: Balanced Entropy Engineering for Retrieval-Augmented Generation",
-    "authors": "Yuhao Wang1, Ruiyang Ren1, Yucheng Wang2, Jing Liu2, Wayne Xin Zhao1, Hua Wu3, Haifeng Wang2, reyon ren, Jeong et al, Zhang",
-    "year": 2023,
+    "authors": "Yuhao Wang, Ruiyang Ren, Yucheng Wang, Jing Liu, Wayne Xin Zhao, Hua Wu, Haifeng Wang",
+    "year": null,
     "doi": null,
-    "venue": null,
-    "abstract_text": null,
-    "kind": "pdf",
-    "status": "Valid(Pdf)",
-    "parsed": 1,
-    "created_at": "2026-07-31 09:09:40",
-    "updated_at": "2026-08-02 10:17:23"
+    "venue": null
   },
   "references": [
     {
@@ -28,13 +19,13 @@
     },
     {
       "ref_index": 2,
-      "raw_text": "Bolthausen, E.; and Wuthrich, M. V. 2013. Bernoulli's law \u00a8 of large numbers. *ASTIN Bulletin: The Journal of the IAA*, 43(2): 73\u201379.",
-      "title": "Bernoulli's law \u00a8 of large numbers",
+      "raw_text": "Bolthausen, E.; and Wuthrich, M. V. 2013. Bernoulli's law ¨ of large numbers. *ASTIN Bulletin: The Journal of the IAA*, 43(2): 73–79.",
+      "title": "Bernoulli's law ¨ of large numbers",
       "authors": "Bolthausen, E.; and Wuthrich, M. V. 2013",
       "year": 2013,
       "doi": null,
       "arxiv_id": null,
-      "venue": "Journal of the IAA*, 43(2): 73\u201379"
+      "venue": "Journal of the IAA*, 43(2): 73–79"
     },
     {
       "ref_index": 3,
@@ -48,7 +39,7 @@
     },
     {
       "ref_index": 4,
-      "raw_text": "Chiang, D.; and Cholak, P. 2022. Overcoming a Theoretical Limitation of Self-Attention. In *Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, 7654\u20137664.",
+      "raw_text": "Chiang, D.; and Cholak, P. 2022. Overcoming a Theoretical Limitation of Self-Attention. In *Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, 7654–7664.",
       "title": "Overcoming a Theoretical Limitation of Self-Attention",
       "authors": "Chiang, D.; and Cholak, P. 2022",
       "year": 2022,
@@ -88,13 +79,13 @@
     },
     {
       "ref_index": 8,
-      "raw_text": "Ho, X.; Nguyen, A.-K. D.; Sugawara, S.; and Aizawa, A. 2020. Constructing A Multi-hop QA Dataset for Comprehensive Evaluation of Reasoning Steps. In *Proceedings of the 28th International Conference on Computational Linguistics*, 6609\u20136625.",
+      "raw_text": "Ho, X.; Nguyen, A.-K. D.; Sugawara, S.; and Aizawa, A. 2020. Constructing A Multi-hop QA Dataset for Comprehensive Evaluation of Reasoning Steps. In *Proceedings of the 28th International Conference on Computational Linguistics*, 6609–6625.",
       "title": "Constructing A Multi-hop QA Dataset for Comprehensive Evaluation of Reasoning Steps",
       "authors": "Ho, X.; Nguyen, A.-K. D.; Sugawara, S.; and Aizawa, A. 2020",
       "year": 2020,
       "doi": null,
       "arxiv_id": null,
-      "venue": "Proceedings of the 28th International Conference on Computational Linguistics*, 6609\u20136625"
+      "venue": "Proceedings of the 28th International Conference on Computational Linguistics*, 6609–6625"
     },
     {
       "ref_index": 9,
@@ -108,7 +99,7 @@
     },
     {
       "ref_index": 10,
-      "raw_text": "Jeong, S.; Baek, J.; Cho, S.; Hwang, S. J.; and Park, J. C. 2024. Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity. In *Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)*, 7029\u20137043.",
+      "raw_text": "Jeong, S.; Baek, J.; Cho, S.; Hwang, S. J.; and Park, J. C. 2024. Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity. In *Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)*, 7029–7043.",
       "title": "Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity",
       "authors": "Jeong, S.; Baek, J.; Cho, S.; Hwang, S. J.; and Park, J. C. 2024",
       "year": 2024,
@@ -118,7 +109,7 @@
     },
     {
       "ref_index": 11,
-      "raw_text": "Joshi, M.; Choi, E.; Weld, D.; and Zettlemoyer, L. 2017. TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension. In *Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, 1601\u20131611.",
+      "raw_text": "Joshi, M.; Choi, E.; Weld, D.; and Zettlemoyer, L. 2017. TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension. In *Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, 1601–1611.",
       "title": "TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension",
       "authors": "Joshi, M.; Choi, E.; Weld, D.; and Zettlemoyer, L. 2017",
       "year": 2017,
@@ -128,7 +119,7 @@
     },
     {
       "ref_index": 12,
-      "raw_text": "Karpukhin, V.; Oguz, B.; Min, S.; Lewis, P.; Wu, L.; Edunov, S.; Chen, D.; and Yih, W.-t. 2020. Dense Passage Retrieval for Open-Domain Question Answering. In *Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, 6769\u20136781.",
+      "raw_text": "Karpukhin, V.; Oguz, B.; Min, S.; Lewis, P.; Wu, L.; Edunov, S.; Chen, D.; and Yih, W.-t. 2020. Dense Passage Retrieval for Open-Domain Question Answering. In *Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, 6769–6781.",
       "title": "Dense Passage Retrieval for Open-Domain Question Answering",
       "authors": "Karpukhin, V.; Oguz, B.; Min, S.; Lewis, P.; Wu, L.; Edunov, S.; Chen, D.; and Yih, W.-t. 2020",
       "year": 2020,
@@ -138,7 +129,7 @@
     },
     {
       "ref_index": 13,
-      "raw_text": "Kwiatkowski, T.; Palomaki, J.; Redfield, O.; Collins, M.; Parikh, A.; Alberti, C.; Epstein, D.; Polosukhin, I.; Devlin, J.; Lee, K.; et al. 2019. Natural questions: a benchmark for question answering research. *Transactions of the Association for Computational Linguistics*, 7: 453\u2013466.",
+      "raw_text": "Kwiatkowski, T.; Palomaki, J.; Redfield, O.; Collins, M.; Parikh, A.; Alberti, C.; Epstein, D.; Polosukhin, I.; Devlin, J.; Lee, K.; et al. 2019. Natural questions: a benchmark for question answering research. *Transactions of the Association for Computational Linguistics*, 7: 453–466.",
       "title": "Natural questions: a benchmark for question answering research",
       "authors": "Kwiatkowski, T.; Palomaki, J.; Redfield, O.; Collins, M.; Parikh, A.; Alberti, C.; Epstein, D.; Polosukhin, I.; Devlin, J.; Lee, K.; et al. 2019",
       "year": 2019,
@@ -149,8 +140,8 @@
     {
       "ref_index": 14,
       "raw_text": "Laban, P.; Fabbri, A. R.; Xiong, C.; and Wu, C.-S. 2024. Summary of a haystack: A challenge to long-context llms and rag systems. *arXiv preprint arXiv:2407.01370*.",
-      "title": "*arXiv preprint arXiv:2407.01370*",
-      "authors": "Laban, P.; Fabbri, A. R.; Xiong, C.; and Wu, C.-S. 2024. Summary of a haystack: A challenge to long-context llms and rag systems",
+      "title": "Summary of a haystack: A challenge to long-context llms and rag systems",
+      "authors": "Laban, P.; Fabbri, A. R.; Xiong, C.; and Wu, C.-S. 2024",
       "year": 2024,
       "doi": null,
       "arxiv_id": "arXiv:2407.01370",
@@ -158,7 +149,7 @@
     },
     {
       "ref_index": 15,
-      "raw_text": "Lee, K.; Chang, M.-W.; and Toutanova, K. 2019. Latent Retrieval for Weakly Supervised Open Domain Question Answering. In *Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics*, 6086\u20136096.",
+      "raw_text": "Lee, K.; Chang, M.-W.; and Toutanova, K. 2019. Latent Retrieval for Weakly Supervised Open Domain Question Answering. In *Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics*, 6086–6096.",
       "title": "Latent Retrieval for Weakly Supervised Open Domain Question Answering",
       "authors": "Lee, K.; Chang, M.-W.; and Toutanova, K. 2019",
       "year": 2019,
@@ -168,9 +159,9 @@
     },
     {
       "ref_index": 16,
-      "raw_text": "Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Kuttler, H.; Lewis, M.; Yih, W.-t.; Rockt \u00a8 aschel, \u00a8 T.; et al. 2020. Retrieval-augmented generation for knowledge-intensive nlp tasks. *Advances in Neural Information Processing Systems*, 33: 9459\u20139474.",
+      "raw_text": "Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Kuttler, H.; Lewis, M.; Yih, W.-t.; Rockt ¨ aschel, ¨ T.; et al. 2020. Retrieval-augmented generation for knowledge-intensive nlp tasks. *Advances in Neural Information Processing Systems*, 33: 9459–9474.",
       "title": "Retrieval-augmented generation for knowledge-intensive nlp tasks",
-      "authors": "Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Kuttler, H.; Lewis, M.; Yih, W.-t.; Rockt \u00a8 aschel, \u00a8 T.; et al. 2020",
+      "authors": "Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.; Goyal, N.; Kuttler, H.; Lewis, M.; Yih, W.-t.; Rockt ¨ aschel, ¨ T.; et al. 2020",
       "year": 2020,
       "doi": null,
       "arxiv_id": null,
@@ -178,7 +169,7 @@
     },
     {
       "ref_index": 17,
-      "raw_text": "Li, X. L.; and Liang, P. 2021. Prefix-Tuning: Optimizing Continuous Prompts for Generation. In *Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)*, 4582\u20134597.",
+      "raw_text": "Li, X. L.; and Liang, P. 2021. Prefix-Tuning: Optimizing Continuous Prompts for Generation. In *Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)*, 4582–4597.",
       "title": "Prefix-Tuning: Optimizing Continuous Prompts for Generation",
       "authors": "Li, X. L.; and Liang, P. 2021",
       "year": 2021,
@@ -268,13 +259,13 @@
     },
     {
       "ref_index": 26,
-      "raw_text": "Wang, Y.; Ren, R.; Li, J.; Zhao, X.; Liu, J.; and Wen, J.- R. 2024. REAR: A Relevance-Aware Retrieval-Augmented Framework for Open-Domain Question Answering. In *Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing*, 5613\u20135626.",
+      "raw_text": "Wang, Y.; Ren, R.; Li, J.; Zhao, X.; Liu, J.; and Wen, J.- R. 2024. REAR: A Relevance-Aware Retrieval-Augmented Framework for Open-Domain Question Answering. In *Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing*, 5613–5626.",
       "title": "REAR: A Relevance-Aware Retrieval-Augmented Framework for Open-Domain Question Answering",
       "authors": "Wang, Y.; Ren, R.; Li, J.; Zhao, X.; Liu, J.; and Wen, J.- R. 2024",
       "year": 2024,
       "doi": null,
       "arxiv_id": null,
-      "venue": "Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing*, 5613\u20135626"
+      "venue": "Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing*, 5613–5626"
     },
     {
       "ref_index": 27,
@@ -288,7 +279,7 @@
     },
     {
       "ref_index": 28,
-      "raw_text": "Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Xia, F.; Chi, E.; Le, Q. V.; Zhou, D.; et al. 2022. Chain-ofthought prompting elicits reasoning in large language models. *Advances in neural information processing systems*, 35: 24824\u201324837.",
+      "raw_text": "Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Xia, F.; Chi, E.; Le, Q. V.; Zhou, D.; et al. 2022. Chain-ofthought prompting elicits reasoning in large language models. *Advances in neural information processing systems*, 35: 24824–24837.",
       "title": "Chain-ofthought prompting elicits reasoning in large language models",
       "authors": "Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Xia, F.; Chi, E.; Le, Q. V.; Zhou, D.; et al. 2022",
       "year": 2022,
@@ -298,7 +289,7 @@
     },
     {
       "ref_index": 29,
-      "raw_text": "Wu, Z.; Arora, A.; Wang, Z.; Geiger, A.; Jurafsky, D.; Manning, C. D.; and Potts, C. 2025. Reft: Representation finetuning for language models. *Advances in Neural Information Processing Systems*, 37: 63908\u201363962.",
+      "raw_text": "Wu, Z.; Arora, A.; Wang, Z.; Geiger, A.; Jurafsky, D.; Manning, C. D.; and Potts, C. 2025. Reft: Representation finetuning for language models. *Advances in Neural Information Processing Systems*, 37: 63908–63962.",
       "title": "Reft: Representation finetuning for language models",
       "authors": "Wu, Z.; Arora, A.; Wang, Z.; Geiger, A.; Jurafsky, D.; Manning, C. D.; and Potts, C. 2025",
       "year": 2025,
@@ -328,17 +319,17 @@
     },
     {
       "ref_index": 32,
-      "raw_text": "Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W.; Salakhutdinov, R.; and Manning, C. D. 2018. HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering. In *Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing*, 2369\u20132380.",
+      "raw_text": "Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W.; Salakhutdinov, R.; and Manning, C. D. 2018. HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering. In *Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing*, 2369–2380.",
       "title": "HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering",
       "authors": "Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W.; Salakhutdinov, R.; and Manning, C. D. 2018",
       "year": 2018,
       "doi": null,
       "arxiv_id": null,
-      "venue": "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing*, 2369\u20132380"
+      "venue": "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing*, 2369–2380"
     },
     {
       "ref_index": 33,
-      "raw_text": "Yen, H.; Gao, T.; and Chen, D. 2024. Long-Context Language Modeling with Parallel Context Encoding. In Ku, L.; Martins, A.; and Srikumar, V., eds., *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2024, Bangkok, Thailand, August 11-16, 2024*, 2588\u20132610. Association for Computational Linguistics.",
+      "raw_text": "Yen, H.; Gao, T.; and Chen, D. 2024. Long-Context Language Modeling with Parallel Context Encoding. In Ku, L.; Martins, A.; and Srikumar, V., eds., *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2024, Bangkok, Thailand, August 11-16, 2024*, 2588–2610. Association for Computational Linguistics.",
       "title": "Long-Context Language Modeling with Parallel Context Encoding",
       "authors": "Yen, H.; Gao, T.; and Chen, D. 2024",
       "year": 2024,
@@ -388,7 +379,7 @@
     },
     {
       "ref_index": 38,
-      "raw_text": "Zhuang, S.; Zhuang, H.; Koopman, B.; and Zuccon, G. 2024. A setwise approach for effective and highly efficient zeroshot ranking with large language models. In *Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval*, 38\u201347.",
+      "raw_text": "Zhuang, S.; Zhuang, H.; Koopman, B.; and Zuccon, G. 2024. A setwise approach for effective and highly efficient zeroshot ranking with large language models. In *Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval*, 38–47.",
       "title": "A setwise approach for effective and highly efficient zeroshot ranking with large language models",
       "authors": "Zhuang, S.; Zhuang, H.; Koopman, B.; and Zuccon, G. 2024",
       "year": 2024,

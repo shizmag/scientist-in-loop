@@ -1,48 +1,291 @@
 {
   "source": {
-    "id": "28_Implicit_Ensembles_of_Ensem.pdf",
-    "filename": "28_Implicit_Ensembles_of_Ensem.pdf",
-    "path": "sources/28_Implicit_Ensembles_of_Ensem.pdf",
     "title": "(Implicit) Ensembles of Ensembles: Epistemic Uncertainty Collapse in Large Models",
-    "authors": "Andreas Kirsch, MacKay, Neal, Der Kiureghian, Ditlevsen, Kendall, Gal, Fellaji, Pennerath",
-    "year": 1992,
+    "authors": "Andreas Kirsch",
+    "year": null,
     "doi": null,
-    "venue": null,
-    "abstract_text": null,
-    "kind": "pdf",
-    "status": "Valid(Pdf)",
-    "parsed": 1,
-    "created_at": "2026-07-31 08:41:43",
-    "updated_at": "2026-08-02 10:16:36"
+    "venue": null
   },
   "references": [
     {
-      "id": "28_Implicit_Ensembles_of_Ensem.pdf_ref_1",
-      "source_id": "28_Implicit_Ensembles_of_Ensem.pdf",
       "ref_index": 1,
+      "raw_text": "Armen Der Kiureghian and Ove Ditlevsen. Aleatory or epistemic? Does it matter? *Structural Safety*, 31(2):105–112, 2009.",
+      "title": "Aleatory or epistemic? Does it matter? *Structural Safety*, 31(2):105–112",
+      "authors": "Armen Der Kiureghian and Ove Ditlevsen",
+      "year": 2009,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 2,
       "raw_text": "Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale. In *International Conference on Learning Representations*, 2021. URL https://openreview. net/forum?id=YicbFdNTTy.",
       "title": "An image is worth 16x16 words: Transformers for image recognition at scale",
       "authors": "Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby",
       "year": 2021,
       "doi": null,
-      "created_at": "2026-08-02 10:16:36",
-      "venue": "International Conference on Learning Representations",
       "arxiv_id": null,
-      "url": "https://openreview"
+      "venue": "International Conference on Learning Representations"
     },
     {
-      "id": "28_Implicit_Ensembles_of_Ensem.pdf_ref_2",
-      "source_id": "28_Implicit_Ensembles_of_Ensem.pdf",
-      "ref_index": 2,
+      "ref_index": 3,
       "raw_text": "Nikita Durasov, Timur Bagautdinov, Pierre Baque, and Pascal Fua. Masksembles for Uncertainty Estimation. In *2021 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, pp. 13534–13543. IEEE Computer Society, 2021.",
       "title": "Masksembles for Uncertainty Estimation",
       "authors": "Nikita Durasov, Timur Bagautdinov, Pierre Baque, and Pascal Fua",
       "year": 2021,
       "doi": null,
-      "created_at": "2026-08-02 10:16:36",
-      "venue": "CVPR",
       "arxiv_id": null,
-      "url": null
+      "venue": "CVPR"
+    },
+    {
+      "ref_index": 4,
+      "raw_text": "Mohammed Fellaji and Frédéric Pennerath. The Epistemic Uncertainty Hole: an issue of Bayesian Neural Networks. *arXiv preprint arXiv:2407.01985*, 2024.",
+      "title": "Mohammed Fellaji and Frédéric Pennerath",
+      "authors": "Mohammed Fellaji and Frédéric Pennerath. The Epistemic Uncertainty Hole: an issue of Bayesian Neural Networks. *arXiv preprint arXiv:2407.01985*",
+      "year": 2024,
+      "doi": null,
+      "arxiv_id": "arXiv:2407.01985",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 5,
+      "raw_text": "Jonathan Frankle and Michael Carbin. The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks. In *International Conference on Learning Representations*, 2018.",
+      "title": "The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks",
+      "authors": "Jonathan Frankle and Michael Carbin",
+      "year": 2018,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Learning Representations"
+    },
+    {
+      "ref_index": 6,
+      "raw_text": "Yarin Gal, Riashat Islam, and Zoubin Ghahramani. Deep bayesian active learning with image data. In *International conference on machine learning*, pp. 1183–1192. PMLR, 2017.",
+      "title": "Deep bayesian active learning with image data",
+      "authors": "Yarin Gal, Riashat Islam, and Zoubin Ghahramani",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 7,
+      "raw_text": "Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q Weinberger. On calibration of modern neural networks. In *International conference on machine learning*, pp. 1321–1330. PMLR, 2017.",
+      "title": "On calibration of modern neural networks",
+      "authors": "Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q Weinberger",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 8,
+      "raw_text": "Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition. arxiv e-prints. *arXiv preprint arXiv:1512.03385*, 10, 2015.",
+      "title": "Deep residual learning for image recognition",
+      "authors": "Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun",
+      "year": 2015,
+      "doi": null,
+      "arxiv_id": "arXiv:1512.03385",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 9,
+      "raw_text": "Neil Houlsby, Ferenc Huszar, Zoubin Ghahramani, and Máté Lengyel. Bayesian Active Learning for Classification and Preference Learning. *arXiv preprint*, abs/1112.5745, 2011.",
+      "title": "Bayesian Active Learning for Classification and Preference Learning",
+      "authors": "Neil Houlsby, Ferenc Huszar, Zoubin Ghahramani, and Máté Lengyel",
+      "year": 2011,
+      "doi": null,
+      "arxiv_id": "1112.5745",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 10,
+      "raw_text": "Alex Kendall and Yarin Gal. What Uncertainties Do we Need in Bayesian Deep Learning for Computer Vision? In Isabelle Guyon, Ulrike von Luxburg, Samy Bengio, Hanna M. Wallach, Rob Fergus, S. V. N. Vishwanathan, and Roman Garnett (eds.), *Advances in Neural Information Processing Systems*, 2017.",
+      "title": "What Uncertainties Do we Need in Bayesian Deep Learning for Computer Vision? In Isabelle Guyon, Ulrike von Luxburg, Samy Bengio, Hanna M",
+      "authors": "Alex Kendall and Yarin Gal",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Advances in Neural Information Processing Systems"
+    },
+    {
+      "ref_index": 11,
+      "raw_text": "Alex Krizhevsky, Geoffrey Hinton, et al. Learning multiple layers of features from tiny images. 2009.",
+      "title": "Learning multiple layers of features from tiny images",
+      "authors": "Alex Krizhevsky, Geoffrey Hinton, et al",
+      "year": 2009,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 12,
+      "raw_text": "Yann LeCun and Corinna Cortes. The mnist database of handwritten digits. 1998. URL https: //api.semanticscholar.org/CorpusID:60282629.",
+      "title": "The mnist database of handwritten digits",
+      "authors": "Yann LeCun and Corinna Cortes",
+      "year": 1998,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 13,
+      "raw_text": "Yoonho Lee, Huaxiu Yao, and Chelsea Finn. Diversify and disambiguate: Learning from underspecified data. In *ICML 2022: Workshop on Spurious Correlations, Invariance and Stability*, 2022.",
+      "title": "Diversify and disambiguate: Learning from underspecified data",
+      "authors": "Yoonho Lee, Huaxiu Yao, and Chelsea Finn",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "ICML"
+    },
+    {
+      "ref_index": 14,
+      "raw_text": "David JC MacKay. A practical bayesian framework for backpropagation networks. *Neural computation*, 4(3):448–472, 1992.",
+      "title": "David JC MacKay",
+      "authors": "David JC MacKay. A practical bayesian framework for backpropagation networks. *Neural computation*, 4(3):448–472",
+      "year": 1992,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 15,
+      "raw_text": "TorchVision maintainers and contributors. Torchvision: Pytorch's computer vision library. https: //github.com/pytorch/vision, 2016.",
+      "title": "Torchvision: Pytorch's computer vision library",
+      "authors": "TorchVision maintainers and contributors",
+      "year": 2016,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 16,
+      "raw_text": "Jishnu Mukhoti, Andreas Kirsch, Joost van Amersfoort, Philip HS Torr, and Yarin Gal. Deep Deterministic Uncertainty: A New Simple Baseline for Uncertainty Estimation. In *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition*, pp. 24384–24394, 2023.",
+      "title": "Deep Deterministic Uncertainty: A New Simple Baseline for Uncertainty Estimation",
+      "authors": "Jishnu Mukhoti, Andreas Kirsch, Joost van Amersfoort, Philip HS Torr, and Yarin Gal",
+      "year": 2023,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "IEEE/CVF Conference on Computer Vision and Pattern Recognition"
+    },
+    {
+      "ref_index": 17,
+      "raw_text": "Radford M Neal. *Bayesian learning for neural networks.* PhD thesis, University of Toronto, 1994.",
+      "title": "Radford M Neal",
+      "authors": "Radford M Neal. *Bayesian learning for neural networks.* PhD thesis, University of Toronto",
+      "year": 1994,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 18,
+      "raw_text": "Yuval Netzer, Tao Wang, Adam Coates, Alessandro Bissacco, Bo Wu, and Andrew Y. Ng. Reading digits in natural images with unsupervised feature learning. In *NIPS Workshop on Deep Learning and Unsupervised Feature Learning 2011*, 2011. URL http://ufldl.stanford.edu/ housenumbers/nips2011\\\\_housenumbers.pdf.",
+      "title": "Reading digits in natural images with unsupervised feature learning",
+      "authors": "Yuval Netzer, Tao Wang, Adam Coates, Alessandro Bissacco, Bo Wu, and Andrew Y. Ng",
+      "year": 2011,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "NIPS"
+    },
+    {
+      "ref_index": 19,
+      "raw_text": "Yaniv Ovadia, Emily Fertig, Jie Ren, Zachary Nado, D. Sculley, Sebastian Nowozin, Joshua Dillon, Balaji Lakshminarayanan, and Jasper Snoek. Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox, and R. Garnett (eds.), *Advances in Neural Information Processing Systems*, volume 32. Curran Associates, Inc., 2019. URL https://proceedings.neurips.cc/paper\\\\_ files/paper/2019/file/8558cb408c1d76621371888657d2eb1d-Paper.pdf.",
+      "title": "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift",
+      "authors": "Yaniv Ovadia, Emily Fertig, Jie Ren, Zachary Nado, D. Sculley, Sebastian Nowozin, Joshua Dillon, Balaji Lakshminarayanan, and Jasper Snoek",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "Advances in Neural Information Processing Systems"
+    },
+    {
+      "ref_index": 20,
+      "raw_text": "Benjamin Recht, Rebecca Roelofs, Ludwig Schmidt, and Vaishaal Shankar. Do ImageNet classifiers generalize to ImageNet? In Kamalika Chaudhuri and Ruslan Salakhutdinov (eds.), *Proceedings of the 36th International Conference on Machine Learning*, volume 97 of *Proceedings of Machine Learning Research*, pp. 5389–5400. PMLR, 09–15 Jun 2019. URL https://proceedings.mlr. press/v97/recht19a.html.",
+      "title": "5389–5400",
+      "authors": "Benjamin Recht, Rebecca Roelofs, Ludwig Schmidt, and Vaishaal Shankar. Do ImageNet classifiers generalize to ImageNet? In Kamalika Chaudhuri and Ruslan Salakhutdinov (eds.), *Proceedings of the 36th International Conference on Machine Learning*, volume 97 of *Proceedings of Machine Learning Research*, pp",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "International Conference on Machine Learning"
+    },
+    {
+      "ref_index": 21,
+      "raw_text": "Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang, Andrej Karpathy, Aditya Khosla, Michael Bernstein, et al. Imagenet large scale visual recognition challenge. *International journal of computer vision*, 115:211–252, 2015.",
+      "title": "Imagenet large scale visual recognition challenge",
+      "authors": "Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang, Andrej Karpathy, Aditya Khosla, Michael Bernstein, et al",
+      "year": 2015,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 22,
+      "raw_text": "Lewis Smith and Yarin Gal. Understanding measures of uncertainty for adversarial example detection. *arXiv preprint arXiv:1803.08533*, 2018.",
+      "title": "Understanding measures of uncertainty for adversarial example detection",
+      "authors": "Lewis Smith and Yarin Gal",
+      "year": 1803,
+      "doi": null,
+      "arxiv_id": "arXiv:1803.08533",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 23,
+      "raw_text": "Dustin Tran, Jeremiah Liu, Michael W Dusenberry, Du Phan, Mark Collier, Jie Ren, Kehang Han, Zi Wang, Zelda Mariet, Huiyi Hu, et al. Plex: Towards reliability using pretrained large model extensions. *arXiv preprint arXiv:2207.07411*, 2022.",
+      "title": "Plex: Towards reliability using pretrained large model extensions",
+      "authors": "Dustin Tran, Jeremiah Liu, Michael W Dusenberry, Du Phan, Mark Collier, Jie Ren, Kehang Han, Zi Wang, Zelda Mariet, Huiyi Hu, et al",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": "arXiv:2207.07411",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 24,
+      "raw_text": "Zhengzhong Tu, Hossein Talebi, Han Zhang, Feng Yang, Peyman Milanfar, Alan Bovik, and Yinxiao Li. MaxViT: Multi-axis vision transformer. In *European conference on computer vision*, pp. 459–479. Springer, 2022.",
+      "title": "MaxViT: Multi-axis vision transformer",
+      "authors": "Zhengzhong Tu, Hossein Talebi, Han Zhang, Feng Yang, Peyman Milanfar, Alan Bovik, and Yinxiao Li",
+      "year": 2022,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 25,
+      "raw_text": "Ross Wightman. Pytorch image models. https://github.com/rwightman/ pytorch-image-models, 2019.",
+      "title": "Ross Wightman",
+      "authors": "Ross Wightman. Pytorch image models. https://github.com/rwightman/ pytorch-image-models",
+      "year": 2019,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
+    },
+    {
+      "ref_index": 26,
+      "raw_text": "Han Xiao, Kashif Rasul, and Roland Vollgraf. Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms. *arXiv preprint*, abs/1708.07747, 2017. URL [http://arxiv.org/](http://arxiv.org/abs/1708.07747) [abs/1708.07747](http://arxiv.org/abs/1708.07747).",
+      "title": "Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms",
+      "authors": "Han Xiao, Kashif Rasul, and Roland Vollgraf",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": "1708.07747",
+      "venue": "arXiv"
+    },
+    {
+      "ref_index": 27,
+      "raw_text": "Saining Xie, Ross Girshick, Piotr Dollár, Zhuowen Tu, and Kaiming He. Aggregated residual transformations for deep neural networks. In *30th IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2017*, pp. 5987–5995. Institute of Electrical and Electronics Engineers Inc., 2017.",
+      "title": "Aggregated residual transformations for deep neural networks",
+      "authors": "Saining Xie, Ross Girshick, Piotr Dollár, Zhuowen Tu, and Kaiming He",
+      "year": 2017,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": "CVPR"
+    },
+    {
+      "ref_index": 28,
+      "raw_text": "Sergey Zagoruyko and Nikos Komodakis. Wide residual networks. In *British Machine Vision Conference 2016*. British Machine Vision Association, 2016.",
+      "title": "Wide residual networks",
+      "authors": "Sergey Zagoruyko and Nikos Komodakis",
+      "year": 2016,
+      "doi": null,
+      "arxiv_id": null,
+      "venue": null
     }
   ]
 }
