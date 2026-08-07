@@ -61,6 +61,11 @@ ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "a
 tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 schemars = "0.8"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
 [patch.crates-io]
-zune-jpeg = { git = "https://github.com/etemesi254/zune-image.git" }
-zune-core = { git = "https://github.com/etemesi254/zune-image.git" }
+# Temporary patch for zune-jpeg to fix a compilation error in Rust 2024 edition
+# (missing semicolon in macro expansion in zune-jpeg 0.5.15).
+# Pinned to a specific commit that works with the current version of the `image` crate.
+# This can be safely removed once `zune-jpeg` 0.5.16 is released and `image` updates its dependencies.
+zune-jpeg = { git = "https://github.com/etemesi254/zune-image.git", rev = "0346b875" }
+zune-core = { git = "https://github.com/etemesi254/zune-image.git", rev = "0346b875" }
