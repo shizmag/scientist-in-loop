@@ -61,3 +61,6 @@ ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "a
 tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 schemars = "0.8"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+[patch.crates-io]
+zune-jpeg = { git = "https://github.com/etemesi254/zune-image.git" }
+zune-core = { git = "https://github.com/etemesi254/zune-image.git" }
