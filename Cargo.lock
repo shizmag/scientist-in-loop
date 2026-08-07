@@ -5245,6 +5245,7 @@ dependencies = [
  "camino",
  "clap",
  "crossterm",
+ "dirs",
  "predicates",
  "serde",
  "serde_json",

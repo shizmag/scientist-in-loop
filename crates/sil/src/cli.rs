@@ -201,6 +201,9 @@ pub enum ProjectCmd {
         /// Machine-readable JSON output
         #[arg(long)]
         json: bool,
+        /// Provide ONNX model cache bootstrap directories and export recipe
+        #[arg(long = "fix-rag")]
+        fix_rag: bool,
     },
     /// Generate structured context for a human or agent
     Context {

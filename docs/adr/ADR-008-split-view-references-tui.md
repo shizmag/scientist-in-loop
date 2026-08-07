@@ -1,4 +1,4 @@
-# ADR-007: Split-View References TUI and Direct `sil tui` Entrypoint
+# ADR-008: Split-View References TUI and Direct `sil tui` Entrypoint
 
 ## Status
 Accepted

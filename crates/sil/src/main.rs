@@ -74,7 +74,7 @@ fn run() -> Result<()> {
             } => commands::template(action, target, input, output, ui.as_ref()),
         },
         Commands::Project { action } => match action {
-            ProjectCmd::Doctor { json } => commands::doctor(json, ui.as_ref()),
+            ProjectCmd::Doctor { json, fix_rag } => commands::doctor(json, fix_rag, ui.as_ref()),
             ProjectCmd::Context {
                 paper,
                 agent,

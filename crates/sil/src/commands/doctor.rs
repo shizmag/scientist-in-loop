@@ -37,7 +37,31 @@ impl Check {
 }
 
 /// Run environment + project diagnostics.
-pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
+pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
+    if fix_rag && let Some(cache_dir) = dirs::cache_dir() {
+        let base = cache_dir.join("sil/models");
+        let embed_dir = base.join("bge-small-en-v1.5");
+        let rerank_dir = base.join("ms-marco-MiniLM-L-6-v2");
+
+        let _ = std::fs::create_dir_all(&embed_dir);
+        let _ = std::fs::create_dir_all(&rerank_dir);
+
+        ui.success(&format!(
+            "🔧 ONNX Model Cache Directories Initialized:\n  • Embedder: {}\n  • Reranker: {}\n",
+            embed_dir.display(),
+            rerank_dir.display()
+        ));
+
+        ui.info(
+            "Export ONNX models + tokenizer.json using optimum-cli:\n\
+             $ pip install optimum[onnxruntime]\n\
+             $ optimum-cli export onnx --model BAAI/bge-small-en-v1.5 ~/.cache/sil/models/bge-small-en-v1.5/\n\
+             $ optimum-cli export onnx --model cross-encoder/ms-marco-MiniLM-L-6-v2 ~/.cache/sil/models/ms-marco-MiniLM-L-6-v2/\n\
+             \n\
+             Build sil with cargo features: cargo build -p sil --features onnx\n",
+        );
+    }
+
     let mut checks = Vec::new();
     let mut project_root = None;
 

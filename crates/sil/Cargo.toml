@@ -19,6 +19,7 @@ onnx = ["sil-db/onnx"]
 anyhow = { workspace = true }
 camino = { workspace = true }
 clap = { workspace = true }
+dirs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sil-agent = { workspace = true }
