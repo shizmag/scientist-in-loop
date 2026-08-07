@@ -103,7 +103,7 @@ pub fn update_project(target: &Utf8Path, ui: &dyn SilUi) -> Result<()> {
     // Managed templates — always refresh
     spinner.set_message("Refreshing skills…");
     write_skills(target)?;
-    changes.push("refreshed .sil/skills/".into());
+    changes.push("refreshed agent/skills/".into());
 
     write(
         target,

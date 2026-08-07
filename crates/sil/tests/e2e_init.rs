@@ -24,9 +24,9 @@ fn init_creates_exact_layout_and_readmes() {
         ".sil/structure.yaml",
         ".sil/structure.example.yaml",
         ".sil/db.sqlite",
-        ".sil/skills/SYSTEM.md",
-        ".sil/skills/paper.md",
-        ".sil/skills/agent-code.md",
+        "agent/skills/SYSTEM.md",
+        "agent/skills/paper.md",
+        "agent/skills/agent-code.md",
         ".sil/improvement",
         ".sil/improvement/README.md",
         ".sil/draft_sections",
@@ -47,13 +47,13 @@ fn init_creates_exact_layout_and_readmes() {
     assert_file_contains(&project.join(".sil/improvement/README.md"), "suggestion_n");
 
     assert_file_contains(
-        &project.join(".sil/skills/SYSTEM.md"),
+        &project.join("agent/skills/SYSTEM.md"),
         "SYSTEM RULES FOR THIS PROJECT",
     );
-    assert_file_contains(&project.join(".sil/skills/SYSTEM.md"), "Never auto-commit");
-    assert_file_contains(&project.join(".sil/skills/paper.md"), "structure.yaml");
+    assert_file_contains(&project.join("agent/skills/SYSTEM.md"), "Never auto-commit");
+    assert_file_contains(&project.join("agent/skills/paper.md"), "structure.yaml");
     assert_file_contains(
-        &project.join(".sil/skills/agent-code.md"),
+        &project.join("agent/skills/agent-code.md"),
         "agent/README.md",
     );
 
@@ -255,7 +255,7 @@ fn init_update_refreshes_templates_preserves_user_files() {
         .success();
 
     // Simulate older / customized project state
-    fs::write(project.join(".sil/skills/SYSTEM.md"), "# OLD SYSTEM\n").unwrap();
+    fs::write(project.join("agent/skills/SYSTEM.md"), "# OLD SYSTEM\n").unwrap();
     fs::write(
         project.join(".sil/structure.yaml"),
         "title: User Paper\nsections: []\n",
@@ -285,7 +285,7 @@ fn init_update_refreshes_templates_preserves_user_files() {
         .stdout(predicates::str::contains("Sci-Action: update"));
 
     // Skills refreshed
-    let system = fs::read_to_string(project.join(".sil/skills/SYSTEM.md")).unwrap();
+    let system = fs::read_to_string(project.join("agent/skills/SYSTEM.md")).unwrap();
     assert!(
         system.contains("SYSTEM RULES FOR THIS PROJECT"),
         "skills should be refreshed:\n{system}"
@@ -367,18 +367,18 @@ fn init_skills_contain_loading_rules_and_goal_phrases() {
         .assert()
         .success();
 
-    let system = std::fs::read_to_string(project.join(".sil/skills/SYSTEM.md")).unwrap();
+    let system = std::fs::read_to_string(project.join("agent/skills/SYSTEM.md")).unwrap();
     assert!(
         system.contains("Skill loading rules") || system.contains("Always read this SYSTEM.md")
     );
     assert!(system.contains("sources/"));
     assert!(system.contains("Never auto-commit"));
 
-    let paper = std::fs::read_to_string(project.join(".sil/skills/paper.md")).unwrap();
+    let paper = std::fs::read_to_string(project.join("agent/skills/paper.md")).unwrap();
     assert!(paper.contains("completion"));
     assert!(paper.contains("paper_draft.tex"));
 
-    let agent = std::fs::read_to_string(project.join(".sil/skills/agent-code.md")).unwrap();
+    let agent = std::fs::read_to_string(project.join("agent/skills/agent-code.md")).unwrap();
     assert!(agent.contains("figures/plots/"));
     assert!(agent.contains("data/"));
 }

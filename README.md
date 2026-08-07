@@ -9,7 +9,7 @@ Humans and LLM agents work under the same strict conventions:
 - **`structure.yaml`** is the formal syntactic map of the paper  
 - **`paper_draft.tex`** is the working document (later promoted to `paper.tex`)  
 - **Settings & Co-Author Cache** (Global in `~/.config/sil/`, Local in `.sil/config.yaml`) managed via Ratatui TUI (`sil settings`)
-- **Skills** in `.sil/skills/` are loaded dynamically according to clear rules  
+- **Skills** in `agent/skills/` are loaded dynamically according to clear rules  
 
 After `sil init`, you can hand a goal to an agent and it will understand the layout, rules, and current state.
 
@@ -365,7 +365,7 @@ sil init --update
 
 | Always refreshed | Created only if missing | Never overwritten if present |
 |------------------|-------------------------|------------------------------|
-| `.sil/skills/*` | Folder READMEs, layout dirs | `.sil/config.yaml` |
+| `agent/skills/*` | Folder READMEs, layout dirs | `.sil/config.yaml` |
 | `.sil/structure.example.yaml` | Paper stubs, `references.bib` | `.sil/structure.yaml` |
 | sil-managed `.gitignore` block | Project `README.md` | `paper_draft.tex`, `paper.tex` |
 | | SQLite DB / git repo (ensured) | Custom gitignore rules outside the managed block |
@@ -376,7 +376,7 @@ Proposes a commit with `Sci-Action: update` (never auto-committed).
 
 ## How agents should interact
 
-1. Read `.sil/skills/SYSTEM.md` first (always loaded by `sil context`).  
+1. Read `agent/skills/SYSTEM.md` first (always loaded by `sil context`).  
 2. Run `sil context` for a fresh snapshot (structure, config, Sci-Action history, sources).  
 3. Load additional skills when relevant:  
    - **`paper.md`** — tasks touching `structure.yaml`, `paper_draft.tex`, `paper.tex`, or section completion.  

@@ -44,7 +44,7 @@ gitignored by default. Document literature and assets in folder READMEs. `.sil/i
 
 ## For agents
 
-1. Read `.sil/skills/SYSTEM.md` first.
+1. Read `agent/skills/SYSTEM.md` first.
 2. Run `sil context` (add `--paper`, `--agent`, or skill flags as needed).
 3. For focused section reads, open a file under `.sil/draft_sections/` (after `sil split`); write prose back to `paper_draft.tex`.
 4. File improvement ideas under `.sil/improvement/suggestion_n`.

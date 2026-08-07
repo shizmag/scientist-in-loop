@@ -7710,7 +7710,7 @@ dependencies = [
 [[package]]
 name = "zune-core"
 version = "0.5.1"
-source = "git+https://github.com/etemesi254/zune-image.git#0346b875169ed528e206441c97899d99002e17ca"
+source = "git+https://github.com/etemesi254/zune-image.git?rev=0346b875#0346b875169ed528e206441c97899d99002e17ca"
 
 [[package]]
 name = "zune-inflate"
@@ -7724,7 +7724,7 @@ dependencies = [
 [[package]]
 name = "zune-jpeg"
 version = "0.5.15"
-source = "git+https://github.com/etemesi254/zune-image.git#0346b875169ed528e206441c97899d99002e17ca"
+source = "git+https://github.com/etemesi254/zune-image.git?rev=0346b875#0346b875169ed528e206441c97899d99002e17ca"
 dependencies = [
  "zune-core",
 ]

@@ -222,9 +222,9 @@ mod tests {
     fn generate_minimal_context() {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        fs::create_dir_all(root.join(".sil/skills")).unwrap();
+        fs::create_dir_all(root.join("agent/skills")).unwrap();
         fs::write(
-            root.join(".sil/skills/SYSTEM.md"),
+            root.join("agent/skills/SYSTEM.md"),
             "# SYSTEM RULES\nAlways read this.\n",
         )
         .unwrap();
@@ -250,11 +250,11 @@ mod tests {
     fn context_includes_paper_and_agent_sections() {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        fs::create_dir_all(root.join(".sil/skills")).unwrap();
+        fs::create_dir_all(root.join("agent/skills")).unwrap();
         fs::create_dir_all(root.join("agent")).unwrap();
-        fs::write(root.join(".sil/skills/SYSTEM.md"), "SYS").unwrap();
-        fs::write(root.join(".sil/skills/paper.md"), "PAPER SKILL").unwrap();
-        fs::write(root.join(".sil/skills/agent-code.md"), "AGENT SKILL").unwrap();
+        fs::write(root.join("agent/skills/SYSTEM.md"), "SYS").unwrap();
+        fs::write(root.join("agent/skills/paper.md"), "PAPER SKILL").unwrap();
+        fs::write(root.join("agent/skills/agent-code.md"), "AGENT SKILL").unwrap();
         fs::write(
             root.join("paper_draft.tex"),
             "\\section{Intro}\nHello.\n\\section{Methods}\nWorld.\n",
@@ -312,8 +312,8 @@ mod tests {
 
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        fs::create_dir_all(root.join(".sil/skills")).unwrap();
-        fs::write(root.join(".sil/skills/SYSTEM.md"), "SYS").unwrap();
+        fs::create_dir_all(root.join("agent/skills")).unwrap();
+        fs::write(root.join("agent/skills/SYSTEM.md"), "SYS").unwrap();
         let entries = [LogEntry {
             hash: "abc123".into(),
             subject: "Initialize".into(),
@@ -339,8 +339,8 @@ mod tests {
     fn fixture_root_with_system() -> (tempfile::TempDir, Utf8PathBuf) {
         let dir = tempfile::tempdir().unwrap();
         let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        fs::create_dir_all(root.join(".sil/skills")).unwrap();
-        fs::write(root.join(".sil/skills/SYSTEM.md"), "SYS").unwrap();
+        fs::create_dir_all(root.join("agent/skills")).unwrap();
+        fs::write(root.join("agent/skills/SYSTEM.md"), "SYS").unwrap();
         (dir, root)
     }
 
@@ -405,8 +405,8 @@ mod tests {
     #[test]
     fn context_flag_combinations() {
         let (_d, root) = fixture_root_with_system();
-        fs::write(root.join(".sil/skills/paper.md"), "PAPER").unwrap();
-        fs::write(root.join(".sil/skills/agent-code.md"), "AGENTCODE").unwrap();
+        fs::write(root.join("agent/skills/paper.md"), "PAPER").unwrap();
+        fs::write(root.join("agent/skills/agent-code.md"), "AGENTCODE").unwrap();
         fs::create_dir_all(root.join("agent")).unwrap();
         fs::write(root.join("agent/README.md"), "readme").unwrap();
 

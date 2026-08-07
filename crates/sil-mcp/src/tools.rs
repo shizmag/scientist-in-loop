@@ -641,7 +641,7 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
     let flags = ContextFlags {
         paper: include_paper,
         agent: false,
-        skill_paper: true,
+        skill_paper: false,
         skill_agent_code: false,
         skills: vec![],
     };
@@ -1454,10 +1454,10 @@ pub(crate) mod tests {
             let dir = tempfile::tempdir().unwrap();
             let project_root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
 
-            fs::create_dir_all(project_root.join(".sil/skills")).unwrap();
+            fs::create_dir_all(project_root.join("agent/skills")).unwrap();
             fs::write(project_root.join(".sil/config.yaml"), "version: 1\n").unwrap();
             fs::write(
-                project_root.join(".sil/skills/SYSTEM.md"),
+                project_root.join("agent/skills/SYSTEM.md"),
                 "# System Skill\nDefault rules.",
             )
             .unwrap();
@@ -2068,7 +2068,7 @@ pub(crate) mod tests {
     fn test_list_skills_discover_custom() {
         let env = TestEnv::new();
 
-        let skills_dir = env.project_root.join(".sil/skills");
+        let skills_dir = env.project_root.join("agent/skills");
         fs::create_dir_all(&skills_dir).unwrap();
         fs::write(
             skills_dir.join("review-guidelines.md"),
@@ -2092,7 +2092,7 @@ pub(crate) mod tests {
     fn test_list_skills_filter_by_category() {
         let env = TestEnv::new();
 
-        let skills_dir = env.project_root.join(".sil/skills");
+        let skills_dir = env.project_root.join("agent/skills");
         fs::create_dir_all(&skills_dir).unwrap();
         fs::write(skills_dir.join("custom-analysis.md"), "# Custom Analysis").unwrap();
 

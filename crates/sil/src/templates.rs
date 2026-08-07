@@ -10,11 +10,11 @@ pub const STRUCTURE_YAML: &str = include_str!("../../../templates/structure.yaml
 /// Example structure document.
 pub const STRUCTURE_EXAMPLE_YAML: &str = include_str!("../../../templates/structure.example.yaml");
 /// SYSTEM skill.
-pub const SKILL_SYSTEM: &str = include_str!("../../../templates/skills/SYSTEM.md");
+pub const SKILL_SYSTEM: &str = include_str!("../../../templates/agent/skills/SYSTEM.md");
 /// paper skill.
-pub const SKILL_PAPER: &str = include_str!("../../../templates/skills/paper.md");
+pub const SKILL_PAPER: &str = include_str!("../../../templates/agent/skills/paper.md");
 /// agent-code skill.
-pub const SKILL_AGENT_CODE: &str = include_str!("../../../templates/skills/agent-code.md");
+pub const SKILL_AGENT_CODE: &str = include_str!("../../../templates/agent/skills/agent-code.md");
 /// data/README.md
 pub const DATA_README: &str = include_str!("../../../templates/data.README.md");
 /// figures/plots/README.md

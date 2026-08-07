@@ -173,8 +173,8 @@ mod tests {
     fn load_skill_ok() {
         let dir = tempfile::tempdir().unwrap();
         let root = camino::Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
-        std::fs::create_dir_all(root.join(".sil/skills")).unwrap();
-        std::fs::write(root.join(".sil/skills/SYSTEM.md"), "hello skill").unwrap();
+        std::fs::create_dir_all(root.join("agent/skills")).unwrap();
+        std::fs::write(root.join("agent/skills/SYSTEM.md"), "hello skill").unwrap();
         let text = load_skill(&root, "SYSTEM.md").unwrap();
         assert_eq!(text, "hello skill");
     }

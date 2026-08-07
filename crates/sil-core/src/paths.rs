@@ -16,13 +16,13 @@ pub mod rel {
     /// SQLite database.
     pub const DB: &str = ".sil/db.sqlite";
     /// Skills directory.
-    pub const SKILLS: &str = ".sil/skills";
+    pub const SKILLS: &str = "agent/skills";
     /// SYSTEM skill.
-    pub const SKILL_SYSTEM: &str = ".sil/skills/SYSTEM.md";
+    pub const SKILL_SYSTEM: &str = "agent/skills/SYSTEM.md";
     /// Paper skill.
-    pub const SKILL_PAPER: &str = ".sil/skills/paper.md";
+    pub const SKILL_PAPER: &str = "agent/skills/paper.md";
     /// Agent-code skill.
-    pub const SKILL_AGENT_CODE: &str = ".sil/skills/agent-code.md";
+    pub const SKILL_AGENT_CODE: &str = "agent/skills/agent-code.md";
     /// Improvement proposals directory (suggestion_1, suggestion_2, …).
     /// Not gitignored — proposals are versioned with the project.
     pub const IMPROVEMENT: &str = ".sil/improvement";
@@ -213,7 +213,7 @@ mod tests {
         let paths = ProjectPaths::new("/tmp/paper");
         assert_eq!(paths.sil_dir().as_str(), "/tmp/paper/.sil");
         assert_eq!(paths.structure().as_str(), "/tmp/paper/.sil/structure.yaml");
-        assert_eq!(paths.skills_dir().as_str(), "/tmp/paper/.sil/skills");
+        assert_eq!(paths.skills_dir().as_str(), "/tmp/paper/agent/skills");
         assert_eq!(paths.paper_draft().as_str(), "/tmp/paper/paper_draft.tex");
         assert_eq!(paths.paper_final().as_str(), "/tmp/paper/paper.tex");
         assert!(!paths.is_project());
