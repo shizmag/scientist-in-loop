@@ -16,7 +16,9 @@ pub use chunks::{
     embedding_to_blob,
 };
 pub use error::DbError;
-pub use onnx::{DEFAULT_EMBEDDING_DIM, OnnxEmbedder, OnnxReranker};
+pub use onnx::{
+    DEFAULT_EMBEDDING_DIM, OnnxEmbedder, OnnxReranker, RagBackend, RagFallbackReason,
+};
 pub use search::{SearchHit, search_hyde};
 
 use camino::Utf8Path;

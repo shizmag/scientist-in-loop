@@ -10,6 +10,11 @@ publish = false
 name = "sil"
 path = "src/main.rs"
 
+[features]
+default = []
+## Enable real ONNX dense RAG in sil-db (inherits via feature unification for path deps).
+onnx = ["sil-db/onnx"]
+
 [dependencies]
 anyhow = { workspace = true }
 camino = { workspace = true }

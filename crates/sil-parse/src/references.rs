@@ -457,10 +457,19 @@ pub fn parse_entry_metadata(
 
 fn extract_unquoted_title(text: &str) -> Option<String> {
     let clean = text.trim();
+
+    // European / Elsevier style: "A. Author, B. Author, Title words, year/venue…"
+    // Prefer this before ". "-splitting, which fractures "M.E. Peters, …".
+    if let Some(title) = extract_initials_comma_title(clean) {
+        return Some(title);
+    }
+
     let parts: Vec<&str> = clean.split(". ").collect();
 
     for part in parts {
         let mut candidate = part.trim().trim_end_matches('.').trim();
+        // Drop trailing markdown / bare URLs so arXiv lines can still yield titles.
+        candidate = strip_trailing_urls(candidate);
         if let Some(pos) = candidate.rfind(',') {
             let suffix = candidate[pos + 1..].trim();
             if suffix.chars().all(|c| c.is_ascii_digit()) && suffix.len() == 4 {
@@ -474,6 +483,260 @@ fn extract_unquoted_title(text: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Strip trailing URL / arXiv markdown remnants from a title candidate.
+fn strip_trailing_urls(s: &str) -> &str {
+    let mut t = s.trim();
+    if let Some(pos) = t.find("[arXiv:") {
+        t = t[..pos].trim_end_matches(|c: char| c == ',' || c == '.' || c.is_whitespace());
+    } else if let Some(pos) = t.find("http://") {
+        t = t[..pos].trim_end_matches(|c: char| c == ',' || c == '.' || c.is_whitespace());
+    } else if let Some(pos) = t.find("https://") {
+        t = t[..pos].trim_end_matches(|c: char| c == ',' || c == '.' || c.is_whitespace());
+    } else if let Some(pos) = t.find("URL <") {
+        t = t[..pos].trim_end_matches(|c: char| c == ',' || c == '.' || c.is_whitespace());
+    }
+    t
+}
+
+/// Detect "A. Author" / "M.E. Peters" / "R.L. Logan IV" style segments.
+fn is_initials_author_segment(seg: &str) -> bool {
+    let s = seg.trim().trim_end_matches('.').trim();
+    if s.is_empty() {
+        return false;
+    }
+    let lower = s.to_lowercase();
+    if lower == "et al" || lower == "et al." || (lower.starts_with("et al") && lower.len() <= 7) {
+        return true;
+    }
+    // Initials + surname (+ optional generational suffix).
+    // Examples: "X. Guan", "M.E. Peters", "W.t. Yih", "N.A. Smith", "R.L. Logan IV", "B. Škrlj"
+    let mut rest = s;
+    let mut saw_initial = false;
+    while let Some((initial, after)) = rest.split_once('.') {
+        let initial = initial.trim();
+        // Single-letter initial (ASCII); allow "t" in "W.t."
+        if initial.len() != 1 || !initial.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) {
+            return false;
+        }
+        saw_initial = true;
+        rest = after.trim_start();
+        // Stop initials when next token is a multi-char surname start.
+        if let Some(first_word) = rest.split_whitespace().next() {
+            if first_word.len() > 1
+                && first_word
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_uppercase() || c.is_alphabetic())
+                && !first_word.ends_with('.')
+            {
+                break;
+            }
+        } else {
+            return false;
+        }
+    }
+    if !saw_initial || rest.is_empty() {
+        return false;
+    }
+    let words: Vec<&str> = rest.split_whitespace().collect();
+    if words.is_empty() || words.len() > 3 {
+        return false;
+    }
+    let surname = words[0];
+    if surname.len() < 2
+        || !surname
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_uppercase() || !c.is_ascii())
+    {
+        // Allow Unicode surnames (Škrlj) even when is_uppercase is locale-odd.
+        if surname.len() < 2 || !surname.chars().next().is_some_and(|c| c.is_alphabetic()) {
+            return false;
+        }
+    }
+    if words.len() == 2 {
+        let suf = words[1].trim_end_matches('.');
+        return matches!(suf, "IV" | "III" | "II" | "Jr" | "Sr");
+    }
+    words.len() == 1
+}
+
+fn is_venue_or_meta_segment(seg: &str) -> bool {
+    let s = seg.trim();
+    if s.is_empty() {
+        return true;
+    }
+    // Bare year
+    if s.chars().all(|c| c.is_ascii_digit()) && s.len() == 4 {
+        return true;
+    }
+    // Page ranges / volume crumbs: "625–630", "pp. 68–82", "vol. 38"
+    let lower = s.to_lowercase();
+    if lower.starts_with("pp.")
+        || lower.starts_with("vol.")
+        || lower.starts_with("p.")
+        || lower.starts_with("in:")
+        || lower.starts_with("in ")
+        || lower.starts_with("url")
+        || lower.starts_with("http")
+        || lower.starts_with("doi")
+        || lower.starts_with("arxiv")
+        || lower.starts_with("proceedings")
+        || lower.starts_with("findings")
+        || lower.starts_with("advances in")
+        || lower.starts_with("nature")
+        || lower.starts_with("science")
+        || lower.starts_with("cell")
+        || lower.starts_with("acm ")
+        || lower.starts_with("ieee")
+        || lower.starts_with("commun.")
+        || lower.starts_with("journal")
+        || lower.starts_with("transactions")
+        || lower.starts_with("international conference")
+        || lower.starts_with("conference on")
+        || lower.starts_with("workshop")
+        || lower.starts_with("challenges and algorithms")
+    {
+        return true;
+    }
+    // "(16) 2024" volume/year crumbs
+    if s.starts_with('(') && s.contains(')') {
+        let after = s.split(')').nth(1).unwrap_or("").trim();
+        if after.chars().all(|c| c.is_ascii_digit()) && after.len() == 4 {
+            return true;
+        }
+    }
+    // Pure page-range like "18126–18134" / "1–55"
+    let pageish = s
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '–' || c == '-' || c == '.' || c == ' ');
+    if pageish && s.chars().any(|c| c.is_ascii_digit()) {
+        return true;
+    }
+    false
+}
+
+/// If segment is `Y. Gal. Detecting hallucinations…`, return the title tail.
+fn title_after_initials_author_period(seg: &str) -> Option<&str> {
+    let s = seg.trim();
+    // Find ". " after a complete initials+surname prefix.
+    let mut search_from = 0usize;
+    while let Some(rel) = s[search_from..].find(". ") {
+        let period_at = search_from + rel;
+        let prefix = &s[..period_at];
+        let tail = s[period_at + 2..].trim();
+        if !tail.is_empty() && is_initials_author_segment(prefix) {
+            return Some(tail);
+        }
+        search_from = period_at + 1;
+    }
+    None
+}
+
+/// Extract title from "Initials. Surname, …, Title, year/venue" bibliography lines.
+fn extract_initials_comma_title(text: &str) -> Option<String> {
+    let clean = text.trim();
+    // Require European initial-style opening so we don't disturb APA/Surname-first formats.
+    let first = clean.split(',').next()?.trim();
+    if !is_initials_author_segment(first) {
+        return None;
+    }
+
+    let parts: Vec<&str> = clean.split(", ").collect();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    // Need at least one clear initials-author segment so we don't hijack odd strings.
+    let author_seg_count = parts
+        .iter()
+        .take_while(|p| {
+            let s = p.trim();
+            is_initials_author_segment(s)
+                || title_after_initials_author_period(s).is_some()
+                || {
+                    let l = s.to_lowercase();
+                    l == "et al" || l == "et al." || l.starts_with("et al")
+                }
+        })
+        .count();
+    if author_seg_count == 0 {
+        return None;
+    }
+
+    let mut title_parts: Vec<&str> = Vec::new();
+    let mut in_title = false;
+
+    for part in &parts {
+        let seg = part.trim();
+        if !in_title {
+            if let Some(tail) = title_after_initials_author_period(seg) {
+                if is_venue_or_meta_segment(tail) {
+                    break;
+                }
+                in_title = true;
+                title_parts.push(tail);
+                continue;
+            }
+            if is_initials_author_segment(seg) {
+                continue;
+            }
+            let lower = seg.to_lowercase();
+            if lower == "et al" || lower == "et al." || lower.starts_with("et al") {
+                continue;
+            }
+            if is_venue_or_meta_segment(seg) {
+                break;
+            }
+            in_title = true;
+            title_parts.push(seg);
+        } else if is_venue_or_meta_segment(seg) {
+            break;
+        } else {
+            // Titles can contain commas ("Principles, taxonomy, challenges").
+            title_parts.push(seg);
+        }
+    }
+
+    if title_parts.is_empty() {
+        return None;
+    }
+
+    let mut title = title_parts.join(", ");
+    title = strip_trailing_urls(&title).to_string();
+    // Drop trailing "in: Venue…" if present inside the joined title.
+    if let Some(pos) = title.to_lowercase().find(", in:") {
+        title = title[..pos].to_string();
+    } else if let Some(pos) = title.to_lowercase().find(" in:") {
+        title = title[..pos].to_string();
+    }
+    // Period-separated venue tails: "… LLMs. Nature"
+    if let Some(pos) = title.rfind(". ") {
+        let tail = title[pos + 2..].trim();
+        if is_venue_or_meta_segment(tail) || sil_regex::extract_reference_venue(tail).is_some() {
+            title = title[..pos].to_string();
+        }
+    }
+    // Drop trailing year after last comma: "Title, 2019"
+    if let Some(pos) = title.rfind(',') {
+        let suffix = title[pos + 1..].trim();
+        if suffix.chars().all(|c| c.is_ascii_digit()) && suffix.len() == 4 {
+            title = title[..pos].to_string();
+        }
+    }
+    title = title
+        .trim()
+        .trim_end_matches(['.', ',', ';', ':'])
+        .trim()
+        .to_string();
+
+    if is_valid_title(&title) {
+        Some(title)
+    } else {
+        None
+    }
 }
 
 fn is_valid_title(candidate: &str) -> bool {
@@ -496,8 +759,28 @@ fn is_valid_title(candidate: &str) -> bool {
             return false;
         }
     }
+    // is_author_list is case-insensitive and can treat title tails like
+    // "... and chatbot arena" as author lists. Keep author-list rejection for
+    // name-like strings; allow candidates with clear title cues.
     if sil_regex::is_author_list(t) {
-        return false;
+        let lower = t.to_lowercase();
+        let has_title_cue = t.contains(':')
+            || lower.contains(" the ")
+            || lower.contains(" of ")
+            || lower.contains(" for ")
+            || lower.contains(" with ")
+            || lower.contains(" using ")
+            || lower.contains(" on ")
+            || lower.contains(" in ")
+            || lower.contains(" a ")
+            || lower.contains(" an ")
+            || lower.contains(" to ")
+            || lower.contains(" from ")
+            || lower.contains(" via ")
+            || lower.contains(" between ");
+        if !has_title_cue {
+            return false;
+        }
     }
     if is_org_author(t) {
         return false;
@@ -946,6 +1229,100 @@ This is not a reference, it's trailing text from the paper.
         assert_eq!(title_qw.as_deref(), Some("Qwen3 technical report"));
         assert_eq!(authors_qw.as_deref(), Some("Qwen Team"));
         assert_eq!(year_qw, Some(2025));
+    }
+
+    #[test]
+    fn test_structure_predict_european_field_samples() {
+        // Samples from golden fixture structure_predict_hallucination (Elsevier Marker).
+        let peters = "M.E. Peters, M. Neumann, R.L. Logan IV, R. Schwartz, V. Joshi, S. Singh, N.A. Smith, Knowledge enhanced contextual word representations, 2019, arXiv preprint [arXiv:1909.04164.](http://arxiv.org/abs/1909.04164)";
+        let (authors, year, title, venue, ..) = parse_entry_metadata(peters);
+        assert_eq!(year, Some(2019));
+        assert_eq!(
+            title.as_deref(),
+            Some("Knowledge enhanced contextual word representations")
+        );
+        assert!(authors.as_deref().unwrap_or("").contains("Peters"));
+        assert!(authors.as_deref().unwrap_or("").contains("Neumann"));
+        assert_eq!(venue.as_deref(), Some("arXiv"));
+
+        let guan = "X. Guan, Y. Liu, H. Lin, Y. Lu, B. He, X. Han, L. Sun, Mitigating large language model hallucinations via autonomous knowledge graph-based retrofitting, in: Proceedings of the AAAI Conference on Artificial Intelligence, vol. 38, (16) 2024, pp. 18126–18134.";
+        let (authors_g, year_g, title_g, venue_g, ..) = parse_entry_metadata(guan);
+        assert_eq!(year_g, Some(2024));
+        assert_eq!(
+            title_g.as_deref(),
+            Some(
+                "Mitigating large language model hallucinations via autonomous knowledge graph-based retrofitting"
+            )
+        );
+        assert!(authors_g.as_deref().unwrap_or("").starts_with("X. Guan"));
+        assert!(authors_g.as_deref().unwrap_or("").contains("L. Sun"));
+        assert_eq!(venue_g.as_deref(), Some("AAAI"));
+
+        let farquhar = "S. Farquhar, J. Kossen, L. Kuhn, Y. Gal, Detecting hallucinations in large language models using semantic entropy, Nature 630 (8017) (2024) 625–630.";
+        let (authors_f, year_f, title_f, venue_f, ..) = parse_entry_metadata(farquhar);
+        assert_eq!(year_f, Some(2024));
+        assert_eq!(
+            title_f.as_deref(),
+            Some("Detecting hallucinations in large language models using semantic entropy")
+        );
+        assert!(authors_f.as_deref().unwrap_or("").contains("Farquhar"));
+        assert!(authors_f.as_deref().unwrap_or("").contains("Gal"));
+        assert_eq!(venue_f.as_deref(), Some("Nature"));
+
+        let pan = "S. Pan, L. Luo, Y. Wang, C. Chen, J. Wang, X. Wu, Unifying large language models and knowledge graphs: A roadmap, IEEE Trans. Knowl. Data Eng. 36 (7) (2024) 3580–3599.";
+        let (_, year_p, title_p, ..) = parse_entry_metadata(pan);
+        assert_eq!(year_p, Some(2024));
+        assert_eq!(
+            title_p.as_deref(),
+            Some("Unifying large language models and knowledge graphs: A roadmap")
+        );
+
+        let lmsys = "L. Zheng, W.L. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin, Z. Li, D. Li, E.P. Xing, H. Zhang, J.E. Gonzalez, I. Stoica, Judging LLM-asa-judge with MT-bench and chatbot arena, in: Advances in Neural Information Processing Systems (NeurIPS), vol. 36, 2023, pp. 46595–46623, URL <https://openreview.net/forum?id=uccHPGDlao>.";
+        let (authors_l, year_l, title_l, venue_l, ..) = parse_entry_metadata(lmsys);
+        assert_eq!(year_l, Some(2023));
+        assert_eq!(
+            title_l.as_deref(),
+            Some("Judging LLM-asa-judge with MT-bench and chatbot arena")
+        );
+        assert!(authors_l.as_deref().unwrap_or("").contains("Zheng"));
+        assert!(authors_l.as_deref().unwrap_or("").contains("Stoica"));
+        assert_eq!(venue_l.as_deref(), Some("NeurIPS"));
+    }
+
+    #[test]
+    fn test_elsevier_refhub_links_do_not_pollute_raw_or_title() {
+        let sid = SourceId::new("structure_predict.pdf");
+        // Use sequential markers [1]/[2] so the numbered splitter keeps both entries.
+        let raw = r#"
+[1] X. Guan, Y. Liu, H. Lin, Y. Lu, B. He, X. Han, L. Sun, Mitigating large language model [hallucinations](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb2) via autonomous knowledge graph-based retrofitting, in: Proceedings of the AAAI Conference on Artificial Intelligence, vol. 38, (16) 2024, pp. [18126–18134.](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb2)
+[2] S. Farquhar, J. Kossen, L. Kuhn, Y. Gal, Detecting [hallucinations](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb8) in large language models using semantic entropy, Nature 630 (8017) (2024) 625–630.
+"#;
+        let entries = parse_reference_entries(&sid, raw);
+        assert_eq!(entries.len(), 2, "entries={entries:?}");
+        for e in &entries {
+            assert!(
+                !e.raw_text.contains("00077-7"),
+                "raw_text residue: {}",
+                e.raw_text
+            );
+            assert!(!e.raw_text.contains("refhub"));
+        }
+        assert_eq!(
+            entries[0].title.as_deref(),
+            Some(
+                "Mitigating large language model hallucinations via autonomous knowledge graph-based retrofitting"
+            )
+        );
+        assert_eq!(
+            entries[1].title.as_deref(),
+            Some("Detecting hallucinations in large language models using semantic entropy")
+        );
+        assert!(entries[0]
+            .raw_text
+            .contains("hallucinations via autonomous"));
+        assert!(entries[1]
+            .raw_text
+            .contains("Detecting hallucinations in large language models"));
     }
 
     #[test]

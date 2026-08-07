@@ -5297,11 +5297,13 @@ name = "sil-db"
 version = "0.1.0"
 dependencies = [
  "camino",
+ "ort",
  "rusqlite",
  "serde",
  "sil-core",
  "tempfile",
  "thiserror 2.0.19",
+ "tokenizers",
 ]
 
 [[package]]

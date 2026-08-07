@@ -174,17 +174,11 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     let mut header_lines = Vec::new();
     for line in content.lines() {
         let clean = sil_regex::strip_html_spans(line).trim().to_string();
-        let lower = clean.to_lowercase();
-        let stripped_lower = lower.trim_start_matches('#').trim();
 
+        // Stop at bibliography / abstract / intro even when Marker wraps headings
+        // in bold (`#### **Abstract**`, `## **1 Introduction**`).
         if sil_regex::is_reference_heading(&clean)
-            || stripped_lower == "abstract"
-            || stripped_lower == "a b s t r a c t"
-            || stripped_lower.starts_with("abstract")
-            || stripped_lower == "a r t i c l e i n f o"
-            || stripped_lower.starts_with("1. introduction")
-            || stripped_lower.starts_with("1 introduction")
-            || stripped_lower.starts_with("i. introduction")
+            || sil_regex::is_frontmatter_section_stop(line)
         {
             break;
         }
@@ -335,26 +329,26 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
             let mut author_names = Vec::new();
             for line in byline_lines {
                 let clean = sil_regex::strip_html_spans(line).trim().to_string();
-                let lower = clean.to_lowercase();
-                let stripped_lower = lower.trim_start_matches('#').trim();
+                if clean.is_empty() {
+                    continue;
+                }
 
-                if stripped_lower == "abstract"
-                    || stripped_lower == "a b s t r a c t"
-                    || stripped_lower.starts_with("abstract")
-                    || stripped_lower.starts_with("1 introduction")
-                    || stripped_lower.starts_with("1. introduction")
-                    || stripped_lower.starts_with("keywords")
-                    || stripped_lower.starts_with("index terms")
-                    || stripped_lower.starts_with("date:")
-                    || stripped_lower.starts_with("code:")
-                    || stripped_lower.starts_with("data:")
-                {
+                // End byline at abstract/intro/meta bullets (handles `**Abstract**`,
+                // `- **Date:**`, etc.) before citation-bleed body text.
+                if sil_regex::is_frontmatter_section_stop(line) {
                     break;
                 }
 
                 let cleaned_line = sil_regex::clean_author_byline_line(&clean);
                 if cleaned_line.is_empty() {
                     continue;
+                }
+
+                // Prose check runs *after* byline cleaning so fused author+dept+email
+                // lines (Token Probability Approach) still yield the name; unheaded
+                // abstract paragraphs remain long and stop the scan.
+                if looks_like_prose_not_byline(&cleaned_line) {
+                    break;
                 }
 
                 for name in sil_regex::split_author_names(&cleaned_line) {
@@ -391,12 +385,66 @@ pub fn hydrate_source_document_metadata(doc: &mut SourceDocument, content: &str,
     }
 }
 
+/// Heuristic: body prose / abstract paragraphs vs. compact author bylines.
+fn looks_like_prose_not_byline(line: &str) -> bool {
+    let t = line.trim();
+    if t.is_empty() {
+        return false;
+    }
+    // TeX/HTML affiliation markers strongly indicate a byline, even when long.
+    if t.contains("$^") || t.contains("<sup>") || t.contains("^{") {
+        return false;
+    }
+    // Multi-author comma lists (even with footnote residue) are bylines.
+    if t.matches(',').count() >= 2 {
+        return false;
+    }
+
+    let words: Vec<&str> = t.split_whitespace().collect();
+    // Author bylines are compact; abstracts and intro sentences are long.
+    if words.len() >= 18 || t.len() >= 160 {
+        return true;
+    }
+    // Sentence-like prose with a period mid-line and many words.
+    if words.len() >= 10 && t.contains(". ") {
+        return true;
+    }
+    // Typical abstract openers that slip past heading detection.
+    let lower = t.to_lowercase();
+    const PROSE_PREFIXES: &[&str] = &[
+        "retrieval-augmented",
+        "large language",
+        "in this paper",
+        "in this work",
+        "we propose",
+        "we present",
+        "this paper",
+        "with the rapid",
+        "although ",
+        "recently,",
+        "recent years",
+    ];
+    if words.len() >= 8 && PROSE_PREFIXES.iter().any(|p| lower.starts_with(p)) {
+        return true;
+    }
+    false
+}
+
 fn is_valid_author_name(name: &str) -> bool {
     let t = name.trim();
     if t.is_empty() || t.len() < 2 || t.len() > 60 {
         return false;
     }
     let lower = t.to_lowercase();
+
+    // In-text citation bleed: "Lewis et al", "Zhang et al."
+    if lower.contains("et al") {
+        return false;
+    }
+    // Email / handle fragments (e.g. reyon_ren, Ruizhi.Qiao leftovers).
+    if t.contains('@') || t.contains('_') || (t.contains('.') && !t.contains(' ')) {
+        return false;
+    }
 
     let bad_words = [
         "university",
@@ -445,6 +493,13 @@ fn is_valid_author_name(name: &str) -> bool {
         "google",
         "meta",
         "amazon",
+        "outlook",
+        "gmail",
+        "huggingface",
+        "arxiv",
+        "figure",
+        "table",
+        "appendix",
     ];
     if bad_words.iter().any(|w| lower == *w || lower.contains(w)) {
         return false;
@@ -461,6 +516,17 @@ fn is_valid_author_name(name: &str) -> bool {
     let words: Vec<&str> = t.split_whitespace().collect();
     if words.is_empty() || words.len() > 5 {
         return false;
+    }
+
+    // Single token authors only if reasonably name-like (not "Zhang" from citations).
+    // Allow single-token when it is the only signal (double-blind / mononyms handled
+    // elsewhere); still require alphabetic-only content.
+    if words.len() == 1 {
+        let w = words[0];
+        // Bare surnames from "X et al" bleed are common; require length and no digits.
+        if w.len() < 4 || w.chars().any(|c| c.is_ascii_digit()) {
+            return false;
+        }
     }
 
     let capitalized_count = words
@@ -605,5 +671,156 @@ Abstract"#;
             doc.authors.unwrap(),
             "Sebastian Farquhar, Armen Der Kiureghian"
         );
+    }
+
+    #[test]
+    fn test_hydrate_bee_rag_bold_abstract_and_tex_superscripts() {
+        // BEE-RAG: Marker emits `#### **Abstract**` and TeX math superscripts on
+        // byline; must not bleed Jeong/Zhang in-text citations into authors.
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("BEE-RAG.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"# BEE-RAG: Balanced Entropy Engineering for Retrieval-Augmented Generation
+
+Yuhao Wang $^{1*\dagger}$  Ruiyang Ren $^{1*}$  Yucheng Wang $^2$  Jing Liu $^{2\ddagger}$  Wayne Xin Zhao $^{1\ddagger}$  Hua Wu $^3$  Haifeng Wang $^2$ 
+
+<sup>1</sup>Gaoling School of Artificial Intelligence, Renmin University of China
+
+<sup>2</sup>Baidu Inc.
+
+{yh.wang500, reyon\_ren}@outlook.com, batmanfly@gmail.com
+
+#### **Abstract**
+
+With the rapid advancement of large language models (LLMs), retrieval-augmented generation (RAG) has emerged as a critical approach. Existing efforts introduce trade-offs (Jeong et al. 2024; Zhang et al. 2024a).
+
+#### Introduction
+
+Threshold-based retrieval document truncation (Jeong et al. 2024; Wang et al. 2024).
+"#;
+
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("BEE-RAG.pdf"));
+
+        assert_eq!(
+            doc.title.as_deref(),
+            Some("BEE-RAG: Balanced Entropy Engineering for Retrieval-Augmented Generation")
+        );
+        let authors = doc.authors.expect("authors");
+        assert!(
+            !authors.to_lowercase().contains("et al"),
+            "citation bleed: {authors}"
+        );
+        assert!(
+            !authors.to_lowercase().contains("jeong"),
+            "citation bleed: {authors}"
+        );
+        assert!(
+            !authors.to_lowercase().contains("outlook"),
+            "email pollution: {authors}"
+        );
+        for expected in [
+            "Yuhao Wang",
+            "Ruiyang Ren",
+            "Yucheng Wang",
+            "Jing Liu",
+            "Wayne Xin Zhao",
+            "Hua Wu",
+            "Haifeng Wang",
+        ] {
+            assert!(
+                authors.contains(expected),
+                "missing {expected} in {authors}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_hydrate_token_probability_fused_email_byline() {
+        // IEEE-style: name + ORCID + department + fused email on one line.
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("Token_probability.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"# Detecting Hallucinations in Large Language Model Generation: A Token Probability Approach
+
+Ernesto Quevedo [ID](https://orcid.org/0000-0002-8938-2230) Department of Computer Science School of Eng. & Computer Science Baylor University Email: Ernesto Quevedo1@Baylor.edu
+
+Pablo Rivas [ID](https://orcid.org/0000-0002-8690-0987) , *Senior, IEEE* Department of Computer Science School of Engineering & Computer Science Baylor University Email: Pablo Rivas@Baylor.edu
+
+Jorge Yero Salazar [ID](https://orcid.org/0000-0002-5033-4805) Department of Computer Science School of Eng. & Computer Science Baylor University Email: Jorge Yero1@Baylor.edu
+
+*Abstract*—Concerns regarding the propensity of Large Language Models (LLMs) to produce inaccurate outputs.
+"#;
+
+        hydrate_source_document_metadata(
+            &mut doc,
+            content,
+            Utf8Path::new("Token_probability.pdf"),
+        );
+
+        let authors = doc.authors.expect("authors");
+        for expected in ["Ernesto Quevedo", "Pablo Rivas", "Jorge Yero Salazar"] {
+            assert!(
+                authors.contains(expected),
+                "missing {expected} in {authors}"
+            );
+        }
+        assert!(!authors.to_lowercase().contains("baylor"));
+        assert!(!authors.to_lowercase().contains("department"));
+    }
+
+    #[test]
+    fn test_hydrate_hichunk_bold_intro_and_unheaded_abstract() {
+        // HiChunk: no Abstract heading; `## **1 Introduction**` plus Date/Code
+        // bullets; must not mine Lewis/Zhang citation names from body.
+        let mut doc = SourceDocument::new(Utf8PathBuf::from("HiChunk.pdf"));
+        doc.kind = SourceKind::Markdown;
+
+        let content = r#"# **HiChunk: Evaluating and Enhancing Retrieval-Augmented Generation with Hierarchical Chunking**
+
+Wensheng Lu \* 1 Keyu Chen \* 1 Ruizhi Qiao <sup>1</sup> Xing Sun <sup>1</sup>
+
+<sup>1</sup>Tencent Youtu Lab
+
+Retrieval-Augmented Generation (RAG) enhances the response capabilities of language models by integrating external knowledge sources. However, document chunking as an important part of RAG system often lacks effective evaluation tools.
+
+- **Date:** Sep 15, 2025
+- **Correspondence:** Ruizhi.Qiao@tencent.com
+- **Code:** <https://github.com/TencentYoutuResearch/HiChunk.git> **Data:** <https://huggingface.co/datasets/Youtu-RAG/HiCBench>
+
+## **1 Introduction**
+
+RAG enhances quality by retrieving chunks as prompts[Lewis et al., 2020]. This helps reduce hallucinations[Chen et al., 2024, Zhang et al., 2025], especially when dealing with real-time information[He et al., 2022] and specialized domain knowledge[Wang et al., 2023, Li et al., 2023].
+"#;
+
+        hydrate_source_document_metadata(&mut doc, content, Utf8Path::new("HiChunk.pdf"));
+
+        assert!(
+            doc.title
+                .as_deref()
+                .unwrap_or("")
+                .contains("HiChunk: Evaluating"),
+            "title={:?}",
+            doc.title
+        );
+        let authors = doc.authors.expect("authors");
+        assert!(
+            !authors.to_lowercase().contains("et al"),
+            "citation bleed: {authors}"
+        );
+        assert!(
+            !authors.to_lowercase().contains("lewis"),
+            "citation bleed: {authors}"
+        );
+        assert!(
+            !authors.to_lowercase().contains("ruizhi.qiao"),
+            "email pollution: {authors}"
+        );
+        for expected in ["Wensheng Lu", "Keyu Chen", "Ruizhi Qiao", "Xing Sun"] {
+            assert!(
+                authors.contains(expected),
+                "missing {expected} in {authors}"
+            );
+        }
+        assert_eq!(doc.year, Some(2025));
     }
 }

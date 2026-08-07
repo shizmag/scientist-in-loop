@@ -70,9 +70,6 @@ static A_TAG_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)<a[^>]*>
 static MD_LINK_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\([^)]+\)").unwrap());
 
-static MD_LINK_WITH_URL_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap());
-
 static AUTHOR_FOOTNOTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<sup>.*?</sup>|\[[a-z0-9*\\†‡,∗ ]+\]|[*†‡§¶#\\∗]+").unwrap());
 
@@ -168,8 +165,50 @@ pub fn strip_html_spans(text: &str) -> String {
 }
 
 /// Strip markdown links like `[Name](#page-1-0)` to `Name`.
+///
+/// Uses a simple non-nested regex; prefer [`map_markdown_links`] when URLs may
+/// contain parentheses (e.g. Elsevier `refhub` paths with `(26)`).
 pub fn strip_markdown_links(text: &str) -> String {
     MD_LINK_REGEX.replace_all(text, "$1").to_string()
+}
+
+/// Map markdown links `[text](url)` with **balanced** parentheses in `url`.
+///
+/// Standard regex `[^)]+` stops at the first `)`, which corrupts Elsevier refhub
+/// links such as `[hallucinations](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb2)`
+/// into `hallucinations00077-7/sb2)`.
+pub fn map_markdown_links(text: &str, mut map: impl FnMut(&str, &str) -> String) -> String {
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'['
+            && let Some(close_bracket) = text[i + 1..].find(']').map(|o| i + 1 + o)
+            && close_bracket + 1 < bytes.len()
+            && bytes[close_bracket + 1] == b'('
+        {
+            let mut depth = 1usize;
+            let mut k = close_bracket + 2;
+            while k < bytes.len() && depth > 0 {
+                match bytes[k] {
+                    b'(' => depth += 1,
+                    b')' => depth -= 1,
+                    _ => {}
+                }
+                k += 1;
+            }
+            if depth == 0 {
+                let link_text = &text[i + 1..close_bracket];
+                let url = &text[close_bracket + 2..k - 1];
+                out.push_str(&map(link_text, url));
+                i = k;
+                continue;
+            }
+        }
+        out.push(text[i..].chars().next().unwrap());
+        i += text[i..].chars().next().unwrap().len_utf8();
+    }
+    out
 }
 
 /// Strip author footnote markers like `<sup>...</sup>`, `[\*1]`, `[a]`, `\*`, `†`, etc.
@@ -182,19 +221,32 @@ pub fn clean_reference_text(text: &str) -> String {
     let mut cleaned = HTML_SPAN_REGEX.replace_all(text, "").to_string();
     cleaned = A_TAG_REGEX.replace_all(&cleaned, "").to_string();
 
-    cleaned = MD_LINK_WITH_URL_REGEX
-        .replace_all(&cleaned, |caps: &regex::Captures| {
-            let text_content = &caps[1];
-            let url = &caps[2];
-            if url.contains("10.") || url.contains("arxiv") || extract_arxiv_id(url).is_some() {
-                caps[0].to_string()
-            } else if text_content.contains("aclanthology.org") || url.contains("aclanthology.org") {
-                String::new()
-            } else {
-                text_content.to_string()
-            }
-        })
-        .to_string();
+    // Balanced-paren aware: preserve DOI/arXiv markdown links, drop ACL noise, keep link text.
+    cleaned = map_markdown_links(&cleaned, |text_content, url| {
+        let url_lower = url.to_lowercase();
+        if url.contains("10.")
+            || url_lower.contains("arxiv")
+            || extract_arxiv_id(url).is_some()
+        {
+            format!("[{text_content}]({url})")
+        } else if text_content.contains("aclanthology.org") || url_lower.contains("aclanthology.org")
+        {
+            String::new()
+        } else if url_lower.contains("refhub.elsevier.com") || url_lower.contains("refhub") {
+            // Elsevier Marker dumps often link single words mid-title; keep the word only.
+            text_content
+                .trim_end_matches([',', '.', ':', ';'])
+                .to_string()
+        } else {
+            text_content.to_string()
+        }
+    });
+
+    // Safety net for already-broken or partially-stripped Elsevier fragments.
+    static REFHUB_RESIDUE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)(?:https?://)?(?:refhub\.elsevier\.com/)?S?\d{4}-\d{3,5}X?\([^)]*\)?\d*/?sb\d+\)?|\b\d{4,5}-\d+/sb\d+\)?").unwrap()
+    });
+    cleaned = REFHUB_RESIDUE_REGEX.replace_all(&cleaned, "").to_string();
 
     static ACL_URL_REGEX: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?i)https?://(?:www\.)?aclanthology\.org/\S*").unwrap());
@@ -207,6 +259,13 @@ pub fn clean_reference_text(text: &str) -> String {
 
     static MULTI_SPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s{2,}").unwrap());
     cleaned = MULTI_SPACE_REGEX.replace_all(&cleaned, " ").to_string();
+    // Rejoin words split by stripped mid-title links: "graph– large" / "model :".
+    cleaned = cleaned.replace("– ", "–").replace("— ", "—");
+    static SPACE_BEFORE_PUNCT: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\s+([,.;:!?])").unwrap());
+    cleaned = SPACE_BEFORE_PUNCT
+        .replace_all(&cleaned, "$1")
+        .to_string();
 
     let mut trimmed = cleaned.trim();
     if let Some(idx) = trimmed.find(']') {
@@ -221,6 +280,78 @@ pub fn clean_reference_text(text: &str) -> String {
         }
     }
     trimmed.trim_start_matches('-').trim().to_string()
+}
+
+/// Normalize a markdown heading / frontmatter label for section matching.
+///
+/// Strips HTML spans, markdown `#` markers, list bullets, and bold/italic
+/// markers so that `#### **Abstract**` and `## **1 Introduction**` compare as
+/// `abstract` and `1 introduction`.
+pub fn normalize_heading_text(line: &str) -> String {
+    let mut s = strip_html_spans(line);
+    s = s.trim().to_string();
+    // Markdown heading markers
+    while s.starts_with('#') {
+        s = s[1..].trim_start().to_string();
+    }
+    // Leading list bullets: "- Date:", "* Code:"
+    if let Some(rest) = s
+        .strip_prefix("- ")
+        .or_else(|| s.strip_prefix("* "))
+        .or_else(|| s.strip_prefix("• "))
+    {
+        s = rest.trim().to_string();
+    }
+    // Bold/italic wrappers and leftover emphasis markers
+    s = s.replace("**", "").replace("__", "");
+    s = s
+        .trim_matches(|c: char| c == '*' || c == '_' || c == '`' || c == '"' || c == '\'')
+        .trim()
+        .to_string();
+    s.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+/// True when a line ends parent frontmatter / byline scanning (abstract,
+/// introduction, keywords, date/code meta bullets, etc.).
+pub fn is_frontmatter_section_stop(line: &str) -> bool {
+    let n = normalize_heading_text(line);
+    if n.is_empty() {
+        return false;
+    }
+    // Abstract / keywords: allow `*Abstract*—…` and spaced `A B S T R A C T`.
+    // Do NOT use bare `data ` / `code ` prefixes — those false-stop Elsevier
+    // journal titles like "Data & Knowledge Engineering".
+    if n == "abstract"
+        || n == "a b s t r a c t"
+        || n.starts_with("abstract")
+        || n == "contents"
+        || n == "a r t i c l e i n f o"
+        || n.starts_with("article info")
+        || n.starts_with("keywords")
+        || n.starts_with("index terms")
+        || n.starts_with("1 introduction")
+        || n.starts_with("1. introduction")
+        || n.starts_with("i. introduction")
+        || n.starts_with("i introduction")
+        || n == "introduction"
+        || n.starts_with("date:")
+        || n.starts_with("correspondence:")
+        || n.starts_with("code:")
+        || n.starts_with("data:")
+    {
+        return true;
+    }
+    // Numbered section starts that never belong in the byline region.
+    static NUMBERED_BODY_SECTION: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"^\d+(\.\d+)*\s+(introduction|related work|background|preliminar|method|experiments?)\b",
+        )
+        .unwrap()
+    });
+    NUMBERED_BODY_SECTION.is_match(&n)
 }
 
 /// Check if line contains affiliation or noise keywords
@@ -351,14 +482,40 @@ pub fn clean_author_byline_line(line: &str) -> String {
 
     // Handle affiliation lines and keywords
     if let Some(idx) = find_affiliation_keyword_idx(&s) {
-        s = s[..idx].to_string();
+        let before = s[..idx].trim().to_string();
+        // Pure affiliation lines like "Gaoling School of …" leave an orphan campus
+        // token; keep mononyms ("Harshavardhan Independent Researcher").
+        if before.is_empty() {
+            return String::new();
+        }
+        let s_lower = s.to_lowercase();
+        let looks_like_campus_orphan = before.split_whitespace().count() == 1
+            && (s_lower.contains("school")
+                || s_lower.contains("university")
+                || s_lower.contains("institute")
+                || s_lower.contains("department")
+                || s_lower.contains("laboratory")
+                || s_lower.contains(" lab"));
+        if looks_like_campus_orphan {
+            return String::new();
+        }
+        s = before;
     } else if is_affiliation_or_noise_line(&s) {
         return String::new();
     }
 
-    // Strip TeX math footnote markers e.g. $^{1*\dagger}$, $^1$, $^{2\ddagger}$
+    // Strip TeX math footnote markers e.g. $^{1*\dagger}$, $^1$, $^{2\ddagger}$.
+    // Keep alternatives tight — a greedy `$^…$` spanning multiple math groups
+    // would erase intervening author names (Jing Liu between `$^2$` and `$^{2}$`).
     static TEX_MATH_NOISE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"\$\^\{?[^}]*\}?\$|\$[^$]*\$|\^\{[^}]*\}|\^\[[^\]]*\]").unwrap()
+        Regex::new(concat!(
+            r"\$\^\{[^}]*\}\$",           // $^{1*\dagger}$
+            r"|\$\^[A-Za-z0-9*†‡\\]+\$", // $^2$, $^1*$
+            r"|\$[^$]{1,24}\$",            // other short inline math
+            r"|\^\{[^}]*\}",               // ^{1} without dollars
+            r"|\^\[[^\]]*\]",              // ^[1]
+        ))
+        .unwrap()
     });
     s = TEX_MATH_NOISE_REGEX.replace_all(&s, "").to_string();
 
@@ -374,6 +531,13 @@ pub fn clean_author_byline_line(line: &str) -> String {
 
     // Strip IEEE badges
     s = IEEE_BADGE_REGEX.replace_all(&s, "").to_string();
+
+    // Marker often separates authors with multi-spaces (or spaces left after
+    // stripping `$^{…}$`). Promote those gaps to commas before collapse so
+    // "Yuhao Wang  Ruiyang Ren  Wayne Xin Zhao" splits correctly.
+    static MULTI_SPACE_SEP: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"[ \t]{2,}").unwrap());
+    s = MULTI_SPACE_SEP.replace_all(&s, ", ").to_string();
 
     s = s.split_whitespace().collect::<Vec<_>>().join(" ");
     s.trim_matches(|c: char| c == ',' || c == ';' || c == '-' || c.is_whitespace()).to_string()
@@ -413,6 +577,37 @@ fn find_affiliation_keyword_idx(text: &str) -> Option<usize> {
     keywords.iter().filter_map(|kw| lower.find(kw)).min()
 }
 
+/// Score how much `middle` looks like a middle name/initial given the first name.
+/// Higher is better; 0 means "not a middle name".
+fn middle_name_score(first: &str, middle: &str) -> i32 {
+    let t = middle.trim_matches(|c: char| c == '.' || c == ',');
+    if t.is_empty() || !t.chars().next().is_some_and(|c| c.is_uppercase()) {
+        return 0;
+    }
+    // Initials: "A", "A."
+    if middle.ends_with('.') || t.len() == 1 {
+        if t.chars().all(|c| c.is_ascii_alphabetic() || c == '.') {
+            return 100;
+        }
+        return 0;
+    }
+    if !t.chars().all(|c| c.is_ascii_alphabetic()) {
+        return 0;
+    }
+    // Never treat 1–2 letter tokens as middles ("Lu", "Wu" surnames).
+    if t.len() < 3 || t.len() > 4 {
+        return 0;
+    }
+    // Prefer middles after longer given names ("Wayne Xin") over short ones.
+    let bonus = if first.len() >= 5 { 20 } else { 0 };
+    if t.len() == 3 {
+        50 + bonus
+    } else {
+        // len == 4 ("Paul"): weaker than 3-letter middles.
+        30 + bonus
+    }
+}
+
 /// Split author line into individual candidate author names.
 pub fn split_author_names(line: &str) -> Vec<String> {
     let mut res = Vec::new();
@@ -425,34 +620,59 @@ pub fn split_author_names(line: &str) -> Vec<String> {
             }
             let and_split: Vec<&str> = AND_SPLIT_REGEX.split(trimmed).collect();
             for item in and_split {
-                let clean_item = item.trim().trim_matches(|c: char| c == ',' || c == ';' || c.is_whitespace()).to_string();
+                let clean_item = item
+                    .trim()
+                    .trim_matches(|c: char| c == ',' || c == ';' || c.is_whitespace())
+                    .to_string();
                 if !clean_item.is_empty() {
                     res.push(clean_item);
                 }
             }
         }
     } else {
-        // Line has no commas/semicolons: e.g. "Wensheng Lu Keyu Chen Ruizhi Qiao Xing Sun"
+        // No commas: prefer First Last pairs. When the word count is odd, place
+        // exactly one First Middle Last triple at the best-scoring even index
+        // (e.g. "Wayne Xin Zhao" amid Chinese First Last pairs).
         let words: Vec<&str> = line.split_whitespace().collect();
+        let n = words.len();
+        let mut triple_at: Option<usize> = None;
+        if n >= 3 && !n.is_multiple_of(2) {
+            let mut best_i = None;
+            let mut best_score = 0;
+            let mut i = 0;
+            while i + 2 < n {
+                let rem_after = n - (i + 3);
+                if rem_after.is_multiple_of(2) {
+                    let score = middle_name_score(words[i], words[i + 1]);
+                    // Prefer higher score; break ties toward the right.
+                    if score > 0 && score >= best_score {
+                        best_score = score;
+                        best_i = Some(i);
+                    }
+                }
+                i += 2;
+            }
+            triple_at = best_i;
+        }
+
         let mut idx = 0;
-        while idx < words.len() {
+        while idx < n {
             let w1 = words[idx];
-            if idx + 1 < words.len() {
+            if triple_at == Some(idx) && idx + 2 < n {
+                res.push(format!(
+                    "{} {} {}",
+                    words[idx],
+                    words[idx + 1],
+                    words[idx + 2]
+                ));
+                idx += 3;
+                continue;
+            }
+            if idx + 1 < n {
                 let w2 = words[idx + 1];
                 let is_w1_cap = w1.chars().next().is_some_and(|c| c.is_uppercase());
                 let is_w2_cap = w2.chars().next().is_some_and(|c| c.is_uppercase());
                 if is_w1_cap && is_w2_cap {
-                    // Check if 3rd word is middle initial or name e.g. "Wayne Xin Zhao"
-                    if idx + 2 < words.len() {
-                        let w3 = words[idx + 2];
-                        let is_w3_cap = w3.chars().next().is_some_and(|c| c.is_uppercase());
-                        // If w2 is a middle initial or short middle name and w3 is capitalized
-                        if is_w3_cap && (w2.len() <= 3 || idx + 3 >= words.len() || !words[idx + 3].chars().next().is_some_and(|c| c.is_uppercase())) {
-                            res.push(format!("{w1} {w2} {w3}"));
-                            idx += 3;
-                            continue;
-                        }
-                    }
                     res.push(format!("{w1} {w2}"));
                     idx += 2;
                     continue;
@@ -801,6 +1021,85 @@ mod tests {
     }
 
     #[test]
+    fn test_split_author_names_space_separated_pairs_and_middle() {
+        let paired = split_author_names("Wensheng Lu Keyu Chen Ruizhi Qiao Xing Sun");
+        assert_eq!(
+            paired,
+            vec![
+                "Wensheng Lu".to_string(),
+                "Keyu Chen".to_string(),
+                "Ruizhi Qiao".to_string(),
+                "Xing Sun".to_string(),
+            ]
+        );
+        // Odd count: place the First Middle Last triple on the best middle token.
+        let with_middle =
+            split_author_names("Yuhao Wang Ruiyang Ren Wayne Xin Zhao Hua Wu");
+        assert_eq!(
+            with_middle,
+            vec![
+                "Yuhao Wang".to_string(),
+                "Ruiyang Ren".to_string(),
+                "Wayne Xin Zhao".to_string(),
+                "Hua Wu".to_string(),
+            ]
+        );
+        // Multi-space gaps (as Marker emits between authors) become commas.
+        let cleaned = clean_author_byline_line(
+            "Yuhao Wang  Ruiyang Ren  Yucheng Wang  Jing Liu  Wayne Xin Zhao  Hua Wu  Haifeng Wang",
+        );
+        assert_eq!(
+            split_author_names(&cleaned),
+            vec![
+                "Yuhao Wang".to_string(),
+                "Ruiyang Ren".to_string(),
+                "Yucheng Wang".to_string(),
+                "Jing Liu".to_string(),
+                "Wayne Xin Zhao".to_string(),
+                "Hua Wu".to_string(),
+                "Haifeng Wang".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_normalize_heading_text_and_frontmatter_stop() {
+        assert_eq!(normalize_heading_text("#### **Abstract**"), "abstract");
+        assert_eq!(
+            normalize_heading_text("## **1 Introduction**"),
+            "1 introduction"
+        );
+        assert_eq!(
+            normalize_heading_text("- **Date:** Sep 15, 2025"),
+            "date: sep 15, 2025"
+        );
+        assert_eq!(
+            normalize_heading_text("- **Correspondence:** Ruizhi.Qiao@tencent.com"),
+            "correspondence: ruizhi.qiao@tencent.com"
+        );
+        assert!(is_frontmatter_section_stop("#### **Abstract**"));
+        assert!(is_frontmatter_section_stop("## **1 Introduction**"));
+        assert!(is_frontmatter_section_stop("- **Date:** Sep 15, 2025"));
+        assert!(is_frontmatter_section_stop("#### Introduction"));
+        assert!(is_frontmatter_section_stop(
+            "*Abstract*—Concerns regarding the propensity of LLMs"
+        ));
+        assert!(is_frontmatter_section_stop(
+            "- **Data:** <https://huggingface.co/datasets/Youtu-RAG/HiCBench>"
+        ));
+        // Must not treat Elsevier journal titles as meta-stop bullets.
+        assert!(!is_frontmatter_section_stop(
+            "# Data & Knowledge Engineering"
+        ));
+        assert!(!is_frontmatter_section_stop(
+            "Yuhao Wang $^{1}$ Ruiyang Ren $^{1}$"
+        ));
+        assert!(!is_frontmatter_section_stop(
+            "Wensheng Lu * 1 Keyu Chen * 1 Ruizhi Qiao"
+        ));
+    }
+
+    #[test]
     fn test_strip_markdown_links() {
         assert_eq!(
             strip_markdown_links("[Sebastian Farquhar](#page-1-0)"),
@@ -810,6 +1109,41 @@ mod tests {
             strip_markdown_links("[Name 1](#link1), [Name 2](http://link2)"),
             "Name 1, Name 2"
         );
+    }
+
+    #[test]
+    fn test_clean_reference_text_elsevier_refhub_nested_parens() {
+        // Nested (26) in Elsevier refhub URLs must not leave "00077-7/sb2)" residue.
+        let raw = "X. Guan, Mitigating large language model [hallucinations](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb2) via autonomous knowledge graph-based retrofitting, in: Proceedings of the AAAI, 2024, pp. [18126–18134.](http://refhub.elsevier.com/S0169-023X(26)00077-7/sb2)";
+        let cleaned = clean_reference_text(raw);
+        assert!(
+            cleaned.contains("hallucinations via autonomous"),
+            "expected mid-title word restored, got: {cleaned}"
+        );
+        assert!(
+            !cleaned.contains("00077-7"),
+            "refhub residue must be stripped, got: {cleaned}"
+        );
+        assert!(
+            !cleaned.contains("refhub"),
+            "refhub URL must not remain, got: {cleaned}"
+        );
+        // DOI / arXiv markdown links are preserved for downstream extractors.
+        let arxiv = "Smith, Title, 2019, arXiv preprint [arXiv:1909.04164](http://arxiv.org/abs/1909.04164)";
+        let cleaned_arxiv = clean_reference_text(arxiv);
+        assert!(
+            cleaned_arxiv.contains("arxiv.org") || cleaned_arxiv.contains("arXiv:1909.04164"),
+            "arxiv link should be kept: {cleaned_arxiv}"
+        );
+    }
+
+    #[test]
+    fn test_map_markdown_links_balanced_parens() {
+        let s = map_markdown_links(
+            "see [foo](http://example.com/a(b)c) and [bar](#x)",
+            |text, _url| text.to_string(),
+        );
+        assert_eq!(s, "see foo and bar");
     }
 
     #[test]

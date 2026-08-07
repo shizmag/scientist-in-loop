@@ -56,5 +56,8 @@ assert_cmd = "2"
 predicates = "3"
 termimad = "0.35"
 xberg = { version = "1.0.6", features = ["pdf", "ocr", "layout-types", "layout-detection", "ner-onnx"] }
+# Pin to match xberg/xberg-gliner transitive ort (dual-runtime spike / KD-20).
+ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "api-18", "ndarray", "download-binaries", "tls-rustls"] }
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 schemars = "0.8"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }

@@ -6,12 +6,19 @@ license.workspace = true
 description = "SQLite + FTS5 storage for scientist-in-loop"
 publish = false
 
+[features]
+default = []
+## Real ONNX Runtime embed/rerank (ort + tokenizers). Default build stays on hash/token fallback.
+onnx = ["dep:ort", "dep:tokenizers"]
+
 [dependencies]
 camino = { workspace = true }
 rusqlite = { workspace = true }
 serde = { workspace = true }
 sil-core = { workspace = true }
 thiserror = { workspace = true }
+ort = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
