@@ -15,9 +15,16 @@ pub mod references;
 mod validate;
 /// CrossRef (xberg) metadata fetching.
 pub mod xberg_metadata;
+/// Incremental DOI checking and background orchestrator.
+pub mod doi_checker;
 
 pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};
+pub use doi_checker::{
+    check_bib_dois_incremental, spawn_background_bib_doi_check, BibDoiItemReport,
+    DoiCheckCategory, DoiCheckReport,
+};
 pub use error::ParseError;
+
 pub use fetch::fetch_source_target;
 pub use interactive::{
     SelectionEvent, SelectionOutcome, apply_selection_event, select_pdfs_interactive,

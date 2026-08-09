@@ -20,8 +20,15 @@ pub enum ParseError {
     Message(String),
 }
 
+impl From<sil_db::DbError> for ParseError {
+    fn from(err: sil_db::DbError) -> Self {
+        ParseError::Db(err.to_string())
+    }
+}
+
 impl From<ParseError> for SilError {
     fn from(value: ParseError) -> Self {
         SilError::Parse(value.to_string())
     }
 }
+
