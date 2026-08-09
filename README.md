@@ -196,6 +196,9 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil paper structure list\|set` | Inspect or update section completion in `structure.yaml` |
 | `sil paper todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
 | `sil paper estimate [--mode quick\|full\|methodology] [--json] [--write]` | L0 multi-perspective manuscript estimate (read-only; optional write under `.sil/reviews/`) |
+| `sil paper recent [--json]` | List recently opened scientist-in-loop projects from global configuration |
+| `sil paper assets [--json]` | List and validate figures, graphics, and `\input` dependencies in `paper_draft.tex` |
+| `sil paper pack [-o bundle.zip]` | Generate reproducible manuscript ZIP package containing draft, structure, BibTeX, review reports, and `REPRO.md` |
 | `sil project context [flags]` | Structured context dump for humans/agents |
 | `sil project doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
 | `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
@@ -269,7 +272,7 @@ Sci-Action: fetch-source
 
 ## Model Context Protocol (MCP) Server & Local RAG
 
-`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil project mcp` / `sil mcp`) allowing external AI IDEs and assistants (Claude Desktop, Cursor, etc.) to inspect literature, edit sections, estimate manuscript quality, manage bibliography, update `# -- X -- #` TODO blocks, fetch sources, and format commit proposals (**19 tools**). Tools never auto-commit; they return Sci-Action proposals.
+`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil project mcp` / `sil mcp`) allowing external AI IDEs and assistants (Claude Desktop, Cursor, etc.) to inspect literature, edit sections, estimate manuscript quality, manage bibliography, update `# -- X -- #` TODO blocks, fetch sources, and format commit proposals (**22 tools**). Tools never auto-commit; they return Sci-Action proposals.
 
 ### Key MCP Features
 
