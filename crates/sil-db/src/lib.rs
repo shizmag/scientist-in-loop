@@ -4,6 +4,7 @@
 
 /// Chunk storage, markdown chunking, and similarity math.
 pub mod chunks;
+pub mod embed_cache;
 /// Database and embedding error types.
 pub mod error;
 /// ONNX Runtime embedding & reranking model integration.
@@ -269,6 +270,36 @@ impl SilDb {
             result.push(r?);
         }
         Ok(result)
+    }
+
+    /// Retrieve cached embedding for text content hash.
+    pub fn get_cached_embedding(
+        &self,
+        content_hash: &str,
+        model_name: &str,
+    ) -> Result<Option<Vec<f32>>, DbError> {
+        embed_cache::get_cached_embedding(&self.conn, content_hash, model_name)
+    }
+
+    /// Store calculated embedding in vector cache.
+    pub fn put_cached_embedding(
+        &self,
+        content_hash: &str,
+        model_name: &str,
+        dimension: usize,
+        embedding: &[f32],
+    ) -> Result<(), DbError> {
+        embed_cache::put_cached_embedding(&self.conn, content_hash, model_name, dimension, embedding)
+    }
+
+    /// Clear vector embedding cache.
+    pub fn clear_embedding_cache(&self) -> Result<usize, DbError> {
+        embed_cache::clear_embedding_cache(&self.conn)
+    }
+
+    /// Get vector embedding cache row count.
+    pub fn embedding_cache_stats(&self) -> Result<usize, DbError> {
+        embed_cache::embedding_cache_stats(&self.conn)
     }
 
     /// Save reference entries for a source document.

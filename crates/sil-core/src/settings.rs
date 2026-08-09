@@ -56,6 +56,9 @@ pub struct GlobalSettings {
     /// Global RAG settings.
     #[serde(default)]
     pub rag: RagSettings,
+    /// Recently opened sil project paths (up to 20).
+    #[serde(default)]
+    pub recent_projects: Vec<Utf8PathBuf>,
 }
 
 fn default_engine() -> String {
@@ -249,6 +252,7 @@ impl Default for GlobalSettings {
             default_template: default_template(),
             custom_fields: BTreeMap::new(),
             rag: RagSettings::default(),
+            recent_projects: Vec::new(),
         }
     }
 }
@@ -355,6 +359,15 @@ impl GlobalSettings {
 
         std::fs::write(target_path.as_std_path(), yaml)?;
         Ok(())
+    }
+
+    /// Add a project path to recent projects list (deduplicating and capping at 20).
+    pub fn touch_recent_project(&mut self, path: Utf8PathBuf) {
+        self.recent_projects.retain(|p| p != &path);
+        self.recent_projects.insert(0, path);
+        if self.recent_projects.len() > 20 {
+            self.recent_projects.truncate(20);
+        }
     }
 }
 

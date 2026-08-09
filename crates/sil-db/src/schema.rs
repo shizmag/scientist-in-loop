@@ -167,6 +167,14 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             model_dim   INTEGER NOT NULL,
             updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS embedding_cache (
+            content_hash TEXT PRIMARY KEY NOT NULL,
+            model_name   TEXT NOT NULL,
+            dimension    INTEGER NOT NULL,
+            embedding    BLOB NOT NULL,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         "#,
     )?;
 

@@ -28,6 +28,9 @@ pub fn load_project() -> Result<(Utf8PathBuf, Config, ProjectPaths)> {
     let root = sil_core::project_root_from_cwd().map_err(|e| anyhow::anyhow!("{e}"))?;
     let paths = ProjectPaths::new(&root);
     let config = Config::load(&paths.config()).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let mut global = sil_core::GlobalSettings::load_or_default(None);
+    global.touch_recent_project(root.clone());
+    let _ = global.save(None);
     Ok((root, config, paths))
 }
 

@@ -1,5 +1,6 @@
 //! Command handlers — one module per `sil` subcommand.
 
+mod assets;
 mod build;
 mod cite;
 mod context;
@@ -9,9 +10,11 @@ mod estimate;
 mod init;
 mod log;
 mod mcp;
+mod pack;
 mod parse;
 mod promote;
 mod propose;
+mod recent;
 mod search;
 mod settings_cmd;
 mod source;
@@ -21,6 +24,7 @@ mod structure_cmd;
 mod template_cmd;
 mod todo;
 
+pub use assets::run as assets;
 pub use build::run as build;
 pub use cite::run as cite;
 pub use context::run as context;
@@ -30,9 +34,11 @@ pub use estimate::run as estimate;
 pub use init::run as init;
 pub use log::run as log;
 pub use mcp::run as mcp;
+pub use pack::run as pack;
 pub use parse::run as parse;
 pub use promote::run as promote;
 pub use propose::run as propose;
+pub use recent::run as recent;
 pub use search::run as search;
 pub use settings_cmd::run as settings;
 pub use source::{

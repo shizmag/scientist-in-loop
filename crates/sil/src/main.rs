@@ -76,6 +76,9 @@ fn run() -> Result<()> {
             PaperCmd::Estimate { mode, json, write } => {
                 commands::estimate(&mode, json, write, ui.as_ref())
             }
+            PaperCmd::Recent { json } => commands::recent(json, ui.as_ref()),
+            PaperCmd::Assets { json } => commands::assets(json, ui.as_ref()),
+            PaperCmd::Pack { output } => commands::pack(output, ui.as_ref()),
         },
         Commands::Project { action } => match action {
             ProjectCmd::Doctor { json, fix_rag } => commands::doctor(json, fix_rag, ui.as_ref()),

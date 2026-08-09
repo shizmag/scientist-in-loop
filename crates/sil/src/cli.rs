@@ -211,6 +211,24 @@ pub enum PaperCmd {
         #[arg(long)]
         write: bool,
     },
+    /// List recently opened scientist-in-loop projects
+    Recent {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// List and validate paper figure/data assets
+    Assets {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+    },
+    /// Generate reproducible manuscript package zip bundle
+    Pack {
+        /// Output zip path (default paper_pack.zip)
+        #[arg(long, short = 'o')]
+        output: Option<camino::Utf8PathBuf>,
+    },
 }
 
 /// `sil project` subcommands.
