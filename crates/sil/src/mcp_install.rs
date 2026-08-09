@@ -44,10 +44,10 @@ impl TargetClient {
 
 /// Determine user's home directory, honoring `HOME` env var override.
 pub fn get_home_dir() -> Option<PathBuf> {
-    if let Some(home) = std::env::var_os("HOME") {
-        if !home.is_empty() {
-            return Some(PathBuf::from(home));
-        }
+    if let Some(home) = std::env::var_os("HOME")
+        && !home.is_empty()
+    {
+        return Some(PathBuf::from(home));
     }
     dirs::home_dir()
 }
@@ -170,7 +170,7 @@ pub fn run_installer(options: InstallOptions) -> Result<PathBuf> {
             root = json!({});
         }
 
-        if !root.get("mcpServers").map_or(false, |v| v.is_object()) {
+        if !root.get("mcpServers").is_some_and(|v| v.is_object()) {
             root["mcpServers"] = json!({});
         }
 
@@ -180,7 +180,7 @@ pub fn run_installer(options: InstallOptions) -> Result<PathBuf> {
         if target_client == TargetClient::Custom && config_path.exists() {
             let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
             if let Ok(mut root) = serde_json::from_str::<Value>(&existing) {
-                if root.is_object() && root.get("mcpServers").map_or(false, |v| v.is_object()) {
+                if root.is_object() && root.get("mcpServers").is_some_and(|v| v.is_object()) {
                     root["mcpServers"]["scientist-in-loop"] = mcp_entry;
                     serde_json::to_string_pretty(&root)?
                 } else {

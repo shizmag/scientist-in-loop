@@ -161,7 +161,7 @@ mod tests {
             .as_array()
             .expect("tools should be an array");
 
-        assert_eq!(tools.len(), 16, "Should register all 16 core sil MCP tools");
+        assert_eq!(tools.len(), 19, "Should register all 19 core sil MCP tools");
 
         let expected_names = [
             "sil_search_sources",
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn test_mcpserver_default() {
         let server = McpServer::default();
-        assert_eq!(server.tools.len(), 16);
+        assert_eq!(server.tools.len(), 19);
     }
 
     #[tokio::test]

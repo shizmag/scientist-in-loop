@@ -28,6 +28,7 @@ You are working inside a `sil`-managed scientific project.
 - **SYSTEM.md** (`agent/skills/SYSTEM.md`) is the agent routing index and is always included in the default context payload.
 - **paper.md** (`agent/skills/paper.md`) - Load on demand when the task touches `structure.yaml`, `paper_draft.tex`, `paper.tex`, or section completion.
 - **agent-code.md** (`agent/skills/agent-code.md`) - Load on demand when the task creates, modifies, or references anything inside `agent/`.
+- **review.md** (`agent/skills/review.md`) - Load on demand for manuscript estimate / peer-review / critique tasks (`sil paper estimate`, multi-perspective review).
 
 ## Context
 Use `sil context` to obtain a fresh, structured view of the project state.

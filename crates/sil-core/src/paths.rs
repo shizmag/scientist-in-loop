@@ -23,9 +23,17 @@ pub mod rel {
     pub const SKILL_PAPER: &str = "agent/skills/paper.md";
     /// Agent-code skill.
     pub const SKILL_AGENT_CODE: &str = "agent/skills/agent-code.md";
+    /// Manuscript estimate / peer-review skill.
+    pub const SKILL_REVIEW: &str = "agent/skills/review.md";
+    /// Review skill supporting materials directory.
+    pub const SKILL_REVIEW_DIR: &str = "agent/skills/review";
     /// Improvement proposals directory (suggestion_1, suggestion_2, …).
     /// Not gitignored — proposals are versioned with the project.
     pub const IMPROVEMENT: &str = ".sil/improvement";
+    /// Manuscript estimate reports directory.
+    pub const REVIEWS: &str = ".sil/reviews";
+    /// Advisory workspace lock (agent/TUI coordination).
+    pub const WORKSPACE_LOCK: &str = ".sil/workspace.lock";
     /// Agent-readable draft section split (regenerated from paper_draft.tex).
     /// Source of truth remains paper_draft.tex; this tree is a cache for agents.
     pub const DRAFT_SECTIONS: &str = ".sil/draft_sections";
@@ -97,6 +105,16 @@ impl ProjectPaths {
     /// Improvement proposals directory (`.sil/improvement/`).
     pub fn improvement_dir(&self) -> Utf8PathBuf {
         self.join(rel::IMPROVEMENT)
+    }
+
+    /// Manuscript estimate reports directory (`.sil/reviews/`).
+    pub fn reviews_dir(&self) -> Utf8PathBuf {
+        self.join(rel::REVIEWS)
+    }
+
+    /// Advisory workspace lock path (`.sil/workspace.lock`).
+    pub fn workspace_lock(&self) -> Utf8PathBuf {
+        self.join(rel::WORKSPACE_LOCK)
     }
 
     /// Path for a numbered improvement suggestion (`suggestion_n`).

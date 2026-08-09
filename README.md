@@ -195,6 +195,7 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil paper promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
 | `sil paper structure list\|set` | Inspect or update section completion in `structure.yaml` |
 | `sil paper todo [--json]` | List active `# -- X -- #` idea and TODO blocks parsed from `paper_draft.tex` |
+| `sil paper estimate [--mode quick\|full\|methodology] [--json] [--write]` | L0 multi-perspective manuscript estimate (read-only; optional write under `.sil/reviews/`) |
 | `sil project context [flags]` | Structured context dump for humans/agents |
 | `sil project doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
 | `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
@@ -266,23 +267,41 @@ Sci-Action: fetch-source
 
 ---
 
-## Model Context Protocol (MCP) Server & Local ONNX RAG
+## Model Context Protocol (MCP) Server & Local RAG
 
-`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil mcp`) allowing external AI IDEs and assistants (such as Antigravity, Claude Desktop, and Cursor) to directly inspect literature, execute skills, update `# -- X -- #` TODO blocks, fetch literature sources, and format commit proposals (12 core tools).
+`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil project mcp` / `sil mcp`) allowing external AI IDEs and assistants (Claude Desktop, Cursor, etc.) to inspect literature, edit sections, estimate manuscript quality, manage bibliography, update `# -- X -- #` TODO blocks, fetch sources, and format commit proposals (**19 tools**). Tools never auto-commit; they return Sci-Action proposals.
 
 ### Key MCP Features
 
-1. **100% Local ONNX Hybrid RAG (`sil_search_sources`)**:
+1. **Hybrid RAG (`sil_search_sources`)** — BM25 FTS5 always; **dense ONNX** embed/rerank only when built with `cargo build -p sil --features onnx` **and** models + `tokenizer.json` load successfully under `~/.cache/sil/models/` (otherwise honest hash/token **fallback**; see `sil project doctor`):
    - **Parent-Child Chunking**: Splits parsed Markdown literature by section headings (parent chunks) and paragraphs (child chunks).
-   - **Dense ONNX Embeddings + BM25 FTS5**: Uses local ONNX models (`bge-small-en-v1.5` / `ms-marco-MiniLM-L-6-v2`) with Reciprocal Rank Fusion (RRF) and HyDE query expansion.
-   - **Custom ONNX Paths & Directory Auto-Resolution**: Configure custom model directories (`onnx_models_dir`) or explicit file/directory paths (`onnx_embedder_path`, `onnx_reranker_path`) in `.sil/config.yaml` or `~/.config/sil/settings.yaml`. Pasting a directory path automatically locates any `*.onnx` model inside.
-   - **Parent Context Expansion**: Matches on child paragraphs automatically expand to full parent section context.
+   - **RRF + HyDE**: Reciprocal Rank Fusion and optional HyDE query expansion.
+   - **Custom ONNX Paths**: Configure `onnx_models_dir` / `onnx_embedder_path` / `onnx_reranker_path` in settings; directory paths auto-locate `*.onnx`.
+   - **Parent Context Expansion**: Child hits expand to full parent section context.
 2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
    - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.
 3. **Literature Fetching (`sil_fetch_source`)**:
    - Download papers/sources into `sources/` by DOI (`10.xxxx`), arXiv ID (`arxiv:XXXX.YYYY`), or direct URL, and optionally parse into SQLite FTS5 index.
 4. **Commit Proposal Governance (`sil_propose_commit`)**:
    - Generates structured commit proposals with `Sci-Action:` trailers for human review. **Never auto-commits**.
+
+### Additional Stage 9 MCP tools
+
+| Tool | Role |
+|------|------|
+| `sil_estimate_paper` | L0 multi-perspective estimate; optional write under `.sil/reviews/` (read-only on draft) |
+| `sil_edit_section` | Replace a LaTeX section body / search-replace; Sci-Action `edit-draft` |
+| `sil_ground_claims` | Hybrid search suggestions for a claim; optional TODO note |
+
+### Manuscript estimate (native CLI)
+
+```bash
+sil paper estimate --mode full          # human markdown
+sil paper estimate --mode quick --json  # machine JSON
+sil paper estimate --write              # save under .sil/reviews/ + commit proposal
+```
+
+Skill pack: `agent/skills/review.md` (inspired by [academic-research-skills](https://github.com/Imbad0202/academic-research-skills) reviewer methodology; sil-native text, CC-BY-NC attribution for upstream). L0 is offline heuristic; refine with an agent using the skill (L1).
 
 ### Standard MCP Configuration (`mcp.json`)
 

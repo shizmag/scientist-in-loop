@@ -199,6 +199,18 @@ pub enum PaperCmd {
         #[arg(long, short = 'o')]
         output: Option<camino::Utf8PathBuf>,
     },
+    /// Multi-perspective L0 manuscript estimate (read-only; optional write under .sil/reviews/)
+    Estimate {
+        /// Mode: quick | full | methodology
+        #[arg(long, default_value = "quick")]
+        mode: String,
+        /// Machine-readable JSON
+        #[arg(long)]
+        json: bool,
+        /// Write report under .sil/reviews/ (never edits paper_draft.tex)
+        #[arg(long)]
+        write: bool,
+    },
 }
 
 /// `sil project` subcommands.

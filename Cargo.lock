@@ -5349,6 +5349,8 @@ name = "sil-agent"
 version = "1.0.0"
 dependencies = [
  "camino",
+ "serde",
+ "serde_json",
  "sil-core",
  "sil-db",
  "sil-git",

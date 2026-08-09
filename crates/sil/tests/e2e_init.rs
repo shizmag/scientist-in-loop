@@ -27,6 +27,8 @@ fn init_creates_exact_layout_and_readmes() {
         "agent/skills/SYSTEM.md",
         "agent/skills/paper.md",
         "agent/skills/agent-code.md",
+        "agent/skills/review.md",
+        "agent/skills/review/rubrics.md",
         ".sil/improvement",
         ".sil/improvement/README.md",
         ".sil/draft_sections",

@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 
 #![allow(clippy::collapsible_if, clippy::collapsible_match)]
+#![allow(dead_code)]
 
 pub(crate) mod app;
 pub(crate) mod ui;

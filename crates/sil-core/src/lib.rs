@@ -26,6 +26,8 @@ pub mod digest;
 pub mod health;
 /// Project TODO and idea tracking blocks.
 pub mod todo;
+/// Advisory workspace lock for agent/TUI coordination.
+pub mod workspace_lock;
 
 pub use bib::{
     BibEntryInfo, BibSuggestion, TUI_ADDED_MARKER, UpsertOptions, extract_bib_entry_info,
@@ -54,3 +56,7 @@ pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};
 pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
 pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
+pub use workspace_lock::{
+    WorkspaceLock, clear_lock, is_busy, lock_path, lock_to_yaml, parse_lock_yaml, read_lock,
+    write_lock,
+};

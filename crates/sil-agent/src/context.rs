@@ -65,6 +65,17 @@ pub fn generate_context(input: &ContextInput<'_>) -> Result<String, ContextError
             Err(e) => return Err(e),
         }
     }
+    if input.skills.review {
+        match load_skill(input.root, "review.md") {
+            Ok(s) => {
+                out.push_str("## Skill: review.md\n\n");
+                out.push_str(&s);
+                out.push_str("\n\n");
+            }
+            Err(ContextError::MissingSkill(_)) => {}
+            Err(e) => return Err(e),
+        }
+    }
 
     out.push_str("## structure.yaml\n\n```yaml\n");
     out.push_str(input.structure_yaml.trim_end());

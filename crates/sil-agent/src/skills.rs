@@ -31,6 +31,8 @@ pub struct SkillSelection {
     pub paper: bool,
     /// Load agent-code.md.
     pub agent_code: bool,
+    /// Load review.md (manuscript estimate / peer-review skill).
+    pub review: bool,
 }
 
 impl SkillSelection {
@@ -40,6 +42,7 @@ impl SkillSelection {
             system: true,
             paper: false,
             agent_code: false,
+            review: false,
         }
     }
 
@@ -66,6 +69,16 @@ impl SkillSelection {
         {
             s.agent_code = true;
         }
+        if t.contains("review")
+            || t.contains("estimate")
+            || t.contains("critique")
+            || t.contains("peer review")
+            || t.contains("referee")
+            || t.contains("editorial")
+        {
+            s.review = true;
+            s.paper = true;
+        }
         s
     }
 
@@ -84,6 +97,9 @@ impl SkillSelection {
             }
             if n.contains("agent") {
                 self.agent_code = true;
+            }
+            if n.contains("review") || n.contains("estimate") {
+                self.review = true;
             }
         }
     }
@@ -159,6 +175,16 @@ mod tests {
         assert!(s.system);
         assert!(!s.paper);
         assert!(!s.agent_code);
+        assert!(!s.review);
+    }
+
+    #[test]
+    fn from_task_review_estimate() {
+        let s = SkillSelection::from_task("estimate this paper");
+        assert!(s.review);
+        assert!(s.paper);
+        let s2 = SkillSelection::from_task("peer review critique");
+        assert!(s2.review);
     }
 
     #[test]

@@ -12,7 +12,7 @@ fn test_mcp_installer_gemini() {
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
         .env("HOME", home)
-        .args(&["mcp", "install", "--client", "gemini"])
+        .args(["mcp", "install", "--client", "gemini"])
         .output()
         .expect("failed to execute sil mcp install");
 
@@ -41,7 +41,7 @@ fn test_mcp_installer_claude_merged() {
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
         .env("HOME", home)
-        .args(&["mcp", "install", "--client", "claude"])
+        .args(["mcp", "install", "--client", "claude"])
         .output()
         .expect("failed to execute sil mcp install");
 
@@ -63,7 +63,7 @@ fn test_mcp_installer_custom_path() {
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
         .env("HOME", temp.path())
-        .args(&["mcp", "install", "--client", "custom", "--path", custom_file.to_str().unwrap()])
+        .args(["mcp", "install", "--client", "custom", "--path", custom_file.to_str().unwrap()])
         .output()
         .expect("failed to execute sil mcp install");
 

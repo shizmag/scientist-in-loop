@@ -203,6 +203,7 @@ fn ensure_layout(target: &Utf8Path) -> Result<()> {
         paths.sil_dir(),
         paths.skills_dir(),
         paths.improvement_dir(),
+        paths.reviews_dir(),
         paths.draft_sections_dir(),
         paths.join(rel::SOURCES),
         paths.join(rel::DATA),
@@ -221,6 +222,22 @@ fn write_skills(target: &Utf8Path) -> Result<()> {
     write(target, rel::SKILL_SYSTEM, templates::SKILL_SYSTEM)?;
     write(target, rel::SKILL_PAPER, templates::SKILL_PAPER)?;
     write(target, rel::SKILL_AGENT_CODE, templates::SKILL_AGENT_CODE)?;
+    write(target, rel::SKILL_REVIEW, templates::SKILL_REVIEW)?;
+    write(
+        target,
+        "agent/skills/review/rubrics.md",
+        templates::SKILL_REVIEW_RUBRICS,
+    )?;
+    write(
+        target,
+        "agent/skills/review/personas.md",
+        templates::SKILL_REVIEW_PERSONAS,
+    )?;
+    write(
+        target,
+        "agent/skills/review/report_template.md",
+        templates::SKILL_REVIEW_REPORT,
+    )?;
     Ok(())
 }
 
@@ -247,6 +264,7 @@ fn write_scaffold_readmes(target: &Utf8Path, overwrite: bool) -> Result<Vec<Stri
         ("figures/images/README.md", templates::FIGURES_IMAGES_README),
         ("agent/README.md", templates::AGENT_README),
         (".sil/improvement/README.md", templates::IMPROVEMENT_README),
+        (".sil/reviews/README.md", templates::REVIEWS_README),
     ];
     let mut created = Vec::new();
     for (rel_path, content) in files {

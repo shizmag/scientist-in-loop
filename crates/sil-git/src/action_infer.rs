@@ -89,6 +89,8 @@ pub fn proposal_for_action(
         SciAction::FetchSource => "Fetch source PDF",
         SciAction::UpdateBibliography => "Update bibliography",
         SciAction::PromoteBibliography => "Promote bibliography entry",
+        SciAction::EstimatePaper => "Add manuscript estimate report",
+        SciAction::GroundClaims => "Ground claims with literature",
     };
     let mut p = CommitProposal::new(subject.unwrap_or(default_subject), action);
     if let Some(b) = body

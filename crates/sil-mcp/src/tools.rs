@@ -3,14 +3,17 @@
 use camino::Utf8PathBuf;
 use serde_json::json;
 use sil_agent::{
-    ContextFlags, ContextInput, SkillSelection, generate_context, load_skill, sources_summary,
+    ContextFlags, ContextInput, EstimateInput, EstimateMode, SkillSelection,
+    estimate_proposal_message, generate_context, load_skill, run_heuristic_estimate,
+    sources_summary, write_estimate_report,
 };
 use sil_core::{
-    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, UpsertOptions,
+    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, UpsertOptions, WorkspaceLock,
     extract_bib_entry_info, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry,
     parse_bib_blocks, project_root_from_cwd, suggest_from_query, suggest_from_source,
-    unmark_tui_added_bib_entry, upsert_bib_entry_with_options,
+    unmark_tui_added_bib_entry, upsert_bib_entry_with_options, write_lock,
 };
+use sil_latex::split_tex_sections;
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
 use sil_latex::{audit_manuscript, build_command, parse_idea_blocks, update_or_insert_idea_block};
@@ -225,6 +228,45 @@ pub fn list_tools() -> Vec<Tool> {
                 vec![],
             ),
         },
+        Tool {
+            name: "sil_estimate_paper".to_string(),
+            description: "L0 multi-perspective manuscript estimate (read-only on paper_draft.tex; optional write under .sil/reviews/)".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "mode": { "type": "string", "description": "quick | full | methodology (default quick)" },
+                    "write": { "type": "boolean", "description": "Write report under .sil/reviews/ (default false)" },
+                    "include_sources_summary": { "type": "boolean", "description": "Include sources summary string (default false)" }
+                }),
+                vec![],
+            ),
+        },
+        Tool {
+            name: "sil_edit_section".to_string(),
+            description: "Replace body of a LaTeX section in paper_draft.tex by title match (never git commits; returns Sci-Action proposal)".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "section_title": { "type": "string", "description": "Section title to match (case-insensitive substring or exact)" },
+                    "section_id": { "type": "string", "description": "Optional structure.yaml section id (matched against title)" },
+                    "content": { "type": "string", "description": "New section body (replaces body after heading line)" },
+                    "search": { "type": "string", "description": "Optional search string within section body for surgical replace" },
+                    "replace": { "type": "string", "description": "Replacement for search (required if search set)" },
+                    "expected_hash": { "type": "string", "description": "Optional short draft hash; reject if draft changed" }
+                }),
+                vec![],
+            ),
+        },
+        Tool {
+            name: "sil_ground_claims".to_string(),
+            description: "Suggest citations for claim text via hybrid source search (apply=false by default; never auto-commits)".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "claim": { "type": "string", "description": "Claim sentence or paragraph to ground" },
+                    "limit": { "type": "integer", "description": "Max suggestions (default 5)" },
+                    "apply": { "type": "boolean", "description": "If true, append a TODO idea block with suggestions (default false)" }
+                }),
+                vec!["claim"],
+            ),
+        },
     ]
 }
 
@@ -249,6 +291,9 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
         "sil_promote_bib" => handle_promote_bib(args),
         "sil_parse_source" => handle_parse_source(args),
         "sil_rank_draft" => handle_rank_draft(args),
+        "sil_estimate_paper" => handle_estimate_paper(args),
+        "sil_edit_section" => handle_edit_section(args),
+        "sil_ground_claims" => handle_ground_claims(args),
         _ => CallToolResult::error(format!("Unknown tool: {name}")),
     }
 }
@@ -1426,6 +1471,347 @@ fn handle_rank_draft(args: serde_json::Value) -> CallToolResult {
         "min_score": min_score,
         "hits": hits,
         "count": hits.len(),
+    });
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn handle_estimate_paper(args: serde_json::Value) -> CallToolResult {
+    let mode = args
+        .get("mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("quick");
+    let write = args.get("write").and_then(|v| v.as_bool()).unwrap_or(false);
+    let include_sources = args
+        .get("include_sources_summary")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let (root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let structure = Structure::load(&paths.structure()).ok();
+    let report = match run_heuristic_estimate(&EstimateInput {
+        root: &root,
+        mode: EstimateMode::parse(mode),
+        structure: structure.as_ref(),
+    }) {
+        Ok(r) => r,
+        Err(e) => return CallToolResult::error(format!("estimate failed: {e}")),
+    };
+
+    let mut res = match serde_json::to_value(&report) {
+        Ok(v) => v,
+        Err(e) => return CallToolResult::error(format!("serialize: {e}")),
+    };
+
+    if include_sources {
+        let summary = match SilDb::open(&paths.db()) {
+            Ok(db) => sources_summary(&db).unwrap_or_default(),
+            Err(_) => String::new(),
+        };
+        if let Some(obj) = res.as_object_mut() {
+            obj.insert("sources_summary".into(), json!(summary));
+        }
+    }
+
+    if write {
+        match write_estimate_report(&root, &report) {
+            Ok(dir) => {
+                if let Some(obj) = res.as_object_mut() {
+                    obj.insert("report_dir".into(), json!(dir.to_string()));
+                    obj.insert(
+                        "proposal".into(),
+                        json!(estimate_proposal_message(&dir)),
+                    );
+                }
+            }
+            Err(e) => return CallToolResult::error(format!("write report: {e}")),
+        }
+    }
+
+    if let Some(obj) = res.as_object_mut() {
+        obj.insert("never_committed".into(), json!(true));
+        obj.insert("read_only".into(), json!(true));
+    }
+
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn draft_short_hash(tex: &str) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for b in tex.as_bytes() {
+        hash ^= u64::from(*b);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
+}
+
+fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
+    let section_title = args
+        .get("section_title")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let section_id = args
+        .get("section_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let content = args.get("content").and_then(|v| v.as_str());
+    let search = args.get("search").and_then(|v| v.as_str());
+    let replace = args.get("replace").and_then(|v| v.as_str());
+    let expected_hash = args.get("expected_hash").and_then(|v| v.as_str());
+
+    if section_title.is_none() && section_id.is_none() {
+        return CallToolResult::error("Provide section_title and/or section_id");
+    }
+    if content.is_none() && search.is_none() {
+        return CallToolResult::error("Provide content (full body replace) or search+replace");
+    }
+    if search.is_some() && replace.is_none() {
+        return CallToolResult::error("replace is required when search is set");
+    }
+
+    let (root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let _ = write_lock(&paths, &WorkspaceLock::new("mcp", "edit-section"));
+
+    let draft_path = paths.paper_draft();
+    let tex = match fs::read_to_string(draft_path.as_str()) {
+        Ok(t) => t,
+        Err(e) => return CallToolResult::error(format!("read draft: {e}")),
+    };
+    let current_hash = draft_short_hash(&tex);
+    if let Some(exp) = expected_hash
+        && exp != current_hash
+    {
+        return CallToolResult::error(format!(
+            "expected_hash mismatch: got {current_hash}, expected {exp}"
+        ));
+    }
+
+    // Resolve title from structure id if needed
+    let mut title_query = section_title.unwrap_or_default();
+    if title_query.is_empty()
+        && let Some(id) = &section_id
+    {
+        title_query = if let Ok(st) = Structure::load(&paths.structure()) {
+            st.sections
+                .iter()
+                .find(|s| s.id == *id)
+                .map(|sec| sec.title.clone())
+                .unwrap_or_else(|| id.clone())
+        } else {
+            id.clone()
+        };
+    }
+
+    let sections = split_tex_sections(&tex);
+    let needle = title_query.to_ascii_lowercase();
+    let Some(target) = sections.iter().find(|s| {
+        let t = s.title.to_ascii_lowercase();
+        t == needle || t.contains(&needle) || needle.contains(&t)
+    }) else {
+        return CallToolResult::error(format!(
+            "No LaTeX section matching title/id '{title_query}'"
+        ));
+    };
+
+    // Rebuild source: replace body of matched section
+    let lines: Vec<&str> = tex.lines().collect();
+    let heading_idx = target.line_start.saturating_sub(1);
+    if heading_idx >= lines.len() {
+        return CallToolResult::error("section heading index out of range");
+    }
+
+    // Find end of section body (same logic as splitter)
+    let level = match target.kind.as_str() {
+        "subsubsection" => 3u8,
+        "subsection" => 2,
+        _ => 1,
+    };
+    let mut end = lines.len();
+    for (i, line) in lines.iter().enumerate().skip(heading_idx + 1) {
+        if let Some((_, _, l)) = parse_heading_level(line)
+            && l <= level
+        {
+            end = i;
+            break;
+        }
+    }
+
+    let mut new_body = if let Some(full) = content {
+        full.to_string()
+    } else {
+        lines[heading_idx + 1..end].join("\n")
+    };
+    if let (Some(s), Some(r)) = (search, replace) {
+        if !new_body.contains(s) {
+            return CallToolResult::error("search string not found in section body");
+        }
+        new_body = new_body.replacen(s, r, 1);
+    }
+
+    let mut out_lines: Vec<String> = Vec::new();
+    out_lines.extend(lines[..heading_idx + 1].iter().map(|s| (*s).to_string()));
+    if !new_body.is_empty() {
+        out_lines.extend(new_body.lines().map(|s| s.to_string()));
+    }
+    out_lines.extend(lines[end..].iter().map(|s| (*s).to_string()));
+    // Preserve trailing newline if original had one
+    let mut updated = out_lines.join("\n");
+    if tex.ends_with('\n') && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+
+    if let Err(e) = fs::write(draft_path.as_str(), &updated) {
+        return CallToolResult::error(format!("write draft: {e}"));
+    }
+
+    let proposal = proposal_for_action(
+        SciAction::EditDraft,
+        Some(&format!("Edit section {}", target.title)),
+        Some(&format!(
+            "Updated section `{}` via sil_edit_section.",
+            target.title
+        )),
+    );
+
+    let res = json!({
+        "wrote": true,
+        "section_title": target.title,
+        "path": draft_path.to_string(),
+        "draft_hash_before": current_hash,
+        "draft_hash_after": draft_short_hash(&updated),
+        "proposal": proposal.message(),
+        "never_committed": true,
+        "project_root": root.to_string(),
+    });
+    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn parse_heading_level(line: &str) -> Option<(String, String, u8)> {
+    let trimmed = line.trim();
+    let rest = trimmed.strip_prefix('\\')?;
+    let (cmd, after) = rest
+        .strip_prefix("subsubsection")
+        .map(|r| ("subsubsection", r))
+        .or_else(|| rest.strip_prefix("subsection").map(|r| ("subsection", r)))
+        .or_else(|| rest.strip_prefix("section").map(|r| ("section", r)))?;
+    let after = after.strip_prefix('*').unwrap_or(after).trim_start();
+    let level = match cmd {
+        "subsubsection" => 3u8,
+        "subsection" => 2,
+        _ => 1,
+    };
+    Some((cmd.into(), after.into(), level))
+}
+
+fn handle_ground_claims(args: serde_json::Value) -> CallToolResult {
+    let claim = match args.get("claim").and_then(|v| v.as_str()) {
+        Some(c) if !c.trim().is_empty() => c,
+        _ => return CallToolResult::error("Missing required parameter: claim"),
+    };
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+    let apply = args.get("apply").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    let (_root, paths) = match get_project_paths() {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+
+    let db = match SilDb::open(&paths.db()) {
+        Ok(d) => d,
+        Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
+    };
+
+    let embedder = sil_db::OnnxEmbedder::default();
+    let suggestions: Vec<serde_json::Value> =
+        match db.search_hybrid(&embedder, claim, limit, true) {
+            Ok(hits) => hits
+                .iter()
+                .map(|h| {
+                    json!({
+                        "source_id": h.chunk.source_id.to_string(),
+                        "chunk_id": h.chunk.id,
+                        "score": h.score,
+                        "snippet": h.snippet.chars().take(400).collect::<String>(),
+                    })
+                })
+                .collect(),
+            Err(_) => match db.search(claim, limit) {
+                Ok(hits) => hits
+                    .iter()
+                    .map(|h| {
+                        json!({
+                            "source_id": h.id.to_string(),
+                            "chunk_id": serde_json::Value::Null,
+                            "score": 0.0,
+                            "snippet": h.snippet.chars().take(400).collect::<String>(),
+                            "title": h.title,
+                            "filename": h.filename,
+                        })
+                    })
+                    .collect(),
+                Err(e) => return CallToolResult::error(format!("search failed: {e}")),
+            },
+        };
+
+    let mut applied = false;
+    if apply {
+        let draft_path = paths.paper_draft();
+        if let Ok(tex) = fs::read_to_string(draft_path.as_str()) {
+            let mut note = format!("Claim grounding for: {claim}\n");
+            for (i, s) in suggestions.iter().enumerate() {
+                note.push_str(&format!(
+                    "{}. source={} score={}\n",
+                    i + 1,
+                    s["source_id"].as_str().unwrap_or("?"),
+                    s["score"]
+                ));
+            }
+            let block = IdeaBlock {
+                id: format!("ground-{}", draft_short_hash(claim)),
+                content: note,
+                section_id: None,
+                line_start: 0,
+                line_end: 0,
+                status: "open".into(),
+                priority: "medium".into(),
+                author_type: "agent".into(),
+                tags: vec!["ground-claims".into()],
+                created_at: String::new(),
+            };
+            let updated = update_or_insert_idea_block(&tex, &block);
+            if fs::write(draft_path.as_str(), updated).is_ok() {
+                applied = true;
+            }
+        }
+    }
+
+    let proposal = if applied {
+        Some(
+            proposal_for_action(
+                SciAction::GroundClaims,
+                Some("Ground claims with literature search"),
+                Some("Recorded claim grounding TODO via sil_ground_claims."),
+            )
+            .message(),
+        )
+    } else {
+        None
+    };
+
+    let res = json!({
+        "claim": claim,
+        "suggestions": suggestions,
+        "count": suggestions.len(),
+        "applied": applied,
+        "proposal": proposal,
+        "never_committed": true,
     });
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
 }

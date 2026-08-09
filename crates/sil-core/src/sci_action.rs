@@ -32,6 +32,10 @@ pub enum SciAction {
     UpdateBibliography,
     /// Bibliography entry promoted (removed tui-added marker).
     PromoteBibliography,
+    /// Manuscript estimate / review report written under `.sil/reviews/`.
+    EstimatePaper,
+    /// Claim→citation grounding applied or recorded.
+    GroundClaims,
 }
 
 impl SciAction {
@@ -49,6 +53,8 @@ impl SciAction {
             Self::FetchSource => "fetch-source",
             Self::UpdateBibliography => "update-bibliography",
             Self::PromoteBibliography => "promote-bibliography",
+            Self::EstimatePaper => "estimate-paper",
+            Self::GroundClaims => "ground-claims",
         }
     }
 
@@ -90,6 +96,8 @@ impl FromStr for SciAction {
             "fetch-source" => Ok(Self::FetchSource),
             "update-bibliography" => Ok(Self::UpdateBibliography),
             "promote-bibliography" => Ok(Self::PromoteBibliography),
+            "estimate-paper" => Ok(Self::EstimatePaper),
+            "ground-claims" => Ok(Self::GroundClaims),
             other => Err(ValidationError::InvalidSciAction(other.to_string())),
         }
     }
@@ -126,6 +134,14 @@ mod tests {
             SciAction::PromoteBibliography.trailer_line(),
             "Sci-Action: promote-bibliography"
         );
+        assert_eq!(
+            SciAction::EstimatePaper.trailer_line(),
+            "Sci-Action: estimate-paper"
+        );
+        assert_eq!(
+            SciAction::GroundClaims.trailer_line(),
+            "Sci-Action: ground-claims"
+        );
     }
 
     #[test]
@@ -161,6 +177,8 @@ mod tests {
             SciAction::FetchSource,
             SciAction::UpdateBibliography,
             SciAction::PromoteBibliography,
+            SciAction::EstimatePaper,
+            SciAction::GroundClaims,
         ];
         for a in actions {
             assert_eq!(SciAction::from_str(a.as_str()).unwrap(), a);

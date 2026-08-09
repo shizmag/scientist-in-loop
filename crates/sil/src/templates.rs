@@ -15,6 +15,19 @@ pub const SKILL_SYSTEM: &str = include_str!("../../../templates/agent/skills/SYS
 pub const SKILL_PAPER: &str = include_str!("../../../templates/agent/skills/paper.md");
 /// agent-code skill.
 pub const SKILL_AGENT_CODE: &str = include_str!("../../../templates/agent/skills/agent-code.md");
+/// Manuscript estimate / review skill.
+pub const SKILL_REVIEW: &str = include_str!("../../../templates/agent/skills/review.md");
+/// Review rubrics.
+pub const SKILL_REVIEW_RUBRICS: &str =
+    include_str!("../../../templates/agent/skills/review/rubrics.md");
+/// Review personas.
+pub const SKILL_REVIEW_PERSONAS: &str =
+    include_str!("../../../templates/agent/skills/review/personas.md");
+/// Review report template.
+pub const SKILL_REVIEW_REPORT: &str =
+    include_str!("../../../templates/agent/skills/review/report_template.md");
+/// `.sil/reviews/README.md`
+pub const REVIEWS_README: &str = include_str!("../../../templates/reviews.README.md");
 /// data/README.md
 pub const DATA_README: &str = include_str!("../../../templates/data.README.md");
 /// figures/plots/README.md

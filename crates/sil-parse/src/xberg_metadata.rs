@@ -130,6 +130,9 @@ pub async fn extract_metadata_utf8(
 }
 
 /// Parse author strings, supporting authors separated only by commas (no "and" or "&").
+///
+/// Filters common byline pollution: `et al.`, pure numeric tokens, and short
+/// citation-like fragments that are not person names.
 pub fn parse_author_list(text: &str) -> Vec<String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -154,25 +157,59 @@ pub fn parse_author_list(text: &str) -> Vec<String> {
             continue;
         }
         if let Some((a, b)) = p.split_once(" and ") {
-            if !a.trim().is_empty() {
-                authors.push(a.trim().to_string());
-            }
-            if !b.trim().is_empty() {
-                authors.push(b.trim().to_string());
-            }
+            push_author_if_clean(&mut authors, a.trim());
+            push_author_if_clean(&mut authors, b.trim());
         } else if let Some((a, b)) = p.split_once(" & ") {
-            if !a.trim().is_empty() {
-                authors.push(a.trim().to_string());
-            }
-            if !b.trim().is_empty() {
-                authors.push(b.trim().to_string());
-            }
+            push_author_if_clean(&mut authors, a.trim());
+            push_author_if_clean(&mut authors, b.trim());
         } else {
-            authors.push(p.to_string());
+            push_author_if_clean(&mut authors, p);
         }
     }
 
     authors
+}
+
+fn push_author_if_clean(authors: &mut Vec<String>, name: &str) {
+    if name.is_empty() {
+        return;
+    }
+    let lower = name.to_ascii_lowercase();
+    if lower == "et al" || lower == "et al." || lower.starts_with("et al") {
+        return;
+    }
+    // Drop pure years / page-like tokens that bleed from in-text citations.
+    if name.chars().all(|c| c.is_ascii_digit() || c == '-' || c == '–') {
+        return;
+    }
+    // Very short tokens are rarely full author names (keep initials like "J. Smith" via space/dot).
+    if name.len() < 2 {
+        return;
+    }
+    // Citation bleed: "Kadavath et al" style leftovers after split.
+    if lower.contains(" et al") {
+        let cleaned = lower
+            .split(" et al")
+            .next()
+            .unwrap_or("")
+            .trim();
+        if cleaned.is_empty() {
+            return;
+        }
+        // Preserve original casing for the prefix when possible.
+        let orig_prefix = name
+            .split_once(" et al")
+            .or_else(|| name.split_once(" Et Al"))
+            .map(|(a, _)| a.trim())
+            .unwrap_or(name);
+        if !authors.iter().any(|a| a.eq_ignore_ascii_case(orig_prefix)) {
+            authors.push(orig_prefix.to_string());
+        }
+        return;
+    }
+    if !authors.iter().any(|a| a.eq_ignore_ascii_case(name)) {
+        authors.push(name.to_string());
+    }
 }
 
 /// Map xberg extracted entities from ExtractedDocument to sil_core::ReferenceEntry DTOs.
@@ -280,6 +317,17 @@ mod tests {
         assert_eq!(authors[0], "Alice Smith");
         assert_eq!(authors[1], "Bob Jones");
         assert_eq!(authors[2], "Charlie Brown");
+    }
+
+    #[test]
+    fn test_author_list_filters_et_al_and_years() {
+        let text = "Alice Smith, Bob Jones et al., 2024, Charlie Brown";
+        let authors = parse_author_list(text);
+        assert!(authors.iter().any(|a| a == "Alice Smith"));
+        assert!(authors.iter().any(|a| a == "Bob Jones"));
+        assert!(authors.iter().any(|a| a == "Charlie Brown"));
+        assert!(!authors.iter().any(|a| a.contains("et al")));
+        assert!(!authors.iter().any(|a| a == "2024"));
     }
 
     #[test]
