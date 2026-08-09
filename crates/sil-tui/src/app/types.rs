@@ -557,6 +557,7 @@ pub enum JobKind {
     Fetch,
     Parse,
     Similarity,
+    Estimate,
 }
 
 impl JobKind {
@@ -566,6 +567,7 @@ impl JobKind {
             JobKind::Fetch => "fetch",
             JobKind::Parse => "parse",
             JobKind::Similarity => "similarity",
+            JobKind::Estimate => "estimate",
         }
     }
 }

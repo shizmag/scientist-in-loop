@@ -714,4 +714,59 @@ impl App {
             }
         }
     }
+
+    /// Trigger asynchronous manuscript estimate job.
+    pub fn run_estimate_job(&mut self) {
+        let Some(root) = self.project_root.clone() else {
+            self.status_message = "Estimate error: not inside a sil project root.".to_string();
+            return;
+        };
+
+        self.status_message = "⏳ Running L0 manuscript estimate...".to_string();
+        let start = std::time::Instant::now();
+
+        let input = sil_agent::EstimateInput {
+            root: root.as_path(),
+            mode: sil_agent::EstimateMode::Quick,
+            structure: None,
+        };
+        let res = sil_agent::run_heuristic_estimate(&input);
+        let duration_ms = start.elapsed().as_millis() as u64;
+
+        let id = self.alloc_job_id();
+        match res {
+            Ok(report) => {
+                self.status_message = format!(
+                    "✓ L0 estimate complete: score={}, decision={:?}",
+                    report.overall_score, report.decision
+                );
+                self.push_job_outcome(JobOutcome {
+                    id,
+                    kind: JobKind::Estimate,
+                    label: "manuscript estimate".to_string(),
+                    ok: true,
+                    detail: format!(
+                        "score={}, decision={:?}, findings={}",
+                        report.overall_score,
+                        report.decision,
+                        report.findings.len()
+                    ),
+                    duration_ms: Some(duration_ms),
+                    retry_payload: None,
+                });
+            }
+            Err(e) => {
+                self.status_message = format!("⚠ Estimate failed: {e}");
+                self.push_job_outcome(JobOutcome {
+                    id,
+                    kind: JobKind::Estimate,
+                    label: "manuscript estimate".to_string(),
+                    ok: false,
+                    detail: format!("failed: {e}"),
+                    duration_ms: Some(duration_ms),
+                    retry_payload: None,
+                });
+            }
+        }
+    }
 }

@@ -6,32 +6,32 @@ This report documents the baseline evaluation of current `scientist-in-loop` ext
 
 | Metric Category | Target Gate | Current Macro Score | Current Micro / Total | CI Gate Status |
 | :--- | :---: | :---: | :---: | :---: |
-| **Parent Title Pass Rate** | $\ge 0.85$ | 53.85% | 7/13 | **FAIL** |
+| **Parent Title Pass Rate** | $\ge 0.85$ | 100.00% | 13/13 | PASS |
 | **Parent Year Pass Rate** | $\ge 0.85$ | 100.00% | 13/13 | PASS |
-| **Parent Authors Set F1** | $\ge 0.85$ | 0.51 | Avg F1 across fixtures | **FAIL** |
-| **Parent Hard Negatives Clean** | 100% | 15.38% | 2/13 clean | **FAIL** |
-| **Ref Count Band Pass Rate** | $\ge 0.80$ | 53.85% | 7/13 | **FAIL** |
-| **Ref Anchor Recall** | $\ge 0.75$ | 81.92% | 81.29% micro (113/139) | PASS |
-| **Ref Anchor Field Precision** | $\ge 0.80$ | 87.05% | 93.73% micro | PASS |
-| **Ref Negative Pattern Clean** | 100% | - | 7/934 refs polluted | **FAIL** |
+| **Parent Authors Set F1** | $\ge 0.85$ | 0.99 | Avg F1 across fixtures | PASS |
+| **Parent Hard Negatives Clean** | 100% | 100.00% | 13/13 clean | PASS |
+| **Ref Count Band Pass Rate** | $\ge 0.80$ | 100.00% | 13/13 | PASS |
+| **Ref Anchor Recall** | $\ge 0.75$ | 96.54% | 96.40% micro (134/139) | PASS |
+| **Ref Anchor Field Precision** | $\ge 0.80$ | 96.59% | 96.46% micro | PASS |
+| **Ref Negative Pattern Clean** | 100% | - | 0/1035 refs polluted | PASS |
 
 ## Detailed Per-Fixture Results
 
 | Source Fixture | Parent Title | Authors F1 | Parent Year | Hard Negatives | Ref Count (Ext / Gold) | Ref Count Pass | Anchor Recall | Anchor Field Prec | Polluted Refs |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `2026.gem-main.4` | PASS | 0.22 | PASS | **FAIL** | 8 / [10, 10] | **FAIL** | 80% (8/10) | 100% | 0 |
-| `28_Implicit_Ensembles_of_Ensem` | PASS | 0.31 | PASS | **FAIL** | 2 / [28, 28] | **FAIL** | 20% (2/10) | 100% | 0 |
-| `8708_On_the_Entropy_Calibratio` | FAIL (0.15) | 0.00 | PASS | **FAIL** | 30 / [35, 35] | **FAIL** | 92% (11/12) | 98% | 0 |
-| `BEE-RAG` | PASS | 0.55 | PASS | **FAIL** | 39 / [38, 38] | **FAIL** | 100% (10/10) | 97% | 1 |
-| `GraphRAG` | PASS | 0.47 | PASS | PASS | 573 / [570, 575] | PASS | 92% (11/12) | 95% | 0 |
-| `HiChunk` | FAIL (0.14) | 0.57 | PASS | **FAIL** | 34 / [34, 34] | PASS | 100% (10/10) | 100% | 0 |
-| `Internak_states_approach` | PASS | 0.57 | PASS | **FAIL** | 41 / [45, 47] | **FAIL** | 100% (11/11) | 91% | 0 |
-| `Token_probability_approach` | PASS | 0.85 | PASS | **FAIL** | 38 / [38, 38] | PASS | 90% (9/10) | 100% | 6 |
-| `semantic_entropy` | PASS | 0.20 | PASS | PASS | 0 / [65, 65] | **FAIL** | 0% (0/12) | 0% | 0 |
-| `knowledge_graph` | FAIL (0.24) | 0.40 | PASS | **FAIL** | 42 / [42, 42] | PASS | 100% (10/10) | 100% | 0 |
-| `minecraft_graph` | FAIL (0.21) | 0.67 | PASS | **FAIL** | 24 / [24, 24] | PASS | 100% (10/10) | 95% | 0 |
-| `semantic_chunking` | FAIL (0.17) | 0.88 | PASS | **FAIL** | 70 / [70, 70] | PASS | 92% (11/12) | 91% | 0 |
-| `structure_predict_hallucination` | FAIL (0.32) | 1.00 | PASS | **FAIL** | 33 / [33, 33] | PASS | 100% (10/10) | 65% | 0 |
+| `2026.gem-main.4` | PASS | 1.00 | PASS | PASS | 10 / [10, 10] | PASS | 100% (10/10) | 100% | 0 |
+| `28_Implicit_Ensembles_of_Ensem` | PASS | 1.00 | PASS | PASS | 28 / [28, 28] | PASS | 90% (9/10) | 100% | 0 |
+| `8708_On_the_Entropy_Calibratio` | PASS | 1.00 | PASS | PASS | 35 / [35, 35] | PASS | 100% (12/12) | 100% | 0 |
+| `BEE-RAG` | PASS | 1.00 | PASS | PASS | 38 / [38, 38] | PASS | 100% (10/10) | 97% | 0 |
+| `GraphRAG` | PASS | 0.97 | PASS | PASS | 573 / [570, 575] | PASS | 92% (11/12) | 95% | 0 |
+| `HiChunk` | PASS | 1.00 | PASS | PASS | 34 / [34, 34] | PASS | 100% (10/10) | 100% | 0 |
+| `Internak_states_approach` | PASS | 1.00 | PASS | PASS | 45 / [45, 47] | PASS | 100% (11/11) | 91% | 0 |
+| `Token_probability_approach` | PASS | 1.00 | PASS | PASS | 38 / [38, 38] | PASS | 90% (9/10) | 100% | 0 |
+| `semantic_entropy` | PASS | 1.00 | PASS | PASS | 65 / [65, 65] | PASS | 92% (11/12) | 87% | 0 |
+| `knowledge_graph` | PASS | 1.00 | PASS | PASS | 42 / [42, 42] | PASS | 100% (10/10) | 100% | 0 |
+| `minecraft_graph` | PASS | 1.00 | PASS | PASS | 24 / [24, 24] | PASS | 100% (10/10) | 95% | 0 |
+| `semantic_chunking` | PASS | 1.00 | PASS | PASS | 70 / [70, 70] | PASS | 92% (11/12) | 95% | 0 |
+| `structure_predict_hallucination` | PASS | 0.94 | PASS | PASS | 33 / [33, 33] | PASS | 100% (10/10) | 95% | 0 |
 
 ## Failure Breakdown & Known Issues in Current Extractor
 

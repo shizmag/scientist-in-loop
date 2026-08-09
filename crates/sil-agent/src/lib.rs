@@ -4,7 +4,7 @@
 
 mod context;
 mod error;
-mod estimate;
+pub mod estimate;
 mod paper;
 mod skills;
 

@@ -5481,6 +5481,7 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_yaml",
+ "sil-agent",
  "sil-core",
  "sil-db",
  "sil-latex",

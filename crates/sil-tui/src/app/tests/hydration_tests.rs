@@ -251,6 +251,13 @@ fn test_toggle_help_overlay_and_current_help_mode() {
 }
 
 #[test]
+fn test_run_estimate_job() {
+    let mut app = App::new(None);
+    app.run_estimate_job();
+    assert!(app.status_message.contains("not inside a sil project root"));
+}
+
+#[test]
 fn test_references_title_sort_binding() {
     let mut app = App::new(None);
     app.active_tab = ActiveTab::References;

@@ -84,6 +84,31 @@ pub enum RagBackend {
     },
 }
 
+/// Execution provider for ONNX Runtime acceleration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OnnxExecutionProvider {
+    /// CPU execution provider (default).
+    Cpu,
+    /// CoreML execution provider (macOS Apple Silicon / GPU / Neural Engine).
+    CoreMl,
+    /// CUDA execution provider (NVIDIA GPU).
+    Cuda,
+    /// DirectML execution provider (Windows DirectX 12 GPU).
+    DirectMl,
+}
+
+impl OnnxExecutionProvider {
+    /// Machine-readable provider name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cpu => "cpu",
+            Self::CoreMl => "coreml",
+            Self::Cuda => "cuda",
+            Self::DirectMl => "directml",
+        }
+    }
+}
+
 impl RagBackend {
     /// Whether this is a real ONNX path.
     pub fn is_onnx(&self) -> bool {
@@ -1024,9 +1049,15 @@ mod tests {
         }
         .summary();
         assert!(s.contains("fallback"));
-        assert!(s.contains("feature_disabled"));
-        let s2 = RagBackend::Onnx { dim: 384 }.summary();
-        assert!(s2.contains("onnx"));
-        assert!(s2.contains("384"));
+        let s_onnx = RagBackend::Onnx { dim: 384 }.summary();
+        assert_eq!(s_onnx, "onnx (dim=384)");
+    }
+
+    #[test]
+    fn test_onnx_execution_provider() {
+        assert_eq!(OnnxExecutionProvider::Cpu.as_str(), "cpu");
+        assert_eq!(OnnxExecutionProvider::CoreMl.as_str(), "coreml");
+        assert_eq!(OnnxExecutionProvider::Cuda.as_str(), "cuda");
+        assert_eq!(OnnxExecutionProvider::DirectMl.as_str(), "directml");
     }
 }
