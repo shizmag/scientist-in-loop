@@ -109,6 +109,21 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
         "  latex:  {} → {}",
         config.latex.engine, config.latex.main
     ));
+    let bib_path = root.join("references.bib");
+    let bib_opt = if bib_path.is_file() {
+        Some(bib_path.as_path())
+    } else {
+        None
+    };
+    if let Ok(report) = sil_latex::audit_manuscript(&paths.paper_draft(), bib_opt) {
+        let (cited, total) = report.bib_citation_ratio();
+        if total > 0 {
+            ui.println(&format!(
+                "  bib coverage: {cited}/{total} references mentioned in {}",
+                rel::PAPER_DRAFT
+            ));
+        }
+    }
     ui.println("");
     ui.info("Sources");
     ui.println(&format!(

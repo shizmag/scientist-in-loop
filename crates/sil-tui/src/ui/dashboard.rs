@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::app::App;
 
-pub(crate) fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
+pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -25,6 +25,40 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(main_chunks[1]);
+
+    let (cited_count, total_count) = if let Some(ref root) = app.project_root {
+        let draft_path = root.join("paper_draft.tex");
+        let bib_path = root.join("references.bib");
+        let bib_opt = if bib_path.is_file() {
+            Some(bib_path.as_path())
+        } else {
+            None
+        };
+        if let Ok(report) = sil_latex::audit_manuscript(&draft_path, bib_opt) {
+            report.bib_citation_ratio()
+        } else {
+            (0, app.bib_file_entries.len())
+        }
+    } else {
+        (0, app.bib_file_entries.len())
+    };
+
+    let (coverage_text, coverage_color) = if total_count == 0 {
+        ("0 references in references.bib".to_string(), Color::DarkGray)
+    } else if cited_count == total_count {
+        (
+            format!("{cited_count}/{total_count} mentioned (100%)"),
+            Color::Green,
+        )
+    } else {
+        (
+            format!(
+                "{cited_count}/{total_count} mentioned ({} unmentioned)",
+                total_count - cited_count
+            ),
+            Color::Yellow,
+        )
+    };
 
     // 1. Manuscript Progress & Health Audit
     let health_lines = vec![
@@ -47,10 +81,12 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, _app: &mut App, area: Rect) {
             Span::styled("paper_draft.tex", Style::default().fg(Color::Yellow)),
         ]),
         Line::from(vec![
-            Span::styled("• Citation Integrity: ", Style::default().fg(Color::Cyan)),
+            Span::styled("• Reference Coverage: ", Style::default().fg(Color::Cyan)),
             Span::styled(
-                "OK (references.bib synchronized)",
-                Style::default().fg(Color::Green),
+                coverage_text,
+                Style::default()
+                    .fg(coverage_color)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::from(vec![

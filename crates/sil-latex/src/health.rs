@@ -37,18 +37,97 @@ pub fn audit_manuscript(
 
     let mut report = ManuscriptHealthReport::default();
 
-    // 1. Audit missing citations
+    // Collect all manuscript tex files in project (main tex_path + other paper_*.tex + draft_sections/*.tex)
+    let mut tex_sources = vec![(1, tex_path.to_path_buf(), tex_content.clone())];
+    if let Some(parent) = tex_path.parent() {
+        if let Ok(entries) = std::fs::read_dir(parent.as_std_path()) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_file() && p != tex_path.as_std_path() {
+                    if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with("paper_") && name.ends_with(".tex") {
+                            if let Ok(c) = std::fs::read_to_string(&p) {
+                                if let Ok(utf8_p) = camino::Utf8PathBuf::from_path_buf(p) {
+                                    tex_sources.push((1, utf8_p, c));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let sections_dir = parent.join("draft_sections");
+        if sections_dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(sections_dir.as_std_path()) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_file() && p.extension().map_or(false, |ext| ext == "tex") {
+                        if let Ok(c) = std::fs::read_to_string(&p) {
+                            if let Ok(utf8_p) = camino::Utf8PathBuf::from_path_buf(p) {
+                                tex_sources.push((1, utf8_p, c));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    report.total_bib_keys_count = bib_keys.len();
+
+    // 1. Audit missing citations & gather cited keys (Tier 1 explicit citation macros)
     let cite_keys = extract_cite_keys(&tex_content);
-    for (line, key) in cite_keys {
-        if !bib_keys.is_empty() && !bib_keys.contains(&key) {
+    let mut explicit_cited_set = HashSet::new();
+
+    for (line, key) in &cite_keys {
+        explicit_cited_set.insert(key.clone());
+        if !bib_keys.is_empty() && !bib_keys.contains(key) {
             report.missing_citations_count += 1;
             report.diagnostics.push(HealthDiagnostic {
                 level: DiagnosticLevel::Error,
                 category: "missing_citation".to_string(),
-                line: Some(line),
+                line: Some(*line),
                 message: format!("Citation key '\\cite{{{key}}}' not found in references.bib"),
             });
         }
+    }
+
+    // Collect citations across all paper_*.tex and draft_sections/*.tex
+    for (_, _, content) in &tex_sources {
+        for (_, key) in extract_cite_keys(content) {
+            explicit_cited_set.insert(key);
+        }
+    }
+
+    // Tier 2: Check for raw key string occurrences across all combined tex content
+    let combined_tex = tex_sources
+        .iter()
+        .map(|(_, _, c)| c.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let mut mentioned_bib_keys = HashSet::new();
+    let mut unmentioned_keys = Vec::new();
+
+    for key in &bib_keys {
+        if explicit_cited_set.contains(key) || combined_tex.contains(key) {
+            mentioned_bib_keys.insert(key.clone());
+        } else {
+            unmentioned_keys.push(key.clone());
+        }
+    }
+
+    report.cited_bib_keys_count = mentioned_bib_keys.len();
+
+    // Unmentioned reference diagnostics (warnings)
+    unmentioned_keys.sort();
+    for key in &unmentioned_keys {
+        report.diagnostics.push(HealthDiagnostic {
+            level: DiagnosticLevel::Warning,
+            category: "unmentioned_reference".to_string(),
+            line: None,
+            message: format!("Reference key '{key}' in references.bib is never mentioned in paper_*.tex"),
+        });
     }
 
     // 2. Audit defined labels vs referenced labels
@@ -154,25 +233,46 @@ fn extract_bib_keys(bib_text: &str) -> HashSet<String> {
 
 fn extract_cite_keys(tex: &str) -> Vec<(usize, String)> {
     let mut results = Vec::new();
+    let cite_prefixes = ["\\cite", "\\nocite", "\\autocite", "\\parencite", "\\textcite"];
     for (idx, line) in tex.lines().enumerate() {
         let line_num = idx + 1;
         let mut rest = line;
-        while let Some(pos) = rest.find("\\cite") {
-            let slice = &rest[pos..];
-            if let (Some(start), Some(end)) = (slice.find('{'), slice.find('}')) {
-                if start < end {
-                    let keys_str = &slice[start + 1..end];
-                    for k in keys_str.split(',') {
-                        let k_clean = k.trim().to_string();
-                        if !k_clean.is_empty() {
-                            results.push((line_num, k_clean));
-                        }
+        while !rest.is_empty() {
+            let mut earliest: Option<(usize, usize)> = None;
+            for prefix in &cite_prefixes {
+                if let Some(pos) = rest.find(prefix) {
+                    if earliest.map_or(true, |(earliest_pos, _)| pos < earliest_pos) {
+                        earliest = Some((pos, prefix.len()));
                     }
-                    rest = &slice[end + 1..];
-                    continue;
                 }
             }
-            rest = &slice[5..];
+            if let Some((pos, pref_len)) = earliest {
+                let slice = &rest[pos + pref_len..];
+                let mut cursor = slice.trim_start();
+                while cursor.starts_with('[') {
+                    if let Some(bracket_end) = cursor.find(']') {
+                        cursor = cursor[bracket_end + 1..].trim_start();
+                    } else {
+                        break;
+                    }
+                }
+                if cursor.starts_with('{') {
+                    if let Some(end) = cursor.find('}') {
+                        let keys_str = &cursor[1..end];
+                        for k in keys_str.split(',') {
+                            let k_clean = k.trim().to_string();
+                            if !k_clean.is_empty() {
+                                results.push((line_num, k_clean));
+                            }
+                        }
+                        rest = &cursor[end + 1..];
+                        continue;
+                    }
+                }
+                rest = &slice[1..];
+            } else {
+                break;
+            }
         }
     }
     results
@@ -338,5 +438,43 @@ Figure~\ref{fig:unref} is here.
         assert!(keys.contains("wang2025beyond"));
         assert!(keys.contains("farquhar2024detecting"));
         assert!(keys.contains("mccabe2026estimating"));
+    }
+
+    #[test]
+    fn test_two_tier_reference_coverage_and_cite_macros() {
+        let dir = tempfile::tempdir().unwrap();
+        let tex_path =
+            camino::Utf8PathBuf::from_path_buf(dir.path().join("paper_draft.tex")).unwrap();
+        let bib_path =
+            camino::Utf8PathBuf::from_path_buf(dir.path().join("references.bib")).unwrap();
+
+        let tex = r#"
+\section{Intro}
+As shown in \citep[see][p. 12]{ref_a, ref_b}.
+% Mentions ref_c as raw key string note here
+"#;
+        let bib = r#"
+@article{ref_a, title={A}}
+@article{ref_b, title={B}}
+@article{ref_c, title={C}}
+@article{ref_unused, title={Unused}}
+"#;
+
+        std::fs::write(&tex_path, tex).unwrap();
+        std::fs::write(&bib_path, bib).unwrap();
+
+        let report = audit_manuscript(&tex_path, Some(&bib_path)).unwrap();
+        assert_eq!(report.total_bib_keys_count, 4);
+        // ref_a and ref_b matched via Tier 1 (\citep), ref_c matched via Tier 2 (raw string in text)
+        assert_eq!(report.cited_bib_keys_count, 3);
+        assert_eq!(report.bib_citation_ratio(), (3, 4));
+        assert_eq!(report.unmentioned_bib_keys_count(), 1);
+
+        let unmentioned_diag = report
+            .diagnostics
+            .iter()
+            .find(|d| d.category == "unmentioned_reference");
+        assert!(unmentioned_diag.is_some());
+        assert!(unmentioned_diag.unwrap().message.contains("ref_unused"));
     }
 }

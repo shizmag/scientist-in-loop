@@ -28,22 +28,57 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         Style::default().fg(Color::Cyan)
     };
 
-    let total_bib = app.bib_file_entries.len();
+    let (cited_bib, total_bib, unmentioned_keys) = if let Some(ref root) = app.project_root {
+        let draft_path = root.join("paper_draft.tex");
+        let bib_path = root.join("references.bib");
+        let bib_opt = if bib_path.is_file() {
+            Some(bib_path.as_path())
+        } else {
+            None
+        };
+        if let Ok(report) = sil_latex::audit_manuscript(&draft_path, bib_opt) {
+            let unmentioned: std::collections::HashSet<_> = report
+                .diagnostics
+                .iter()
+                .filter(|d| d.category == "unmentioned_reference")
+                .filter_map(|d| {
+                    let msg = &d.message;
+                    if let (Some(s), Some(e)) = (msg.find('\''), msg.rfind('\'')) {
+                        if s < e {
+                            Some(msg[s + 1..e].to_string())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let (cited, total) = report.bib_citation_ratio();
+            (cited, total, unmentioned)
+        } else {
+            (0, app.bib_file_entries.len(), std::collections::HashSet::new())
+        }
+    } else {
+        (0, app.bib_file_entries.len(), std::collections::HashSet::new())
+    };
+
     let filtered_bib = app.filtered_bib_entries();
     let count_bib = filtered_bib.len();
 
     let left_title = if app.input_mode == InputMode::SearchingBib {
         format!(
-            " references.bib ({count_bib}/{total_bib} items) (Search: {}_) ",
+            " references.bib ({cited_bib}/{total_bib} cited) ({count_bib} items) (Search: {}_) ",
             app.bib_search_query
         )
     } else if !app.bib_search_query.is_empty() {
         format!(
-            " references.bib ({count_bib}/{total_bib} items) (Filter: {}) ",
+            " references.bib ({cited_bib}/{total_bib} cited) ({count_bib} items) (Filter: {}) ",
             app.bib_search_query
         )
     } else {
-        format!(" references.bib ({total_bib} items) ")
+        format!(" references.bib ({cited_bib}/{total_bib} cited) ")
     };
 
     let left_width = chunks[0].width.saturating_sub(4) as usize;
@@ -71,16 +106,32 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default()
             };
 
+            let entry_key = extract_bib_key_from_entry_text(entry);
+            let is_cited = entry_key.as_ref().map_or(false, |k| !unmentioned_keys.contains(k));
+            let status_tag = if is_cited { "[✓ cited] " } else { "[uncited] " };
+            let status_style = if is_cited {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+
             let mut item_lines = Vec::new();
             let avail_w = left_width.saturating_sub(2).max(10);
             for (line_idx, raw_line) in entry.lines().enumerate() {
                 let wrapped = textwrap::wrap(raw_line, avail_w);
                 if wrapped.is_empty() {
                     let indent = if line_idx == 0 { prefix } else { "  " };
-                    item_lines.push(Line::from(vec![
-                        Span::styled(indent, style),
-                        Span::styled("", style),
-                    ]));
+                    if line_idx == 0 {
+                        item_lines.push(Line::from(vec![
+                            Span::styled(indent, style),
+                            Span::styled(status_tag, status_style),
+                        ]));
+                    } else {
+                        item_lines.push(Line::from(vec![
+                            Span::styled(indent, style),
+                            Span::styled("", style),
+                        ]));
+                    }
                 } else {
                     for (w_idx, w_sub) in wrapped.iter().enumerate() {
                         let indent = if line_idx == 0 && w_idx == 0 {
@@ -88,10 +139,18 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
                         } else {
                             "  "
                         };
-                        item_lines.push(Line::from(vec![
-                            Span::styled(indent, style),
-                            Span::styled(w_sub.to_string(), style),
-                        ]));
+                        if line_idx == 0 && w_idx == 0 {
+                            item_lines.push(Line::from(vec![
+                                Span::styled(indent, style),
+                                Span::styled(status_tag, status_style),
+                                Span::styled(w_sub.to_string(), style),
+                            ]));
+                        } else {
+                            item_lines.push(Line::from(vec![
+                                Span::styled(indent, style),
+                                Span::styled(w_sub.to_string(), style),
+                            ]));
+                        }
                     }
                 }
             }
@@ -427,4 +486,22 @@ pub(crate) fn draw_reference_inspector_card(
         .block(bib_block)
         .wrap(Wrap { trim: false });
     frame.render_widget(bib_para, chunks[1]);
+}
+
+fn extract_bib_key_from_entry_text(entry: &str) -> Option<String> {
+    for line in entry.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('@') {
+            if let Some(brace) = trimmed.find('{') {
+                let rest = &trimmed[brace + 1..];
+                if let Some(comma) = rest.find(',') {
+                    let key = rest[..comma].trim().to_string();
+                    if !key.is_empty() {
+                        return Some(key);
+                    }
+                }
+            }
+        }
+    }
+    None
 }

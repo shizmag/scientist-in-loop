@@ -87,6 +87,28 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
         }
     };
 
+    let bib_path = root.join("references.bib");
+    let bib_opt = if bib_path.is_file() {
+        Some(bib_path.as_path())
+    } else {
+        None
+    };
+    if let Ok(report) = sil_latex::audit_manuscript(&main, bib_opt) {
+        let (cited, total) = report.bib_citation_ratio();
+        if total > 0 {
+            if cited == total {
+                ui.success(&format!(
+                    "Reference coverage: {cited}/{total} mentioned in {main}"
+                ));
+            } else {
+                ui.warn(&format!(
+                    "Reference coverage: {cited}/{total} mentioned in {main} ({} unmentioned in references.bib)",
+                    total - cited
+                ));
+            }
+        }
+    }
+
     if is_release {
         let t_name = config.latex.template.clone();
         let zip_name = format!("submission_{t_name}.zip");

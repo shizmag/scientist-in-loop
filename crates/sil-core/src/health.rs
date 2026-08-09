@@ -40,6 +40,10 @@ pub struct ManuscriptHealthReport {
     pub unreferenced_labels_count: usize,
     /// Count of `# -- X -- #` ideas or TODO blocks.
     pub todo_ideas_count: usize,
+    /// Total bib keys defined in references.bib.
+    pub total_bib_keys_count: usize,
+    /// Count of unique bib keys defined in references.bib that are mentioned in paper_*.tex.
+    pub cited_bib_keys_count: usize,
 }
 
 impl ManuscriptHealthReport {
@@ -56,6 +60,16 @@ impl ManuscriptHealthReport {
             .iter()
             .filter(|d| d.level == DiagnosticLevel::Warning)
             .count()
+    }
+
+    /// Ratio of (cited_bib_keys_count, total_bib_keys_count).
+    pub fn bib_citation_ratio(&self) -> (usize, usize) {
+        (self.cited_bib_keys_count, self.total_bib_keys_count)
+    }
+
+    /// Count of bib keys defined in references.bib that are NOT mentioned in paper_*.tex.
+    pub fn unmentioned_bib_keys_count(&self) -> usize {
+        self.total_bib_keys_count.saturating_sub(self.cited_bib_keys_count)
     }
 }
 
@@ -140,7 +154,11 @@ mod tests {
             missing_citations_count: 1,
             unreferenced_labels_count: 2,
             todo_ideas_count: 3,
+            total_bib_keys_count: 5,
+            cited_bib_keys_count: 4,
         };
+        assert_eq!(report.bib_citation_ratio(), (4, 5));
+        assert_eq!(report.unmentioned_bib_keys_count(), 1);
 
         let yaml = serde_yaml::to_string(&report).unwrap();
         let de: ManuscriptHealthReport = serde_yaml::from_str(&yaml).unwrap();

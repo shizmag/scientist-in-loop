@@ -51,6 +51,30 @@ fn doctor_json_has_checks() {
 }
 
 #[test]
+fn doctor_reports_bib_coverage_ratio() {
+    let (_tmp, project) = init_project("doc-bib-cov");
+    let bib_content = "@article{cited_key, title={C}}\n@article{uncited_key, title={U}}\n";
+    let tex_content = "\\section{Intro}\nWe cite \\cite{cited_key}.\n";
+
+    std::fs::write(project.join("references.bib"), bib_content).unwrap();
+    std::fs::write(project.join("paper_draft.tex"), tex_content).unwrap();
+
+    let out = sil()
+        .current_dir(&project)
+        .args(["project", "doctor"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8_lossy(&out);
+    assert!(
+        stdout.contains("1/2 references mentioned in paper_*.tex"),
+        "{stdout}"
+    );
+}
+
+#[test]
 fn ci_workflow_exists_and_runs_tests() {
     // Repo root: crates/sil/tests -> ../../../
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

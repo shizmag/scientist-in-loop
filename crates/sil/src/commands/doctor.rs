@@ -156,6 +156,23 @@ pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
                         },
                     ));
 
+                    let (cited, total) = report.bib_citation_ratio();
+                    let bib_cov_ok = total == 0 || cited == total;
+                    checks.push(Check::simple(
+                        "manuscript health: bib coverage",
+                        bib_cov_ok,
+                        if total == 0 {
+                            "0 references in references.bib".to_string()
+                        } else if cited == total {
+                            format!("{cited}/{total} references mentioned in paper_*.tex")
+                        } else {
+                            format!(
+                                "{cited}/{total} references mentioned in paper_*.tex ({} unmentioned)",
+                                total - cited
+                            )
+                        },
+                    ));
+
                     let unref = report.unreferenced_labels_count;
                     checks.push(Check::simple(
                         "manuscript health: labels",
@@ -242,6 +259,7 @@ fn is_soft(name: &str) -> bool {
         || name == "uv"
         || name == "dense_rag"
         || name.starts_with("engine ")
+        || name == "manuscript health: bib coverage"
 }
 
 fn dense_rag_check(config: &sil_core::Config) -> Check {
