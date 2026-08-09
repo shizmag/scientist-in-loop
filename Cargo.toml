@@ -61,6 +61,8 @@ ort = { version = "2.0.0-rc.13", default-features = false, features = ["std", "a
 tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 schemars = "0.8"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+dialoguer = "0.11"
+proptest = "1.6"
 
 [patch.crates-io]
 # Temporary patch for zune-jpeg to fix a compilation error in Rust 2024 edition
