@@ -1,5 +1,7 @@
 //! Centralized regular expressions and text pattern matchers for scientist-in-loop.
 
+#![deny(missing_docs)]
+
 use regex::Regex;
 use std::sync::LazyLock;
 

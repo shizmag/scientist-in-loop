@@ -2,14 +2,18 @@
 
 #![deny(missing_docs)]
 
+/// Batch PDF parsing and hydration.
 pub mod batch;
 mod error;
 mod fetch;
 mod interactive;
+/// Journal digest resolution and CrossRef/arXiv API lookups.
 pub mod journal_digest;
 mod marker;
+/// Extracting and cleaning reference entries from parsed text.
 pub mod references;
 mod validate;
+/// CrossRef (xberg) metadata fetching.
 pub mod xberg_metadata;
 
 pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};

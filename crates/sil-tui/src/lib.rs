@@ -1,9 +1,11 @@
 //! `sil-tui` library exposing Ratatui app state, UI rendering, and terminal event loop.
 
+#![deny(missing_docs)]
+
 #![allow(clippy::collapsible_if, clippy::collapsible_match)]
 
-pub mod app;
-pub mod ui;
+pub(crate) mod app;
+pub(crate) mod ui;
 
 use anyhow::Result;
 use camino::Utf8PathBuf;
@@ -16,7 +18,7 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::time::Duration;
 
-pub use app::App;
+pub(crate) use app::App;
 
 /// Run the TUI application loop in terminal.
 pub fn run_tui(project_root: Option<Utf8PathBuf>) -> Result<()> {

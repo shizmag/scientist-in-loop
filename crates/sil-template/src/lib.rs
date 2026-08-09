@@ -4,6 +4,8 @@
 //! (`paper_draft.tex` / `paper.tex`) and renders them into popular conference & journal article templates
 //! (NeurIPS, ICML, ICLR, IEEE/CVPR, arXiv, Standard).
 
+#![deny(missing_docs)]
+
 mod extractor;
 mod render;
 mod template;

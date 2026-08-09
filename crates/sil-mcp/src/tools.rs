@@ -1455,6 +1455,7 @@ pub(crate) mod tests {
             let project_root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
 
             fs::create_dir_all(project_root.join("agent/skills")).unwrap();
+            fs::create_dir_all(project_root.join(".sil")).unwrap();
             fs::write(project_root.join(".sil/config.yaml"), "version: 1\n").unwrap();
             fs::write(
                 project_root.join("agent/skills/SYSTEM.md"),

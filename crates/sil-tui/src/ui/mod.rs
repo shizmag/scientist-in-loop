@@ -1,11 +1,11 @@
 //! Ratatui UI drawing code for `sil-tui`.
 
-pub mod dashboard;
-pub mod draft;
-pub mod modals;
-pub mod references;
-pub mod settings;
-pub mod sources;
+pub(crate) mod dashboard;
+pub(crate) mod draft;
+pub(crate) mod modals;
+pub(crate) mod references;
+pub(crate) mod settings;
+pub(crate) mod sources;
 
 #[cfg(test)]
 mod tests;

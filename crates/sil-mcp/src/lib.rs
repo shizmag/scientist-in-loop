@@ -2,8 +2,11 @@
 
 #![deny(missing_docs)]
 
+/// JSON-RPC 2.0 protocol request, response, and tool schemas.
 pub mod protocol;
+/// Stdio MCP server handler.
 pub mod server;
+/// Scientist-in-loop tool registry and invocation.
 pub mod tools;
 
 pub use protocol::{

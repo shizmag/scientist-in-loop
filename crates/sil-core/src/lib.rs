@@ -20,8 +20,11 @@ mod types;
 /// Global/local settings and cache.
 pub mod settings;
 
+/// Journal publication digest entries.
 pub mod digest;
+/// Manuscript health check diagnostic tools.
 pub mod health;
+/// Project TODO and idea tracking blocks.
 pub mod todo;
 
 pub use bib::{

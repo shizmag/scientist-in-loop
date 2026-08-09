@@ -2,14 +2,17 @@
 
 #![deny(missing_docs)]
 
+/// Chunk storage, markdown chunking, and similarity math.
 pub mod chunks;
+/// Database and embedding error types.
 pub mod error;
+/// ONNX Runtime embedding & reranking model integration.
 pub mod onnx;
-pub mod references;
-pub mod schema;
-pub mod search;
-pub mod sources;
-pub mod todo;
+pub(crate) mod references;
+pub(crate) mod schema;
+pub(crate) mod search;
+pub(crate) mod sources;
+pub(crate) mod todo;
 
 pub use chunks::{
     ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,

@@ -101,6 +101,7 @@ impl fmt::Display for SourceKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Error returned when parsing a [] from string fails.
 pub struct ParseSourceKindError;
 
 impl fmt::Display for ParseSourceKindError {

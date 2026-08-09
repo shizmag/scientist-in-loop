@@ -135,7 +135,8 @@ mod ort_engine {
     }
 
     impl OrtEngine {
-        pub fn load(
+        /// Load embedder models from directory.
+    pub fn load(
             model_path: &Path,
             tokenizer_path: &Path,
             num_threads: usize,
@@ -202,7 +203,8 @@ mod ort_engine {
             Ok((ids, mask))
         }
 
-        pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
+        /// Compute dense embedding vector for text.
+    pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
             let (ids, mask) = self.encode_ids_mask(text)?;
             let seq_len = ids.len();
             let token_type: Vec<i64> = vec![0; seq_len];
@@ -260,7 +262,8 @@ mod ort_engine {
             Ok(l2_normalize(emb))
         }
 
-        pub fn score(&self, query: &str, document: &str) -> Result<f32, String> {
+        /// Score query-document relevance pair using reranker model.
+    pub fn score(&self, query: &str, document: &str) -> Result<f32, String> {
             let (ids, mask) = self.encode_pair(query, document)?;
             let seq_len = ids.len();
             let token_type: Vec<i64> = {

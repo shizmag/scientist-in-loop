@@ -6,7 +6,9 @@ mod archive;
 mod compile;
 mod engine;
 mod error;
+/// Manuscript health diagnostic checks.
 pub mod health;
+/// Parsing and updating inline LaTeX TODO / idea comment blocks.
 pub mod idea_parser;
 mod sections;
 mod split_write;

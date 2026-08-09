@@ -13,10 +13,10 @@ fn test_scientific_paper_lifecycle_e2e() {
     // 1. Initialize temporary workspace scaffold (sil init)
     let (_temp, project_dir) = init_project("lifecycle_paper");
 
-    assert!(project_dir.join("sil.toml").exists());
+    assert!(project_dir.join(".sil").join("config.yaml").exists());
     assert!(project_dir.join("paper_draft.tex").exists());
     assert!(project_dir.join(".sil").join("structure.yaml").exists());
-    assert!(project_dir.join(".sil").join("references.bib").exists());
+    assert!(project_dir.join("references.bib").exists());
     assert!(project_dir.join(".sil").join("db.sqlite").exists());
 
     // 2. sil parse: parse paper/sources into SQLite + FTS5 index
@@ -44,7 +44,7 @@ Abstract: The dominant sequence transduction models are based on complex recurre
     assert_eq!(sources.len(), 1);
     assert_eq!(sources[0].title.as_deref(), Some("Attention Is All You Need"));
 
-    let fts_hits = db.search_sources("transduction models", 10).unwrap();
+    let fts_hits = db.search("transduction models", 10).unwrap();
     assert!(!fts_hits.is_empty(), "FTS5 index must contain search hits");
 
     // 3. MCP Simulation: simulate sil_upsert_bib and sil_get_structure / sil_set_structure
@@ -65,34 +65,35 @@ Abstract: The dominant sequence transduction models are based on complex recurre
             "draft": true
         })),
     );
-    assert!(!res_upsert.is_error, "sil_upsert_bib should succeed: {:?}", res_upsert);
+    assert!(res_upsert.is_error != Some(true), "sil_upsert_bib should succeed: {:?}", res_upsert);
 
-    let bib_content = std::fs::read_to_string(project_dir.join(".sil").join("references.bib")).unwrap();
+    let bib_content = std::fs::read_to_string(project_dir.join("references.bib")).unwrap();
     assert!(
         bib_content.contains("vaswani2017attention"),
         "references.bib must contain upserted entry"
     );
 
     let res_get_struct = call_tool("sil_get_structure", Some(json!({})));
-    assert!(!res_get_struct.is_error, "sil_get_structure should succeed");
+    assert!(res_get_struct.is_error != Some(true), "sil_get_structure should succeed");
 
     let res_update_struct = call_tool(
         "sil_get_structure",
         Some(json!({
             "action": "update",
-            "section_id": "sec_1",
+            "section_id": "intro",
             "completion": "polished"
         })),
     );
     assert!(
-        !res_update_struct.is_error,
-        "sil_get_structure update should succeed"
+        res_update_struct.is_error != Some(true),
+        "sil_get_structure update should succeed: {:?}",
+        res_update_struct
     );
 
     std::env::set_current_dir(&orig_cwd).unwrap();
 
     sil()
-        .args(["paper", "structure", "set", "sec_1", "polished"])
+        .args(["paper", "structure", "set", "intro", "polished"])
         .current_dir(&project_dir)
         .assert()
         .success();

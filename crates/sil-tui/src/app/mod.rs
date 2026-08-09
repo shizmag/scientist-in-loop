@@ -1,9 +1,9 @@
 //! Application state and logic for `sil-tui`.
 
-pub mod bib_actions;
-pub mod handlers;
-pub mod jobs;
-pub mod types;
+pub(crate) mod bib_actions;
+pub(crate) mod handlers;
+pub(crate) mod jobs;
+pub(crate) mod types;
 
 #[cfg(test)]
 mod tests;

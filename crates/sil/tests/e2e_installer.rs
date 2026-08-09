@@ -9,10 +9,9 @@ fn test_mcp_installer_gemini() {
     let temp = TempDir::new().unwrap();
     let home = temp.path();
 
-    std::env::set_var("HOME", home);
-
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
+        .env("HOME", home)
         .args(&["mcp", "install", "--client", "gemini"])
         .output()
         .expect("failed to execute sil mcp install");
@@ -34,8 +33,6 @@ fn test_mcp_installer_claude_merged() {
     let temp = TempDir::new().unwrap();
     let home = temp.path();
 
-    std::env::set_var("HOME", home);
-
     let claude_dir = home.join("Library/Application Support/Claude");
     fs::create_dir_all(&claude_dir).unwrap();
     let config_path = claude_dir.join("claude_desktop_config.json");
@@ -43,6 +40,7 @@ fn test_mcp_installer_claude_merged() {
 
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
+        .env("HOME", home)
         .args(&["mcp", "install", "--client", "claude"])
         .output()
         .expect("failed to execute sil mcp install");
@@ -52,7 +50,7 @@ fn test_mcp_installer_claude_merged() {
     let content = fs::read_to_string(&config_path).unwrap();
     let json: Value = serde_json::from_str(&content).unwrap();
 
-    assert!(json["mcpServers"]["other-server"]["command"] == "other");
+    assert_eq!(json["mcpServers"]["other-server"]["command"], "other");
     assert!(json["mcpServers"]["scientist-in-loop"]["command"].is_string());
     assert_eq!(json["mcpServers"]["scientist-in-loop"]["args"], serde_json::json!(["project", "mcp", "--quiet"]));
 }
@@ -64,6 +62,7 @@ fn test_mcp_installer_custom_path() {
 
     let output = assert_cmd::Command::cargo_bin("sil")
         .unwrap()
+        .env("HOME", temp.path())
         .args(&["mcp", "install", "--client", "custom", "--path", custom_file.to_str().unwrap()])
         .output()
         .expect("failed to execute sil mcp install");
