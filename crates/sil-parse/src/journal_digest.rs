@@ -5,179 +5,17 @@ use camino::{Utf8Path, Utf8PathBuf};
 use sil_core::JournalPublication;
 use std::process::Command;
 
-fn format_authors(value: &serde_json::Value) -> String {
-    let mut names = Vec::new();
-    if let Some(arr) = value.as_array() {
-        for obj in arr {
-            if let Some(name) = obj.get("name").and_then(|v| v.as_str()) {
-                names.push(name.to_string());
-            } else {
-                let given = obj.get("given").and_then(|v| v.as_str()).unwrap_or("");
-                let family = obj.get("family").and_then(|v| v.as_str()).unwrap_or("");
-                let full = match (given.is_empty(), family.is_empty()) {
-                    (false, false) => format!("{given} {family}"),
-                    (false, true) => given.to_string(),
-                    (true, false) => family.to_string(),
-                    (true, true) => String::new(),
-                };
-                if !full.is_empty() {
-                    names.push(full);
-                }
-            }
-        }
-    }
-    names.join(", ")
+fn map_api_err(e: sil_api::ApiError) -> ParseError {
+    ParseError::Message(e.to_string())
 }
 
-fn extract_year_from_crossref(item: &serde_json::Value) -> Option<u32> {
-    for key in [
-        "published-print",
-        "published-online",
-        "published",
-        "issued",
-        "created",
-    ] {
-        if let Some(dp) = item
-            .get(key)
-            .and_then(|v| v.get("date-parts"))
-            .and_then(|v| v.as_array())
-            && let Some(first_date) = dp.first().and_then(|v| v.as_array())
-            && let Some(year_val) = first_date.first().and_then(|v| v.as_u64())
-            && (1800..=2030).contains(&year_val)
-        {
-            return Some(year_val as u32);
-        }
-    }
-    None
-}
+pub use sil_api::{
+    build_crossref_digest_url, parse_crossref_item, title_similarity, TitleLookupOutcome,
+};
 
-fn clean_abstract(raw: &str) -> String {
-    let mut result = String::new();
-    let mut in_tag = false;
-    for c in raw.chars() {
-        if c == '<' {
-            in_tag = true;
-        } else if c == '>' {
-            in_tag = false;
-        } else if !in_tag {
-            result.push(c);
-        }
-    }
-    result.trim().to_string()
-}
-
-fn extract_pdf_url(item: &serde_json::Value) -> Option<String> {
-    if let Some(links) = item.get("link").and_then(|v| v.as_array()) {
-        for link in links {
-            let ct = link
-                .get("content-type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let url = link.get("URL").and_then(|v| v.as_str()).unwrap_or("");
-            if (ct.contains("pdf") || url.ends_with(".pdf")) && !url.is_empty() {
-                return Some(url.to_string());
-            }
-        }
-        if let Some(first_url) = links
-            .first()
-            .and_then(|l| l.get("URL"))
-            .and_then(|v| v.as_str())
-            && !first_url.is_empty()
-        {
-            return Some(first_url.to_string());
-        }
-    }
-    None
-}
-
-/// Convert a Crossref JSON work item into a domain `JournalPublication`.
-pub fn parse_crossref_item(item: &serde_json::Value) -> Option<JournalPublication> {
-    let doi = item
-        .get("DOI")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let title = item
-        .get("title")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-
-    if title.is_empty() && doi.is_none() {
-        return None;
-    }
-
-    let authors = format_authors(item.get("author").unwrap_or(&serde_json::Value::Null));
-
-    let journal = item
-        .get("container-title")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-
-    let year = extract_year_from_crossref(item);
-
-    let abstract_text = item
-        .get("abstract")
-        .and_then(|v| v.as_str())
-        .map(clean_abstract)
-        .unwrap_or_default();
-
-    let citation_count = item
-        .get("is-referenced-by-count")
-        .and_then(|v| v.as_u64())
-        .map(|c| c as u32);
-
-    let url = item
-        .get("URL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| {
-            doi.as_ref()
-                .map(|d| format!("https://doi.org/{d}"))
-                .unwrap_or_default()
-        });
-
-    let pdf_url = extract_pdf_url(item);
-
-    Some(JournalPublication {
-        doi,
-        title,
-        authors,
-        journal,
-        year,
-        abstract_text,
-        citation_count,
-        url,
-        pdf_url,
-    })
-}
-
-fn urlencode(s: &str) -> String {
-    let mut encoded = String::new();
-    for byte in s.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push(byte as char);
-            }
-            b' ' => encoded.push_str("%20"),
-            _ => encoded.push_str(&format!("%{:02X}", byte)),
-        }
-    }
-    encoded
-}
-
-/// Build Crossref API request URL for fetching top journal publications digest (`filter=type:journal-article`).
-pub fn build_crossref_digest_url(query: &str, limit: usize) -> String {
-    format!(
-        "https://api.crossref.org/works?query={}&filter=type:journal-article&rows={}&sort=relevance",
-        urlencode(query),
-        limit
-    )
+/// Enforce a minimal rate-limiting delay (250ms) between external HTTP API requests.
+pub fn enforce_api_ratelimit() {
+    sil_api::enforce_api_ratelimit();
 }
 
 /// Fetch publications directly from Crossref API natively in Rust using `ureq`.
@@ -185,204 +23,17 @@ pub fn fetch_journal_publications_native(
     query: &str,
     limit: usize,
 ) -> Result<Vec<JournalPublication>, ParseError> {
-    enforce_api_ratelimit();
-    let url = build_crossref_digest_url(query, limit);
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
-
-    let response = agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-        .map_err(|e| ParseError::Message(format!("Crossref API request failed: {e}")))?;
-
-    let json: serde_json::Value = response
-        .into_json()
-        .map_err(|e| ParseError::Message(format!("Failed to parse Crossref response JSON: {e}")))?;
-
-    let items = json
-        .get("message")
-        .and_then(|m| m.get("items"))
-        .and_then(|i| i.as_array())
-        .ok_or_else(|| ParseError::Message("Invalid Crossref API payload structure".to_string()))?;
-
-    let mut publications = Vec::new();
-    for item in items {
-        if let Some(pub_item) = parse_crossref_item(item) {
-            publications.push(pub_item);
-        }
-    }
-
-    Ok(publications)
-}
-
-static LAST_API_CALL: std::sync::LazyLock<std::sync::Mutex<Option<std::time::Instant>>> =
-    std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
-
-/// Enforce a minimal rate-limiting delay (250ms) between external HTTP API requests.
-pub fn enforce_api_ratelimit() {
-    if let Ok(mut guard) = LAST_API_CALL.lock() {
-        if let Some(last) = *guard {
-            let elapsed = last.elapsed();
-            let min_delay = std::time::Duration::from_millis(250);
-            if elapsed < min_delay {
-                std::thread::sleep(min_delay - elapsed);
-            }
-        }
-        *guard = Some(std::time::Instant::now());
-    }
+    sil_api::fetch_journal_publications_native(query, limit).map_err(map_api_err)
 }
 
 /// Fetch single paper's metadata from Crossref API natively in Rust using `ureq`.
 pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ParseError> {
-    enforce_api_ratelimit();
-    let clean_doi = doi.trim_start_matches("doi:").trim();
-    let url = format!("https://api.crossref.org/works/{clean_doi}");
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
-
-    let response = match agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(e) => {
-            return Err(ParseError::Message(format!(
-                "Crossref DOI fetch error: {e}"
-            )));
-        }
-    };
-
-    let json: serde_json::Value = response
-        .into_json()
-        .map_err(|e| ParseError::Message(format!("Failed to parse Crossref DOI JSON: {e}")))?;
-
-    if let Some(message) = json.get("message") {
-        Ok(parse_crossref_item(message))
-    } else {
-        Ok(None)
-    }
+    sil_api::fetch_work_by_doi(doi).map_err(map_api_err)
 }
 
 /// Fetch official BibTeX string from DOI content negotiation (`https://doi.org/{doi}`).
 pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ParseError> {
-    enforce_api_ratelimit();
-    let clean_doi = doi
-        .trim_start_matches("doi:")
-        .trim_start_matches("https://doi.org/")
-        .trim_start_matches("http://doi.org/")
-        .trim();
-
-    if clean_doi.is_empty() {
-        return Ok(None);
-    }
-    let url = format!("https://doi.org/{clean_doi}");
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(8))
-        .redirects(5)
-        .build();
-
-    let response = match agent
-        .get(&url)
-        .set("Accept", "application/x-bibtex")
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(e) => {
-            return Err(ParseError::Message(format!(
-                "DOI BibTeX request failed: {e}"
-            )));
-        }
-    };
-
-    let body = response
-        .into_string()
-        .map_err(|e| ParseError::Message(format!("Failed to read DOI BibTeX string: {e}")))?;
-
-    let trimmed = body.trim();
-    if trimmed
-        .lines()
-        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
-    {
-        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
-    } else {
-        Ok(None)
-    }
-}
-
-fn tokenize_title(title: &str) -> std::collections::HashSet<String> {
-    title
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { ' ' })
-        .collect::<String>()
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect()
-}
-
-/// Compute token-based Jaccard similarity between two title strings.
-/// Returns a score between 0.0 and 1.0.
-pub fn title_similarity(a: &str, b: &str) -> f64 {
-    let tokens_a = tokenize_title(a);
-    let tokens_b = tokenize_title(b);
-
-    if tokens_a.is_empty() && tokens_b.is_empty() {
-        return 1.0;
-    }
-    if tokens_a.is_empty() || tokens_b.is_empty() {
-        return 0.0;
-    }
-
-    let intersection = tokens_a.intersection(&tokens_b).count();
-    let union = tokens_a.union(&tokens_b).count();
-
-    if union == 0 {
-        0.0
-    } else {
-        intersection as f64 / union as f64
-    }
-}
-
-/// Detailed outcome of DOI lookup by title from Crossref.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TitleLookupOutcome {
-    /// Match found with similarity score above or equal to threshold (0.6).
-    Match {
-        /// Resolved DOI.
-        doi: String,
-        /// Title returned by Crossref.
-        title: String,
-        /// Similarity score.
-        similarity: f64,
-    },
-    /// Match found, but rejected due to low confidence similarity (< 0.6).
-    LowConfidence {
-        /// Title returned by Crossref.
-        found_title: String,
-        /// Similarity score.
-        similarity: f64,
-    },
-    /// No item returned by Crossref.
-    NoMatch,
+    sil_api::fetch_bibtex_by_doi(doi).map_err(map_api_err)
 }
 
 /// Lookup DOI for paper title with detailed outcome including title similarity checking against Crossref results.
@@ -390,71 +41,7 @@ pub fn lookup_doi_by_title_detailed(
     title: &str,
     authors: Option<&str>,
 ) -> Result<TitleLookupOutcome, ParseError> {
-    enforce_api_ratelimit();
-    let clean_title = title.trim();
-    if clean_title.is_empty() {
-        return Ok(TitleLookupOutcome::NoMatch);
-    }
-
-    let query = if let Some(a) = authors {
-        format!("{clean_title} {a}")
-    } else {
-        clean_title.to_string()
-    };
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(8))
-        .build();
-
-    let response = match agent
-        .get("https://api.crossref.org/works")
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .query("query.bibliographic", &query)
-        .query("rows", "1")
-        .call()
-    {
-        Ok(res) => res,
-        Err(_) => return Ok(TitleLookupOutcome::NoMatch),
-    };
-
-    let json: serde_json::Value = match response.into_json() {
-        Ok(j) => j,
-        Err(_) => return Ok(TitleLookupOutcome::NoMatch),
-    };
-
-    if let Some(first_item) = json
-        .get("message")
-        .and_then(|m| m.get("items"))
-        .and_then(|i| i.as_array())
-        .and_then(|a| a.first())
-        && let Some(doi) = first_item.get("DOI").and_then(|d| d.as_str())
-    {
-        let found_title = first_item
-            .get("title")
-            .and_then(|v| v.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-
-        let sim = title_similarity(clean_title, found_title);
-        if sim >= 0.6 {
-            return Ok(TitleLookupOutcome::Match {
-                doi: doi.to_string(),
-                title: found_title.to_string(),
-                similarity: sim,
-            });
-        } else {
-            return Ok(TitleLookupOutcome::LowConfidence {
-                found_title: found_title.to_string(),
-                similarity: sim,
-            });
-        }
-    }
-
-    Ok(TitleLookupOutcome::NoMatch)
+    sil_api::lookup_doi_by_title_detailed(title, authors).map_err(map_api_err)
 }
 
 /// Lookup DOI for a paper title and optional author list using Crossref API.
@@ -463,54 +50,17 @@ pub fn lookup_doi_by_title(
     title: &str,
     authors: Option<&str>,
 ) -> Result<Option<String>, ParseError> {
-    match lookup_doi_by_title_detailed(title, authors)? {
-        TitleLookupOutcome::Match { doi, .. } => Ok(Some(doi)),
-        TitleLookupOutcome::LowConfidence { .. } | TitleLookupOutcome::NoMatch => Ok(None),
-    }
+    sil_api::lookup_doi_by_title(title, authors).map_err(map_api_err)
 }
 
 /// Fetch official BibTeX string directly from arXiv API (`https://arxiv.org/bibtex/{clean_id}`).
 pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ParseError> {
-    enforce_api_ratelimit();
-    let clean_id = arxiv_id
-        .trim_start_matches("arxiv:")
-        .trim_start_matches("arXiv:")
-        .trim();
+    sil_api::fetch_bibtex_by_arxiv_id(arxiv_id).map_err(map_api_err)
+}
 
-    if clean_id.is_empty() {
-        return Ok(None);
-    }
-    let url = format!("https://arxiv.org/bibtex/{clean_id}");
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(8))
-        .build();
-
-    let response = match agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(_) => return Ok(None),
-    };
-
-    let body = response
-        .into_string()
-        .map_err(|e| ParseError::Message(format!("Failed to read arXiv BibTeX: {e}")))?;
-
-    let trimmed = body.trim();
-    if trimmed
-        .lines()
-        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
-    {
-        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
-    } else {
-        Ok(None)
-    }
+/// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
+pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {
+    sil_api::fetch_work_by_arxiv_id(arxiv_id).map_err(map_api_err)
 }
 
 /// Result of resolving official BibTeX metadata for a ReferenceEntry.
@@ -729,102 +279,6 @@ pub fn resolve_official_bibtex_for_source(doc: &sil_core::SourceDocument) -> Sou
     }
 }
 
-/// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
-pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublication>, ParseError> {
-    enforce_api_ratelimit();
-    let clean_id = arxiv_id
-        .trim_start_matches("arxiv:")
-        .trim_start_matches("arXiv:")
-        .trim();
-
-    if clean_id.is_empty() {
-        return Ok(None);
-    }
-
-    let url = format!("http://export.arxiv.org/api/query?id_list={clean_id}");
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
-
-    let response = agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-        .map_err(|e| ParseError::Message(format!("ArXiv API request failed: {e}")))?;
-
-    let xml = response
-        .into_string()
-        .map_err(|e| ParseError::Message(format!("Failed to read ArXiv response string: {e}")))?;
-
-    if !xml.contains("<entry>") {
-        return Ok(None);
-    }
-
-    let entry_start = xml.find("<entry>").unwrap();
-    let entry_xml = &xml[entry_start..];
-
-    let extract_tag = |tag: &str| -> Option<String> {
-        let open = format!("<{tag}>");
-        let close = format!("</{tag}>");
-        if let Some(sp) = entry_xml.find(&open)
-            && let Some(ep) = entry_xml[sp..].find(&close)
-        {
-            let raw = &entry_xml[sp + open.len()..sp + ep];
-            let clean = raw.replace('\n', " ").trim().to_string();
-            if !clean.is_empty() {
-                return Some(clean);
-            }
-        }
-        None
-    };
-
-    let title = extract_tag("title").unwrap_or_default();
-    if title.is_empty() || title.contains("Error") {
-        return Ok(None);
-    }
-
-    let mut authors_vec = Vec::new();
-    let mut search_pos = 0;
-    while let Some(sp) = entry_xml[search_pos..].find("<author>") {
-        let abs_sp = search_pos + sp;
-        if let Some(ep) = entry_xml[abs_sp..].find("</author>") {
-            let author_block = &entry_xml[abs_sp..abs_sp + ep];
-            if let Some(nsp) = author_block.find("<name>")
-                && let Some(nep) = author_block[nsp..].find("</name>")
-            {
-                let name = author_block[nsp + 6..nsp + nep].trim();
-                if !name.is_empty() {
-                    authors_vec.push(name.to_string());
-                }
-            }
-            search_pos = abs_sp + ep + 9;
-        } else {
-            break;
-        }
-    }
-    let authors = authors_vec.join(", ");
-
-    let published = extract_tag("published").unwrap_or_default();
-    let year = sil_regex::extract_year(&published);
-    let abstract_text = extract_tag("summary").unwrap_or_default();
-    let doi = extract_tag("arxiv:doi");
-
-    Ok(Some(JournalPublication {
-        doi,
-        title,
-        authors,
-        journal: format!("arXiv:{clean_id}"),
-        year: year.map(|y| y as u32),
-        abstract_text,
-        citation_count: None,
-        url: format!("https://arxiv.org/abs/{clean_id}"),
-        pdf_url: Some(format!("https://arxiv.org/pdf/{clean_id}.pdf")),
-    }))
-}
-
 /// Fetch top journal publications matching a query using native Rust Crossref API as primary source.
 pub fn fetch_journal_publications(
     query: &str,
@@ -978,90 +432,6 @@ print(json.dumps([
             pub_item.pdf_url.as_deref(),
             Some("https://nature.com/articles/s41586-020-1234-y.pdf")
         );
-    }
-
-    #[test]
-    fn test_format_authors_variations() {
-        let json = serde_json::json!([
-            {"name": "Global Research Consortium"},
-            {"given": "Jane"},
-            {"family": "Doe"},
-            {"given": "John", "family": "Smith"},
-            {}
-        ]);
-        let formatted = format_authors(&json);
-        assert_eq!(
-            formatted,
-            "Global Research Consortium, Jane, Doe, John Smith"
-        );
-    }
-
-    #[test]
-    fn test_extract_year_from_crossref_keys_and_bounds() {
-        let json_print =
-            serde_json::json!({ "published-print": { "date-parts": [[2021, 5, 12]] } });
-        assert_eq!(extract_year_from_crossref(&json_print), Some(2021));
-
-        let json_online = serde_json::json!({ "published-online": { "date-parts": [[2022]] } });
-        assert_eq!(extract_year_from_crossref(&json_online), Some(2022));
-
-        let json_issued = serde_json::json!({ "issued": { "date-parts": [[2018]] } });
-        assert_eq!(extract_year_from_crossref(&json_issued), Some(2018));
-
-        let json_created = serde_json::json!({ "created": { "date-parts": [[2020]] } });
-        assert_eq!(extract_year_from_crossref(&json_created), Some(2020));
-
-        let json_out_of_range = serde_json::json!({ "published": { "date-parts": [[1750]] } });
-        assert_eq!(extract_year_from_crossref(&json_out_of_range), None);
-    }
-
-    #[test]
-    fn test_clean_abstract_tags() {
-        let raw = "<jats:p>This is a <b>bold</b> abstract statement with <jats:sec>sections</jats:sec>.</jats:p>";
-        assert_eq!(
-            clean_abstract(raw),
-            "This is a bold abstract statement with sections."
-        );
-    }
-
-    #[test]
-    fn test_extract_pdf_url_variations() {
-        // Content type application/pdf
-        let item_ct = serde_json::json!({
-            "link": [
-                {"URL": "https://example.com/article.pdf", "content-type": "application/pdf"}
-            ]
-        });
-        assert_eq!(
-            extract_pdf_url(&item_ct),
-            Some("https://example.com/article.pdf".to_string())
-        );
-
-        // URL ending with .pdf
-        let item_ext = serde_json::json!({
-            "link": [
-                {"URL": "https://example.com/download.pdf", "content-type": "text/html"}
-            ]
-        });
-        assert_eq!(
-            extract_pdf_url(&item_ext),
-            Some("https://example.com/download.pdf".to_string())
-        );
-
-        // Fallback to first URL
-        let item_fallback = serde_json::json!({
-            "link": [
-                {"URL": "https://example.com/article", "content-type": "text/html"}
-            ]
-        });
-        assert_eq!(
-            extract_pdf_url(&item_fallback),
-            Some("https://example.com/article".to_string())
-        );
-
-        // Missing link
-        let item_none = serde_json::json!({});
-        assert_eq!(extract_pdf_url(&item_none), None);
     }
 
     #[test]

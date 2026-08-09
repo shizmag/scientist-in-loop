@@ -2,7 +2,8 @@
 
 #![deny(missing_docs)]
 
-/// Chunk storage, markdown chunking, and similarity math.
+/// BibTeX references and DOI verifications storage.
+pub mod bib_references;
 pub mod chunks;
 pub mod embed_cache;
 /// Database and embedding error types.
@@ -15,6 +16,7 @@ pub(crate) mod search;
 pub(crate) mod sources;
 pub(crate) mod todo;
 
+pub use bib_references::{BibReferenceRecord, DoiVerificationRecord};
 pub use chunks::{
     ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,
     embedding_to_blob,
@@ -356,6 +358,47 @@ impl SilDb {
     /// Retrieve stored draft content hash to verify staleness.
     pub fn get_draft_similarity_hash(&self) -> Result<Option<String>, DbError> {
         references::get_draft_similarity_hash(&self.conn)
+    }
+
+    /// Get all records from `bib_references` table.
+    pub fn get_bib_references(&self) -> Result<Vec<BibReferenceRecord>, DbError> {
+        bib_references::get_bib_references(&self.conn)
+    }
+
+    /// Get a single DOI verification record by DOI.
+    pub fn get_doi_verification(
+        &self,
+        doi: &str,
+    ) -> Result<Option<DoiVerificationRecord>, DbError> {
+        bib_references::get_doi_verification(&self.conn, doi)
+    }
+
+    /// Get all DOI verification records as a HashMap keyed by DOI string.
+    pub fn get_doi_verifications(
+        &self,
+    ) -> Result<std::collections::HashMap<String, DoiVerificationRecord>, DbError> {
+        bib_references::get_doi_verifications(&self.conn)
+    }
+
+    /// Upsert a DOI verification record.
+    pub fn upsert_doi_verification(
+        &self,
+        doi: &str,
+        exists: bool,
+        error_cat: Option<&str>,
+    ) -> Result<(), DbError> {
+        bib_references::upsert_doi_verification(&self.conn, doi, exists, error_cat)
+    }
+
+    /// Upsert a bib reference record using UPDATE SURGERY logic.
+    pub fn upsert_bib_reference(
+        &self,
+        cite_key: &str,
+        doi: Option<&str>,
+        doi_exists: Option<bool>,
+        raw_bibtex: &str,
+    ) -> Result<bool, DbError> {
+        bib_references::upsert_bib_reference(&self.conn, cite_key, doi, doi_exists, raw_bibtex)
     }
 }
 
@@ -1005,5 +1048,48 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
 
         assert!(cols.contains(&"arxiv_id".to_string()));
         assert!(cols.contains(&"url".to_string()));
+    }
+
+    #[test]
+    fn test_sildb_bib_references_facade() {
+        let db = SilDb::open_in_memory().unwrap();
+
+        // Bib references
+        assert!(db.get_bib_references().unwrap().is_empty());
+        let mut_ins = db
+            .upsert_bib_reference(
+                "key_facade",
+                Some("10.1000/facade"),
+                Some(true),
+                "@article{key_facade}",
+            )
+            .unwrap();
+        assert!(mut_ins);
+
+        let refs = db.get_bib_references().unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].cite_key, "key_facade");
+
+        let mut_re = db
+            .upsert_bib_reference(
+                "key_facade",
+                Some("10.1000/facade"),
+                Some(true),
+                "@article{key_facade}",
+            )
+            .unwrap();
+        assert!(!mut_re);
+
+        // DOI verifications
+        assert!(db.get_doi_verifications().unwrap().is_empty());
+        db.upsert_doi_verification("10.1000/facade", true, None)
+            .unwrap();
+
+        let v = db.get_doi_verification("10.1000/facade").unwrap();
+        assert!(v.is_some());
+        assert!(v.unwrap().exists_flag);
+
+        let map = db.get_doi_verifications().unwrap();
+        assert_eq!(map.len(), 1);
     }
 }

@@ -5361,6 +5361,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sil-api"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sil-core",
+ "sil-regex",
+ "tempfile",
+ "thiserror 2.0.19",
+ "ureq 2.12.1",
+]
+
+[[package]]
 name = "sil-core"
 version = "1.0.0"
 dependencies = [
@@ -5440,6 +5453,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sil-api",
  "sil-core",
  "sil-db",
  "sil-regex",

@@ -13,6 +13,7 @@ console = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sil-api = { workspace = true }
 sil-core = { workspace = true }
 sil-db = { workspace = true }
 sil-regex = { workspace = true }

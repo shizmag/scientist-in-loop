@@ -1,0 +1,18 @@
+[package]
+name = "sil-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Consolidated external API interactions and rate limiting"
+publish = false
+
+[dependencies]
+sil-core = { workspace = true }
+sil-regex = { workspace = true }
+ureq = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

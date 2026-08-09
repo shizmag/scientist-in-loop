@@ -175,6 +175,22 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             embedding    BLOB NOT NULL,
             created_at   TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS bib_references (
+            cite_key   TEXT PRIMARY KEY NOT NULL,
+            doi        TEXT,
+            doi_exists INTEGER,
+            raw_bibtex TEXT NOT NULL,
+            checked_at TEXT,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS doi_verifications (
+            doi         TEXT PRIMARY KEY NOT NULL,
+            exists_flag INTEGER NOT NULL,
+            error_cat   TEXT,
+            checked_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         "#,
     )?;
 
