@@ -9,6 +9,7 @@ mod commands;
 mod init;
 mod templates;
 mod util;
+mod mcp_install;
 
 use cli::{Cli, Commands, GitCmd, PaperCmd, ProjectCmd, SourceCmd, StructureCmd};
 use util::make_ui;
@@ -93,7 +94,7 @@ fn run() -> Result<()> {
                 task.as_deref(),
                 ui.as_ref(),
             ),
-            ProjectCmd::Mcp { quiet } => commands::mcp(quiet),
+            ProjectCmd::Mcp { action, quiet } => commands::mcp(action, quiet),
         },
         Commands::Git { action } => match action {
             GitCmd::Log {
@@ -113,5 +114,6 @@ fn run() -> Result<()> {
             ),
         },
         Commands::Tui { action: _ } => commands::settings(),
+        Commands::Mcp { action, quiet } => commands::mcp(action, quiet),
     }
 }

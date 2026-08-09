@@ -1,8 +1,17 @@
-//! Command handler for `sil mcp` — starts the stdio JSON-RPC 2.0 MCP server.
+//! Command handler for `sil mcp` and `sil mcp install`.
 
 use anyhow::Result;
+use crate::cli::McpCmd;
+use crate::mcp_install::{run_installer, InstallOptions};
 
-/// Run the `sil mcp` stdio server.
-pub fn run(quiet: bool) -> Result<()> {
-    sil_mcp::run_stdio_server(quiet)
+/// Run the `sil mcp` stdio server or subcommands.
+pub fn run(action: Option<McpCmd>, quiet: bool) -> Result<()> {
+    match action {
+        Some(McpCmd::Install { client, path }) => {
+            let options = InstallOptions { client, path };
+            run_installer(options)?;
+            Ok(())
+        }
+        None => sil_mcp::run_stdio_server(quiet),
+    }
 }

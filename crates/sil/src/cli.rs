@@ -63,6 +63,14 @@ pub enum Commands {
         #[command(subcommand)]
         action: Option<TuiCmd>,
     },
+    /// Manage Model Context Protocol (MCP) server and client configuration
+    Mcp {
+        #[command(subcommand)]
+        action: Option<McpCmd>,
+        /// Quiet mode (suppress log output on stderr)
+        #[arg(short, long)]
+        quiet: bool,
+    },
 }
 
 /// `sil source` subcommands.
@@ -228,9 +236,25 @@ pub enum ProjectCmd {
     },
     /// Start Model Context Protocol (MCP) stdio server
     Mcp {
+        #[command(subcommand)]
+        action: Option<McpCmd>,
         /// Quiet mode (suppress log output on stderr)
         #[arg(short, long)]
         quiet: bool,
+    },
+}
+
+/// `sil mcp` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum McpCmd {
+    /// Install sil MCP server configuration into AI client configuration files
+    Install {
+        /// Target AI client (gemini, antigravity, grok, claude, cursor, custom)
+        #[arg(long, short)]
+        client: Option<String>,
+        /// Custom config file path (used with --client custom or standalone)
+        #[arg(long, short)]
+        path: Option<PathBuf>,
     },
 }
 
