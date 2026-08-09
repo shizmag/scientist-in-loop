@@ -88,6 +88,14 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
     };
 
     let bib_path = root.join("references.bib");
+    let bg_doi_handle = if bib_path.is_file() {
+        let db_path = _paths.db().into_std_path_buf();
+        let bib_std = bib_path.clone().into_std_path_buf();
+        Some(sil_parse::spawn_background_bib_doi_check(db_path, bib_std))
+    } else {
+        None
+    };
+
     let bib_opt = if bib_path.is_file() {
         Some(bib_path.as_path())
     } else {
@@ -104,6 +112,23 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
                 ui.warn(&format!(
                     "Reference coverage: {cited}/{total} mentioned in {main} ({} unmentioned in references.bib)",
                     total - cited
+                ));
+            }
+        }
+    }
+
+    if let Some(handle) = bg_doi_handle {
+        if let Ok(Ok(report)) = handle.join() {
+            if !report.broken_dois.is_empty() {
+                let broken_list: Vec<String> = report
+                    .broken_dois
+                    .iter()
+                    .map(|(k, d)| format!("{k} ({d})"))
+                    .collect();
+                ui.warn(&format!(
+                    "⚠ Background DOI check: {} broken DOI(s) in references.bib: [{}]",
+                    report.broken_dois.len(),
+                    broken_list.join(", ")
                 ));
             }
         }

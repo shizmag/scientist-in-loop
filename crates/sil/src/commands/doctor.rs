@@ -195,6 +195,47 @@ pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
                         true,
                         format!("{} active idea/TODO block(s)", report.todo_ideas_count),
                     ));
+
+                    if bib_path.exists() && let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                        if let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path()) {
+                            match sil_parse::check_bib_dois_incremental(&db, &bib_content) {
+                                Ok(doi_rep) => {
+                                    let broken = doi_rep.broken_dois.len();
+                                    let ok = broken == 0;
+                                    let detail = if broken == 0 {
+                                        format!(
+                                            "all {} DOI(s) valid ({} checked online, {} cached)",
+                                            doi_rep.entries_with_doi,
+                                            doi_rep.checked_online,
+                                            doi_rep.skipped_cached
+                                        )
+                                    } else {
+                                        let broken_list: Vec<String> = doi_rep
+                                            .broken_dois
+                                            .iter()
+                                            .map(|(k, d)| format!("{k}: {d}"))
+                                            .collect();
+                                        format!(
+                                            "{broken} broken DOI(s) in references.bib: [{}]",
+                                            broken_list.join(", ")
+                                        )
+                                    };
+                                    checks.push(Check::simple(
+                                        "manuscript health: bib DOIs",
+                                        ok,
+                                        detail,
+                                    ));
+                                }
+                                Err(e) => {
+                                    checks.push(Check::simple(
+                                        "manuscript health: bib DOIs",
+                                        true,
+                                        format!("DOI check skipped: {e}"),
+                                    ));
+                                }
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     checks.push(Check::simple(
