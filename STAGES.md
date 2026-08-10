@@ -45,4 +45,8 @@ Plan: `docs/pr-plan-09-08/`. Delivered in-tree so far:
 
 Remaining plan tracks (quality fixtures B*, embed cache D2, Releases F*, TUI estimate R4, ADR-012 closer Z): see `docs/pr-plan-09-08/pr-plan.md`.
 
+## Stage 10 — MCP surface collapse (19 → 6) ✅
+Collapsed MCP tool list from 19 fine-grained tools to 6 workflow-oriented tools (`sil_context`, `sil_sources`, `sil_cite`, `sil_draft`, `sil_review`, `sil_propose`). Behavior parity preserved via action/flags dispatch; hard cut of old names; docs honesty updated across README, STAGES, and skills.
+
+
 

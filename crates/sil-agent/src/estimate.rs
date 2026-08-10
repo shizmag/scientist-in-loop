@@ -481,7 +481,7 @@ pub fn write_estimate_report(
     if !readme.is_file() {
         let _ = fs::write(
             readme.as_str(),
-            "# Reviews\n\nEstimate reports from `sil paper estimate` / MCP `sil_estimate_paper`.\n\
+            "# Reviews\n\nEstimate reports from `sil paper estimate` / MCP `sil_review`.\n\
              Read-only artifacts — do not treat scores as peer-review truth.\n",
         );
     }

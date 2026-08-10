@@ -19,7 +19,7 @@ You are reviewing a **sil**-managed scientific manuscript. This skill teaches a 
 | `methodology` | Methods-focused | Design, eval, reproducibility |
 
 CLI: `sil paper estimate --mode quick|full|methodology [--json] [--write]`  
-MCP: `sil_estimate_paper`  
+MCP: `sil_review` (`action=estimate`)  
 Native L0 always runs offline; refine with this skill (L1) when a host model is available.
 
 ## Panel personas (L1)

@@ -272,29 +272,57 @@ Sci-Action: fetch-source
 
 ## Model Context Protocol (MCP) Server & Local RAG
 
-`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil project mcp` / `sil mcp`) allowing external AI IDEs and assistants (Claude Desktop, Cursor, etc.) to inspect literature, edit sections, estimate manuscript quality, manage bibliography, update `# -- X -- #` TODO blocks, fetch sources, and format commit proposals (**22 tools**). Tools never auto-commit; they return Sci-Action proposals.
+`sil` provides a native **Model Context Protocol (MCP)** stdio JSON-RPC server (`sil project mcp` / `sil mcp`) allowing external AI IDEs and assistants (Claude Desktop, Cursor, etc.) to inspect literature, edit sections, estimate manuscript quality, manage bibliography, update `# -- X -- #` TODO blocks, fetch sources, and format commit proposals (**6 workflow-oriented tools**). Tools never auto-commit; they return Sci-Action proposals.
 
 ### Key MCP Features
 
-1. **Hybrid RAG (`sil_search_sources`)** — BM25 FTS5 always; **dense ONNX** embed/rerank only when built with `cargo build -p sil --features onnx` **and** models + `tokenizer.json` load successfully under `~/.cache/sil/models/` (otherwise honest hash/token **fallback**; see `sil project doctor`):
+1. **Hybrid RAG (`sil_sources` `action=search`)** — BM25 FTS5 always; **dense ONNX** embed/rerank only when built with `cargo build -p sil --features onnx` **and** models + `tokenizer.json` load successfully under `~/.cache/sil/models/` (otherwise honest hash/token **fallback**; see `sil project doctor`):
    - **Parent-Child Chunking**: Splits parsed Markdown literature by section headings (parent chunks) and paragraphs (child chunks).
    - **RRF + HyDE**: Reciprocal Rank Fusion and optional HyDE query expansion.
    - **Custom ONNX Paths**: Configure `onnx_models_dir` / `onnx_embedder_path` / `onnx_reranker_path` in settings; directory paths auto-locate `*.onnx`.
    - **Parent Context Expansion**: Child hits expand to full parent section context.
-2. **Structured Async TODO Governance (`sil_list_todos`, `sil_update_todo`)**:
+2. **Structured Async TODO Governance (`sil_context`, `sil_draft` `action=todo`)**:
    - Query, prioritize, and update `% # -- X -- #` comment blocks inside `paper_draft.tex` with status (`open`, `in_progress`, `resolved`), priority (`low`, `medium`, `high`, `critical`), section tags, and author provenance.
-3. **Literature Fetching (`sil_fetch_source`)**:
+3. **Literature Fetching (`sil_sources` `action=fetch`)**:
    - Download papers/sources into `sources/` by DOI (`10.xxxx`), arXiv ID (`arxiv:XXXX.YYYY`), or direct URL, and optionally parse into SQLite FTS5 index.
-4. **Commit Proposal Governance (`sil_propose_commit`)**:
+4. **Commit Proposal Governance (`sil_propose`)**:
    - Generates structured commit proposals with `Sci-Action:` trailers for human review. **Never auto-commits**.
 
-### Additional Stage 9 MCP tools
+### Workflow-Oriented MCP Surface (6 Tools)
 
-| Tool | Role |
-|------|------|
-| `sil_estimate_paper` | L0 multi-perspective estimate; optional write under `.sil/reviews/` (read-only on draft) |
-| `sil_edit_section` | Replace a LaTeX section body / search-replace; Sci-Action `edit-draft` |
-| `sil_ground_claims` | Hybrid search suggestions for a claim; optional TODO note |
+| Tool | Role | Dispatch / Action |
+|------|------|-------------------|
+| `sil_context` | Orient: project snapshot, skills, structure/TODOs | Flags + optional skill name/input |
+| `sil_sources` | Literature lifecycle: search, get, fetch, parse, rank | `action`: `search` \| `get` \| `fetch` \| `parse` \| `rank` |
+| `sil_cite` | Bibliography & claim grounding | `action`: `suggest` \| `ground` \| `upsert` \| `promote` |
+| `sil_draft` | Manuscript mutations: section edit, TODOs, structure | `action`: `edit` \| `todo` \| `structure` |
+| `sil_review` | Quality gates: manuscript estimate & build/doctor | `action`: `estimate` \| `build` |
+| `sil_propose` | Commit proposal generation | `message` / Sci-Action category (never auto-commits) |
+
+### Migration Table (19 Fine-Grained Tools → 6 Workflow Tools)
+
+| Old tool | New tool | Action / notes |
+|----------|----------|----------------|
+| `sil_get_workspace_context` | `sil_context` | flags `include_*` |
+| `sil_list_skills` | `sil_context` | list skills (e.g. `list_skills=true` or omit skill name) |
+| `sil_invoke_skill` | `sil_context` | `skill` + optional `input` |
+| `sil_list_todos` | `sil_context` | `include_todos` / todo filters |
+| `sil_get_structure` (read) | `sil_context` | structure included or `include_structure` |
+| `sil_search_sources` | `sil_sources` | `action=search` |
+| `sil_get_source_context` | `sil_sources` | `action=get` |
+| `sil_fetch_source` | `sil_sources` | `action=fetch` |
+| `sil_parse_source` | `sil_sources` | `action=parse` |
+| `sil_rank_draft` | `sil_sources` | `action=rank` |
+| `sil_suggest_citations` | `sil_cite` | `action=suggest` |
+| `sil_ground_claims` | `sil_cite` | `action=ground` |
+| `sil_upsert_bib` | `sil_cite` | `action=upsert` |
+| `sil_promote_bib` | `sil_cite` | `action=promote` |
+| `sil_edit_section` | `sil_draft` | `action=edit` |
+| `sil_update_todo` | `sil_draft` | `action=todo` |
+| `sil_get_structure` (update) | `sil_draft` | `action=structure` |
+| `sil_estimate_paper` | `sil_review` | `action=estimate` |
+| `sil_build_and_doctor` | `sil_review` | `action=build` |
+| `sil_propose_commit` | `sil_propose` | same args as today |
 
 ### Manuscript estimate (native CLI)
 
