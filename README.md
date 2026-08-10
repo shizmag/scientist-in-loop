@@ -29,10 +29,11 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 2. Parsed text and explicit bibliographic metadata (`authors`, `year`, `venue`, `doi`, `arxiv_id`, `url`, `abstract`) are indexed in SQLite/FTS5 — never duplicated as loose markdown dumps.  
 3. Extracted references from documents are auto-tagged with `% [status: unproved, incomplete]` and `note={unproved, incomplete}` until officially verified.  
 4. Fetching official papers (`sil source fetch <doi|arxiv|url>`) automatically upgrades and replaces incomplete `references.bib` entries via smart deduplication (DOI, arXiv ID, title similarity).  
-5. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
-6. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
-7. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
-8. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.  
+5. Incremental reference checking automatically validates DOIs, arXiv IDs, and OpenReview note links in `references.bib` via an Abstract Factory architecture, checking title metadata similarity, caching statuses in SQLite via Update Surgery, and providing `--fix` (`-f`) auto-repair.  
+6. The high-level plan lives in `.sil/structure.yaml` with explicit section completion.  
+7. Global author requisites and project co-authors are managed via a rich Ratatui TUI (`sil settings`), with automatic caching across articles.  
+8. Every meaningful change produces a **commit proposal** with a `Sci-Action:` trailer — never an auto-commit.  
+9. Agents load `SYSTEM.md` always, and `paper.md` / `agent-code.md` only when the task touches those surfaces.  
 
 ---
 
@@ -200,7 +201,7 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil paper assets [--json]` | List and validate figures, graphics, and `\input` dependencies in `paper_draft.tex` |
 | `sil paper pack [-o bundle.zip]` | Generate reproducible manuscript ZIP package containing draft, structure, BibTeX, review reports, and `REPRO.md` |
 | `sil project context [flags]` | Structured context dump for humans/agents |
-| `sil project doctor [--json]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count) |
+| `sil project doctor [--json] [--fix]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count, and incremental DOI/arXiv/OpenReview identifier & title mismatch verification; `--fix` auto-repairs corrupted entries) |
 | `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
 | `sil git log` | Git log filtered/annotated by `Sci-Action` trailers |
 | `sil git propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
@@ -470,18 +471,19 @@ sil context --task "edit introduction in paper_draft.tex"
 ```text
 crates/
   sil/          # binary only — clap + wiring
+  sil-api/      # external API interactions (Crossref, arXiv, OpenReview) & rate limiting
   sil-core/     # domain types, Config, settings, errors, paths, terminal UX
-  sil-db/       # SQLite + FTS5
+  sil-db/       # SQLite + FTS5 + update surgery for bib verifications
   sil-git/      # status, commit proposals, Sci-Action trailers
-  sil-parse/    # PDF validation, Marker orchestration, native Crossref metadata hydration
-  sil-regex/    # centralized regular expressions and pattern matchers
+  sil-parse/    # PDF validation, Marker orchestration, Abstract Factory reference checkers (DOI, arXiv, OpenReview)
+  sil-regex/    # centralized regular expressions and pattern matchers (DOI, arXiv, OpenReview)
   sil-latex/    # engine abstraction + section splitter
   sil-agent/    # dynamic skills + context generation
   sil-template/ # ML/AI conference article templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
   sil-tui/      # Ratatui TUI for global/local settings and co-author cache
 python/         # download_pdf.py, parse_with_marker.py
 templates/      # files copied by sil init
-docs/adr/       # Architectural Decision Records (ADRs)
+docs/           # Architectural Decision Records (ADRs) & technical notes
 ```
 
 - Domain logic lives in libraries; the binary stays thin.  
@@ -509,6 +511,7 @@ cargo run -p sil -- --help
 | `sil parse` (path + noninteractive multi-select) + FTS5 `sil search` | Done |
 | Multi-format source probing (`PDF`, `Markdown`, `Text`, `HTML`) | Done |
 | SQLite bibliographic metadata (`authors`, `year`, `venue`, `doi`, `abstract`) | Done |
+| Incremental BibTeX reference verification (DOI, arXiv, OpenReview) + Title Mismatch & `--fix` Autofix | Done |
 | Rich BibTeX generation (`sil cite`) | Done |
 | Marker via Python helper (stubbable for tests) | Done |
 | Commit proposals + `sil log` Sci-Action trailers | Done |
