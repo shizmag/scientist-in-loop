@@ -198,7 +198,7 @@ pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
 
                     if bib_path.exists() && let Ok(db) = sil_db::SilDb::open(&paths.db()) {
                         if let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path()) {
-                            match sil_parse::check_bib_dois_incremental(&db, &bib_content) {
+                            match sil_parse::check_bib_dois_incremental(&db, &bib_content, false) {
                                 Ok(doi_rep) => {
                                     let broken = doi_rep.broken_dois.len();
                                     let ok = broken == 0;
