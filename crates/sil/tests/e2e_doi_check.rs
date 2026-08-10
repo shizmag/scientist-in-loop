@@ -38,3 +38,30 @@ fn test_doi_check_doctor_integration_e2e() {
     cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
         .stdout(predicate::str::contains("manuscript health: bib DOIs"));
 }
+
+#[test]
+fn test_doi_check_title_mismatch_and_fix_e2e() {
+    let dir = tempdir().unwrap();
+    let project = dir.path().join("mismatch-paper");
+
+    let mut cmd = Command::cargo_bin("sil").unwrap();
+    cmd.arg("init").arg("mismatch-paper").current_dir(dir.path()).assert().success();
+
+    let bib_content = r#"@article{alphafold,
+  author = {Jumper, John},
+  title = {Wrong Title Completely Mismatched},
+  year = {2021},
+  doi = {10.1038/s41586-021-03819-2}
+}
+"#;
+    std::fs::write(project.join("references.bib"), bib_content).unwrap();
+
+    // Doctor detects title mismatch
+    let mut cmd = Command::cargo_bin("sil").unwrap();
+    cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
+        .stdout(predicate::str::contains("manuscript health: bib DOIs"));
+
+    // Doctor --fix autofixes references.bib
+    let mut cmd = Command::cargo_bin("sil").unwrap();
+    cmd.arg("project").arg("doctor").arg("--fix").current_dir(&project).assert().success();
+}

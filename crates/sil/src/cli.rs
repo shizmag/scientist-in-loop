@@ -242,6 +242,9 @@ pub enum ProjectCmd {
         /// Provide ONNX model cache bootstrap directories and export recipe
         #[arg(long = "fix-rag")]
         fix_rag: bool,
+        /// Automatically repair mismatched or corrupted references.bib entries with official BibTeX
+        #[arg(long = "fix", short = 'f')]
+        fix: bool,
     },
     /// Generate structured context for a human or agent
     Context {

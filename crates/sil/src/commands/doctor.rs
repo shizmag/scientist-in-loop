@@ -37,7 +37,7 @@ impl Check {
 }
 
 /// Run environment + project diagnostics.
-pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
+pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
     if fix_rag && let Some(cache_dir) = dirs::cache_dir() {
         let base = cache_dir.join("sil/models");
         let embed_dir = base.join("bge-small-en-v1.5");
@@ -198,11 +198,20 @@ pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
 
                     if bib_path.exists() && let Ok(db) = sil_db::SilDb::open(&paths.db()) {
                         if let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path()) {
-                            match sil_parse::check_bib_dois_incremental(&db, &bib_content, false) {
+                            match sil_parse::check_bib_dois_incremental(&db, &bib_content, fix) {
                                 Ok(doi_rep) => {
+                                    if fix && doi_rep.autofixed_count > 0 && let Some(ref updated) = doi_rep.updated_bib_content {
+                                        let _ = std::fs::write(bib_path.as_path(), updated);
+                                        ui.success(&format!(
+                                            "🔧 Autofixed {} reference entry(ies) in references.bib",
+                                            doi_rep.autofixed_count
+                                        ));
+                                    }
+
                                     let broken = doi_rep.broken_dois.len();
-                                    let ok = broken == 0;
-                                    let detail = if broken == 0 {
+                                    let mismatched = doi_rep.mismatched_dois.len();
+                                    let ok = broken == 0 && mismatched == 0;
+                                    let detail = if ok {
                                         format!(
                                             "all {} DOI(s) valid ({} checked online, {} cached)",
                                             doi_rep.entries_with_doi,
@@ -210,15 +219,24 @@ pub fn run(json: bool, fix_rag: bool, ui: &dyn SilUi) -> Result<()> {
                                             doi_rep.skipped_cached
                                         )
                                     } else {
-                                        let broken_list: Vec<String> = doi_rep
-                                            .broken_dois
-                                            .iter()
-                                            .map(|(k, d)| format!("{k}: {d}"))
-                                            .collect();
-                                        format!(
-                                            "{broken} broken DOI(s) in references.bib: [{}]",
-                                            broken_list.join(", ")
-                                        )
+                                        let mut parts = Vec::new();
+                                        if mismatched > 0 {
+                                            let m_list: Vec<String> = doi_rep
+                                                .mismatched_dois
+                                                .iter()
+                                                .map(|(k, loc, off, sim)| format!("{k} (title mismatch: '{loc}' vs '{off}', sim {sim:.2})"))
+                                                .collect();
+                                            parts.push(format!("{mismatched} title mismatch(es) [{}]", m_list.join("; ")));
+                                        }
+                                        if broken > 0 {
+                                            let b_list: Vec<String> = doi_rep
+                                                .broken_dois
+                                                .iter()
+                                                .map(|(k, d)| format!("{k}: {d}"))
+                                                .collect();
+                                            parts.push(format!("{broken} broken DOI(s) [{}]", b_list.join("; ")));
+                                        }
+                                        format!("references.bib issues: {}", parts.join("; "))
                                     };
                                     checks.push(Check::simple(
                                         "manuscript health: bib DOIs",

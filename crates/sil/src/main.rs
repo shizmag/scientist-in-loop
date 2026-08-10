@@ -81,7 +81,7 @@ fn run() -> Result<()> {
             PaperCmd::Pack { output } => commands::pack(output, ui.as_ref()),
         },
         Commands::Project { action } => match action {
-            ProjectCmd::Doctor { json, fix_rag } => commands::doctor(json, fix_rag, ui.as_ref()),
+            ProjectCmd::Doctor { json, fix_rag, fix } => commands::doctor(json, fix_rag, fix, ui.as_ref()),
             ProjectCmd::Context {
                 paper,
                 agent,
