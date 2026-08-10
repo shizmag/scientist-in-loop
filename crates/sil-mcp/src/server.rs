@@ -161,25 +161,15 @@ mod tests {
             .as_array()
             .expect("tools should be an array");
 
-        assert_eq!(tools.len(), 19, "Should register all 19 core sil MCP tools");
+        assert_eq!(tools.len(), 6, "Should register all 6 core sil MCP tools");
 
         let expected_names = [
-            "sil_search_sources",
-            "sil_get_source_context",
-            "sil_suggest_citations",
-            "sil_list_todos",
-            "sil_update_todo",
-            "sil_list_skills",
-            "sil_invoke_skill",
-            "sil_get_workspace_context",
-            "sil_get_structure",
-            "sil_build_and_doctor",
-            "sil_propose_commit",
-            "sil_fetch_source",
-            "sil_upsert_bib",
-            "sil_promote_bib",
-            "sil_parse_source",
-            "sil_rank_draft",
+            "sil_context",
+            "sil_sources",
+            "sil_cite",
+            "sil_draft",
+            "sil_review",
+            "sil_propose",
         ];
 
         for expected in expected_names {
@@ -203,8 +193,8 @@ mod tests {
         let _env = crate::tools::tests::TestEnv::new();
         let server = McpServer::new();
 
-        // 1. Test sil_suggest_citations
-        let req1 = r#"{"jsonrpc":"2.0","id":101,"method":"tools/call","params":{"name":"sil_suggest_citations","arguments":{"query":"generative AI"}}}"#;
+        // 1. Test sil_cite action=suggest
+        let req1 = r#"{"jsonrpc":"2.0","id":101,"method":"tools/call","params":{"name":"sil_cite","arguments":{"action":"suggest","query":"generative AI"}}}"#;
         let resp1 = server
             .handle_request_line(req1)
             .await
@@ -215,8 +205,8 @@ mod tests {
         let Content::Text { text: text1 } = &call_res1.content[0];
         assert!(text1.contains("bibtex"));
 
-        // 2. Test sil_propose_commit
-        let req2 = r#"{"jsonrpc":"2.0","id":102,"method":"tools/call","params":{"name":"sil_propose_commit","arguments":{"action":"edit-draft"}}}"#;
+        // 2. Test sil_propose
+        let req2 = r#"{"jsonrpc":"2.0","id":102,"method":"tools/call","params":{"name":"sil_propose","arguments":{"action":"edit-draft"}}}"#;
         let resp2 = server
             .handle_request_line(req2)
             .await
@@ -226,8 +216,8 @@ mod tests {
         let Content::Text { text: text2 } = &call_res2.content[0];
         assert!(text2.contains("edit-draft"));
 
-        // 3. Test sil_list_skills
-        let req3 = r#"{"jsonrpc":"2.0","id":103,"method":"tools/call","params":{"name":"sil_list_skills","arguments":{}}}"#;
+        // 3. Test sil_context list_skills=true
+        let req3 = r#"{"jsonrpc":"2.0","id":103,"method":"tools/call","params":{"name":"sil_context","arguments":{"list_skills":true}}}"#;
         let resp3 = server
             .handle_request_line(req3)
             .await
@@ -335,7 +325,7 @@ mod tests {
     #[test]
     fn test_mcpserver_default() {
         let server = McpServer::default();
-        assert_eq!(server.tools.len(), 19);
+        assert_eq!(server.tools.len(), 6);
     }
 
     #[tokio::test]

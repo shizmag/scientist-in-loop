@@ -25,145 +25,138 @@ use crate::protocol::{CallToolResult, Tool, ToolInputSchema};
 pub fn list_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "sil_search_sources".to_string(),
-            description: "Hybrid RAG search (BM25 + dense RRF when onnx feature+models available, else hash fallback; HyDE + parent expansion)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "query": { "type": "string", "description": "Search query string" },
-                    "limit": { "type": "integer", "description": "Max search results (default 5)" },
-                    "hyde": { "type": "boolean", "description": "Use HyDE expansion (default false)" },
-                    "expand_parent": { "type": "boolean", "description": "Expand matching chunks to full parent section context (default true)" }
-                }),
-                vec!["query"],
-            ),
-        },
-        Tool {
-            name: "sil_get_source_context".to_string(),
-            description: "Fetch full parent chunk/section context for a source".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "source_id": { "type": "string", "description": "Source ID" },
-                    "chunk_id": { "type": "string", "description": "Optional specific chunk ID" }
-                }),
-                vec!["source_id"],
-            ),
-        },
-        Tool {
-            name: "sil_suggest_citations".to_string(),
-            description: "Suggest deterministic BibTeX & \\cite{} keys".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "query": { "type": "string", "description": "Query or paper title" },
-                    "source_id": { "type": "string", "description": "Optional source ID" }
-                }),
-                vec!["query"],
-            ),
-        },
-        Tool {
-            name: "sil_list_todos".to_string(),
-            description: "Query TODOs with status, priority, section filters".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "status": { "type": "string", "description": "Filter by status: open, in_progress, done" },
-                    "priority": { "type": "string", "description": "Filter by priority: high, medium, low" },
-                    "section": { "type": "string", "description": "Filter by section ID" },
-                    "sort_by": { "type": "string", "description": "Sort order: priority or line_start" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_update_todo".to_string(),
-            description: "Create/update # -- X -- # block in paper_draft.tex & DB".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "id": { "type": "string", "description": "Optional existing block ID to update" },
-                    "section_id": { "type": "string", "description": "Section ID" },
-                    "content": { "type": "string", "description": "Content of the TODO/idea block" },
-                    "status": { "type": "string", "description": "Status: open, in_progress, done" },
-                    "priority": { "type": "string", "description": "Priority: high, medium, low" }
-                }),
-                vec!["content"],
-            ),
-        },
-        Tool {
-            name: "sil_list_skills".to_string(),
-            description: "Discover local & environmental skills".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "category": { "type": "string", "description": "Optional category filter" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_invoke_skill".to_string(),
-            description: "Programmatically execute a skill".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "name": { "type": "string", "description": "Name of skill (e.g. paper.md, SYSTEM.md)" },
-                    "input": { "type": "string", "description": "Optional skill input" }
-                }),
-                vec!["name"],
-            ),
-        },
-        Tool {
-            name: "sil_get_workspace_context".to_string(),
-            description: "Synthesized sil context snapshot".to_string(),
+            name: "sil_context".to_string(),
+            description: "Orient: snapshot workspace context, discover/invoke skills, read structure, or query TODOs.".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
                     "include_sources": { "type": "boolean", "description": "Include sources summary (default true)" },
                     "include_paper": { "type": "boolean", "description": "Include paper draft (default true)" },
-                    "include_todos": { "type": "boolean", "description": "Include active TODOs (default true)" }
+                    "include_todos": { "type": "boolean", "description": "Include active TODOs (default true)" },
+                    "include_structure": { "type": "boolean", "description": "Include structure completion (default false)" },
+                    "list_skills": { "type": "boolean", "description": "List available skills (default false)" },
+                    "category": { "type": "string", "description": "Skill category filter when listing skills" },
+                    "skill": { "type": "string", "description": "Skill name to invoke (e.g. SYSTEM.md or paper.md)" },
+                    "name": { "type": "string", "description": "Alias for skill name" },
+                    "input": { "type": "string", "description": "Optional input string when invoking a skill" },
+                    "status": { "type": "string", "description": "Filter TODOs by status: open, in_progress, done" },
+                    "priority": { "type": "string", "description": "Filter TODOs by priority: high, medium, low" },
+                    "section": { "type": "string", "description": "Filter TODOs by section ID" },
+                    "sort_by": { "type": "string", "description": "Sort TODOs: priority or line_start" },
+                    "action": { "type": "string", "description": "Optional explicit sub-action: skills | todos | structure" }
                 }),
                 vec![],
             ),
         },
         Tool {
-            name: "sil_get_structure".to_string(),
-            description: "Read or update section completion/claims in structure.yaml (four-state completion: empty|outline|draft|polished)".to_string(),
+            name: "sil_sources".to_string(),
+            description: "Literature lifecycle: search | get | fetch | parse | rank (hybrid RAG when onnx+models available, else hash fallback).".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
-                    "action": { "type": "string", "description": "'read' (default) or 'update'" },
-                    "section_id": { "type": "string", "description": "Section ID (required for update)" },
+                    "action": {
+                        "type": "string",
+                        "enum": ["search", "get", "fetch", "parse", "rank"],
+                        "description": "Lifecycle action to perform"
+                    },
+                    "query": { "type": "string", "description": "Search query string (required for action=search)" },
+                    "source_id": { "type": "string", "description": "Source ID or filename under sources/ (required for action=get)" },
+                    "chunk_id": { "type": "string", "description": "Optional specific chunk ID (action=get)" },
+                    "target": { "type": "string", "description": "DOI (10.xxxx), arXiv ID (arxiv:XXXX.YYYY), or direct URL (required for action=fetch)" },
+                    "path": { "type": "string", "description": "Path to source file for action=parse" },
+                    "limit": { "type": "integer", "description": "Max search or rank results (default 5 for search, 50 for rank)" },
+                    "hyde": { "type": "boolean", "description": "Use HyDE expansion for search (default false)" },
+                    "expand_parent": { "type": "boolean", "description": "Expand matching chunks to parent section context (default true)" },
+                    "no_parse": { "type": "boolean", "description": "Skip immediate parsing after fetch (default false)" },
+                    "all_unparsed": { "type": "boolean", "description": "Parse all unparsed sources under sources/ (default false)" },
+                    "min_score": { "type": "number", "description": "Minimum similarity score for rank (default 0.0)" }
+                }),
+                vec!["action"],
+            ),
+        },
+        Tool {
+            name: "sil_cite".to_string(),
+            description: "Cite/bib: suggest keys, ground claims, upsert/promote BibTeX (never git commits; returns Sci-Action proposal).".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "action": {
+                        "type": "string",
+                        "enum": ["suggest", "ground", "upsert", "promote"],
+                        "description": "Citation action to perform"
+                    },
+                    "query": { "type": "string", "description": "Query or paper title (required for action=suggest)" },
+                    "claim": { "type": "string", "description": "Claim sentence or paragraph to ground (required for action=ground)" },
+                    "entry": { "type": "string", "description": "Full BibTeX entry block string (required for action=upsert)" },
+                    "cite_key": { "type": "string", "description": "Cite key of the entry to promote (required for action=promote)" },
+                    "source_id": { "type": "string", "description": "Optional source ID for action=suggest" },
+                    "limit": { "type": "integer", "description": "Max suggestions for action=ground (default 5)" },
+                    "apply": { "type": "boolean", "description": "Append a TODO idea block with suggestions for action=ground (default false)" },
+                    "draft": { "type": "boolean", "description": "Mark as TUI-added draft for action=upsert (default false)" },
+                    "preserve_cite_key": { "type": "boolean", "description": "Keep existing cite key when replacing for action=upsert (default true)" }
+                }),
+                vec!["action"],
+            ),
+        },
+        Tool {
+            name: "sil_draft".to_string(),
+            description: "Manuscript mutations: edit section, update # -- X -- # TODOs, set structure completion.".to_string(),
+            input_schema: ToolInputSchema::object(
+                json!({
+                    "action": {
+                        "type": "string",
+                        "enum": ["edit", "todo", "structure"],
+                        "description": "Draft mutation action"
+                    },
+                    "section_title": { "type": "string", "description": "Section title to match for action=edit" },
+                    "section_id": { "type": "string", "description": "Section ID for action=edit, todo, or structure" },
+                    "content": { "type": "string", "description": "New section body (action=edit) or TODO content (action=todo)" },
+                    "search": { "type": "string", "description": "Search string within section body for surgical replace (action=edit)" },
+                    "replace": { "type": "string", "description": "Replacement string (required if search set for action=edit)" },
+                    "expected_hash": { "type": "string", "description": "Optional short draft hash (action=edit)" },
+                    "id": { "type": "string", "description": "Existing TODO block ID (action=todo)" },
+                    "status": { "type": "string", "description": "Status for action=todo (open, in_progress, done)" },
+                    "priority": { "type": "string", "description": "Priority for action=todo (high, medium, low)" },
                     "completion": {
                         "type": "string",
                         "enum": ["empty", "outline", "draft", "polished"],
-                        "description": "Four-state section completion (preferred over completed)"
+                        "description": "Four-state section completion for action=structure"
                     },
-                    "completed": {
-                        "type": "boolean",
-                        "description": "Deprecated compat: true→draft, false→empty when completion absent"
-                    },
-                    "main_claim": { "type": "string", "description": "Optional primary claim for the section" },
+                    "completed": { "type": "boolean", "description": "Deprecated completion flag for action=structure" },
+                    "main_claim": { "type": "string", "description": "Primary claim for section (action=structure)" },
                     "secondary_points": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Optional secondary bullet points (replaces existing list)"
+                        "description": "Secondary bullet points (action=structure)"
                     },
                     "required_content": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Optional required-content checklist (replaces existing list)"
+                        "description": "Required content checklist (action=structure)"
                     }
                 }),
-                vec![],
+                vec!["action"],
             ),
         },
         Tool {
-            name: "sil_build_and_doctor".to_string(),
-            description: "Compile paper & health check (sil build, sil doctor)".to_string(),
+            name: "sil_review".to_string(),
+            description: "Quality gates: L0 estimate (read-only on paper_draft.tex) or compile & doctor (sil build, sil doctor).".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
-                    "engine": { "type": "string", "description": "LaTeX engine (pdflatex, xelatex, lualatex, tectonic)" },
-                    "run_doctor": { "type": "boolean", "description": "Run health audit (default true)" }
+                    "action": {
+                        "type": "string",
+                        "enum": ["estimate", "build"],
+                        "description": "Quality action to perform"
+                    },
+                    "mode": { "type": "string", "description": "Estimate mode: quick | full | methodology (default quick)" },
+                    "write": { "type": "boolean", "description": "Write report under .sil/reviews/ (default false)" },
+                    "include_sources_summary": { "type": "boolean", "description": "Include sources summary string (default false)" },
+                    "engine": { "type": "string", "description": "LaTeX engine for build (pdflatex, xelatex, lualatex, tectonic)" },
+                    "run_doctor": { "type": "boolean", "description": "Run health audit for build (default true)" }
                 }),
-                vec![],
+                vec!["action"],
             ),
         },
         Tool {
-            name: "sil_propose_commit".to_string(),
-            description: "Generate Sci-Action commit proposal (NEVER auto-commits)".to_string(),
+            name: "sil_propose".to_string(),
+            description: "Format Sci-Action commit proposal; NEVER auto-commits.".to_string(),
             input_schema: ToolInputSchema::object(
                 json!({
                     "message": { "type": "string", "description": "Optional custom commit message" },
@@ -172,128 +165,90 @@ pub fn list_tools() -> Vec<Tool> {
                 vec![],
             ),
         },
-        Tool {
-            name: "sil_fetch_source".to_string(),
-            description: "Download paper/source into sources/ by DOI, arXiv ID, or URL and optionally parse into SQLite".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "target": { "type": "string", "description": "DOI (10.xxxx), arXiv ID (arxiv:XXXX.YYYY), or direct URL" },
-                    "no_parse": { "type": "boolean", "description": "Skip immediate parsing after download (default false)" }
-                }),
-                vec!["target"],
-            ),
-        },
-        Tool {
-            name: "sil_upsert_bib".to_string(),
-            description: "Upsert a BibTeX entry into references.bib (never git commits; returns Sci-Action proposal)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "entry": { "type": "string", "description": "Full BibTeX entry block (string only)" },
-                    "draft": { "type": "boolean", "description": "Mark as TUI-added draft (default false)" },
-                    "preserve_cite_key": { "type": "boolean", "description": "Keep existing cite key when replacing (default true)" }
-                }),
-                vec!["entry"],
-            ),
-        },
-        Tool {
-            name: "sil_promote_bib".to_string(),
-            description: "Promote a bibliography entry by removing % [sil: tui-added] (never git commits)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "cite_key": { "type": "string", "description": "Cite key (or DOI/arXiv id) of the entry to promote" }
-                }),
-                vec!["cite_key"],
-            ),
-        },
-        Tool {
-            name: "sil_parse_source".to_string(),
-            description: "Parse an existing PDF/MD/text under sources/ into SQLite (no download); path, source_id, or all_unparsed".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "source_id": { "type": "string", "description": "Source id or filename under sources/" },
-                    "path": { "type": "string", "description": "Path to source file (absolute, relative, or under sources/)" },
-                    "all_unparsed": { "type": "boolean", "description": "Parse all unparsed sources under sources/ (default false)" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_rank_draft".to_string(),
-            description: "Rank extracted references by cosine similarity against paper_draft.tex".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "min_score": { "type": "number", "description": "Minimum similarity score to include (default 0.0)" },
-                    "limit": { "type": "integer", "description": "Max ranked hits to return (default 50)" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_estimate_paper".to_string(),
-            description: "L0 multi-perspective manuscript estimate (read-only on paper_draft.tex; optional write under .sil/reviews/)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "mode": { "type": "string", "description": "quick | full | methodology (default quick)" },
-                    "write": { "type": "boolean", "description": "Write report under .sil/reviews/ (default false)" },
-                    "include_sources_summary": { "type": "boolean", "description": "Include sources summary string (default false)" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_edit_section".to_string(),
-            description: "Replace body of a LaTeX section in paper_draft.tex by title match (never git commits; returns Sci-Action proposal)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "section_title": { "type": "string", "description": "Section title to match (case-insensitive substring or exact)" },
-                    "section_id": { "type": "string", "description": "Optional structure.yaml section id (matched against title)" },
-                    "content": { "type": "string", "description": "New section body (replaces body after heading line)" },
-                    "search": { "type": "string", "description": "Optional search string within section body for surgical replace" },
-                    "replace": { "type": "string", "description": "Replacement for search (required if search set)" },
-                    "expected_hash": { "type": "string", "description": "Optional short draft hash; reject if draft changed" }
-                }),
-                vec![],
-            ),
-        },
-        Tool {
-            name: "sil_ground_claims".to_string(),
-            description: "Suggest citations for claim text via hybrid source search (apply=false by default; never auto-commits)".to_string(),
-            input_schema: ToolInputSchema::object(
-                json!({
-                    "claim": { "type": "string", "description": "Claim sentence or paragraph to ground" },
-                    "limit": { "type": "integer", "description": "Max suggestions (default 5)" },
-                    "apply": { "type": "boolean", "description": "If true, append a TODO idea block with suggestions (default false)" }
-                }),
-                vec!["claim"],
-            ),
-        },
     ]
 }
 
 /// Execute a tool call by name with given parameters.
 pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolResult {
-    let args = arguments.unwrap_or_else(|| json!({}));
+    let mut args = arguments.unwrap_or_else(|| json!({}));
 
     match name {
-        "sil_search_sources" => handle_search_sources(args),
-        "sil_get_source_context" => handle_get_source_context(args),
-        "sil_suggest_citations" => handle_suggest_citations(args),
-        "sil_list_todos" => handle_list_todos(args),
-        "sil_update_todo" => handle_update_todo(args),
-        "sil_list_skills" => handle_list_skills(args),
-        "sil_invoke_skill" => handle_invoke_skill(args),
-        "sil_get_workspace_context" => handle_get_workspace_context(args),
-        "sil_get_structure" => handle_get_structure(args),
-        "sil_build_and_doctor" => handle_build_and_doctor(args),
-        "sil_propose_commit" => handle_propose_commit(args),
-        "sil_fetch_source" => handle_fetch_source(args),
-        "sil_upsert_bib" => handle_upsert_bib(args),
-        "sil_promote_bib" => handle_promote_bib(args),
-        "sil_parse_source" => handle_parse_source(args),
-        "sil_rank_draft" => handle_rank_draft(args),
-        "sil_estimate_paper" => handle_estimate_paper(args),
-        "sil_edit_section" => handle_edit_section(args),
-        "sil_ground_claims" => handle_ground_claims(args),
+        "sil_context" => {
+            if args.get("skill").is_some() || args.get("name").is_some() {
+                handle_invoke_skill(args)
+            } else if args.get("list_skills").and_then(|v| v.as_bool()).unwrap_or(false)
+                || args.get("action").and_then(|v| v.as_str()) == Some("skills")
+            {
+                handle_list_skills(args)
+            } else if args.get("status").is_some()
+                || args.get("priority").is_some()
+                || args.get("section").is_some()
+                || args.get("sort_by").is_some()
+                || args.get("action").and_then(|v| v.as_str()) == Some("todos")
+            {
+                handle_list_todos(args)
+            } else if args.get("action").and_then(|v| v.as_str()) == Some("structure") {
+                handle_get_structure(args)
+            } else {
+                handle_get_workspace_context(args)
+            }
+        }
+        "sil_sources" => {
+            let action = match args.get("action").and_then(|v| v.as_str()) {
+                Some(a) => a,
+                None => return CallToolResult::error("Missing required parameter: action"),
+            };
+            match action {
+                "search" => handle_search_sources(args),
+                "get" => handle_get_source_context(args),
+                "fetch" => handle_fetch_source(args),
+                "parse" => handle_parse_source(args),
+                "rank" => handle_rank_draft(args),
+                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_sources")),
+            }
+        }
+        "sil_cite" => {
+            let action = match args.get("action").and_then(|v| v.as_str()) {
+                Some(a) => a,
+                None => return CallToolResult::error("Missing required parameter: action"),
+            };
+            match action {
+                "suggest" => handle_suggest_citations(args),
+                "ground" => handle_ground_claims(args),
+                "upsert" => handle_upsert_bib(args),
+                "promote" => handle_promote_bib(args),
+                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_cite")),
+            }
+        }
+        "sil_draft" => {
+            let action = match args.get("action").and_then(|v| v.as_str()) {
+                Some(a) => a,
+                None => return CallToolResult::error("Missing required parameter: action"),
+            };
+            match action {
+                "edit" => handle_edit_section(args),
+                "todo" => handle_update_todo(args),
+                "structure" => {
+                    if let Some(obj) = args.as_object_mut() {
+                        obj.insert("action".to_string(), json!("update"));
+                    }
+                    handle_get_structure(args)
+                }
+                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_draft")),
+            }
+        }
+        "sil_review" => {
+            let action = match args.get("action").and_then(|v| v.as_str()) {
+                Some(a) => a,
+                None => return CallToolResult::error("Missing required parameter: action"),
+            };
+            match action {
+                "estimate" => handle_estimate_paper(args),
+                "build" => handle_build_and_doctor(args),
+                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_review")),
+            }
+        }
+        "sil_propose" => handle_propose_commit(args),
         _ => CallToolResult::error(format!("Unknown tool: {name}")),
     }
 }
@@ -638,9 +593,13 @@ fn handle_list_skills(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_invoke_skill(args: serde_json::Value) -> CallToolResult {
-    let name = match args.get("name").and_then(|v| v.as_str()) {
+    let name = match args
+        .get("skill")
+        .or_else(|| args.get("name"))
+        .and_then(|v| v.as_str())
+    {
         Some(n) => n,
-        None => return CallToolResult::error("Missing required parameter: name"),
+        None => return CallToolResult::error("Missing required parameter: skill or name"),
     };
     let input = args.get("input").and_then(|v| v.as_str());
 
@@ -2511,7 +2470,7 @@ pub(crate) mod tests {
     fn test_invoke_skill_missing_name_error() {
         let res = handle_invoke_skill(json!({}));
         assert_eq!(res.is_error, Some(true));
-        assert!(extract_text(&res).contains("Missing required parameter: name"));
+        assert!(extract_text(&res).contains("Missing required parameter:"));
     }
 
     #[test]
@@ -2729,8 +2688,8 @@ sections:
         let tools = list_tools();
         let tool = tools
             .iter()
-            .find(|t| t.name == "sil_get_structure")
-            .expect("sil_get_structure registered");
+            .find(|t| t.name == "sil_draft")
+            .expect("sil_draft registered");
         let props = tool.input_schema.properties.as_object().unwrap();
         assert!(
             !props.contains_key("word_count"),
@@ -2891,12 +2850,17 @@ sections:
 
     #[test]
     fn test_call_tool_none_arguments_fallback() {
-        let _env = TestEnv::new();
+        let env = TestEnv::new();
+        fs::write(
+            env.project_root.join("paper_draft.tex"),
+            "\\documentclass{article}",
+        )
+        .unwrap();
 
-        let res = call_tool("sil_list_skills", None);
+        let res = call_tool("sil_context", None);
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
-        assert!(val.is_array());
+        let text = extract_text(&res);
+        assert!(!text.is_empty());
     }
 
     #[test]
@@ -3113,14 +3077,50 @@ sections:
         let env = TestEnv::new();
         let entry = "@article{routekey,\n  title = {Routed},\n  year = {2019}\n}";
         let res = call_tool(
-            "sil_upsert_bib",
-            Some(json!({ "entry": entry, "draft": true })),
+            "sil_cite",
+            Some(json!({ "action": "upsert", "entry": entry, "draft": true })),
         );
         assert!(res.is_error.is_none() || res.is_error == Some(false));
 
-        let res = call_tool("sil_promote_bib", Some(json!({ "cite_key": "routekey" })));
+        let res = call_tool("sil_cite", Some(json!({ "action": "promote", "cite_key": "routekey" })));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let content = fs::read_to_string(env.project_root.join("references.bib").as_str()).unwrap();
         assert!(!content.contains("tui-added"));
+    }
+
+    #[test]
+    fn test_call_tool_six_tools_routing_and_validation() {
+        let _env = TestEnv::new();
+
+        // sil_sources missing action
+        let res_no_act = call_tool("sil_sources", Some(json!({})));
+        assert_eq!(res_no_act.is_error, Some(true));
+        assert!(extract_text(&res_no_act).contains("Missing required parameter: action"));
+
+        // sil_sources invalid action
+        let res_bad_act = call_tool("sil_sources", Some(json!({ "action": "invalid" })));
+        assert_eq!(res_bad_act.is_error, Some(true));
+        assert!(extract_text(&res_bad_act).contains("Invalid action 'invalid'"));
+
+        // sil_cite missing action
+        let res_cite_no_act = call_tool("sil_cite", Some(json!({})));
+        assert_eq!(res_cite_no_act.is_error, Some(true));
+        assert!(extract_text(&res_cite_no_act).contains("Missing required parameter: action"));
+
+        // sil_draft missing action
+        let res_draft_no_act = call_tool("sil_draft", Some(json!({})));
+        assert_eq!(res_draft_no_act.is_error, Some(true));
+        assert!(extract_text(&res_draft_no_act).contains("Missing required parameter: action"));
+
+        // sil_review missing action
+        let res_rev_no_act = call_tool("sil_review", Some(json!({})));
+        assert_eq!(res_rev_no_act.is_error, Some(true));
+        assert!(extract_text(&res_rev_no_act).contains("Missing required parameter: action"));
+
+        // sil_context with skill alias parameter
+        let res_skill = call_tool("sil_context", Some(json!({ "skill": "SYSTEM.md" })));
+        assert!(res_skill.is_error.is_none() || res_skill.is_error == Some(false));
+        let val_skill: serde_json::Value = serde_json::from_str(extract_text(&res_skill)).unwrap();
+        assert_eq!(val_skill["skill"], "SYSTEM.md");
     }
 }
