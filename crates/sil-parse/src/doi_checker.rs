@@ -73,10 +73,10 @@ pub struct DoiCheckReport {
 
 fn extract_local_title(block: &str) -> String {
     let info = sil_core::bib::extract_bib_entry_info(block);
-    if let Some(title) = info.title {
-        if !title.trim().is_empty() {
-            return title.trim().to_string();
-        }
+    if let Some(title) = info.title
+        && !title.trim().is_empty()
+    {
+        return title.trim().to_string();
     }
     String::new()
 }
@@ -133,8 +133,10 @@ fn check_bib_dois_incremental_inner(
         .map(|r| (r.cite_key.clone(), r))
         .collect();
 
-    let mut report = DoiCheckReport::default();
-    report.total_entries = blocks.len();
+    let mut report = DoiCheckReport {
+        total_entries: blocks.len(),
+        ..Default::default()
+    };
 
     let mut working_bib_content = bib_content.to_string();
 
@@ -248,13 +250,13 @@ fn check_bib_dois_incremental_inner(
                                 },
                             );
 
-                            if autofix {
-                                if let Ok(Some(official_bib)) = sil_api::fetch_bibtex_by_doi(&doi_str) {
-                                    let (updated, _replaced) =
-                                        sil_core::bib::upsert_bib_entry(&working_bib_content, &official_bib);
-                                    working_bib_content = updated;
-                                    report.autofixed_count += 1;
-                                }
+                            if autofix
+                                && let Ok(Some(official_bib)) = sil_api::fetch_bibtex_by_doi(&doi_str)
+                            {
+                                let (updated, _replaced) =
+                                    sil_core::bib::upsert_bib_entry(&working_bib_content, &official_bib);
+                                working_bib_content = updated;
+                                report.autofixed_count += 1;
                             }
 
                             report.items.push(BibDoiItemReport {

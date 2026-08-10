@@ -61,7 +61,7 @@ pub fn audit_manuscript(
             if let Ok(entries) = std::fs::read_dir(sections_dir.as_std_path()) {
                 for entry in entries.flatten() {
                     let p = entry.path();
-                    if p.is_file() && p.extension().map_or(false, |ext| ext == "tex") {
+                    if p.is_file() && p.extension().is_some_and(|ext| ext == "tex") {
                         if let Ok(c) = std::fs::read_to_string(&p) {
                             if let Ok(utf8_p) = camino::Utf8PathBuf::from_path_buf(p) {
                                 tex_sources.push((1, utf8_p, c));
@@ -241,7 +241,7 @@ fn extract_cite_keys(tex: &str) -> Vec<(usize, String)> {
             let mut earliest: Option<(usize, usize)> = None;
             for prefix in &cite_prefixes {
                 if let Some(pos) = rest.find(prefix) {
-                    if earliest.map_or(true, |(earliest_pos, _)| pos < earliest_pos) {
+                    if earliest.is_none_or(|(earliest_pos, _)| pos < earliest_pos) {
                         earliest = Some((pos, prefix.len()));
                     }
                 }

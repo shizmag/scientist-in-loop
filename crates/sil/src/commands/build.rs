@@ -117,21 +117,20 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
         }
     }
 
-    if let Some(handle) = bg_doi_handle {
-        if let Ok(Ok(report)) = handle.join() {
-            if !report.broken_dois.is_empty() {
-                let broken_list: Vec<String> = report
-                    .broken_dois
-                    .iter()
-                    .map(|(k, d)| format!("{k} ({d})"))
-                    .collect();
-                ui.warn(&format!(
-                    "⚠ Background DOI check: {} broken DOI(s) in references.bib: [{}]",
-                    report.broken_dois.len(),
-                    broken_list.join(", ")
-                ));
-            }
-        }
+    if let Some(handle) = bg_doi_handle
+        && let Ok(Ok(report)) = handle.join()
+        && !report.broken_dois.is_empty()
+    {
+        let broken_list: Vec<String> = report
+            .broken_dois
+            .iter()
+            .map(|(k, d)| format!("{k} ({d})"))
+            .collect();
+        ui.warn(&format!(
+            "⚠ Background DOI check: {} broken DOI(s) in references.bib: [{}]",
+            report.broken_dois.len(),
+            broken_list.join(", ")
+        ));
     }
 
     if is_release {

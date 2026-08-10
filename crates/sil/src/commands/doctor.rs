@@ -196,9 +196,11 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                         format!("{} active idea/TODO block(s)", report.todo_ideas_count),
                     ));
 
-                    if bib_path.exists() && let Ok(db) = sil_db::SilDb::open(&paths.db()) {
-                        if let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path()) {
-                            match sil_parse::check_bib_dois_incremental(&db, &bib_content, fix) {
+                    if bib_path.exists()
+                        && let Ok(db) = sil_db::SilDb::open(&paths.db())
+                        && let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path())
+                    {
+                        match sil_parse::check_bib_dois_incremental(&db, &bib_content, fix) {
                                 Ok(doi_rep) => {
                                     if fix && doi_rep.autofixed_count > 0 && let Some(ref updated) = doi_rep.updated_bib_content {
                                         let _ = std::fs::write(bib_path.as_path(), updated);
@@ -254,7 +256,6 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                             }
                         }
                     }
-                }
                 Err(e) => {
                     checks.push(Check::simple(
                         "manuscript health audit",

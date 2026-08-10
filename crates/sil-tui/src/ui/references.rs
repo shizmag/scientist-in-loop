@@ -107,7 +107,7 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             };
 
             let entry_key = extract_bib_key_from_entry_text(entry);
-            let is_cited = entry_key.as_ref().map_or(false, |k| !unmentioned_keys.contains(k));
+            let is_cited = entry_key.as_ref().is_some_and(|k| !unmentioned_keys.contains(k));
             let status_tag = if is_cited { "[✓ cited] " } else { "[uncited] " };
             let status_style = if is_cited {
                 Style::default().fg(Color::Green)

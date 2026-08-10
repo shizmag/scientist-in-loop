@@ -32,8 +32,8 @@ fn test_clean_doi_str() {
 
 #[test]
 fn test_check_doi_exists_empty() {
-    assert_eq!(check_doi_exists("").unwrap(), false);
-    assert_eq!(check_doi_exists("   ").unwrap(), false);
+    assert!(!check_doi_exists("").unwrap());
+    assert!(!check_doi_exists("   ").unwrap());
 }
 
 #[test]
