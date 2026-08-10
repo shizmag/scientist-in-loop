@@ -47,7 +47,7 @@ Abstract: The dominant sequence transduction models are based on complex recurre
     let fts_hits = db.search("transduction models", 10).unwrap();
     assert!(!fts_hits.is_empty(), "FTS5 index must contain search hits");
 
-    // 3. MCP Simulation: simulate sil_upsert_bib and sil_get_structure / sil_set_structure
+    // 3. MCP Simulation: simulate sil_cite action=upsert and sil_context / sil_draft action=structure
     let orig_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(&project_dir).unwrap();
 
@@ -59,13 +59,14 @@ Abstract: The dominant sequence transduction models are based on complex recurre
 }"#;
 
     let res_upsert = call_tool(
-        "sil_upsert_bib",
+        "sil_cite",
         Some(json!({
+            "action": "upsert",
             "entry": bib_entry,
             "draft": true
         })),
     );
-    assert!(res_upsert.is_error != Some(true), "sil_upsert_bib should succeed: {:?}", res_upsert);
+    assert!(res_upsert.is_error != Some(true), "sil_cite action=upsert should succeed: {:?}", res_upsert);
 
     let bib_content = std::fs::read_to_string(project_dir.join("references.bib")).unwrap();
     assert!(
@@ -73,20 +74,20 @@ Abstract: The dominant sequence transduction models are based on complex recurre
         "references.bib must contain upserted entry"
     );
 
-    let res_get_struct = call_tool("sil_get_structure", Some(json!({})));
-    assert!(res_get_struct.is_error != Some(true), "sil_get_structure should succeed");
+    let res_get_struct = call_tool("sil_context", Some(json!({"include_structure": true})));
+    assert!(res_get_struct.is_error != Some(true), "sil_context should succeed");
 
     let res_update_struct = call_tool(
-        "sil_get_structure",
+        "sil_draft",
         Some(json!({
-            "action": "update",
+            "action": "structure",
             "section_id": "intro",
             "completion": "polished"
         })),
     );
     assert!(
         res_update_struct.is_error != Some(true),
-        "sil_get_structure update should succeed: {:?}",
+        "sil_draft action=structure update should succeed: {:?}",
         res_update_struct
     );
 
