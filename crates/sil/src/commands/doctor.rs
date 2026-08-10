@@ -200,62 +200,64 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                         && let Ok(db) = sil_db::SilDb::open(&paths.db())
                         && let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path())
                     {
-                        match sil_parse::check_bib_dois_incremental(&db, &bib_content, fix) {
-                                Ok(doi_rep) => {
-                                    if fix && doi_rep.autofixed_count > 0 && let Some(ref updated) = doi_rep.updated_bib_content {
-                                        let _ = std::fs::write(bib_path.as_path(), updated);
-                                        ui.success(&format!(
-                                            "🔧 Autofixed {} reference entry(ies) in references.bib",
-                                            doi_rep.autofixed_count
-                                        ));
-                                    }
+                        match sil_parse::checkers::run_all_checkers_incremental(&db, &bib_content, fix) {
+                            Ok(rep) => {
+                                if fix && rep.autofixed_count > 0 && let Some(ref updated) = rep.updated_bib_content {
+                                    let _ = std::fs::write(bib_path.as_path(), updated);
+                                    ui.success(&format!(
+                                        "🔧 Autofixed {} reference entry(ies) in references.bib",
+                                        rep.autofixed_count
+                                    ));
+                                }
 
-                                    let broken = doi_rep.broken_dois.len();
-                                    let mismatched = doi_rep.mismatched_dois.len();
-                                    let ok = broken == 0 && mismatched == 0;
-                                    let detail = if ok {
-                                        format!(
-                                            "all {} DOI(s) valid ({} checked online, {} cached)",
-                                            doi_rep.entries_with_doi,
-                                            doi_rep.checked_online,
-                                            doi_rep.skipped_cached
-                                        )
-                                    } else {
-                                        let mut parts = Vec::new();
-                                        if mismatched > 0 {
-                                            let m_list: Vec<String> = doi_rep
-                                                .mismatched_dois
-                                                .iter()
-                                                .map(|(k, loc, off, sim)| format!("{k} (title mismatch: '{loc}' vs '{off}', sim {sim:.2})"))
-                                                .collect();
-                                            parts.push(format!("{mismatched} title mismatch(es) [{}]", m_list.join("; ")));
-                                        }
-                                        if broken > 0 {
-                                            let b_list: Vec<String> = doi_rep
-                                                .broken_dois
-                                                .iter()
-                                                .map(|(k, d)| format!("{k}: {d}"))
-                                                .collect();
-                                            parts.push(format!("{broken} broken DOI(s) [{}]", b_list.join("; ")));
-                                        }
-                                        format!("references.bib issues: {}", parts.join("; "))
-                                    };
-                                    checks.push(Check::simple(
-                                        "manuscript health: bib DOIs",
-                                        ok,
-                                        detail,
-                                    ));
-                                }
-                                Err(e) => {
-                                    checks.push(Check::simple(
-                                        "manuscript health: bib DOIs",
-                                        true,
-                                        format!("DOI check skipped: {e}"),
-                                    ));
-                                }
+                                let broken = rep.broken_identifiers.len();
+                                let mismatched = rep.mismatched_identifiers.len();
+                                let ok = broken == 0 && mismatched == 0;
+                                let detail = if ok {
+                                    format!(
+                                        "all {} verified identifier(s) valid ({} checked online, {} cached)",
+                                        rep.entries_with_identifier,
+                                        rep.checked_online,
+                                        rep.skipped_cached
+                                    )
+                                } else {
+                                    let mut parts = Vec::new();
+                                    if mismatched > 0 {
+                                        let m_list: Vec<String> = rep
+                                            .mismatched_identifiers
+                                            .iter()
+                                            .map(|(k, id_type, loc, off, sim)| {
+                                                format!("{k} ({id_type} title mismatch: '{loc}' vs '{off}', sim {sim:.2})")
+                                            })
+                                            .collect();
+                                        parts.push(format!("{mismatched} title mismatch(es) [{}]", m_list.join("; ")));
+                                    }
+                                    if broken > 0 {
+                                        let b_list: Vec<String> = rep
+                                            .broken_identifiers
+                                            .iter()
+                                            .map(|(k, id_type, id)| format!("{k} ({id_type} {id})"))
+                                            .collect();
+                                        parts.push(format!("{broken} broken identifier(s) [{}]", b_list.join("; ")));
+                                    }
+                                    format!("references.bib issues: {}", parts.join("; "))
+                                };
+                                checks.push(Check::simple(
+                                    "manuscript health: bib identifiers",
+                                    ok,
+                                    detail,
+                                ));
+                            }
+                            Err(e) => {
+                                checks.push(Check::simple(
+                                    "manuscript health: bib identifiers",
+                                    true,
+                                    format!("Reference check skipped: {e}"),
+                                ));
                             }
                         }
                     }
+                }
                 Err(e) => {
                     checks.push(Check::simple(
                         "manuscript health audit",

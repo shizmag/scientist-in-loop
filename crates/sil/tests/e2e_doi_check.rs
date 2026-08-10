@@ -31,12 +31,12 @@ fn test_doi_check_doctor_integration_e2e() {
     // 3. sil project doctor (first run — checks DOIs)
     let mut cmd = Command::cargo_bin("sil").unwrap();
     cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib DOIs"));
+        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
 
     // 4. sil project doctor (second run — verifies incremental cache)
     let mut cmd = Command::cargo_bin("sil").unwrap();
     cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib DOIs"));
+        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn test_doi_check_title_mismatch_and_fix_e2e() {
     // Doctor detects title mismatch
     let mut cmd = Command::cargo_bin("sil").unwrap();
     cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib DOIs"));
+        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
 
     // Doctor --fix autofixes references.bib
     let mut cmd = Command::cargo_bin("sil").unwrap();

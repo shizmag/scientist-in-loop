@@ -10,6 +10,8 @@ pub mod crossref;
 pub mod doi;
 /// Error types for external API interactions.
 pub mod error;
+/// OpenReview API lookups and BibTeX retrieval.
+pub mod openreview;
 /// Global API rate limiting handler.
 pub mod ratelimit;
 
@@ -20,4 +22,5 @@ pub use arxiv::*;
 pub use crossref::*;
 pub use doi::*;
 pub use error::ApiError;
+pub use openreview::*;
 pub use ratelimit::*;

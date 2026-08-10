@@ -216,3 +216,97 @@ fn test_extract_title_from_crossref_json() {
     );
 }
 
+#[test]
+fn test_clean_openreview_id_str() {
+    assert_eq!(
+        clean_openreview_id_str("https://openreview.net/forum?id=uccHPGDlao"),
+        "uccHPGDlao"
+    );
+    assert_eq!(
+        clean_openreview_id_str("https://openreview.net/pdf?id=uccHPGDlao"),
+        "uccHPGDlao"
+    );
+    assert_eq!(
+        clean_openreview_id_str("openreview:uccHPGDlao"),
+        "uccHPGDlao"
+    );
+    assert_eq!(clean_openreview_id_str("uccHPGDlao"), "uccHPGDlao");
+    assert_eq!(clean_openreview_id_str(""), "");
+}
+
+#[test]
+fn test_extract_title_from_openreview_note() {
+    let note_v2 = serde_json::json!({
+        "id": "uccHPGDlao",
+        "content": {
+            "title": {
+                "value": "Judging LLM-as-a-judge with MT-bench"
+            }
+        }
+    });
+    assert_eq!(
+        extract_title_from_openreview_note(&note_v2),
+        Some("Judging LLM-as-a-judge with MT-bench".to_string())
+    );
+
+    let note_v1 = serde_json::json!({
+        "id": "uccHPGDlao",
+        "content": {
+            "title": "Judging LLM-as-a-judge with MT-bench"
+        }
+    });
+    assert_eq!(
+        extract_title_from_openreview_note(&note_v1),
+        Some("Judging LLM-as-a-judge with MT-bench".to_string())
+    );
+
+    let note_no_title = serde_json::json!({
+        "id": "uccHPGDlao",
+        "content": {}
+    });
+    assert_eq!(extract_title_from_openreview_note(&note_no_title), None);
+}
+
+#[test]
+fn test_verify_openreview_with_metadata_empty() {
+    let res = verify_openreview_with_metadata("").unwrap();
+    assert_eq!(
+        res,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+
+    let res_spaces = verify_openreview_with_metadata("   ").unwrap();
+    assert_eq!(
+        res_spaces,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+}
+
+#[test]
+fn test_verify_arxiv_with_metadata_empty() {
+    let res = verify_arxiv_with_metadata("").unwrap();
+    assert_eq!(
+        res,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+
+    let res_spaces = verify_arxiv_with_metadata("   ").unwrap();
+    assert_eq!(
+        res_spaces,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+}
+
+

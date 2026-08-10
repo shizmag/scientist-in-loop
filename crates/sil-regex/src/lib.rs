@@ -15,6 +15,19 @@ static ARXIV_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
+static OPENREVIEW_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)https?://(?:www\.)?openreview\.net/(?:forum|pdf)\?id=([A-Za-z0-9_-]{10,12})")
+        .unwrap()
+});
+
+static OPENREVIEW_PREFIX_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\bopenreview:\s*([A-Za-z0-9_-]{10,12})\b").unwrap()
+});
+
+static OPENREVIEW_RAW_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\b([A-Za-z0-9_-]{10,12})\b").unwrap()
+});
+
 static YEAR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\b(1[89]\d{2}|20[0-2]\d|2030)\b").unwrap());
 
@@ -814,6 +827,43 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
     })
 }
 
+/// Extract an OpenReview note identifier from text.
+///
+/// Detects OpenReview URLs (`https://openreview.net/forum?id=XXX`, `https://openreview.net/pdf?id=XXX`),
+/// `openreview:XXX`, or raw OpenReview note IDs (10-12 alphanumeric characters like `uccHPGDlao`).
+pub fn extract_openreview_id(text: &str) -> Option<String> {
+    if let Some(caps) = OPENREVIEW_URL_REGEX.captures(text) {
+        if let Some(m) = caps.get(1) {
+            return Some(m.as_str().to_string());
+        }
+    }
+    if let Some(caps) = OPENREVIEW_PREFIX_REGEX.captures(text) {
+        if let Some(m) = caps.get(1) {
+            return Some(m.as_str().to_string());
+        }
+    }
+    let text_lower = text.to_lowercase();
+    let trimmed = text.trim().trim_end_matches(&['.', ',', ';', ')', ']', '>'][..]);
+    for caps in OPENREVIEW_RAW_REGEX.captures_iter(trimmed) {
+        if let Some(m) = caps.get(1) {
+            let val = m.as_str();
+            if val.eq_ignore_ascii_case("openreview") {
+                continue;
+            }
+            if trimmed == val
+                || text_lower.contains("openreview")
+                || text_lower.contains("forum")
+                || text_lower.contains("note")
+                || text_lower.contains("id")
+                || val.chars().any(|c| c.is_ascii_digit() || c.is_ascii_uppercase())
+            {
+                return Some(val.to_string());
+            }
+        }
+    }
+    None
+}
+
 /// Extract any URL (e.g. `https://github.com/facebookresearch/xformers` or `https://arxiv.org/abs/2501.12948`) from text.
 pub fn extract_url(text: &str) -> Option<String> {
     if let Some(caps) = GENERIC_URL_REGEX.captures(text) {
@@ -1204,6 +1254,39 @@ mod tests {
             Some("arxiv:math/0405001".to_string())
         );
         assert_eq!(extract_arxiv_id("No arxiv here"), None);
+    }
+
+    #[test]
+    fn test_extract_openreview_id() {
+        assert_eq!(
+            extract_openreview_id("https://openreview.net/forum?id=uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("https://openreview.net/pdf?id=uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("URL <https://openreview.net/forum?id=uccHPGDlao>."),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("openreview:uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("OpenReview:uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(
+            extract_openreview_id("Note ID uccHPGDlao"),
+            Some("uccHPGDlao".to_string())
+        );
+        assert_eq!(extract_openreview_id("No openreview here"), None);
     }
 
     #[test]

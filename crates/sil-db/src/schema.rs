@@ -191,6 +191,20 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
             error_cat   TEXT,
             checked_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS arxiv_verifications (
+            arxiv_id    TEXT PRIMARY KEY NOT NULL,
+            exists_flag INTEGER NOT NULL,
+            error_cat   TEXT,
+            checked_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS openreview_verifications (
+            openreview_id TEXT PRIMARY KEY NOT NULL,
+            exists_flag   INTEGER NOT NULL,
+            error_cat     TEXT,
+            checked_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         "#,
     )?;
 

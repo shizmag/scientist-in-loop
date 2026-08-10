@@ -16,7 +16,10 @@ pub(crate) mod search;
 pub(crate) mod sources;
 pub(crate) mod todo;
 
-pub use bib_references::{BibReferenceRecord, DoiVerificationRecord};
+pub use bib_references::{
+    ArxivVerificationRecord, BibReferenceRecord, DoiVerificationRecord,
+    OpenreviewVerificationRecord,
+};
 pub use chunks::{
     ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,
     embedding_to_blob,
@@ -388,6 +391,56 @@ impl SilDb {
         error_cat: Option<&str>,
     ) -> Result<(), DbError> {
         bib_references::upsert_doi_verification(&self.conn, doi, exists, error_cat)
+    }
+
+    /// Get a single arXiv verification record by arXiv ID.
+    pub fn get_arxiv_verification(
+        &self,
+        arxiv_id: &str,
+    ) -> Result<Option<ArxivVerificationRecord>, DbError> {
+        bib_references::get_arxiv_verification(&self.conn, arxiv_id)
+    }
+
+    /// Get all arXiv verification records as a HashMap keyed by arXiv ID string.
+    pub fn get_arxiv_verifications(
+        &self,
+    ) -> Result<std::collections::HashMap<String, ArxivVerificationRecord>, DbError> {
+        bib_references::get_arxiv_verifications(&self.conn)
+    }
+
+    /// Upsert an arXiv verification record.
+    pub fn upsert_arxiv_verification(
+        &self,
+        arxiv_id: &str,
+        exists: bool,
+        error_cat: Option<&str>,
+    ) -> Result<(), DbError> {
+        bib_references::upsert_arxiv_verification(&self.conn, arxiv_id, exists, error_cat)
+    }
+
+    /// Get a single OpenReview verification record by OpenReview ID.
+    pub fn get_openreview_verification(
+        &self,
+        openreview_id: &str,
+    ) -> Result<Option<OpenreviewVerificationRecord>, DbError> {
+        bib_references::get_openreview_verification(&self.conn, openreview_id)
+    }
+
+    /// Get all OpenReview verification records as a HashMap keyed by OpenReview ID string.
+    pub fn get_openreview_verifications(
+        &self,
+    ) -> Result<std::collections::HashMap<String, OpenreviewVerificationRecord>, DbError> {
+        bib_references::get_openreview_verifications(&self.conn)
+    }
+
+    /// Upsert an OpenReview verification record.
+    pub fn upsert_openreview_verification(
+        &self,
+        openreview_id: &str,
+        exists: bool,
+        error_cat: Option<&str>,
+    ) -> Result<(), DbError> {
+        bib_references::upsert_openreview_verification(&self.conn, openreview_id, exists, error_cat)
     }
 
     /// Upsert a bib reference record using UPDATE SURGERY logic.
@@ -1091,5 +1144,29 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
 
         let map = db.get_doi_verifications().unwrap();
         assert_eq!(map.len(), 1);
+
+        // arXiv verifications
+        assert!(db.get_arxiv_verifications().unwrap().is_empty());
+        db.upsert_arxiv_verification("2106.09685", true, None)
+            .unwrap();
+
+        let v_arxiv = db.get_arxiv_verification("2106.09685").unwrap();
+        assert!(v_arxiv.is_some());
+        assert!(v_arxiv.unwrap().exists_flag);
+
+        let map_arxiv = db.get_arxiv_verifications().unwrap();
+        assert_eq!(map_arxiv.len(), 1);
+
+        // OpenReview verifications
+        assert!(db.get_openreview_verifications().unwrap().is_empty());
+        db.upsert_openreview_verification("forum?id=abc12345", true, None)
+            .unwrap();
+
+        let v_or = db.get_openreview_verification("forum?id=abc12345").unwrap();
+        assert!(v_or.is_some());
+        assert!(v_or.unwrap().exists_flag);
+
+        let map_or = db.get_openreview_verifications().unwrap();
+        assert_eq!(map_or.len(), 1);
     }
 }

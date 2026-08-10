@@ -1,3 +1,4 @@
+use crate::doi::DoiMetadataResult;
 use crate::error::ApiError;
 use crate::ratelimit::enforce_api_ratelimit;
 use sil_core::JournalPublication;
@@ -176,3 +177,38 @@ pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublicatio
         pdf_url: Some(format!("https://arxiv.org/pdf/{clean_id}.pdf")),
     }))
 }
+
+/// Verify arXiv ID existence and retrieve official paper title metadata.
+///
+/// Uses `fetch_work_by_arxiv_id` (which queries `http://export.arxiv.org/api/query?id_list={clean_id}`).
+/// Returns `Ok(DoiMetadataResult { exists: true, title: Some(extracted_title) })` if entry exists,
+/// `Ok(DoiMetadataResult { exists: false, title: None })` if empty or entry not found,
+/// or `Err(ApiError)` on network or rate-limit error.
+pub fn verify_arxiv_with_metadata(arxiv_id: &str) -> Result<DoiMetadataResult, ApiError> {
+    let clean_id = clean_arxiv_id_str(arxiv_id);
+    if clean_id.is_empty() {
+        return Ok(DoiMetadataResult {
+            exists: false,
+            title: None,
+        });
+    }
+
+    match fetch_work_by_arxiv_id(&clean_id)? {
+        Some(work) => {
+            let title = if work.title.trim().is_empty() {
+                None
+            } else {
+                Some(work.title)
+            };
+            Ok(DoiMetadataResult {
+                exists: true,
+                title,
+            })
+        }
+        None => Ok(DoiMetadataResult {
+            exists: false,
+            title: None,
+        }),
+    }
+}
+

@@ -36,6 +36,32 @@ pub struct DoiVerificationRecord {
     pub checked_at: String,
 }
 
+/// Represents a row in the `arxiv_verifications` table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArxivVerificationRecord {
+    /// arXiv ID string (primary key, e.g. "2106.09685").
+    pub arxiv_id: String,
+    /// Whether the arXiv ID exists/resolves.
+    pub exists_flag: bool,
+    /// Optional error category if check failed (e.g., "http_404", "timeout").
+    pub error_cat: Option<String>,
+    /// ISO timestamp when check was performed.
+    pub checked_at: String,
+}
+
+/// Represents a row in the `openreview_verifications` table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpenreviewVerificationRecord {
+    /// OpenReview ID string (primary key, e.g. "forum?id=...").
+    pub openreview_id: String,
+    /// Whether the OpenReview ID exists/resolves.
+    pub exists_flag: bool,
+    /// Optional error category if check failed (e.g., "http_404", "timeout").
+    pub error_cat: Option<String>,
+    /// ISO timestamp when check was performed.
+    pub checked_at: String,
+}
+
 /// Get all records from `bib_references` table.
 pub fn get_bib_references(conn: &Connection) -> Result<Vec<BibReferenceRecord>, DbError> {
     let mut stmt = conn.prepare(
@@ -128,6 +154,144 @@ pub fn upsert_doi_verification(
         "INSERT OR REPLACE INTO doi_verifications (doi, exists_flag, error_cat, checked_at)
          VALUES (?1, ?2, ?3, datetime('now'))",
         params![doi, if exists { 1 } else { 0 }, error_cat],
+    )?;
+    Ok(())
+}
+
+/// Get a single arXiv verification record by arXiv ID.
+pub fn get_arxiv_verification(
+    conn: &Connection,
+    arxiv_id: &str,
+) -> Result<Option<ArxivVerificationRecord>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT arxiv_id, exists_flag, error_cat, checked_at
+         FROM arxiv_verifications
+         WHERE arxiv_id = ?1",
+    )?;
+
+    let mut rows = stmt.query(params![arxiv_id])?;
+    if let Some(row) = rows.next()? {
+        let exists_raw: i32 = row.get(1)?;
+        Ok(Some(ArxivVerificationRecord {
+            arxiv_id: row.get(0)?,
+            exists_flag: exists_raw != 0,
+            error_cat: row.get(2)?,
+            checked_at: row.get(3)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Get all arXiv verification records as a HashMap keyed by arXiv ID string.
+pub fn get_arxiv_verifications(
+    conn: &Connection,
+) -> Result<HashMap<String, ArxivVerificationRecord>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT arxiv_id, exists_flag, error_cat, checked_at
+         FROM arxiv_verifications",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        let exists_raw: i32 = row.get(1)?;
+        let arxiv_id: String = row.get(0)?;
+        let record = ArxivVerificationRecord {
+            arxiv_id: arxiv_id.clone(),
+            exists_flag: exists_raw != 0,
+            error_cat: row.get(2)?,
+            checked_at: row.get(3)?,
+        };
+        Ok((arxiv_id, record))
+    })?;
+
+    let mut map = HashMap::new();
+    for r in rows {
+        let (arxiv_id, record) = r?;
+        map.insert(arxiv_id, record);
+    }
+    Ok(map)
+}
+
+/// Upsert an arXiv verification record.
+pub fn upsert_arxiv_verification(
+    conn: &Connection,
+    arxiv_id: &str,
+    exists: bool,
+    error_cat: Option<&str>,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT OR REPLACE INTO arxiv_verifications (arxiv_id, exists_flag, error_cat, checked_at)
+         VALUES (?1, ?2, ?3, datetime('now'))",
+        params![arxiv_id, if exists { 1 } else { 0 }, error_cat],
+    )?;
+    Ok(())
+}
+
+/// Get a single OpenReview verification record by OpenReview ID.
+pub fn get_openreview_verification(
+    conn: &Connection,
+    openreview_id: &str,
+) -> Result<Option<OpenreviewVerificationRecord>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT openreview_id, exists_flag, error_cat, checked_at
+         FROM openreview_verifications
+         WHERE openreview_id = ?1",
+    )?;
+
+    let mut rows = stmt.query(params![openreview_id])?;
+    if let Some(row) = rows.next()? {
+        let exists_raw: i32 = row.get(1)?;
+        Ok(Some(OpenreviewVerificationRecord {
+            openreview_id: row.get(0)?,
+            exists_flag: exists_raw != 0,
+            error_cat: row.get(2)?,
+            checked_at: row.get(3)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Get all OpenReview verification records as a HashMap keyed by OpenReview ID string.
+pub fn get_openreview_verifications(
+    conn: &Connection,
+) -> Result<HashMap<String, OpenreviewVerificationRecord>, DbError> {
+    let mut stmt = conn.prepare(
+        "SELECT openreview_id, exists_flag, error_cat, checked_at
+         FROM openreview_verifications",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        let exists_raw: i32 = row.get(1)?;
+        let openreview_id: String = row.get(0)?;
+        let record = OpenreviewVerificationRecord {
+            openreview_id: openreview_id.clone(),
+            exists_flag: exists_raw != 0,
+            error_cat: row.get(2)?,
+            checked_at: row.get(3)?,
+        };
+        Ok((openreview_id, record))
+    })?;
+
+    let mut map = HashMap::new();
+    for r in rows {
+        let (openreview_id, record) = r?;
+        map.insert(openreview_id, record);
+    }
+    Ok(map)
+}
+
+/// Upsert an OpenReview verification record.
+pub fn upsert_openreview_verification(
+    conn: &Connection,
+    openreview_id: &str,
+    exists: bool,
+    error_cat: Option<&str>,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT OR REPLACE INTO openreview_verifications (openreview_id, exists_flag, error_cat, checked_at)
+         VALUES (?1, ?2, ?3, datetime('now'))",
+        params![openreview_id, if exists { 1 } else { 0 }, error_cat],
     )?;
     Ok(())
 }
@@ -333,4 +497,80 @@ mod tests {
         assert!(!rec_404.exists_flag);
         assert_eq!(rec_404.error_cat.as_deref(), Some("http_404"));
     }
+
+    #[test]
+    fn test_arxiv_verifications_crud_and_surgery() {
+        let db = crate::SilDb::open_in_memory().unwrap();
+
+        // Initially empty
+        let initial_map = get_arxiv_verifications(&db.conn).unwrap();
+        assert!(initial_map.is_empty());
+        assert!(get_arxiv_verification(&db.conn, "2106.09685").unwrap().is_none());
+
+        // Initial insert (Create)
+        upsert_arxiv_verification(&db.conn, "2106.09685", true, None).unwrap();
+
+        // Read single
+        let single = get_arxiv_verification(&db.conn, "2106.09685").unwrap();
+        assert!(single.is_some());
+        let rec = single.unwrap();
+        assert_eq!(rec.arxiv_id, "2106.09685");
+        assert!(rec.exists_flag);
+        assert_eq!(rec.error_cat, None);
+
+        // Read map
+        let map = get_arxiv_verifications(&db.conn).unwrap();
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.get("2106.09685").unwrap().arxiv_id, "2106.09685");
+
+        // Update surgery (Update existing entry with new status/error_cat)
+        upsert_arxiv_verification(&db.conn, "2106.09685", false, Some("http_404")).unwrap();
+
+        let updated = get_arxiv_verification(&db.conn, "2106.09685").unwrap().unwrap();
+        assert_eq!(updated.arxiv_id, "2106.09685");
+        assert!(!updated.exists_flag);
+        assert_eq!(updated.error_cat.as_deref(), Some("http_404"));
+    }
+
+    #[test]
+    fn test_openreview_verifications_crud_and_surgery() {
+        let db = crate::SilDb::open_in_memory().unwrap();
+
+        // Initially empty
+        let initial_map = get_openreview_verifications(&db.conn).unwrap();
+        assert!(initial_map.is_empty());
+        assert!(
+            get_openreview_verification(&db.conn, "forum?id=abc12345")
+                .unwrap()
+                .is_none()
+        );
+
+        // Initial insert (Create)
+        upsert_openreview_verification(&db.conn, "forum?id=abc12345", true, None).unwrap();
+
+        // Read single
+        let single = get_openreview_verification(&db.conn, "forum?id=abc12345").unwrap();
+        assert!(single.is_some());
+        let rec = single.unwrap();
+        assert_eq!(rec.openreview_id, "forum?id=abc12345");
+        assert!(rec.exists_flag);
+        assert_eq!(rec.error_cat, None);
+
+        // Read map
+        let map = get_openreview_verifications(&db.conn).unwrap();
+        assert_eq!(map.len(), 1);
+        assert_eq!(
+            map.get("forum?id=abc12345").unwrap().openreview_id,
+            "forum?id=abc12345"
+        );
+
+        // Update surgery (Update existing entry with new status/error_cat)
+        upsert_openreview_verification(&db.conn, "forum?id=abc12345", false, Some("network_timeout")).unwrap();
+
+        let updated = get_openreview_verification(&db.conn, "forum?id=abc12345").unwrap().unwrap();
+        assert_eq!(updated.openreview_id, "forum?id=abc12345");
+        assert!(!updated.exists_flag);
+        assert_eq!(updated.error_cat.as_deref(), Some("network_timeout"));
+    }
 }
+
