@@ -157,3 +157,62 @@ fn test_fetch_work_by_arxiv_id_empty() {
     let res = fetch_work_by_arxiv_id("  ").unwrap();
     assert!(res.is_none());
 }
+
+#[test]
+fn test_verify_doi_with_metadata_empty() {
+    let res = verify_doi_with_metadata("").unwrap();
+    assert_eq!(
+        res,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+
+    let res_spaces = verify_doi_with_metadata("   ").unwrap();
+    assert_eq!(
+        res_spaces,
+        DoiMetadataResult {
+            exists: false,
+            title: None,
+        }
+    );
+}
+
+#[test]
+fn test_extract_title_from_crossref_json() {
+    let json_with_title = serde_json::json!({
+        "status": "ok",
+        "message-type": "work",
+        "message": {
+            "title": ["Attention Is All You Need", "Secondary Title"],
+            "DOI": "10.48550/arXiv.1706.03762"
+        }
+    });
+    assert_eq!(
+        doi::extract_title_from_crossref_json(&json_with_title),
+        Some("Attention Is All You Need".to_string())
+    );
+
+    let json_empty_title_arr = serde_json::json!({
+        "message": {
+            "title": []
+        }
+    });
+    assert_eq!(
+        doi::extract_title_from_crossref_json(&json_empty_title_arr),
+        None
+    );
+
+    let json_no_title = serde_json::json!({
+        "message": {}
+    });
+    assert_eq!(doi::extract_title_from_crossref_json(&json_no_title), None);
+
+    let json_no_message = serde_json::json!({});
+    assert_eq!(
+        doi::extract_title_from_crossref_json(&json_no_message),
+        None
+    );
+}
+
