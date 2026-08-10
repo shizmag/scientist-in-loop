@@ -1,11 +1,10 @@
 //! Incremental DOI checking and background orchestrator for BibTeX files.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::thread::JoinHandle;
 
 use serde::{Deserialize, Serialize};
-use sil_db::{BibReferenceRecord, DoiVerificationRecord, SilDb};
+use sil_db::SilDb;
 
 use crate::error::ParseError;
 
@@ -71,16 +70,6 @@ pub struct DoiCheckReport {
     pub items: Vec<BibDoiItemReport>,
 }
 
-fn extract_local_title(block: &str) -> String {
-    let info = sil_core::bib::extract_bib_entry_info(block);
-    if let Some(title) = info.title
-        && !title.trim().is_empty()
-    {
-        return title.trim().to_string();
-    }
-    String::new()
-}
-
 /// Incrementally check DOIs for BibTeX entries in `bib_content` using stored cache in `db`.
 ///
 /// 1. Parses `bib_content` into blocks using [`sil_core::bib::parse_bib_blocks`].
@@ -99,228 +88,94 @@ pub fn check_bib_dois_incremental(
     bib_content: &str,
     autofix: bool,
 ) -> Result<DoiCheckReport, ParseError> {
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        check_bib_dois_incremental_inner(db, bib_content, autofix)
-    }));
-
-    match result {
-        Ok(res) => res,
-        Err(payload) => {
-            let msg = if let Some(s) = payload.downcast_ref::<&str>() {
-                s.to_string()
-            } else if let Some(s) = payload.downcast_ref::<String>() {
-                s.clone()
-            } else {
-                "Unknown panic occurred during DOI check".to_string()
-            };
-            Err(ParseError::Message(format!("DOI check panicked: {msg}")))
-        }
-    }
-}
-
-fn check_bib_dois_incremental_inner(
-    db: &SilDb,
-    bib_content: &str,
-    autofix: bool,
-) -> Result<DoiCheckReport, ParseError> {
-    let blocks = sil_core::bib::parse_bib_blocks(bib_content);
-
-    let stored_refs = db.get_bib_references()?;
-    let mut stored_dois = db.get_doi_verifications()?;
-
-    let stored_ref_map: HashMap<String, BibReferenceRecord> = stored_refs
-        .into_iter()
-        .map(|r| (r.cite_key.clone(), r))
-        .collect();
+    let unified_report = crate::checkers::run_all_checkers_incremental(db, bib_content, autofix)?;
 
     let mut report = DoiCheckReport {
-        total_entries: blocks.len(),
+        total_entries: unified_report.total_entries,
+        autofixed_count: unified_report.autofixed_count,
+        updated_bib_content: unified_report.updated_bib_content,
         ..Default::default()
     };
 
-    let mut working_bib_content = bib_content.to_string();
+    report.mismatched_dois = unified_report
+        .mismatched_identifiers
+        .into_iter()
+        .filter(|(_, id_type, _, _, _)| id_type == "DOI")
+        .map(|(k, _, loc, off, sim)| (k, loc, off, sim))
+        .collect();
 
-    for block in &blocks {
-        let entry_info = sil_core::bib::extract_bib_entry_info(block);
-        let cite_key = entry_info
-            .cite_key
-            .unwrap_or_else(|| "unknown".to_string());
-        let local_title = extract_local_title(block);
+    report.broken_dois = unified_report
+        .broken_identifiers
+        .into_iter()
+        .filter(|(_, id_type, _)| id_type == "DOI")
+        .map(|(k, _, id)| (k, id))
+        .collect();
 
-        let raw_doi = sil_regex::extract_doi(block);
-        let doi = raw_doi.map(|d| sil_api::clean_doi_str(&d)).filter(|d| !d.is_empty());
+    report.network_errors = unified_report
+        .network_errors
+        .into_iter()
+        .filter(|(_, id_type, _, _)| id_type == "DOI")
+        .map(|(k, _, id, msg)| (k, id, msg))
+        .collect();
 
-        let Some(doi_str) = doi else {
+    for item in unified_report.items {
+        if item.identifier_type == "DOI" {
+            let doi = item.identifier.clone();
+            report.entries_with_doi += 1;
+
+            let doi_category = match item.category {
+                crate::checkers::ReferenceCheckCategory::Valid => {
+                    report.valid_dois += 1;
+                    DoiCheckCategory::Valid
+                }
+                crate::checkers::ReferenceCheckCategory::TitleMismatch {
+                    local_title,
+                    official_title,
+                    similarity,
+                } => DoiCheckCategory::TitleMismatch {
+                    local_title,
+                    official_title,
+                    similarity,
+                },
+                crate::checkers::ReferenceCheckCategory::NotFound => DoiCheckCategory::NotFound,
+                crate::checkers::ReferenceCheckCategory::NetworkError(ref msg) => {
+                    DoiCheckCategory::NetworkError(msg.clone())
+                }
+                crate::checkers::ReferenceCheckCategory::InvalidFormat => {
+                    DoiCheckCategory::InvalidFormat
+                }
+                crate::checkers::ReferenceCheckCategory::SkippedCached => {
+                    report.skipped_cached += 1;
+                    let doi_str = doi.as_deref().unwrap_or("");
+                    let is_mismatched = report.mismatched_dois.iter().any(|(k, _, _, _)| k == &item.cite_key);
+                    let is_broken = report.broken_dois.iter().any(|(k, _)| k == &item.cite_key);
+                    let is_net_err = report.network_errors.iter().any(|(k, _, _)| k == &item.cite_key);
+                    if !is_mismatched && !is_broken && !is_net_err && !doi_str.is_empty() {
+                        report.valid_dois += 1;
+                    }
+                    DoiCheckCategory::SkippedCached
+                }
+            };
+
             report.items.push(BibDoiItemReport {
-                cite_key,
+                cite_key: item.cite_key,
+                doi,
+                category: doi_category,
+            });
+        } else if item.identifier_type == "None" {
+            report.items.push(BibDoiItemReport {
+                cite_key: item.cite_key,
                 doi: None,
                 category: DoiCheckCategory::InvalidFormat,
             });
-            continue;
-        };
-
-        report.entries_with_doi += 1;
-
-        let is_cached = if let Some(existing_ref) = stored_ref_map.get(&cite_key) {
-            existing_ref.doi.as_deref() == Some(&doi_str) && stored_dois.contains_key(&doi_str)
-        } else {
-            false
-        };
-
-        if is_cached {
-            report.skipped_cached += 1;
-            let ver = &stored_dois[&doi_str];
-
-            if ver.exists_flag {
-                if ver.error_cat.as_deref() == Some("title_mismatch") {
-                    report.mismatched_dois.push((
-                        cite_key.clone(),
-                        local_title.clone(),
-                        "Cached title mismatch".to_string(),
-                        0.0,
-                    ));
-                } else {
-                    report.valid_dois += 1;
-                }
-            } else if ver.error_cat.as_deref() == Some("network_error") {
-                report.network_errors.push((
-                    cite_key.clone(),
-                    doi_str.clone(),
-                    "network_error".to_string(),
-                ));
-            } else {
-                report.broken_dois.push((cite_key.clone(), doi_str.clone()));
-            }
-
-            db.upsert_bib_reference(
-                &cite_key,
-                Some(&doi_str),
-                Some(ver.exists_flag),
-                block,
-            )?;
-
-            report.items.push(BibDoiItemReport {
-                cite_key,
-                doi: Some(doi_str),
-                category: DoiCheckCategory::SkippedCached,
-            });
-        } else {
-            report.checked_online += 1;
-            match sil_api::verify_doi_with_metadata(&doi_str) {
-                Ok(meta) => {
-                    if meta.exists {
-                        let official_title = meta.title.unwrap_or_default();
-                        let similarity = crate::journal_digest::title_similarity(&local_title, &official_title);
-
-                        if similarity >= 0.60 {
-                            report.valid_dois += 1;
-                            db.upsert_doi_verification(&doi_str, true, None)?;
-                            db.upsert_bib_reference(&cite_key, Some(&doi_str), Some(true), block)?;
-                            stored_dois.insert(
-                                doi_str.clone(),
-                                DoiVerificationRecord {
-                                    doi: doi_str.clone(),
-                                    exists_flag: true,
-                                    error_cat: None,
-                                    checked_at: String::new(),
-                                },
-                            );
-                            report.items.push(BibDoiItemReport {
-                                cite_key,
-                                doi: Some(doi_str),
-                                category: DoiCheckCategory::Valid,
-                            });
-                        } else {
-                            // Title mismatch (< 0.60)
-                            report.mismatched_dois.push((
-                                cite_key.clone(),
-                                local_title.clone(),
-                                official_title.clone(),
-                                similarity,
-                            ));
-                            db.upsert_doi_verification(&doi_str, true, Some("title_mismatch"))?;
-                            db.upsert_bib_reference(&cite_key, Some(&doi_str), Some(true), block)?;
-                            stored_dois.insert(
-                                doi_str.clone(),
-                                DoiVerificationRecord {
-                                    doi: doi_str.clone(),
-                                    exists_flag: true,
-                                    error_cat: Some("title_mismatch".to_string()),
-                                    checked_at: String::new(),
-                                },
-                            );
-
-                            if autofix
-                                && let Ok(Some(official_bib)) = sil_api::fetch_bibtex_by_doi(&doi_str)
-                            {
-                                let (updated, _replaced) =
-                                    sil_core::bib::upsert_bib_entry(&working_bib_content, &official_bib);
-                                working_bib_content = updated;
-                                report.autofixed_count += 1;
-                            }
-
-                            report.items.push(BibDoiItemReport {
-                                cite_key,
-                                doi: Some(doi_str),
-                                category: DoiCheckCategory::TitleMismatch {
-                                    local_title,
-                                    official_title,
-                                    similarity,
-                                },
-                            });
-                        }
-                    } else {
-                        // 404 Not Found
-                        report.broken_dois.push((cite_key.clone(), doi_str.clone()));
-                        db.upsert_doi_verification(&doi_str, false, Some("http_404"))?;
-                        db.upsert_bib_reference(&cite_key, Some(&doi_str), Some(false), block)?;
-                        stored_dois.insert(
-                            doi_str.clone(),
-                            DoiVerificationRecord {
-                                doi: doi_str.clone(),
-                                exists_flag: false,
-                                error_cat: Some("http_404".to_string()),
-                                checked_at: String::new(),
-                            },
-                        );
-                        report.items.push(BibDoiItemReport {
-                            cite_key,
-                            doi: Some(doi_str),
-                            category: DoiCheckCategory::NotFound,
-                        });
-                    }
-                }
-                Err(err) => {
-                    let err_msg = err.to_string();
-                    report.network_errors.push((
-                        cite_key.clone(),
-                        doi_str.clone(),
-                        err_msg.clone(),
-                    ));
-                    db.upsert_doi_verification(&doi_str, false, Some("network_error"))?;
-                    db.upsert_bib_reference(&cite_key, Some(&doi_str), Some(false), block)?;
-                    stored_dois.insert(
-                        doi_str.clone(),
-                        DoiVerificationRecord {
-                            doi: doi_str.clone(),
-                            exists_flag: false,
-                            error_cat: Some("network_error".to_string()),
-                            checked_at: String::new(),
-                        },
-                    );
-                    report.items.push(BibDoiItemReport {
-                        cite_key,
-                        doi: Some(doi_str),
-                        category: DoiCheckCategory::NetworkError(err_msg),
-                    });
-                }
-            }
         }
     }
 
-    if report.autofixed_count > 0 {
-        report.updated_bib_content = Some(working_bib_content);
-    }
+    report.checked_online = report
+        .items
+        .iter()
+        .filter(|i| i.doi.is_some() && i.category != DoiCheckCategory::SkippedCached)
+        .count();
 
     Ok(report)
 }

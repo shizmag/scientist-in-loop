@@ -17,8 +17,15 @@ mod validate;
 pub mod xberg_metadata;
 /// Incremental DOI checking and background orchestrator.
 pub mod doi_checker;
+/// Abstract Factory & Trait-based Reference Checkers.
+pub mod checkers;
 
 pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};
+pub use checkers::{
+    run_all_checkers_incremental, ArxivChecker, BibItemCheckReport, CheckerFactory,
+    DoiChecker, OpenReviewChecker, ReferenceCheckCategory, ReferenceChecker,
+    UnifiedBibCheckReport,
+};
 pub use doi_checker::{
     check_bib_dois_incremental, spawn_background_bib_doi_check, BibDoiItemReport,
     DoiCheckCategory, DoiCheckReport,
