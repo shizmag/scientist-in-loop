@@ -7,7 +7,9 @@
 mod bib;
 mod context;
 mod error;
+mod fetch;
 
 pub use bib::{PromoteBib, PromoteBibResult, UpsertBib, UpsertBibResult, promote_bib, upsert_bib};
 pub use context::AppContext;
 pub use error::AppError;
+pub use fetch::{FetchSource, FetchSourceResult, ParseSummary, fetch_source};

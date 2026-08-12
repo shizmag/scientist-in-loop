@@ -8,7 +8,10 @@ publish = false
 
 [dependencies]
 sil-core = { workspace = true }
+sil-db = { workspace = true }
 sil-git = { workspace = true }
+sil-parse = { workspace = true }
+sil-regex = { workspace = true }
 thiserror = { workspace = true }
 camino = { workspace = true }
 

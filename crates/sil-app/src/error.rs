@@ -17,6 +17,10 @@ pub enum AppError {
     #[error("invalid BibTeX: {0}")]
     InvalidBib(String),
 
+    /// Parsing or source fetch error.
+    #[error(transparent)]
+    Parse(#[from] sil_parse::ParseError),
+
     /// I/O error occurred.
     #[error("I/O error at {path}: {source}")]
     Io {
