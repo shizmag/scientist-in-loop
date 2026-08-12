@@ -438,9 +438,7 @@ fn test_hydration_write_failure_status_message() {
     app.in_flight_hydration_keys
         .insert("doi:10.1000/writeerr".to_string());
 
-    let mut perms = std::fs::metadata(root.as_std_path())
-        .unwrap()
-        .permissions();
+    let mut perms = std::fs::metadata(root.as_std_path()).unwrap().permissions();
     perms.set_readonly(true);
     let _ = std::fs::set_permissions(root.as_std_path(), perms.clone());
 
@@ -781,7 +779,11 @@ fn test_worker_panic_clears_in_flight_and_records_failure() {
     assert!(app.in_flight_parse_ids.is_empty());
     let outcome = app.recent_job_outcomes.back().unwrap();
     assert!(!outcome.ok);
-    assert!(outcome.detail.contains("worker panicked: simulated thread panic"));
+    assert!(
+        outcome
+            .detail
+            .contains("worker panicked: simulated thread panic")
+    );
 }
 
 #[test]
@@ -790,7 +792,11 @@ fn test_async_estimate_job_flow() {
     use tempfile::tempdir;
     let dir = tempdir().unwrap();
     let root = Utf8Path::from_path(dir.path()).unwrap();
-    std::fs::write(root.join("paper_draft.tex").as_std_path(), "\\section{Intro}").unwrap();
+    std::fs::write(
+        root.join("paper_draft.tex").as_std_path(),
+        "\\section{Intro}",
+    )
+    .unwrap();
 
     let mut app = App::new(Some(root.to_path_buf()));
     assert!(!app.in_flight_estimate);
@@ -809,4 +815,105 @@ fn test_async_estimate_job_flow() {
     assert!(!app.in_flight_estimate);
     let outcome = app.recent_job_outcomes.back().unwrap();
     assert_eq!(outcome.kind, JobKind::Estimate);
+}
+
+#[test]
+fn test_poll_background_fetch_success_with_and_without_bib() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+    let bib_path = root.join("references.bib");
+    std::fs::write(bib_path.as_std_path(), "").unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    app.in_flight_fetch_targets
+        .insert("https://example.com/paper.pdf".to_string());
+
+    // Send result without bib
+    app.fetch_tx
+        .send(FetchJobResult {
+            target: "https://example.com/paper.pdf".to_string(),
+            label: "https://example.com/paper.pdf".to_string(),
+            result: Ok(FetchJobSuccess {
+                downloaded_path: root.join("sources/paper.pdf"),
+                bib: None,
+            }),
+            duration_ms: Some(50),
+        })
+        .unwrap();
+
+    app.poll_background_fetch();
+
+    assert!(
+        !app.in_flight_fetch_targets
+            .contains("https://example.com/paper.pdf")
+    );
+    assert_eq!(
+        app.status_message,
+        "✓ Fetched source 'https://example.com/paper.pdf'"
+    );
+
+    // Send result with bib
+    std::fs::write(
+        bib_path.as_std_path(),
+        "@article{Vaswani2017, title={Attention}}\n",
+    )
+    .unwrap();
+
+    app.in_flight_fetch_targets
+        .insert("10.1000/182".to_string());
+    app.fetch_tx
+        .send(FetchJobResult {
+            target: "10.1000/182".to_string(),
+            label: "10.1000/182".to_string(),
+            result: Ok(FetchJobSuccess {
+                downloaded_path: root.join("sources/vaswani.pdf"),
+                bib: Some(FetchBibSummary {
+                    cite_key: "Vaswani2017".to_string(),
+                    replaced: false,
+                }),
+            }),
+            duration_ms: Some(100),
+        })
+        .unwrap();
+
+    app.poll_background_fetch();
+
+    assert!(!app.in_flight_fetch_targets.contains("10.1000/182"));
+    assert_eq!(app.bib_file_entries.len(), 1);
+    assert_eq!(
+        app.status_message,
+        "✓ Fetched source '10.1000/182' (added bibliography entry 'Vaswani2017')"
+    );
+}
+
+#[test]
+fn test_poll_background_fetch_failure() {
+    let mut app = App::new(None);
+    app.in_flight_fetch_targets
+        .insert("invalid_target".to_string());
+
+    app.fetch_tx
+        .send(FetchJobResult {
+            target: "invalid_target".to_string(),
+            label: "invalid_target".to_string(),
+            result: Err("Download failed".to_string()),
+            duration_ms: Some(10),
+        })
+        .unwrap();
+
+    app.poll_background_fetch();
+
+    assert!(!app.in_flight_fetch_targets.contains("invalid_target"));
+    assert_eq!(
+        app.status_message,
+        "⚠ Fetch failed for 'invalid_target': Download failed"
+    );
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert!(!outcome.ok);
+    assert!(matches!(
+        outcome.retry_payload,
+        Some(RetryPayload::Fetch { .. })
+    ));
 }

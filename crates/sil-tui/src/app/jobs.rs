@@ -1,6 +1,6 @@
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use super::*;
 use sil_core::{ProjectPaths, ReferenceEntry, SourceDocument};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 pub(crate) fn extract_panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
     if let Some(s) = payload.downcast_ref::<&str>() {
@@ -208,8 +208,8 @@ impl App {
                         return Err("No project root directory available".to_string());
                     };
                     let paths = ProjectPaths::new(&root);
-                    let db =
-                        sil_db::SilDb::open(&paths.db()).map_err(|e| format!("Database error: {e}"))?;
+                    let db = sil_db::SilDb::open(&paths.db())
+                        .map_err(|e| format!("Database error: {e}"))?;
 
                     let runner = sil_parse::discover_marker_runner().unwrap_or_else(|_| {
                         Box::new(sil_parse::StubMarkerRunner {
@@ -264,17 +264,29 @@ impl App {
 
         let tx = self.fetch_tx.clone();
         let project_root = self.project_root.clone();
-        let loaded_config = self.loaded_config.clone();
 
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
             let catch_res = catch_unwind(AssertUnwindSafe(|| {
-                (|| -> Result<camino::Utf8PathBuf, String> {
+                (|| -> Result<FetchJobSuccess, String> {
                     let root = project_root.ok_or_else(|| "No project root".to_string())?;
-                    let paths = ProjectPaths::new(&root);
-                    let config = loaded_config.unwrap_or_default();
-                    let sources_dir = paths.sources(&config);
-                    sil_parse::fetch_source_target(&target, &sources_dir).map_err(|e| e.to_string())
+                    let ctx = sil_app::AppContext::from_root(root).map_err(|e| e.to_string())?;
+                    let fetch_res = sil_app::fetch_source(
+                        &ctx,
+                        sil_app::FetchSource {
+                            target: target.clone(),
+                            parse: false,
+                        },
+                    )
+                    .map_err(|e| e.to_string())?;
+
+                    Ok(FetchJobSuccess {
+                        downloaded_path: fetch_res.downloaded_path,
+                        bib: fetch_res.bib.map(|b| FetchBibSummary {
+                            cite_key: b.cite_key,
+                            replaced: b.replaced,
+                        }),
+                    })
                 })()
             }));
 
@@ -340,8 +352,8 @@ impl App {
             let backend_summary = embedder.backend().summary();
             let catch_res = catch_unwind(AssertUnwindSafe(|| {
                 (|| -> Result<usize, String> {
-                    let db =
-                        sil_db::SilDb::open(&db_path).map_err(|e| format!("Database error: {e}"))?;
+                    let db = sil_db::SilDb::open(&db_path)
+                        .map_err(|e| format!("Database error: {e}"))?;
                     db.recompute_draft_ref_similarities(&draft_text, &embedder)
                         .map_err(|e| e.to_string())
                 })()
@@ -414,7 +426,8 @@ impl App {
             polled_any = true;
             self.in_flight_fetch_targets.remove(&res.target);
             match res.result {
-                Ok(saved_path) => {
+                Ok(succ) => {
+                    let saved_path = &succ.downloaded_path;
                     // Best-effort DB upsert so list_sources picks up metadata quickly.
                     if let Some(ref root) = self.project_root {
                         let paths = ProjectPaths::new(root);
@@ -428,7 +441,7 @@ impl App {
                         {
                             sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
                         } else {
-                            root.join(&saved_path)
+                            root.join(saved_path)
                         };
                         if pdf_path.exists()
                             && let Ok(db) = sil_db::SilDb::open(&paths.db())
@@ -438,14 +451,30 @@ impl App {
                         }
                     }
                     self.reload_sources();
-                    self.status_message = format!("✓ Fetched source '{}'", res.label);
+                    if succ.bib.is_some() {
+                        self.load_project_references_bib();
+                    }
+
+                    let bib_msg = match &succ.bib {
+                        Some(b) if b.replaced => {
+                            format!(" (updated bibliography entry '{}')", b.cite_key)
+                        }
+                        Some(b) => format!(" (added bibliography entry '{}')", b.cite_key),
+                        None => String::new(),
+                    };
+                    self.status_message = format!("✓ Fetched source '{}'{bib_msg}", res.label);
+
+                    let detail_bib = match &succ.bib {
+                        Some(b) => format!(" + bib '{}'", b.cite_key),
+                        None => String::new(),
+                    };
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
                         id,
                         kind: JobKind::Fetch,
                         label: res.label.clone(),
                         ok: true,
-                        detail: format!("Downloaded → {saved_path}"),
+                        detail: format!("Downloaded → {saved_path}{detail_bib}"),
                         duration_ms: res.duration_ms,
                         retry_payload: None,
                     });

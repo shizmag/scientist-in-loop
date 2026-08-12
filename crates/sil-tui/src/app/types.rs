@@ -620,12 +620,26 @@ pub struct ParseJobResult {
     pub force: bool,
 }
 
+/// Summary of official BibTeX outcome from background fetch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FetchBibSummary {
+    pub cite_key: String,
+    pub replaced: bool,
+}
+
+/// Success payload of a background source fetch job.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FetchJobSuccess {
+    pub downloaded_path: camino::Utf8PathBuf,
+    pub bib: Option<FetchBibSummary>,
+}
+
 /// Result of a background source fetch job.
 #[derive(Debug)]
 pub struct FetchJobResult {
     pub target: String,
     pub label: String,
-    pub result: Result<camino::Utf8PathBuf, String>,
+    pub result: Result<FetchJobSuccess, String>,
     pub duration_ms: Option<u64>,
 }
 
