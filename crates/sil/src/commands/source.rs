@@ -5,12 +5,10 @@ use std::fs;
 use anyhow::{Context, Result};
 use camino::Utf8Path;
 use serde::Serialize;
-use sil_core::{SciAction, SilUi, SourceId};
+use sil_core::{SilUi, SourceId};
 use sil_db::SilDb;
-use sil_git::CommitProposal;
-use sil_parse::{fetch_source_target, parse_one};
 
-use crate::util::{load_project, marker_runner, print_proposal};
+use crate::util::{load_project, print_proposal};
 
 /// One row in `sil source list` (parsed DB + on-disk sources).
 #[derive(Debug, Clone, Serialize)]
@@ -33,80 +31,45 @@ pub struct SourceListEntry {
 }
 
 pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
-    let (root, config, paths) = load_project()?;
-    let sources_dir = paths.sources(&config);
+    let (root, _config, _paths) = load_project()?;
+    let ctx = sil_app::AppContext::from_root(&root)?;
 
     let mut spinner = ui.spinner(&format!("Fetching {target}"));
-    let saved_path = fetch_source_target(target, &sources_dir).map_err(|e| {
+    let res = sil_app::fetch_source(
+        &ctx,
+        sil_app::FetchSource {
+            target: target.to_string(),
+            parse: !no_parse,
+        },
+    )
+    .map_err(|e| {
         spinner.finish_error("fetch failed");
         anyhow::anyhow!("{e}")
     })?;
-    let saved = saved_path.as_str();
-    spinner.finish_success(&format!("Downloaded → {saved}"));
 
-    let proposal = CommitProposal::new(format!("Fetch source: {target}"), SciAction::FetchSource)
-        .with_body(format!("Saved to {saved}"));
-    print_proposal(ui, &proposal);
+    spinner.finish_success(&format!("Downloaded → {}", res.downloaded_path));
+    print_proposal(ui, &res.fetch_proposal);
 
-    if !no_parse {
-        let pdf_path = {
-            let p = Utf8Path::new(saved.trim());
-            if p.is_absolute() {
-                p.to_path_buf()
-            } else if sources_dir
-                .join(p.file_name().unwrap_or(p.as_str()))
-                .exists()
-            {
-                sources_dir.join(p.file_name().unwrap_or(p.as_str()))
-            } else {
-                root.join(p)
-            }
-        };
-        if pdf_path.exists() {
-            ui.info("Parsing downloaded PDF…");
-            let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
-            let runner = marker_runner()?;
-            match parse_one(&pdf_path, &db, runner.as_ref(), ui) {
-                Ok(r) => {
-                    ui.success(&format!("Parsed {}", r.document.filename));
-                    let p2 = CommitProposal::new(
-                        format!("Parse PDF: {}", r.document.filename),
-                        SciAction::ParsePdf,
-                    );
-                    print_proposal(ui, &p2);
-                }
-                Err(e) => ui.warn(&format!("Parse skipped/failed: {e}")),
-            }
+    if let Some(parsed) = res.parsed {
+        ui.success(&format!("Parsed {}", parsed.filename));
+        if let Some(parse_proposal) = res.parse_proposal {
+            print_proposal(ui, &parse_proposal);
         }
     }
 
-    // Attempt to resolve official BibTeX for the fetched target and update references.bib
-    let bib_path = root.join("references.bib");
-    let official_bib = if let Some(doi) = sil_regex::extract_doi(target) {
-        sil_parse::journal_digest::fetch_bibtex_by_doi(&doi)
-            .ok()
-            .flatten()
-    } else if let Some(arxiv) = sil_regex::extract_arxiv_id(target) {
-        sil_parse::journal_digest::fetch_bibtex_by_arxiv_id(&arxiv)
-            .ok()
-            .flatten()
-    } else {
-        None
-    };
+    if let Some(parse_err) = res.parse_error {
+        ui.warn(&format!("Parse skipped/failed: {parse_err}"));
+    }
 
-    if let Some(official_bib) = official_bib {
-        let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-        let (updated, replaced) = sil_core::bib::upsert_bib_entry(&current, &official_bib);
-        if sil_core::write_atomic_str(&bib_path, &updated).is_ok() {
-            if replaced {
-                ui.success(&format!(
-                    "✓ Replaced incomplete entry in references.bib with official metadata for {target}"
-                ));
-            } else {
-                ui.success(&format!(
-                    "✓ Added official metadata for {target} to references.bib"
-                ));
-            }
+    if let Some(bib_res) = res.bib {
+        if bib_res.replaced {
+            ui.success(&format!(
+                "✓ Replaced incomplete entry in references.bib with official metadata for {target}"
+            ));
+        } else {
+            ui.success(&format!(
+                "✓ Added official metadata for {target} to references.bib"
+            ));
         }
     }
 
@@ -532,7 +495,6 @@ pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<
         db.recompute_draft_ref_similarities(&draft_text, &embedder)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
     }
-
 
     let scores = db
         .get_draft_ref_similarities()
