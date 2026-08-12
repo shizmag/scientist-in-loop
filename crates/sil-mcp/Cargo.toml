@@ -8,6 +8,7 @@ description = "Model Context Protocol (MCP) server for scientist-in-loop"
 
 [dependencies]
 sil-core.workspace = true
+sil-app.workspace = true
 sil-db.workspace = true
 sil-agent.workspace = true
 sil-latex.workspace = true

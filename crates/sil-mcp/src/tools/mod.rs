@@ -8,14 +8,12 @@ use sil_agent::{
     sources_summary, write_estimate_report,
 };
 use sil_core::{
-    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, UpsertOptions, WorkspaceLock,
-    extract_bib_entry_info, is_same_paper, is_tui_added_bib_block, mark_tui_added_bib_entry,
-    parse_bib_blocks, project_root_from_cwd, suggest_from_query, suggest_from_source,
-    unmark_tui_added_bib_entry, upsert_bib_entry_with_options, write_lock,
+    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, WorkspaceLock,
+    project_root_from_cwd, suggest_from_query, suggest_from_source, write_lock,
 };
-use sil_latex::split_tex_sections;
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
+use sil_latex::split_tex_sections;
 use sil_latex::{audit_manuscript, build_command, parse_idea_blocks, update_or_insert_idea_block};
 use std::fs;
 
@@ -176,7 +174,10 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
         "sil_context" => {
             if args.get("skill").is_some() || args.get("name").is_some() {
                 handle_invoke_skill(args)
-            } else if args.get("list_skills").and_then(|v| v.as_bool()).unwrap_or(false)
+            } else if args
+                .get("list_skills")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
                 || args.get("action").and_then(|v| v.as_str()) == Some("skills")
             {
                 handle_list_skills(args)
@@ -980,166 +981,61 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
 
 fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
     let entry = match args.get("entry").and_then(|v| v.as_str()) {
-        Some(e) => e,
+        Some(e) => e.to_string(),
         None => return CallToolResult::error("Missing required parameter: entry"),
     };
-    if entry.trim().is_empty() {
-        return CallToolResult::error("entry must not be empty");
-    }
-    if !entry.contains('@') {
-        return CallToolResult::error("entry is not valid BibTeX (missing @type{key, ...})");
-    }
 
     let draft = args.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
-    let preserve_cite_key = args
-        .get("preserve_cite_key")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
 
-    let (_root, paths) = match get_project_paths() {
-        Ok(p) => p,
-        Err(e) => return CallToolResult::error(e),
+    let ctx = match sil_app::AppContext::from_cwd() {
+        Ok(c) => c,
+        Err(e) => return CallToolResult::error(e.to_string()),
     };
 
-    let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
-    // Re-read disk before write (same concurrency model as TUI).
-    let current = fs::read_to_string(bib_path.as_str()).unwrap_or_default();
-
-    let entry_for_upsert = if draft {
-        mark_tui_added_bib_entry(entry)
-    } else {
-        entry.to_string()
+    let res = match sil_app::upsert_bib(&ctx, sil_app::UpsertBib { entry, draft }) {
+        Ok(r) => r,
+        Err(e) => return CallToolResult::error(e.to_string()),
     };
 
-    let (updated, replaced) = upsert_bib_entry_with_options(
-        &current,
-        &entry_for_upsert,
-        UpsertOptions { preserve_cite_key },
-    );
-
-    let new_info = extract_bib_entry_info(&entry_for_upsert);
-    let cite_key = parse_bib_blocks(&updated)
-        .into_iter()
-        .find(|block| is_same_paper(&extract_bib_entry_info(block), &new_info))
-        .and_then(|block| extract_bib_entry_info(&block).cite_key)
-        .or_else(|| new_info.cite_key.clone())
-        .unwrap_or_else(|| "unknown".to_string());
-
-    if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
-        return CallToolResult::error(format!("Failed to write {}: {e}", bib_path));
-    }
-
-    let proposal = proposal_for_action(
-        SciAction::UpdateBibliography,
-        Some(&format!("Update bibliography: {cite_key}")),
-        Some(&format!(
-            "Upserted BibTeX entry '{cite_key}' into {} (draft={draft}, preserve_cite_key={preserve_cite_key}, replaced={replaced})",
-            sil_core::paths::rel::REFERENCES
-        )),
-    );
-
-    let res = json!({
+    let val = json!({
         "wrote": true,
-        "cite_key": cite_key,
-        "replaced": replaced,
-        "path": bib_path.as_str(),
-        "draft": draft,
-        "proposal": proposal.message(),
+        "cite_key": res.cite_key,
+        "replaced": res.replaced,
+        "path": res.path.as_str(),
+        "draft": res.draft,
+        "proposal": res.proposal.message(),
         "never_committed": true,
     });
 
-    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+    CallToolResult::text(serde_json::to_string_pretty(&val).unwrap_or_default())
 }
 
 fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
     let cite_key = match args.get("cite_key").and_then(|v| v.as_str()) {
-        Some(k) if !k.trim().is_empty() => k.trim(),
+        Some(k) if !k.trim().is_empty() => k.trim().to_string(),
         _ => return CallToolResult::error("Missing required parameter: cite_key"),
     };
 
-    let (_root, paths) = match get_project_paths() {
-        Ok(p) => p,
-        Err(e) => return CallToolResult::error(e),
-    };
-
-    let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
-    if !bib_path.is_file() {
-        return CallToolResult::error(format!("references.bib not found at {bib_path}"));
-    }
-
-    // Re-read disk before write.
-    let current = match fs::read_to_string(bib_path.as_str()) {
+    let ctx = match sil_app::AppContext::from_cwd() {
         Ok(c) => c,
-        Err(e) => return CallToolResult::error(format!("Failed to read {bib_path}: {e}")),
+        Err(e) => return CallToolResult::error(e.to_string()),
     };
 
-    let target_info = sil_core::BibEntryInfo {
-        cite_key: Some(cite_key.to_string()),
-        title: Some(cite_key.to_string()),
-        doi: Some(cite_key.to_string()),
-        arxiv_id: Some(cite_key.to_string()),
-        is_incomplete: false,
+    let res = match sil_app::promote_bib(&ctx, sil_app::PromoteBib { target: cite_key }) {
+        Ok(r) => r,
+        Err(e) => return CallToolResult::error(e.to_string()),
     };
 
-    let mut blocks = parse_bib_blocks(&current);
-    let mut promoted_key: Option<String> = None;
-    let mut had_marker = false;
-
-    for block in &mut blocks {
-        let block_info = extract_bib_entry_info(block);
-        let key_match = block_info
-            .cite_key
-            .as_deref()
-            .unwrap_or("")
-            .eq_ignore_ascii_case(cite_key);
-        if is_same_paper(&block_info, &target_info) || key_match {
-            let key = block_info
-                .cite_key
-                .as_deref()
-                .unwrap_or(cite_key)
-                .to_string();
-            had_marker = is_tui_added_bib_block(block);
-            *block = unmark_tui_added_bib_entry(block);
-            promoted_key = Some(key);
-            break;
-        }
-    }
-
-    let Some(key) = promoted_key else {
-        return CallToolResult::error(format!(
-            "No entry matching '{cite_key}' found in {bib_path} to promote"
-        ));
-    };
-
-    let updated = if blocks.is_empty() {
-        String::new()
-    } else {
-        blocks.join("\n\n") + "\n"
-    };
-
-    if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
-        return CallToolResult::error(format!("Failed to write {bib_path}: {e}"));
-    }
-
-    let proposal = proposal_for_action(
-        SciAction::PromoteBibliography,
-        Some(&format!("Promote bibliography entry: {key}")),
-        Some(&format!(
-            "Removed % [sil: tui-added] from '{key}' in {}",
-            sil_core::paths::rel::REFERENCES
-        )),
-    );
-
-    let res = json!({
+    let val = json!({
         "wrote": true,
-        "cite_key": key,
-        "replaced": had_marker,
-        "path": bib_path.as_str(),
-        "proposal": proposal.message(),
+        "cite_key": res.cite_key,
+        "replaced": res.had_marker,
+        "path": res.path.as_str(),
+        "proposal": res.proposal.message(),
         "never_committed": true,
     });
 
-    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+    CallToolResult::text(serde_json::to_string_pretty(&val).unwrap_or_default())
 }
 
 /// Resolve a filesystem path for parse: absolute, relative to cwd, or under sources/.
@@ -1435,10 +1331,7 @@ fn handle_rank_draft(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_estimate_paper(args: serde_json::Value) -> CallToolResult {
-    let mode = args
-        .get("mode")
-        .and_then(|v| v.as_str())
-        .unwrap_or("quick");
+    let mode = args.get("mode").and_then(|v| v.as_str()).unwrap_or("quick");
     let write = args.get("write").and_then(|v| v.as_bool()).unwrap_or(false);
     let include_sources = args
         .get("include_sources_summary")
@@ -1480,10 +1373,7 @@ fn handle_estimate_paper(args: serde_json::Value) -> CallToolResult {
             Ok(dir) => {
                 if let Some(obj) = res.as_object_mut() {
                     obj.insert("report_dir".into(), json!(dir.to_string()));
-                    obj.insert(
-                        "proposal".into(),
-                        json!(estimate_proposal_message(&dir)),
-                    );
+                    obj.insert("proposal".into(), json!(estimate_proposal_message(&dir)));
                 }
             }
             Err(e) => return CallToolResult::error(format!("write report: {e}")),
@@ -1688,36 +1578,36 @@ fn handle_ground_claims(args: serde_json::Value) -> CallToolResult {
     };
 
     let embedder = sil_db::OnnxEmbedder::default();
-    let suggestions: Vec<serde_json::Value> =
-        match db.search_hybrid(&embedder, claim, limit, true) {
+    let suggestions: Vec<serde_json::Value> = match db.search_hybrid(&embedder, claim, limit, true)
+    {
+        Ok(hits) => hits
+            .iter()
+            .map(|h| {
+                json!({
+                    "source_id": h.chunk.source_id.to_string(),
+                    "chunk_id": h.chunk.id,
+                    "score": h.score,
+                    "snippet": h.snippet.chars().take(400).collect::<String>(),
+                })
+            })
+            .collect(),
+        Err(_) => match db.search(claim, limit) {
             Ok(hits) => hits
                 .iter()
                 .map(|h| {
                     json!({
-                        "source_id": h.chunk.source_id.to_string(),
-                        "chunk_id": h.chunk.id,
-                        "score": h.score,
+                        "source_id": h.id.to_string(),
+                        "chunk_id": serde_json::Value::Null,
+                        "score": 0.0,
                         "snippet": h.snippet.chars().take(400).collect::<String>(),
+                        "title": h.title,
+                        "filename": h.filename,
                     })
                 })
                 .collect(),
-            Err(_) => match db.search(claim, limit) {
-                Ok(hits) => hits
-                    .iter()
-                    .map(|h| {
-                        json!({
-                            "source_id": h.id.to_string(),
-                            "chunk_id": serde_json::Value::Null,
-                            "score": 0.0,
-                            "snippet": h.snippet.chars().take(400).collect::<String>(),
-                            "title": h.title,
-                            "filename": h.filename,
-                        })
-                    })
-                    .collect(),
-                Err(e) => return CallToolResult::error(format!("search failed: {e}")),
-            },
-        };
+            Err(e) => return CallToolResult::error(format!("search failed: {e}")),
+        },
+    };
 
     let mut applied = false;
     if apply {
@@ -3018,6 +2908,33 @@ sections:
     }
 
     #[test]
+    fn test_upsert_bib_preserve_cite_key_false_is_ignored() {
+        let env = TestEnv::new();
+        let bib_path = env.project_root.join("references.bib");
+        fs::write(
+            bib_path.as_str(),
+            "@article{oldkey,\n  title = {Same Paper},\n  doi = {10.1000/abc}\n}\n",
+        )
+        .unwrap();
+
+        let entry =
+            "@article{newkey,\n  title = {Same Paper},\n  doi = {10.1000/abc},\n  year = {2021}\n}";
+        // KD-5: preserve_cite_key is always true in sil-app; passing false is ignored.
+        let res = handle_upsert_bib(json!({
+            "entry": entry,
+            "preserve_cite_key": false
+        }));
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["replaced"], true);
+        assert_eq!(val["cite_key"], "oldkey");
+
+        let content = fs::read_to_string(bib_path.as_str()).unwrap();
+        assert!(content.contains("@article{oldkey"));
+        assert!(!content.contains("@article{newkey"));
+    }
+
+    #[test]
     fn test_promote_bib_strips_marker_and_never_commits() {
         let env = TestEnv::new();
         init_git_repo(&env.project_root);
@@ -3082,7 +2999,10 @@ sections:
         );
         assert!(res.is_error.is_none() || res.is_error == Some(false));
 
-        let res = call_tool("sil_cite", Some(json!({ "action": "promote", "cite_key": "routekey" })));
+        let res = call_tool(
+            "sil_cite",
+            Some(json!({ "action": "promote", "cite_key": "routekey" })),
+        );
         assert!(res.is_error.is_none() || res.is_error == Some(false));
         let content = fs::read_to_string(env.project_root.join("references.bib").as_str()).unwrap();
         assert!(!content.contains("tui-added"));
