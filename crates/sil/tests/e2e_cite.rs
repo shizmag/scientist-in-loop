@@ -116,3 +116,61 @@ fn help_lists_cite() {
     let stdout = String::from_utf8_lossy(&out.get_output().stdout);
     assert!(stdout.contains("cite"), "{stdout}");
 }
+
+#[test]
+fn cite_promote_removes_tui_added_marker() {
+    let (_tmp, project) = init_project("cite-promote");
+    let initial_bib = "% [sil: tui-added]\n@article{draftkey,\n  title = {Draft Title},\n  author = {Smith, John}\n}\n";
+    fs::write(project.join("references.bib"), initial_bib).unwrap();
+
+    let out = sil()
+        .current_dir(&project)
+        .args(["source", "cite", "draftkey", "--promote"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&out);
+    assert!(stdout.contains("Promoted entry 'draftkey'"), "{stdout}");
+    assert!(!stdout.contains("Commit proposal"), "{stdout}");
+
+    let bib = fs::read_to_string(project.join("references.bib")).unwrap();
+    assert!(!bib.contains("% [sil: tui-added]"), "{bib}");
+    assert!(bib.contains("@article{draftkey"), "{bib}");
+}
+
+#[test]
+fn cite_append_same_paper_preserves_cite_key() {
+    let (_tmp, project) = init_project("cite-append-preserve");
+
+    // First append
+    let out1 = sil()
+        .current_dir(&project)
+        .args(["source", "cite", "attention_paper.pdf", "--append"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let s1 = String::from_utf8_lossy(&out1);
+    assert!(s1.contains("Appended entry to"), "{s1}");
+    assert!(!s1.contains("Commit proposal"), "{s1}");
+
+    // Second append (same paper)
+    let out2 = sil()
+        .current_dir(&project)
+        .args(["source", "cite", "attention_paper.pdf", "--append"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let s2 = String::from_utf8_lossy(&out2);
+    assert!(s2.contains("Updated existing entry in"), "{s2}");
+    assert!(!s2.contains("Commit proposal"), "{s2}");
+
+    let bib = fs::read_to_string(project.join("references.bib")).unwrap();
+    assert!(bib.contains("@article{attention_paper"), "{bib}");
+}

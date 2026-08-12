@@ -8,50 +8,21 @@ use crate::util::load_project;
 
 /// Suggest a citation artifact from a source id/filename or free-text query.
 pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi) -> Result<()> {
-    let (_root, _config, paths) = load_project()?;
+    let (root, _config, paths) = load_project()?;
 
     if promote {
-        let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
-        if !bib_path.is_file() {
-            bail!("references.bib not found at {bib_path}");
-        }
-        let current = std::fs::read_to_string(bib_path.as_str())?;
-        let target_info = sil_core::BibEntryInfo {
-            cite_key: Some(target.to_string()),
-            title: Some(target.to_string()),
-            doi: Some(target.to_string()),
-            arxiv_id: Some(target.to_string()),
-            is_incomplete: false,
-        };
-        let mut blocks = sil_core::parse_bib_blocks(&current);
-        let mut promoted_key = None;
-        for block in &mut blocks {
-            let block_info = sil_core::extract_bib_entry_info(block);
-            if sil_core::is_same_paper(&block_info, &target_info)
-                || block_info.cite_key.as_deref().unwrap_or("").to_lowercase()
-                    == target.to_lowercase()
-            {
-                let cite_key = block_info.cite_key.as_deref().unwrap_or(target).to_string();
-                *block = sil_core::unmark_tui_added_bib_entry(block);
-                promoted_key = Some(cite_key);
-                break;
-            }
-        }
-
-        if let Some(key) = promoted_key {
-            let updated = if blocks.is_empty() {
-                String::new()
-            } else {
-                blocks.join("\n\n") + "\n"
-            };
-            sil_core::write_atomic_str(&bib_path, &updated)?;
-            ui.success(&format!(
-                "✓ Promoted entry '{key}' in {bib_path} (removed % [sil: tui-added])"
-            ));
-            return Ok(());
-        } else {
-            bail!("No entry matching '{target}' found in {bib_path} to promote");
-        }
+        let ctx = sil_app::AppContext::from_root(&root)?;
+        let res = sil_app::promote_bib(
+            &ctx,
+            sil_app::PromoteBib {
+                target: target.to_string(),
+            },
+        )?;
+        ui.success(&format!(
+            "✓ Promoted entry '{}' in {} (removed % [sil: tui-added])",
+            res.cite_key, res.path
+        ));
+        return Ok(());
     }
 
     let db = SilDb::open(&paths.db()).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -129,18 +100,18 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
     }
 
     if append {
-        let bib_path = paths.join(sil_core::paths::rel::REFERENCES);
-        let existing = if bib_path.is_file() {
-            std::fs::read_to_string(bib_path.as_str())?
+        let ctx = sil_app::AppContext::from_root(&root)?;
+        let res = sil_app::upsert_bib(
+            &ctx,
+            sil_app::UpsertBib {
+                entry: suggestion.bibtex.clone(),
+                draft: false,
+            },
+        )?;
+        if res.replaced {
+            ui.success(&format!("Updated existing entry in {}", res.path));
         } else {
-            String::new()
-        };
-        let (updated, replaced) = sil_core::bib::upsert_bib_entry(&existing, &suggestion.bibtex);
-        sil_core::write_atomic_str(&bib_path, &updated)?;
-        if replaced {
-            ui.success(&format!("Updated existing entry in {bib_path}"));
-        } else {
-            ui.success(&format!("Appended entry to {bib_path}"));
+            ui.success(&format!("Appended entry to {}", res.path));
         }
     }
 
