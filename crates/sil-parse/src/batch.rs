@@ -22,12 +22,30 @@ pub struct ParseResult {
     pub reference_count: usize,
 }
 
+/// Options for single-document parsing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ParseOptions {
+    /// Allow re-parsing an already parsed source document without erroring.
+    pub allow_reparse: bool,
+}
+
 /// Parse one source document and write into the database.
 pub fn parse_one(
     path: &Utf8Path,
     db: &SilDb,
     runner: &dyn MarkerRunner,
     ui: &dyn SilUi,
+) -> Result<ParseResult, ParseError> {
+    parse_one_with_options(path, db, runner, ui, ParseOptions::default())
+}
+
+/// Parse one source document with specified options and write into the database.
+pub fn parse_one_with_options(
+    path: &Utf8Path,
+    db: &SilDb,
+    runner: &dyn MarkerRunner,
+    ui: &dyn SilUi,
+    options: ParseOptions,
 ) -> Result<ParseResult, ParseError> {
     let start_time = std::time::Instant::now();
     let (status, mut doc) = validate_for_parse(path, db)?;
@@ -56,10 +74,12 @@ pub fn parse_one(
             )));
         }
         DocumentStatus::AlreadyParsed => {
-            return Err(ParseError::InvalidDocument(format!(
-                "already parsed: {} (remove DB row to re-parse)",
-                doc.filename
-            )));
+            if !options.allow_reparse {
+                return Err(ParseError::InvalidDocument(format!(
+                    "already parsed: {} (remove DB row to re-parse)",
+                    doc.filename
+                )));
+            }
         }
     }
 
@@ -113,18 +133,14 @@ pub fn parse_one(
     doc.parsed = true;
     doc.status = Some(DocumentStatus::Valid(doc.kind));
 
-    db.upsert_parsed(&doc, &content)
-        .map_err(|e| ParseError::Db(e.to_string()))?;
-
-    let mut reference_count = 0;
+    let mut entries = Vec::new();
     if let Some(ref raw_block) = doc.references_text {
-        let entries = crate::references::parse_reference_entries(&doc.id, raw_block);
-        reference_count = entries.len();
-        if !entries.is_empty() {
-            db.save_source_references(&entries)
-                .map_err(|e| ParseError::Db(e.to_string()))?;
-        }
+        entries = crate::references::parse_reference_entries(&doc.id, raw_block);
     }
+    let reference_count = entries.len();
+
+    db.upsert_parsed_with_references(&doc, &content, &entries)
+        .map_err(|e| ParseError::Db(e.to_string()))?;
 
     let duration = start_time.elapsed();
 
@@ -820,5 +836,78 @@ RAG enhances quality by retrieving chunks as prompts[Lewis et al., 2020]. This h
             );
         }
         assert_eq!(doc.year, Some(2025));
+    }
+
+    #[test]
+    fn test_reparse_with_allow_reparse_preserves_on_failure_and_replaces_on_success() {
+        use tempfile::tempdir;
+        let dir = tempdir().unwrap();
+        let pdf_path = Utf8PathBuf::from_path_buf(dir.path().join("paper.pdf")).unwrap();
+        crate::validate::write_fixture_pdf(pdf_path.as_std_path()).unwrap();
+
+        let db = SilDb::open_in_memory().unwrap();
+        let null_ui = sil_core::NullUi::new();
+
+        // 1. Initial parse
+        let runner1 = crate::marker::StubMarkerRunner {
+            content: "first token initial content".to_string(),
+        };
+        let res1 = parse_one(&pdf_path, &db, &runner1, &null_ui).expect("initial parse ok");
+        assert!(res1.content.contains("first token"));
+
+        // Verify content in DB
+        let (doc1, content1) = db
+            .get_source_content("paper.pdf")
+            .unwrap()
+            .expect("source in db");
+        assert!(content1.contains("first token"));
+        assert!(doc1.parsed);
+
+        // 2. Reparse without allow_reparse fails idempotently
+        let err = parse_one(&pdf_path, &db, &runner1, &null_ui).unwrap_err();
+        assert!(err.to_string().contains("already parsed"));
+
+        // 3. Force re-parse with a failing runner -> fails, but previous data in DB is PRESERVED
+        struct FailingRunner;
+        impl MarkerRunner for FailingRunner {
+            fn parse_pdf(&self, _path: &Utf8Path) -> Result<String, ParseError> {
+                Err(ParseError::Message(
+                    "simulated pdf extraction failure".into(),
+                ))
+            }
+        }
+
+        let force_opts = ParseOptions {
+            allow_reparse: true,
+        };
+        let reparse_err =
+            parse_one_with_options(&pdf_path, &db, &FailingRunner, &null_ui, force_opts)
+                .unwrap_err();
+        assert!(
+            reparse_err
+                .to_string()
+                .contains("simulated pdf extraction failure")
+        );
+
+        // Verify previous content in DB is still intact!
+        let (_doc2, content2) = db
+            .get_source_content("paper.pdf")
+            .unwrap()
+            .expect("source still in db");
+        assert_eq!(content2, content1);
+
+        // 4. Force re-parse with success -> replaces content in DB
+        let runner2 = crate::marker::StubMarkerRunner {
+            content: "second token updated content".to_string(),
+        };
+        let res2 = parse_one_with_options(&pdf_path, &db, &runner2, &null_ui, force_opts)
+            .expect("force re-parse success");
+        assert!(res2.content.contains("second token"));
+
+        let (_doc3, content3) = db
+            .get_source_content("paper.pdf")
+            .unwrap()
+            .expect("updated source in db");
+        assert!(content3.contains("second token"));
     }
 }

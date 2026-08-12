@@ -302,7 +302,7 @@ impl App {
             let bib_path = root.join(sil_core::paths::rel::REFERENCES);
             let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
             let (updated, _replaced) = sil_core::bib::upsert_bib_entry(&current, &marked);
-            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
                 self.status_message = format!("Error writing references.bib: {e}");
                 return;
             }
@@ -465,7 +465,9 @@ impl App {
                         self.queue_ref_hydration(e.clone());
                     }
                 }
-                let _ = std::fs::write(bib_path.as_std_path(), current);
+                if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                }
                 let count = entries_to_add.len();
                 self.marked_ref_ids.clear();
                 self.load_project_references_bib();
@@ -502,7 +504,9 @@ impl App {
                         self.queue_ref_hydration(e.clone());
                     }
                 }
-                let _ = std::fs::write(bib_path.as_std_path(), current);
+                if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                }
                 let count = entries_to_add.len();
                 self.load_project_references_bib();
                 if fetch_count > 0 {
@@ -550,7 +554,7 @@ impl App {
             } else {
                 blocks.join("\n\n") + "\n"
             };
-            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
                 self.status_message = format!("Error writing references.bib: {e}");
                 return;
             }
@@ -573,7 +577,9 @@ impl App {
                     if let Some(ref root) = self.project_root {
                         let bib_path = root.join("references.bib");
                         let content = self.bib_file_entries.join("\n\n");
-                        let _ = std::fs::write(bib_path.as_std_path(), content);
+                        if let Err(e) = sil_core::write_atomic_str(&bib_path, &content) {
+                            self.status_message = format!("Error writing references.bib: {e}");
+                        }
                     }
                     self.clamp_bib_selection();
                     self.status_message =

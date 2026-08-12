@@ -97,7 +97,7 @@ pub fn fetch(target: &str, no_parse: bool, ui: &dyn SilUi) -> Result<()> {
     if let Some(official_bib) = official_bib {
         let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
         let (updated, replaced) = sil_core::bib::upsert_bib_entry(&current, &official_bib);
-        if std::fs::write(bib_path.as_std_path(), updated).is_ok() {
+        if sil_core::write_atomic_str(&bib_path, &updated).is_ok() {
             if replaced {
                 ui.success(&format!(
                     "✓ Replaced incomplete entry in references.bib with official metadata for {target}"

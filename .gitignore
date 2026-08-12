@@ -11,3 +11,5 @@ __pycache__/
 .ctx_*/
 .codegraph/
 scratch/
+*.db-wal
+*.db-shm

@@ -90,7 +90,7 @@ pub fn apply(
 
     let rendered = apply_template(template, &tex_source);
 
-    fs::write(out_file.as_str(), &rendered)
+    sil_core::write_atomic_str(&out_file, &rendered)
         .with_context(|| format!("write output manuscript {out_file}"))?;
 
     ui.success(&format!(

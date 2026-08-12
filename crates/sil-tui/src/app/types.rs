@@ -637,3 +637,10 @@ pub struct SimilarityJobResult {
     pub result: Result<usize, String>,
     pub duration_ms: Option<u64>,
 }
+
+/// Result of a background manuscript L0 estimate job.
+#[derive(Debug)]
+pub struct EstimateJobResult {
+    pub result: Result<sil_agent::EstimateReport, String>,
+    pub duration_ms: Option<u64>,
+}

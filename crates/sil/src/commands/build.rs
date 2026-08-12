@@ -36,7 +36,7 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
             if let Ok(orig) = std::fs::read_to_string(bib_path.as_std_path()) {
                 let stripped = sil_core::strip_tui_added_bib_entries(&orig);
                 if stripped != orig {
-                    if std::fs::write(bib_path.as_std_path(), &stripped).is_ok() {
+                    if sil_core::write_atomic_str(&bib_path, &stripped).is_ok() {
                         Some(BibRestorer {
                             path: bib_path,
                             original_content: orig,

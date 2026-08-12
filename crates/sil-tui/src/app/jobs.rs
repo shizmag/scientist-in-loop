@@ -1,7 +1,16 @@
-//! Job queueing, execution, and background polling for `sil-tui`.
-
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use super::*;
 use sil_core::{ProjectPaths, ReferenceEntry, SourceDocument};
+
+pub(crate) fn extract_panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        format!("worker panicked: {s}")
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        format!("worker panicked: {s}")
+    } else {
+        "worker panicked: unknown reason".to_string()
+    }
+}
 
 impl App {
     pub(crate) fn alloc_job_id(&mut self) -> u64 {
@@ -69,14 +78,19 @@ impl App {
 
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
-            let res = sil_parse::journal_digest::resolve_official_bibtex_entry(&entry);
-            let outcome = match res {
-                sil_parse::journal_digest::ReferenceBibResolution::Resolved(official_bib) => {
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                sil_parse::journal_digest::resolve_official_bibtex_entry(&entry)
+            }));
+            let outcome = match catch_res {
+                Ok(sil_parse::journal_digest::ReferenceBibResolution::Resolved(official_bib)) => {
                     HydrationOutcome::Success { official_bib }
                 }
-                sil_parse::journal_digest::ReferenceBibResolution::Failed(reason) => {
+                Ok(sil_parse::journal_digest::ReferenceBibResolution::Failed(reason)) => {
                     HydrationOutcome::Failure { reason }
                 }
+                Err(p) => HydrationOutcome::Failure {
+                    reason: extract_panic_message(p),
+                },
             };
             let _ = tx.send(HydrationResult {
                 dedup_key,
@@ -132,14 +146,19 @@ impl App {
 
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
-            let res = sil_parse::journal_digest::resolve_official_bibtex_for_source(&doc);
-            let outcome = match res {
-                sil_parse::SourceBibResolution::Resolved(official_bib) => {
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                sil_parse::journal_digest::resolve_official_bibtex_for_source(&doc)
+            }));
+            let outcome = match catch_res {
+                Ok(sil_parse::SourceBibResolution::Resolved(official_bib)) => {
                     HydrationOutcome::Success { official_bib }
                 }
-                sil_parse::SourceBibResolution::Failed(reason) => {
+                Ok(sil_parse::SourceBibResolution::Failed(reason)) => {
                     HydrationOutcome::Failure { reason }
                 }
+                Err(p) => HydrationOutcome::Failure {
+                    reason: extract_panic_message(p),
+                },
             };
             let _ = tx.send(HydrationResult {
                 dedup_key,
@@ -183,28 +202,34 @@ impl App {
 
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
-            let result = (|| -> Result<sil_parse::batch::ParseResult, String> {
-                let Some(root) = project_root else {
-                    return Err("No project root directory available".to_string());
-                };
-                let paths = ProjectPaths::new(&root);
-                let db =
-                    sil_db::SilDb::open(&paths.db()).map_err(|e| format!("Database error: {e}"))?;
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                (|| -> Result<sil_parse::batch::ParseResult, String> {
+                    let Some(root) = project_root else {
+                        return Err("No project root directory available".to_string());
+                    };
+                    let paths = ProjectPaths::new(&root);
+                    let db =
+                        sil_db::SilDb::open(&paths.db()).map_err(|e| format!("Database error: {e}"))?;
 
-                if force {
-                    let _ = db.remove_source(&doc_id);
-                }
+                    let runner = sil_parse::discover_marker_runner().unwrap_or_else(|_| {
+                        Box::new(sil_parse::StubMarkerRunner {
+                            content: String::new(),
+                        })
+                    });
+                    let null_ui = sil_core::NullUi::new();
+                    let opts = sil_parse::ParseOptions {
+                        allow_reparse: force,
+                    };
 
-                let runner = sil_parse::discover_marker_runner().unwrap_or_else(|_| {
-                    Box::new(sil_parse::StubMarkerRunner {
-                        content: String::new(),
-                    })
-                });
-                let null_ui = sil_core::NullUi::new();
+                    sil_parse::parse_one_with_options(&path, &db, runner.as_ref(), &null_ui, opts)
+                        .map_err(|e| e.to_string())
+                })()
+            }));
 
-                sil_parse::batch::parse_one(&path, &db, runner.as_ref(), &null_ui)
-                    .map_err(|e| e.to_string())
-            })();
+            let result = match catch_res {
+                Ok(res) => res,
+                Err(p) => Err(extract_panic_message(p)),
+            };
 
             let _ = tx.send(ParseJobResult {
                 source_id: doc_id,
@@ -243,13 +268,21 @@ impl App {
 
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
-            let result = (|| -> Result<camino::Utf8PathBuf, String> {
-                let root = project_root.ok_or_else(|| "No project root".to_string())?;
-                let paths = ProjectPaths::new(&root);
-                let config = loaded_config.unwrap_or_default();
-                let sources_dir = paths.sources(&config);
-                sil_parse::fetch_source_target(&target, &sources_dir).map_err(|e| e.to_string())
-            })();
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                (|| -> Result<camino::Utf8PathBuf, String> {
+                    let root = project_root.ok_or_else(|| "No project root".to_string())?;
+                    let paths = ProjectPaths::new(&root);
+                    let config = loaded_config.unwrap_or_default();
+                    let sources_dir = paths.sources(&config);
+                    sil_parse::fetch_source_target(&target, &sources_dir).map_err(|e| e.to_string())
+                })()
+            }));
+
+            let result = match catch_res {
+                Ok(res) => res,
+                Err(p) => Err(extract_panic_message(p)),
+            };
+
             let _ = tx.send(FetchJobResult {
                 target,
                 label,
@@ -305,12 +338,20 @@ impl App {
             let started = std::time::Instant::now();
             let embedder = sil_db::OnnxEmbedder::from_rag_settings(&rag);
             let backend_summary = embedder.backend().summary();
-            let result = (|| -> Result<usize, String> {
-                let db =
-                    sil_db::SilDb::open(&db_path).map_err(|e| format!("Database error: {e}"))?;
-                db.recompute_draft_ref_similarities(&draft_text, &embedder)
-                    .map_err(|e| e.to_string())
-            })();
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                (|| -> Result<usize, String> {
+                    let db =
+                        sil_db::SilDb::open(&db_path).map_err(|e| format!("Database error: {e}"))?;
+                    db.recompute_draft_ref_similarities(&draft_text, &embedder)
+                        .map_err(|e| e.to_string())
+                })()
+            }));
+
+            let result = match catch_res {
+                Ok(res) => res,
+                Err(p) => Err(extract_panic_message(p)),
+            };
+
             let _ = tx.send(SimilarityJobResult {
                 draft_hash,
                 backend_summary,
@@ -557,6 +598,7 @@ impl App {
         self.poll_background_parse();
         self.poll_background_fetch();
         self.poll_background_similarity();
+        self.poll_background_estimate();
         let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
             polled_any = true;
@@ -609,7 +651,7 @@ impl App {
                                 },
                             );
 
-                            if let Err(e) = std::fs::write(bib_path.as_std_path(), updated) {
+                            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
                                 let err_msg = format!("Error writing references.bib: {e}");
                                 let id = self.alloc_job_id();
                                 self.push_job_outcome(JobOutcome {
@@ -715,57 +757,82 @@ impl App {
         }
     }
 
-    /// Trigger asynchronous manuscript estimate job.
+    /// Trigger background manuscript estimate job.
     pub fn run_estimate_job(&mut self) {
         let Some(root) = self.project_root.clone() else {
             self.status_message = "Estimate error: not inside a sil project root.".to_string();
             return;
         };
 
+        if self.in_flight_estimate {
+            self.status_message = "already running manuscript estimate...".to_string();
+            return;
+        }
+
+        self.in_flight_estimate = true;
         self.status_message = "⏳ Running L0 manuscript estimate...".to_string();
-        let start = std::time::Instant::now();
+        let tx = self.estimate_tx.clone();
 
-        let input = sil_agent::EstimateInput {
-            root: root.as_path(),
-            mode: sil_agent::EstimateMode::Quick,
-            structure: None,
-        };
-        let res = sil_agent::run_heuristic_estimate(&input);
-        let duration_ms = start.elapsed().as_millis() as u64;
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                let input = sil_agent::EstimateInput {
+                    root: root.as_path(),
+                    mode: sil_agent::EstimateMode::Quick,
+                    structure: None,
+                };
+                sil_agent::run_heuristic_estimate(&input).map_err(|e| e.to_string())
+            }));
 
-        let id = self.alloc_job_id();
-        match res {
-            Ok(report) => {
-                self.status_message = format!(
-                    "✓ L0 estimate complete: score={}, decision={:?}",
-                    report.overall_score, report.decision
-                );
-                self.push_job_outcome(JobOutcome {
-                    id,
-                    kind: JobKind::Estimate,
-                    label: "manuscript estimate".to_string(),
-                    ok: true,
-                    detail: format!(
-                        "score={}, decision={:?}, findings={}",
-                        report.overall_score,
-                        report.decision,
-                        report.findings.len()
-                    ),
-                    duration_ms: Some(duration_ms),
-                    retry_payload: None,
-                });
-            }
-            Err(e) => {
-                self.status_message = format!("⚠ Estimate failed: {e}");
-                self.push_job_outcome(JobOutcome {
-                    id,
-                    kind: JobKind::Estimate,
-                    label: "manuscript estimate".to_string(),
-                    ok: false,
-                    detail: format!("failed: {e}"),
-                    duration_ms: Some(duration_ms),
-                    retry_payload: None,
-                });
+            let result = match catch_res {
+                Ok(res) => res,
+                Err(p) => Err(extract_panic_message(p)),
+            };
+
+            let _ = tx.send(EstimateJobResult {
+                result,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
+            });
+        });
+    }
+
+    pub fn poll_background_estimate(&mut self) {
+        while let Ok(res) = self.estimate_rx.try_recv() {
+            self.in_flight_estimate = false;
+            let id = self.alloc_job_id();
+            match res.result {
+                Ok(report) => {
+                    self.status_message = format!(
+                        "✓ L0 estimate complete: score={}, decision={:?}",
+                        report.overall_score, report.decision
+                    );
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Estimate,
+                        label: "manuscript estimate".to_string(),
+                        ok: true,
+                        detail: format!(
+                            "score={}, decision={:?}, findings={}",
+                            report.overall_score,
+                            report.decision,
+                            report.findings.len()
+                        ),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+                Err(err_msg) => {
+                    self.status_message = format!("⚠ Estimate failed: {err_msg}");
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Estimate,
+                        label: "manuscript estimate".to_string(),
+                        ok: false,
+                        detail: format!("failed: {err_msg}"),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
             }
         }
     }

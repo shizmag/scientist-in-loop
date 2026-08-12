@@ -14,6 +14,8 @@ pub mod error;
 pub mod openreview;
 /// Global API rate limiting handler.
 pub mod ratelimit;
+/// API request retry policies and backoff handlers.
+pub mod retry;
 
 #[cfg(test)]
 mod tests;
@@ -24,3 +26,4 @@ pub use doi::*;
 pub use error::ApiError;
 pub use openreview::*;
 pub use ratelimit::*;
+pub use retry::*;

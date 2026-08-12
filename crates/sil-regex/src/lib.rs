@@ -832,15 +832,15 @@ pub fn extract_arxiv_id(text: &str) -> Option<String> {
 /// Detects OpenReview URLs (`https://openreview.net/forum?id=XXX`, `https://openreview.net/pdf?id=XXX`),
 /// `openreview:XXX`, or raw OpenReview note IDs (10-12 alphanumeric characters like `uccHPGDlao`).
 pub fn extract_openreview_id(text: &str) -> Option<String> {
-    if let Some(caps) = OPENREVIEW_URL_REGEX.captures(text) {
-        if let Some(m) = caps.get(1) {
-            return Some(m.as_str().to_string());
-        }
+    if let Some(caps) = OPENREVIEW_URL_REGEX.captures(text)
+        && let Some(m) = caps.get(1)
+    {
+        return Some(m.as_str().to_string());
     }
-    if let Some(caps) = OPENREVIEW_PREFIX_REGEX.captures(text) {
-        if let Some(m) = caps.get(1) {
-            return Some(m.as_str().to_string());
-        }
+    if let Some(caps) = OPENREVIEW_PREFIX_REGEX.captures(text)
+        && let Some(m) = caps.get(1)
+    {
+        return Some(m.as_str().to_string());
     }
     let text_lower = text.to_lowercase();
     let trimmed = text.trim().trim_end_matches(&['.', ',', ';', ')', ']', '>'][..]);

@@ -90,7 +90,7 @@ pub fn write_draft_sections(
 
         let path = out_dir.join(&filename);
         let content = format_section_file(sec, i);
-        fs::write(path.as_str(), content).map_err(|source| LatexError::Io {
+        sil_core::write_atomic_str(&path, &content).map_err(|source| LatexError::Io {
             path: path.to_string(),
             source,
         })?;
@@ -164,7 +164,7 @@ fn write_index_md(
         ));
     }
     let path = out_dir.join("index.md");
-    fs::write(path.as_str(), md).map_err(|source| LatexError::Io {
+    sil_core::write_atomic_str(&path, &md).map_err(|source| LatexError::Io {
         path: path.to_string(),
         source,
     })?;

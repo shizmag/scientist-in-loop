@@ -348,6 +348,15 @@ Skill pack: `agent/skills/review.md` (inspired by [academic-research-skills](htt
 }
 ```
 
+### Durability & System Robustness (Stage 11)
+
+- **Atomic Writes**: All durable files (`references.bib`, `paper_draft.tex`, `.sil/config.yaml`, `.sil/structure.yaml`, `.sil/workspace.lock`, `.sil/reviews/*`, global settings, cache) are updated via `sil_core::write_atomic` (writes to a PID/nanosecond temp file in the same directory, flushes via `sync_all()`, and atomically replaces the target via `fs::rename()`).
+- **SQLite WAL & Integrity**: Enforces `PRAGMA journal_mode = WAL; busy_timeout = 5000;` across all database connections and reports status in `sil doctor`.
+- **Data Loss-Free Re-parsing**: Reparsing source documents runs inside a single SQLite transaction without pre-deleting source rows, preserving existing index and FTS data on failure.
+- **API Retries & HTTPS**: All CrossRef, DOI, arXiv, and OpenReview HTTP requests use exponential backoff retries (3 attempts), with arXiv upgraded to HTTPS.
+- **TUI Panic Isolation & Async Estimate**: TUI background workers isolate thread panics via `catch_unwind`, and manuscript estimates run non-blocking on background threads.
+- See [`docs/pr-plan-08-12/pr-plan.md`](docs/pr-plan-08-12/pr-plan.md) and [`ADR-013`](docs/adr/ADR-013-crash-safe-robustness.md).
+
 ---
 
 ## Layout created by `sil init`

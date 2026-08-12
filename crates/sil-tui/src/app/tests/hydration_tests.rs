@@ -1,3 +1,4 @@
+use super::super::jobs::extract_panic_message;
 use super::super::*;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -437,11 +438,11 @@ fn test_hydration_write_failure_status_message() {
     app.in_flight_hydration_keys
         .insert("doi:10.1000/writeerr".to_string());
 
-    let mut perms = std::fs::metadata(bib_path.as_std_path())
+    let mut perms = std::fs::metadata(root.as_std_path())
         .unwrap()
         .permissions();
     perms.set_readonly(true);
-    std::fs::set_permissions(bib_path.as_std_path(), perms.clone()).unwrap();
+    let _ = std::fs::set_permissions(root.as_std_path(), perms.clone());
 
     let official_bib = "@article{stub, title={Stub}, author={Tester}, doi={10.1000/writeerr}}";
     app.hydration_tx
@@ -458,7 +459,7 @@ fn test_hydration_write_failure_status_message() {
     app.poll_background_hydration();
 
     perms.set_readonly(false);
-    let _ = std::fs::set_permissions(bib_path.as_std_path(), perms);
+    let _ = std::fs::set_permissions(root.as_std_path(), perms);
 
     assert_eq!(
         app.status_message,
@@ -754,4 +755,58 @@ fn test_sources_parse_failure_status() {
 
     assert!(app.in_flight_parse_ids.is_empty());
     assert!(app.status_message.starts_with("⚠ Failed parsing source"));
+}
+
+#[test]
+fn test_worker_panic_clears_in_flight_and_records_failure() {
+    let mut app = App::new(None);
+    app.in_flight_parse_ids
+        .insert(sil_core::SourceId::from("panic_source"));
+
+    let panic_msg = extract_panic_message(Box::new("simulated thread panic"));
+    assert!(panic_msg.starts_with("worker panicked:"));
+
+    app.parse_tx
+        .send(ParseJobResult {
+            source_id: sil_core::SourceId::from("panic_source"),
+            label: "Panic Source".to_string(),
+            result: Err(panic_msg),
+            duration_ms: Some(10),
+            force: false,
+        })
+        .unwrap();
+
+    app.poll_background_parse();
+
+    assert!(app.in_flight_parse_ids.is_empty());
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert!(!outcome.ok);
+    assert!(outcome.detail.contains("worker panicked: simulated thread panic"));
+}
+
+#[test]
+fn test_async_estimate_job_flow() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+    std::fs::write(root.join("paper_draft.tex").as_std_path(), "\\section{Intro}").unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    assert!(!app.in_flight_estimate);
+
+    app.run_estimate_job();
+    assert!(app.in_flight_estimate);
+
+    for _ in 0..50 {
+        app.poll_background_estimate();
+        if !app.in_flight_estimate {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+
+    assert!(!app.in_flight_estimate);
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert_eq!(outcome.kind, JobKind::Estimate);
 }

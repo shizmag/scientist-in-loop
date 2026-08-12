@@ -28,7 +28,10 @@ pub mod health;
 pub mod todo;
 /// Advisory workspace lock for agent/TUI coordination.
 pub mod workspace_lock;
+/// Crash-safe atomic file writing.
+pub mod atomic;
 
+pub use atomic::{write_atomic, write_atomic_str};
 pub use bib::{
     BibEntryInfo, BibSuggestion, TUI_ADDED_MARKER, UpsertOptions, extract_bib_entry_info,
     format_bibtex_article, format_cite_command, is_same_paper, is_tui_added_bib_block,

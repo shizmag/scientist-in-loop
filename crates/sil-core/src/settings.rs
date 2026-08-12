@@ -357,7 +357,7 @@ impl GlobalSettings {
         let yaml = serde_yaml::to_string(self)
             .map_err(|e| SilError::Message(format!("failed to serialize global settings: {e}")))?;
 
-        std::fs::write(target_path.as_std_path(), yaml)?;
+        crate::atomic::write_atomic_str(&target_path, &yaml)?;
         Ok(())
     }
 
@@ -392,14 +392,10 @@ impl SettingsCache {
                 SilError::Message("cannot resolve global config directory".to_string())
             })?;
 
-        if let Some(parent) = target_path.parent() {
-            std::fs::create_dir_all(parent.as_std_path())?;
-        }
-
         let yaml = serde_yaml::to_string(self)
             .map_err(|e| SilError::Message(format!("failed to serialize settings cache: {e}")))?;
 
-        std::fs::write(target_path.as_std_path(), yaml)?;
+        crate::atomic::write_atomic_str(&target_path, &yaml)?;
         Ok(())
     }
 }

@@ -1,6 +1,7 @@
 use crate::doi::DoiMetadataResult;
 use crate::error::ApiError;
 use crate::ratelimit::enforce_api_ratelimit;
+use crate::retry::with_retry;
 use sil_core::JournalPublication;
 
 /// Clean arXiv ID string by stripping prefixes (`arxiv:`, `arXiv:`, URLs) and whitespace.
@@ -27,53 +28,55 @@ pub fn fetch_bibtex_by_arxiv_id(arxiv_id: &str) -> Result<Option<String>, ApiErr
         return Ok(None);
     }
 
-    enforce_api_ratelimit();
-    let url = format!("https://arxiv.org/bibtex/{clean_id}");
+    with_retry(|| {
+        enforce_api_ratelimit();
+        let url = format!("https://arxiv.org/bibtex/{clean_id}");
 
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(8))
-        .build();
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(8))
+            .build();
 
-    let response = match agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(ureq::Error::Status(429, _)) => {
-            return Err(ApiError::RateLimited(format!(
-                "Rate limited (429) fetching arXiv BibTeX for '{clean_id}'"
-            )));
+        let response = match agent
+            .get(&url)
+            .set(
+                "User-Agent",
+                "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+            )
+            .call()
+        {
+            Ok(res) => res,
+            Err(ureq::Error::Status(404, _)) => return Ok(None),
+            Err(ureq::Error::Status(429, _)) => {
+                return Err(ApiError::RateLimited(format!(
+                    "Rate limited (429) fetching arXiv BibTeX for '{clean_id}'"
+                )));
+            }
+            Err(ureq::Error::Status(s, _)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "HTTP status {s} fetching arXiv BibTeX for '{clean_id}'"
+                )));
+            }
+            Err(ureq::Error::Transport(e)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "Network transport error fetching arXiv BibTeX for '{clean_id}': {e}"
+                )));
+            }
+        };
+
+        let body = response
+            .into_string()
+            .map_err(|e| ApiError::ParseError(format!("Failed to read arXiv BibTeX: {e}")))?;
+
+        let trimmed = body.trim();
+        if trimmed
+            .lines()
+            .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
+        {
+            Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
+        } else {
+            Ok(None)
         }
-        Err(ureq::Error::Status(s, _)) => {
-            return Err(ApiError::NetworkError(format!(
-                "HTTP status {s} fetching arXiv BibTeX for '{clean_id}'"
-            )));
-        }
-        Err(ureq::Error::Transport(e)) => {
-            return Err(ApiError::NetworkError(format!(
-                "Network transport error fetching arXiv BibTeX for '{clean_id}': {e}"
-            )));
-        }
-    };
-
-    let body = response
-        .into_string()
-        .map_err(|e| ApiError::ParseError(format!("Failed to read arXiv BibTeX: {e}")))?;
-
-    let trimmed = body.trim();
-    if trimmed
-        .lines()
-        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
-    {
-        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
-    } else {
-        Ok(None)
-    }
+    })
 }
 
 /// Fetch paper metadata by arXiv ID (e.g. `2405.12345` or `arXiv:2405.12345v1`) from arXiv API.
@@ -84,11 +87,12 @@ pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublicatio
         return Ok(None);
     }
 
-    enforce_api_ratelimit();
-    let url = format!("http://export.arxiv.org/api/query?id_list={clean_id}");
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
+    with_retry(|| {
+        enforce_api_ratelimit();
+        let url = format!("https://export.arxiv.org/api/query?id_list={clean_id}");
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(10))
+            .build();
 
     let response = agent
         .get(&url)
@@ -165,22 +169,23 @@ pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublicatio
     let abstract_text = extract_tag("summary").unwrap_or_default();
     let doi = extract_tag("arxiv:doi");
 
-    Ok(Some(JournalPublication {
-        doi,
-        title,
-        authors,
-        journal: format!("arXiv:{clean_id}"),
-        year: year.map(|y| y as u32),
-        abstract_text,
-        citation_count: None,
-        url: format!("https://arxiv.org/abs/{clean_id}"),
-        pdf_url: Some(format!("https://arxiv.org/pdf/{clean_id}.pdf")),
-    }))
+        Ok(Some(JournalPublication {
+            doi,
+            title,
+            authors,
+            journal: format!("arXiv:{clean_id}"),
+            year: year.map(|y| y as u32),
+            abstract_text,
+            citation_count: None,
+            url: format!("https://arxiv.org/abs/{clean_id}"),
+            pdf_url: Some(format!("https://arxiv.org/pdf/{clean_id}.pdf")),
+        }))
+    })
 }
 
 /// Verify arXiv ID existence and retrieve official paper title metadata.
 ///
-/// Uses `fetch_work_by_arxiv_id` (which queries `http://export.arxiv.org/api/query?id_list={clean_id}`).
+/// Uses `fetch_work_by_arxiv_id` (which queries `https://export.arxiv.org/api/query?id_list={clean_id}`).
 /// Returns `Ok(DoiMetadataResult { exists: true, title: Some(extracted_title) })` if entry exists,
 /// `Ok(DoiMetadataResult { exists: false, title: None })` if empty or entry not found,
 /// or `Err(ApiError)` on network or rate-limit error.

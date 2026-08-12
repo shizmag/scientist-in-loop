@@ -10,8 +10,10 @@ Exits non-zero with a message on stderr on failure.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -41,32 +43,72 @@ def filename_for(kind: str, key: str) -> str:
     return f"{safe}.pdf"
 
 
-def download(url: str, dest: Path, headers: dict[str, str] | None = None) -> None:
+def should_retry_exception(exc: Exception) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code == 429 or 500 <= exc.code < 600
+    if isinstance(exc, urllib.error.URLError):
+        return True
+    return False
+
+
+def download_bytes_with_retry(url: str, headers: dict[str, str] | None = None) -> tuple[bytes, str]:
     req_headers = {
         "User-Agent": "sil/0.1 (scientist-in-loop; mailto:sil@localhost)",
         "Accept": "application/pdf,*/*",
     }
     if headers:
         req_headers.update(headers)
-    req = urllib.request.Request(url, headers=req_headers)
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = resp.read()
-            ctype = resp.headers.get("Content-Type", "")
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"HTTP {e.code} fetching {url}: {e.reason}") from e
-    except urllib.error.URLError as e:
-        raise SystemExit(f"network error fetching {url}: {e.reason}") from e
+
+    attempts = 3
+    base_delay = 0.25
+    last_exc: Exception | None = None
+
+    for attempt in range(1, attempts + 1):
+        req = urllib.request.Request(url, headers=req_headers)
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = resp.read()
+                ctype = resp.headers.get("Content-Type", "")
+                return data, ctype
+        except Exception as e:
+            last_exc = e
+            if attempt < attempts and should_retry_exception(e):
+                time.sleep(base_delay * (2 ** (attempt - 1)))
+                continue
+            break
+
+    if isinstance(last_exc, urllib.error.HTTPError):
+        raise SystemExit(f"HTTP {last_exc.code} fetching {url}: {last_exc.reason}") from last_exc
+    elif isinstance(last_exc, urllib.error.URLError):
+        raise SystemExit(f"network error fetching {url}: {last_exc.reason}") from last_exc
+    elif last_exc:
+        raise SystemExit(f"error fetching {url}: {last_exc}") from last_exc
+    else:
+        raise SystemExit(f"unknown error fetching {url}")
+
+
+def download(url: str, dest: Path, headers: dict[str, str] | None = None) -> None:
+    data, ctype = download_bytes_with_retry(url, headers)
 
     if len(data) < 5 or not data.startswith(b"%PDF"):
-        # some servers wrap PDFs; still write if content-type says pdf
         if "pdf" not in ctype.lower() and not data.startswith(b"%PDF"):
             preview = data[:200]
             raise SystemExit(
                 f"response is not a PDF (content-type={ctype!r}, "
                 f"start={preview!r})"
             )
-    dest.write_bytes(data)
+
+    part = dest.with_suffix(dest.suffix + ".part")
+    try:
+        part.write_bytes(data)
+        os.replace(part, dest)
+    except Exception as e:
+        if part.exists():
+            try:
+                part.unlink()
+            except OSError:
+                pass
+        raise SystemExit(f"failed to write destination file {dest}: {e}") from e
 
 
 def resolve_url(kind: str, key: str) -> tuple[str, dict[str, str]]:

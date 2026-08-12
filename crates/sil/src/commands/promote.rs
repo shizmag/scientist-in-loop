@@ -48,7 +48,7 @@ pub fn run(force: bool, ui: &dyn SilUi) -> Result<()> {
     }
 
     let content = fs::read_to_string(draft.as_str()).with_context(|| format!("read {draft}"))?;
-    fs::write(final_tex.as_str(), &content).with_context(|| format!("write {final_tex}"))?;
+    sil_core::write_atomic_str(&final_tex, &content).with_context(|| format!("write {final_tex}"))?;
     ui.success(&format!(
         "Copied {} → {} ({} bytes)",
         rel::PAPER_DRAFT,

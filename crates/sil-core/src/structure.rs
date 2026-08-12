@@ -143,13 +143,7 @@ impl Structure {
     pub fn save(&self, path: &Utf8Path) -> Result<(), StructureError> {
         self.validate()?;
         let yaml = self.to_yaml()?;
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent.as_str()).map_err(|source| StructureError::Io {
-                path: parent.to_string(),
-                source,
-            })?;
-        }
-        std::fs::write(path.as_str(), yaml).map_err(|source| StructureError::Io {
+        crate::atomic::write_atomic_str(path, &yaml).map_err(|source| StructureError::Io {
             path: path.to_string(),
             source,
         })?;

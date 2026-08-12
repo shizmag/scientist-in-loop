@@ -37,6 +37,18 @@ pub struct SilDb {
     conn: Connection,
 }
 
+fn apply_pragmas(conn: &Connection) -> Result<(), DbError> {
+    conn.execute_batch(
+        r#"
+        PRAGMA journal_mode = WAL;
+        PRAGMA busy_timeout = 5000;
+        PRAGMA foreign_keys = ON;
+        PRAGMA synchronous = NORMAL;
+        "#,
+    )?;
+    Ok(())
+}
+
 impl SilDb {
     /// Open database at `path`, creating parent dirs and schema as needed.
     pub fn open(path: &Utf8Path) -> Result<Self, DbError> {
@@ -46,6 +58,7 @@ impl SilDb {
             })?;
         }
         let conn = Connection::open(path.as_str())?;
+        apply_pragmas(&conn)?;
         let db = Self { conn };
         db.migrate()?;
         Ok(db)
@@ -54,9 +67,16 @@ impl SilDb {
     /// Open an in-memory database (tests).
     pub fn open_in_memory() -> Result<Self, DbError> {
         let conn = Connection::open_in_memory()?;
+        apply_pragmas(&conn)?;
         let db = Self { conn };
         db.migrate()?;
         Ok(db)
+    }
+
+    /// Check SQLite database integrity using `PRAGMA integrity_check`.
+    pub fn integrity_check(&self) -> Result<String, DbError> {
+        let res: String = self.conn.query_row("PRAGMA integrity_check;", [], |row| row.get(0))?;
+        Ok(res)
     }
 
     /// Apply schema migrations.
@@ -82,6 +102,30 @@ impl SilDb {
     /// Insert or replace a parsed source document with full text content.
     pub fn upsert_parsed(&self, doc: &SourceDocument, content: &str) -> Result<(), DbError> {
         sources::upsert_parsed(&self.conn, doc, content)
+    }
+
+    /// Upsert a parsed source document and its extracted references in a single SQLite transaction.
+    pub fn upsert_parsed_with_references(
+        &self,
+        doc: &SourceDocument,
+        content: &str,
+        entries: &[sil_core::ReferenceEntry],
+    ) -> Result<(), DbError> {
+        self.conn.execute_batch("BEGIN TRANSACTION;")?;
+        let res = (|| -> Result<(), DbError> {
+            sources::upsert_parsed(&self.conn, doc, content)?;
+            if !entries.is_empty() {
+                references::save_source_references(&self.conn, entries)?;
+            }
+            Ok(())
+        })();
+
+        if res.is_ok() {
+            self.conn.execute_batch("COMMIT;")?;
+        } else {
+            let _ = self.conn.execute_batch("ROLLBACK;");
+        }
+        res
     }
 
     /// List all source documents (metadata only).
@@ -1168,5 +1212,50 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
 
         let map_or = db.get_openreview_verifications().unwrap();
         assert_eq!(map_or.len(), 1);
+    }
+
+    #[test]
+    fn test_wal_busy_timeout_and_integrity() {
+        use camino::Utf8PathBuf;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let db_path = Utf8PathBuf::from_path_buf(dir.path().join("test_wal.db")).unwrap();
+
+        let db1 = SilDb::open(&db_path).unwrap();
+        let journal_mode: String = db1
+            .conn
+            .query_row("PRAGMA journal_mode;", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(journal_mode.to_lowercase(), "wal");
+
+        let db2 = SilDb::open(&db_path).unwrap();
+        assert_eq!(db1.integrity_check().unwrap(), "ok");
+        assert_eq!(db2.integrity_check().unwrap(), "ok");
+
+        db1.conn.execute("BEGIN IMMEDIATE;", []).unwrap();
+
+        let db2_clone = db_path.clone();
+        let handle = std::thread::spawn(move || {
+            let db2 = SilDb::open(&db2_clone).unwrap();
+            db2.source_count()
+        });
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        db1.conn.execute("COMMIT;", []).unwrap();
+
+        let res = handle.join().unwrap();
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_in_memory_integrity_check() {
+        let db = SilDb::open_in_memory().unwrap();
+        assert_eq!(db.integrity_check().unwrap(), "ok");
+        let journal_mode: String = db
+            .conn
+            .query_row("PRAGMA journal_mode;", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(journal_mode.to_lowercase(), "memory");
     }
 }

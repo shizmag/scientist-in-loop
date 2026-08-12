@@ -66,12 +66,9 @@ pub fn read_lock(paths: &ProjectPaths) -> Result<Option<WorkspaceLock>, SilError
 /// Write (overwrite) the advisory lock.
 pub fn write_lock(paths: &ProjectPaths, lock: &WorkspaceLock) -> Result<(), SilError> {
     let path = lock_path(paths);
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent.as_str())?;
-    }
     let text = serde_yaml::to_string(lock)
         .map_err(|e| SilError::Message(format!("serialize workspace lock: {e}")))?;
-    fs::write(path.as_str(), text)?;
+    crate::atomic::write_atomic_str(&path, &text)?;
     Ok(())
 }
 

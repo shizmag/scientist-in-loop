@@ -1,6 +1,7 @@
 use crate::doi::clean_doi_str;
 use crate::error::ApiError;
 use crate::ratelimit::enforce_api_ratelimit;
+use crate::retry::with_retry;
 use sil_core::JournalPublication;
 use std::collections::HashSet;
 
@@ -184,49 +185,51 @@ pub fn fetch_journal_publications_native(
     query: &str,
     limit: usize,
 ) -> Result<Vec<JournalPublication>, ApiError> {
-    enforce_api_ratelimit();
-    let url = build_crossref_digest_url(query, limit);
+    with_retry(|| {
+        enforce_api_ratelimit();
+        let url = build_crossref_digest_url(query, limit);
 
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(10))
+            .build();
 
-    let response = agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-        .map_err(|e| match e {
-            ureq::Error::Status(429, _) => {
-                ApiError::RateLimited("Crossref API rate limit exceeded".into())
+        let response = agent
+            .get(&url)
+            .set(
+                "User-Agent",
+                "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+            )
+            .call()
+            .map_err(|e| match e {
+                ureq::Error::Status(429, _) => {
+                    ApiError::RateLimited("Crossref API rate limit exceeded".into())
+                }
+                ureq::Error::Status(404, _) => {
+                    ApiError::NotFound("Crossref publications endpoint not found".into())
+                }
+                ureq::Error::Status(s, _) => ApiError::NetworkError(format!("HTTP status {s}")),
+                ureq::Error::Transport(t) => ApiError::NetworkError(format!("Network transport error: {t}")),
+            })?;
+
+        let json: serde_json::Value = response
+            .into_json()
+            .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}")))?;
+
+        let items = json
+            .get("message")
+            .and_then(|m| m.get("items"))
+            .and_then(|i| i.as_array())
+            .ok_or_else(|| ApiError::ParseError("Invalid Crossref API payload structure".to_string()))?;
+
+        let mut publications = Vec::new();
+        for item in items {
+            if let Some(pub_item) = parse_crossref_item(item) {
+                publications.push(pub_item);
             }
-            ureq::Error::Status(404, _) => {
-                ApiError::NotFound("Crossref publications endpoint not found".into())
-            }
-            ureq::Error::Status(s, _) => ApiError::NetworkError(format!("HTTP status {s}")),
-            ureq::Error::Transport(t) => ApiError::NetworkError(format!("Network transport error: {t}")),
-        })?;
-
-    let json: serde_json::Value = response
-        .into_json()
-        .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}")))?;
-
-    let items = json
-        .get("message")
-        .and_then(|m| m.get("items"))
-        .and_then(|i| i.as_array())
-        .ok_or_else(|| ApiError::ParseError("Invalid Crossref API payload structure".to_string()))?;
-
-    let mut publications = Vec::new();
-    for item in items {
-        if let Some(pub_item) = parse_crossref_item(item) {
-            publications.push(pub_item);
         }
-    }
 
-    Ok(publications)
+        Ok(publications)
+    })
 }
 
 /// Fetch single paper's metadata from Crossref API natively in Rust using `ureq`.
@@ -236,49 +239,51 @@ pub fn fetch_work_by_doi(doi: &str) -> Result<Option<JournalPublication>, ApiErr
         return Ok(None);
     }
 
-    enforce_api_ratelimit();
-    let url = format!("https://api.crossref.org/works/{clean_doi}");
+    with_retry(|| {
+        enforce_api_ratelimit();
+        let url = format!("https://api.crossref.org/works/{clean_doi}");
 
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(10))
-        .build();
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(10))
+            .build();
 
-    let response = match agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(ureq::Error::Status(429, _)) => {
-            return Err(ApiError::RateLimited(format!(
-                "Rate limited (429) fetching work for DOI '{clean_doi}'"
-            )));
+        let response = match agent
+            .get(&url)
+            .set(
+                "User-Agent",
+                "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+            )
+            .call()
+        {
+            Ok(res) => res,
+            Err(ureq::Error::Status(404, _)) => return Ok(None),
+            Err(ureq::Error::Status(429, _)) => {
+                return Err(ApiError::RateLimited(format!(
+                    "Rate limited (429) fetching work for DOI '{clean_doi}'"
+                )));
+            }
+            Err(ureq::Error::Status(s, _)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "HTTP status {s} fetching work for DOI '{clean_doi}'"
+                )));
+            }
+            Err(ureq::Error::Transport(t)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "Network transport error fetching work for DOI '{clean_doi}': {t}"
+                )));
+            }
+        };
+
+        let json: serde_json::Value = response
+            .into_json()
+            .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref DOI JSON: {e}")))?;
+
+        if let Some(message) = json.get("message") {
+            Ok(parse_crossref_item(message))
+        } else {
+            Ok(None)
         }
-        Err(ureq::Error::Status(s, _)) => {
-            return Err(ApiError::NetworkError(format!(
-                "HTTP status {s} fetching work for DOI '{clean_doi}'"
-            )));
-        }
-        Err(ureq::Error::Transport(t)) => {
-            return Err(ApiError::NetworkError(format!(
-                "Network transport error fetching work for DOI '{clean_doi}': {t}"
-            )));
-        }
-    };
-
-    let json: serde_json::Value = response
-        .into_json()
-        .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref DOI JSON: {e}")))?;
-
-    if let Some(message) = json.get("message") {
-        Ok(parse_crossref_item(message))
-    } else {
-        Ok(None)
-    }
+    })
 }
 
 fn tokenize_title(title: &str) -> HashSet<String> {

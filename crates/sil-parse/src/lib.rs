@@ -20,7 +20,10 @@ pub mod doi_checker;
 /// Abstract Factory & Trait-based Reference Checkers.
 pub mod checkers;
 
-pub use batch::{ParseResult, hydrate_source_document_metadata, parse_many, parse_one};
+pub use batch::{
+    ParseOptions, ParseResult, hydrate_source_document_metadata, parse_many, parse_one,
+    parse_one_with_options,
+};
 pub use checkers::{
     run_all_checkers_incremental, ArxivChecker, BibItemCheckReport, CheckerFactory,
     DoiChecker, OpenReviewChecker, ReferenceCheckCategory, ReferenceChecker,

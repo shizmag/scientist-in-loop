@@ -535,7 +535,7 @@ fn handle_update_todo(args: serde_json::Value) -> CallToolResult {
     }
 
     let updated_tex = update_or_insert_idea_block(&tex, &block);
-    if let Err(e) = fs::write(draft_path.as_str(), &updated_tex) {
+    if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated_tex) {
         return CallToolResult::error(format!("Failed to write paper_draft.tex: {e}"));
     }
 
@@ -1025,7 +1025,7 @@ fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
         .or_else(|| new_info.cite_key.clone())
         .unwrap_or_else(|| "unknown".to_string());
 
-    if let Err(e) = fs::write(bib_path.as_str(), &updated) {
+    if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
         return CallToolResult::error(format!("Failed to write {}: {e}", bib_path));
     }
 
@@ -1117,7 +1117,7 @@ fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
         blocks.join("\n\n") + "\n"
     };
 
-    if let Err(e) = fs::write(bib_path.as_str(), &updated) {
+    if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
         return CallToolResult::error(format!("Failed to write {bib_path}: {e}"));
     }
 
@@ -1626,7 +1626,7 @@ fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
         updated.push('\n');
     }
 
-    if let Err(e) = fs::write(draft_path.as_str(), &updated) {
+    if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated) {
         return CallToolResult::error(format!("write draft: {e}"));
     }
 
@@ -1745,7 +1745,7 @@ fn handle_ground_claims(args: serde_json::Value) -> CallToolResult {
                 created_at: String::new(),
             };
             let updated = update_or_insert_idea_block(&tex, &block);
-            if fs::write(draft_path.as_str(), updated).is_ok() {
+            if sil_core::write_atomic_str(&draft_path, &updated).is_ok() {
                 applied = true;
             }
         }

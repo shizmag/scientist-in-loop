@@ -44,7 +44,7 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
             } else {
                 blocks.join("\n\n") + "\n"
             };
-            std::fs::write(bib_path.as_str(), updated)?;
+            sil_core::write_atomic_str(&bib_path, &updated)?;
             ui.success(&format!(
                 "✓ Promoted entry '{key}' in {bib_path} (removed % [sil: tui-added])"
             ));
@@ -136,7 +136,7 @@ pub fn run(target: &str, append: bool, promote: bool, json: bool, ui: &dyn SilUi
             String::new()
         };
         let (updated, replaced) = sil_core::bib::upsert_bib_entry(&existing, &suggestion.bibtex);
-        std::fs::write(bib_path.as_str(), updated)?;
+        sil_core::write_atomic_str(&bib_path, &updated)?;
         if replaced {
             ui.success(&format!("Updated existing entry in {bib_path}"));
         } else {

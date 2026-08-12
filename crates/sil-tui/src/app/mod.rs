@@ -36,6 +36,9 @@ pub struct App {
     pub similarity_tx: std::sync::mpsc::Sender<SimilarityJobResult>,
     pub similarity_rx: std::sync::mpsc::Receiver<SimilarityJobResult>,
     pub in_flight_similarity: bool,
+    pub estimate_tx: std::sync::mpsc::Sender<EstimateJobResult>,
+    pub estimate_rx: std::sync::mpsc::Receiver<EstimateJobResult>,
+    pub in_flight_estimate: bool,
     pub hydration_batch_succeeded: usize,
     pub hydration_batch_failed: usize,
     /// Unified job history ring (hydrate | fetch | parse | similarity). Cap [`JOB_HISTORY_CAP`].
@@ -134,6 +137,7 @@ impl App {
         let (parse_tx, parse_rx) = std::sync::mpsc::channel();
         let (fetch_tx, fetch_rx) = std::sync::mpsc::channel();
         let (similarity_tx, similarity_rx) = std::sync::mpsc::channel();
+        let (estimate_tx, estimate_rx) = std::sync::mpsc::channel();
 
         let mut app = Self {
             hydration_tx,
@@ -150,6 +154,9 @@ impl App {
             similarity_tx,
             similarity_rx,
             in_flight_similarity: false,
+            estimate_tx,
+            estimate_rx,
+            in_flight_estimate: false,
             hydration_batch_succeeded: 0,
             hydration_batch_failed: 0,
             recent_job_outcomes: std::collections::VecDeque::with_capacity(JOB_HISTORY_CAP),

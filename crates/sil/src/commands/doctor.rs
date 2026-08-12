@@ -103,10 +103,27 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                 paths.improvement_dir().is_dir(),
                 paths.improvement_dir().to_string(),
             ));
+            let (db_open_ok, integrity_res) = match sil_db::SilDb::open(&paths.db()) {
+                Ok(db) => match db.integrity_check() {
+                    Ok(res) => (true, Ok(res)),
+                    Err(e) => (true, Err(e.to_string())),
+                },
+                Err(e) => (false, Err(e.to_string())),
+            };
             checks.push(Check::simple(
                 "sqlite db openable",
-                sil_db::SilDb::open(&paths.db()).is_ok(),
+                db_open_ok,
                 paths.db().to_string(),
+            ));
+            let (integrity_ok, integrity_detail) = match integrity_res {
+                Ok(ref res) if res == "ok" => (true, "ok".to_string()),
+                Ok(ref res) => (false, format!("integrity check: {res}")),
+                Err(ref err) => (false, format!("integrity check failed: {err}")),
+            };
+            checks.push(Check::simple(
+                "sqlite integrity",
+                integrity_ok,
+                integrity_detail,
             ));
             checks.push(Check::simple(
                 "configured latex engine",
@@ -203,7 +220,7 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                         match sil_parse::checkers::run_all_checkers_incremental(&db, &bib_content, fix) {
                             Ok(rep) => {
                                 if fix && rep.autofixed_count > 0 && let Some(ref updated) = rep.updated_bib_content {
-                                    let _ = std::fs::write(bib_path.as_path(), updated);
+                                    let _ = sil_core::write_atomic_str(&bib_path, updated);
                                     ui.success(&format!(
                                         "🔧 Autofixed {} reference entry(ies) in references.bib",
                                         rep.autofixed_count

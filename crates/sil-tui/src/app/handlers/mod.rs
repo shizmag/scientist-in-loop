@@ -428,7 +428,9 @@ impl App {
                                     self.queue_ref_hydration(e.clone());
                                 }
                             }
-                            let _ = std::fs::write(bib_path.as_std_path(), current);
+                            if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
+                                self.status_message = format!("Error writing references.bib: {e}");
+                            }
                             self.load_project_references_bib();
                             let count = entries_to_add.len();
                             self.marked_ref_ids.clear();
@@ -1472,7 +1474,7 @@ impl App {
                         cfg.project.title = self.local_settings.title.clone();
                     }
                     if let Ok(yaml) = cfg.to_yaml() {
-                        if std::fs::write(config_path.as_std_path(), yaml).is_ok() {
+                        if sil_core::write_atomic_str(&config_path, &yaml).is_ok() {
                             messages.push("Local config.yaml updated".to_string());
                         }
                     }
@@ -1482,7 +1484,7 @@ impl App {
             // 4. Save paper_draft.tex if present
             if !self.paper_draft_content.is_empty() {
                 let draft_path = root.join("paper_draft.tex");
-                if std::fs::write(draft_path.as_std_path(), &self.paper_draft_content).is_ok() {
+                if sil_core::write_atomic_str(&draft_path, &self.paper_draft_content).is_ok() {
                     let _ = sil_latex::write_draft_sections_from_file(
                         &draft_path,
                         &paths.draft_sections_dir(),

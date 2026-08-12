@@ -492,16 +492,16 @@ pub fn write_estimate_report(
 
     let json = serde_json::to_string_pretty(report)
         .map_err(|e| ContextError::Io(format!("serialize report: {e}")))?;
-    fs::write(dir.join("report.json").as_str(), json)
+    sil_core::write_atomic_str(&dir.join("report.json"), &json)
         .map_err(|e| ContextError::Io(format!("write report.json: {e}")))?;
-    fs::write(dir.join("report.md").as_str(), report_to_markdown(report))
+    sil_core::write_atomic_str(&dir.join("report.md"), &report_to_markdown(report))
         .map_err(|e| ContextError::Io(format!("write report.md: {e}")))?;
 
     let meta = format!(
         "mode: {}\nlayer: {}\noverall_score: {}\ndecision: {}\ndraft_hash: {}\n",
         report.mode, report.layer, report.overall_score, report.decision, report.draft_hash
     );
-    fs::write(dir.join("meta.yaml").as_str(), meta)
+    sil_core::write_atomic_str(&dir.join("meta.yaml"), &meta)
         .map_err(|e| ContextError::Io(format!("write meta.yaml: {e}")))?;
 
     Ok(dir)

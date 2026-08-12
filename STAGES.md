@@ -48,5 +48,14 @@ Remaining plan tracks (quality fixtures B*, embed cache D2, Releases F*, TUI est
 ## Stage 10 — MCP surface collapse (19 → 6) ✅
 Collapsed MCP tool list from 19 fine-grained tools to 6 workflow-oriented tools (`sil_context`, `sil_sources`, `sil_cite`, `sil_draft`, `sil_review`, `sil_propose`). Behavior parity preserved via action/flags dispatch; hard cut of old names; docs honesty updated across README, STAGES, and skills.
 
+## Stage 11 — Crash-Safe Durability & System Robustness (Wave 08-12) ✅
+Plan: `docs/pr-plan-08-12/pr-plan.md`. ADR: `docs/adr/ADR-013-crash-safe-robustness.md`.
+- **Atomic Writes**: `sil_core::write_atomic` / `write_atomic_str` standard across all durable file writes (bib, paper draft, config, structure, workspace lock, reviews, settings, cache).
+- **SQLite WAL & Integrity**: Enforced `PRAGMA journal_mode = WAL; busy_timeout = 5000;` across all DB opens; added `sqlite integrity` doctor check.
+- **Data Loss-Free Re-parse**: Transactional upsert `upsert_parsed_with_references` and `ParseOptions { allow_reparse }`; failed re-parses preserve existing index and FTS data.
+- **API Retries & HTTPS**: Exponential backoff retry wrapper (3 attempts) across CrossRef, DOI, arXiv, and OpenReview; arXiv API endpoint migrated to `https://`.
+- **Atomic PDF Downloads**: `.part` temporary file download + atomic `os.replace` + exponential retry on HTTP 429/5xx and network errors.
+- **TUI Robustness & Async Estimate**: `catch_unwind` panic isolation on all background worker threads; converted manuscript L0 estimate into a non-blocking background job (`run_estimate_job`).
+
 
 

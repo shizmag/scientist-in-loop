@@ -3,6 +3,7 @@
 use crate::doi::DoiMetadataResult;
 use crate::error::ApiError;
 use crate::ratelimit::enforce_api_ratelimit;
+use crate::retry::with_retry;
 
 /// Clean input string by extracting and returning the OpenReview note ID.
 ///
@@ -89,18 +90,16 @@ pub fn verify_openreview_with_metadata(or_id: &str) -> Result<DoiMetadataResult,
 
     match v2_res {
         Ok(res) => {
-            if (200..=299).contains(&res.status()) {
-                if let Ok(json) = res.into_json::<serde_json::Value>() {
-                    if let Some(notes) = json.get("notes").and_then(|n| n.as_array()) {
-                        if !notes.is_empty() {
-                            let title = extract_title_from_openreview_note(&notes[0]);
-                            return Ok(DoiMetadataResult {
-                                exists: true,
-                                title,
-                            });
-                        }
-                    }
-                }
+            if (200..=299).contains(&res.status())
+                && let Ok(json) = res.into_json::<serde_json::Value>()
+                && let Some(notes) = json.get("notes").and_then(|n| n.as_array())
+                && !notes.is_empty()
+            {
+                let title = extract_title_from_openreview_note(&notes[0]);
+                return Ok(DoiMetadataResult {
+                    exists: true,
+                    title,
+                });
             }
         }
         Err(ureq::Error::Status(429, _)) => {
@@ -125,18 +124,16 @@ pub fn verify_openreview_with_metadata(or_id: &str) -> Result<DoiMetadataResult,
 
     match v1_res {
         Ok(res) => {
-            if (200..=299).contains(&res.status()) {
-                if let Ok(json) = res.into_json::<serde_json::Value>() {
-                    if let Some(notes) = json.get("notes").and_then(|n| n.as_array()) {
-                        if !notes.is_empty() {
-                            let title = extract_title_from_openreview_note(&notes[0]);
-                            return Ok(DoiMetadataResult {
-                                exists: true,
-                                title,
-                            });
-                        }
-                    }
-                }
+            if (200..=299).contains(&res.status())
+                && let Ok(json) = res.into_json::<serde_json::Value>()
+                && let Some(notes) = json.get("notes").and_then(|n| n.as_array())
+                && !notes.is_empty()
+            {
+                let title = extract_title_from_openreview_note(&notes[0]);
+                return Ok(DoiMetadataResult {
+                    exists: true,
+                    title,
+                });
             }
             Ok(DoiMetadataResult {
                 exists: false,
@@ -166,51 +163,53 @@ pub fn fetch_bibtex_by_openreview_id(or_id: &str) -> Result<Option<String>, ApiE
         return Ok(None);
     }
 
-    enforce_api_ratelimit();
+    with_retry(|| {
+        enforce_api_ratelimit();
 
-    let url = format!("https://openreview.net/bibtex?id={clean_id}");
-    let agent = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(8))
-        .build();
+        let url = format!("https://openreview.net/bibtex?id={clean_id}");
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(8))
+            .build();
 
-    let response = match agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-    {
-        Ok(res) => res,
-        Err(ureq::Error::Status(404, _)) => return Ok(None),
-        Err(ureq::Error::Status(429, _)) => {
-            return Err(ApiError::RateLimited(format!(
-                "Rate limited (429) fetching OpenReview BibTeX for '{clean_id}'"
-            )));
+        let response = match agent
+            .get(&url)
+            .set(
+                "User-Agent",
+                "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+            )
+            .call()
+        {
+            Ok(res) => res,
+            Err(ureq::Error::Status(404, _)) => return Ok(None),
+            Err(ureq::Error::Status(429, _)) => {
+                return Err(ApiError::RateLimited(format!(
+                    "Rate limited (429) fetching OpenReview BibTeX for '{clean_id}'"
+                )));
+            }
+            Err(ureq::Error::Status(status, _)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "HTTP status {status} fetching OpenReview BibTeX for '{clean_id}'"
+                )));
+            }
+            Err(ureq::Error::Transport(e)) => {
+                return Err(ApiError::NetworkError(format!(
+                    "Network error fetching OpenReview BibTeX for '{clean_id}': {e}"
+                )));
+            }
+        };
+
+        let body = response
+            .into_string()
+            .map_err(|e| ApiError::ParseError(format!("Failed to read OpenReview BibTeX: {e}")))?;
+
+        let trimmed = body.trim();
+        if trimmed
+            .lines()
+            .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
+        {
+            Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
+        } else {
+            Ok(None)
         }
-        Err(ureq::Error::Status(status, _)) => {
-            return Err(ApiError::NetworkError(format!(
-                "HTTP status {status} fetching OpenReview BibTeX for '{clean_id}'"
-            )));
-        }
-        Err(ureq::Error::Transport(e)) => {
-            return Err(ApiError::NetworkError(format!(
-                "Network error fetching OpenReview BibTeX for '{clean_id}': {e}"
-            )));
-        }
-    };
-
-    let body = response
-        .into_string()
-        .map_err(|e| ApiError::ParseError(format!("Failed to read OpenReview BibTeX: {e}")))?;
-
-    let trimmed = body.trim();
-    if trimmed
-        .lines()
-        .any(|l| l.trim_start().starts_with('@') && l.contains('{'))
-    {
-        Ok(Some(sil_core::bib::pretty_format_bibtex(trimmed)))
-    } else {
-        Ok(None)
-    }
+    })
 }
