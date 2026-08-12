@@ -909,71 +909,45 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let (root, paths) = match get_project_paths() {
-        Ok(p) => p,
-        Err(e) => return CallToolResult::error(e),
+    let ctx = match sil_app::AppContext::from_cwd() {
+        Ok(c) => c,
+        Err(e) => return CallToolResult::error(e.to_string()),
     };
 
-    let config = sil_core::Config::load(&paths.config()).unwrap_or_default();
-    let sources_dir = paths.sources(&config);
-
-    let db = match SilDb::open(&paths.db()) {
-        Ok(d) => d,
-        Err(e) => return CallToolResult::error(format!("Failed to open database: {e}")),
-    };
-
-    let saved_path = match sil_parse::fetch_source_target(target, &sources_dir) {
-        Ok(p) => p,
+    let fetch_res = match sil_app::fetch_source(
+        &ctx,
+        sil_app::FetchSource {
+            target: target.to_string(),
+            parse: !no_parse,
+        },
+    ) {
+        Ok(r) => r,
         Err(e) => return CallToolResult::error(format!("Fetch failed: {e}")),
     };
 
-    let downloaded_path_str = saved_path.as_str().to_string();
-
-    let pdf_path = if saved_path.is_absolute() {
-        saved_path.clone()
-    } else if sources_dir
-        .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
-        .exists()
-    {
-        sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
-    } else {
-        root.join(&saved_path)
-    };
-
-    let mut parsed = false;
-    let mut title: Option<String> = None;
-    let mut source_id: Option<String> = None;
-
-    if !no_parse && pdf_path.exists() {
-        let null_ui = sil_core::NullUi::new();
-        let runner_res = sil_parse::discover_marker_runner();
-
-        if let Ok(runner) = runner_res
-            && let Ok(res) = sil_parse::parse_one(&pdf_path, &db, runner.as_ref(), &null_ui)
-        {
-            parsed = res.document.parsed;
-            title = res.document.title;
-            source_id = Some(res.document.id.as_str().to_string());
-        }
-    }
-
-    let proposal = proposal_for_action(
-        SciAction::FetchSource,
-        Some(&format!("Fetch source: {target}")),
-        Some(&format!("Saved to {downloaded_path_str}")),
-    );
+    let bib_json = fetch_res.bib.as_ref().map(|b| {
+        json!({
+            "cite_key": b.cite_key,
+            "replaced": b.replaced,
+            "proposal": b.proposal.message(),
+            "path": b.path.as_str(),
+        })
+    });
 
     let res = json!({
-        "downloaded_path": downloaded_path_str,
-        "parsed": parsed,
-        "title": title,
-        "source_id": source_id,
+        "downloaded_path": fetch_res.downloaded_path.as_str(),
+        "parsed": fetch_res.parsed.is_some(),
+        "title": fetch_res.parsed.as_ref().and_then(|p| p.title.clone()),
+        "source_id": fetch_res.parsed.as_ref().map(|p| p.source_id.clone()),
         "commit_proposal": {
-            "proposal_subject": proposal.subject,
-            "proposal_body": proposal.body.join("\n"),
-            "full_commit_message": proposal.message(),
-            "action_trailer": proposal.action.as_str(),
-        }
+            "proposal_subject": fetch_res.fetch_proposal.subject,
+            "proposal_body": fetch_res.fetch_proposal.body.join("\n"),
+            "full_commit_message": fetch_res.fetch_proposal.message(),
+            "action_trailer": fetch_res.fetch_proposal.action.as_str(),
+        },
+        "parse_error": fetch_res.parse_error,
+        "bib": bib_json,
+        "never_committed": true,
     });
 
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
@@ -2706,6 +2680,45 @@ sections:
         let val_noparse: serde_json::Value =
             serde_json::from_str(extract_text(&res_noparse)).unwrap();
         assert_eq!(val_noparse["parsed"], false);
+        assert_eq!(val_noparse["parse_error"], serde_json::Value::Null);
+        assert_eq!(val_noparse["bib"], serde_json::Value::Null);
+        assert_eq!(val_noparse["never_committed"], true);
+    }
+
+    #[test]
+    fn test_fetch_source_parse_runner_missing() {
+        let env = TestEnv::new();
+
+        let mock_script_path = env.project_root.join("mock_download.py");
+        fs::write(
+            &mock_script_path,
+            "import sys\nprint('sources/mock_paper.pdf')\n",
+        )
+        .unwrap();
+
+        let sources_dir = env.project_root.join("sources");
+        fs::create_dir_all(&sources_dir).unwrap();
+        fs::write(
+            sources_dir.join("mock_paper.pdf"),
+            "%PDF-1.4 dummy pdf content",
+        )
+        .unwrap();
+
+        unsafe {
+            std::env::set_var("SIL_DOWNLOAD_SCRIPT", mock_script_path.as_str());
+        }
+
+        let res = handle_fetch_source(json!({ "target": "10.1000/182" }));
+
+        unsafe {
+            std::env::remove_var("SIL_DOWNLOAD_SCRIPT");
+        }
+
+        assert!(res.is_error.is_none() || res.is_error == Some(false));
+        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        assert_eq!(val["parsed"], false);
+        assert!(val["parse_error"].is_string());
+        assert_eq!(val["never_committed"], true);
     }
 
     #[test]
