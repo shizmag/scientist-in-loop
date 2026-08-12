@@ -5374,6 +5374,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sil-app"
+version = "1.0.0"
+dependencies = [
+ "camino",
+ "sil-core",
+ "sil-git",
+ "tempfile",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "sil-core"
 version = "1.0.0"
 dependencies = [

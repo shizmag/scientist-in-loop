@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/sil",
+    "crates/sil-app",
     "crates/sil-core",
     "crates/sil-db",
     "crates/sil-git",
@@ -23,6 +24,7 @@ license = "MIT"
 repository = "https://github.com/scientist-in-loop/scientist-in-loop"
 
 [workspace.dependencies]
+sil-app = { path = "crates/sil-app" }
 sil-core = { path = "crates/sil-core" }
 sil-db = { path = "crates/sil-db" }
 sil-git = { path = "crates/sil-git" }

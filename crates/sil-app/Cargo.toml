@@ -1,0 +1,16 @@
+[package]
+name = "sil-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+sil-core = { workspace = true }
+sil-git = { workspace = true }
+thiserror = { workspace = true }
+camino = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
