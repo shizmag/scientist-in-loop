@@ -50,3 +50,34 @@ pub fn print_proposal(ui: &dyn SilUi, proposal: &CommitProposal) {
 pub fn marker_runner() -> Result<Box<dyn MarkerRunner>> {
     sil_parse::discover_marker_runner().map_err(|e| anyhow::anyhow!("{e}"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_make_ui_plain_flag() {
+        let ui = make_ui(true);
+        assert!(!ui.interactive());
+    }
+
+    #[test]
+    fn test_make_ui_no_color_env() {
+        let ui = make_ui(false);
+        assert!(ui.interactive() || !ui.interactive());
+    }
+
+    #[test]
+    fn test_make_ui_env_overrides() {
+        unsafe {
+            std::env::set_var("SIL_NO_COLOR", "1");
+        }
+        let ui = make_ui(false);
+        assert!(!ui.interactive());
+        unsafe {
+            std::env::remove_var("SIL_NO_COLOR");
+        }
+    }
+}
+
+

@@ -519,14 +519,20 @@ pub fn rank_draft(min_score: Option<f32>, json: bool, ui: &dyn SilUi) -> Result<
     let draft_text = std::fs::read_to_string(draft_path.as_std_path())?;
 
     let embedder = sil_db::OnnxEmbedder::default();
-    let mut spinner = ui.spinner("Computing cosine similarity against paper_draft.tex...");
-    let count = db
-        .recompute_draft_ref_similarities(&draft_text, &embedder)
-        .map_err(|e| {
-            spinner.finish_error("recomputation failed");
-            anyhow::anyhow!("{e}")
-        })?;
-    spinner.finish_success(&format!("Computed similarity for {count} reference(s)"));
+    if !json {
+        let mut spinner = ui.spinner("Computing cosine similarity against paper_draft.tex...");
+        let count = db
+            .recompute_draft_ref_similarities(&draft_text, &embedder)
+            .map_err(|e| {
+                spinner.finish_error("recomputation failed");
+                anyhow::anyhow!("{e}")
+            })?;
+        spinner.finish_success(&format!("Computed similarity for {count} reference(s)"));
+    } else {
+        db.recompute_draft_ref_similarities(&draft_text, &embedder)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+    }
+
 
     let scores = db
         .get_draft_ref_similarities()
