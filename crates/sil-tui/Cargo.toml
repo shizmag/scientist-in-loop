@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 sil-core = { workspace = true }
+sil-app = { workspace = true }
 sil-agent = { workspace = true }
 sil-parse = { workspace = true }
 sil-regex = { workspace = true }

@@ -296,13 +296,21 @@ impl App {
         let doc_name = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
 
         let local_bib = sil_core::suggest_from_source(&doc).bibtex;
-        let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
-
         if let Some(ref root) = self.project_root {
-            let bib_path = root.join(sil_core::paths::rel::REFERENCES);
-            let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-            let (updated, _replaced) = sil_core::bib::upsert_bib_entry(&current, &marked);
-            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
+            let ctx = match sil_app::AppContext::from_root(root) {
+                Ok(c) => c,
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                    return;
+                }
+            };
+            if let Err(e) = sil_app::upsert_bib(
+                &ctx,
+                sil_app::UpsertBib {
+                    entry: local_bib,
+                    draft: true,
+                },
+            ) {
                 self.status_message = format!("Error writing references.bib: {e}");
                 return;
             }
@@ -434,7 +442,13 @@ impl App {
 
     pub fn append_selected_viewing_ref_to_bib(&mut self) {
         if let Some(ref root) = self.project_root {
-            let bib_path = root.join("references.bib");
+            let ctx = match sil_app::AppContext::from_root(root) {
+                Ok(c) => c,
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                    return;
+                }
+            };
             let mut entries_to_add = Vec::new();
             {
                 let filtered = self.filtered_viewing_source_references();
@@ -452,21 +466,23 @@ impl App {
             }
 
             if !entries_to_add.is_empty() {
-                let mut current =
-                    std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 let mut fetch_count = 0;
                 for e in &entries_to_add {
                     let local_bib = e.to_bibtex();
-                    let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
-                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
-                    current = updated;
+                    if let Err(err) = sil_app::upsert_bib(
+                        &ctx,
+                        sil_app::UpsertBib {
+                            entry: local_bib,
+                            draft: true,
+                        },
+                    ) {
+                        self.status_message = format!("Error writing references.bib: {err}");
+                        return;
+                    }
                     if e.should_attempt_metadata_fetch() {
                         fetch_count += 1;
                         self.queue_ref_hydration(e.clone());
                     }
-                }
-                if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
-                    self.status_message = format!("Error writing references.bib: {e}");
                 }
                 let count = entries_to_add.len();
                 self.marked_ref_ids.clear();
@@ -484,28 +500,36 @@ impl App {
 
     pub fn append_all_viewing_refs_to_bib(&mut self) {
         if let Some(ref root) = self.project_root {
-            let bib_path = root.join("references.bib");
+            let ctx = match sil_app::AppContext::from_root(root) {
+                Ok(c) => c,
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                    return;
+                }
+            };
             let entries_to_add: Vec<ReferenceEntry> = self
                 .filtered_viewing_source_references()
                 .into_iter()
                 .cloned()
                 .collect();
             if !entries_to_add.is_empty() {
-                let mut current =
-                    std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
                 let mut fetch_count = 0;
                 for e in &entries_to_add {
                     let local_bib = e.to_bibtex();
-                    let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
-                    let (updated, _) = sil_core::bib::upsert_bib_entry(&current, &marked);
-                    current = updated;
+                    if let Err(err) = sil_app::upsert_bib(
+                        &ctx,
+                        sil_app::UpsertBib {
+                            entry: local_bib,
+                            draft: true,
+                        },
+                    ) {
+                        self.status_message = format!("Error writing references.bib: {err}");
+                        return;
+                    }
                     if e.should_attempt_metadata_fetch() {
                         fetch_count += 1;
                         self.queue_ref_hydration(e.clone());
                     }
-                }
-                if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
-                    self.status_message = format!("Error writing references.bib: {e}");
                 }
                 let count = entries_to_add.len();
                 self.load_project_references_bib();
@@ -537,30 +561,31 @@ impl App {
             return;
         }
 
-        let unmarked = sil_core::unmark_tui_added_bib_entry(&selected_block);
         if let Some(ref root) = self.project_root {
-            let bib_path = root.join("references.bib");
-            let current = std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-            let mut blocks = sil_core::parse_bib_blocks(&current);
-            for block in &mut blocks {
-                let block_info = sil_core::extract_bib_entry_info(block);
-                if sil_core::is_same_paper(&block_info, &info) {
-                    *block = unmarked.clone();
-                    break;
+            let ctx = match sil_app::AppContext::from_root(root) {
+                Ok(c) => c,
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                    return;
+                }
+            };
+            match sil_app::promote_bib(
+                &ctx,
+                sil_app::PromoteBib {
+                    target: cite_key.clone(),
+                },
+            ) {
+                Ok(res) => {
+                    self.load_project_references_bib();
+                    self.status_message = format!(
+                        "✓ Promoted '{}' (removed % [sil: tui-added] marker)",
+                        res.cite_key
+                    );
+                }
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
                 }
             }
-            let updated = if blocks.is_empty() {
-                String::new()
-            } else {
-                blocks.join("\n\n") + "\n"
-            };
-            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
-                self.status_message = format!("Error writing references.bib: {e}");
-                return;
-            }
-            self.load_project_references_bib();
-            self.status_message =
-                format!("✓ Promoted '{cite_key}' (removed % [sil: tui-added] marker)");
         } else {
             self.status_message =
                 format!("✓ Promoted '{cite_key}' (no project root loaded to save)");
