@@ -29,6 +29,10 @@ pub enum CommandId {
     CiteSource,
     /// Capture an idea note from the selected source onto paper_draft.tex.
     CaptureNote,
+    /// Refresh the literature digest publications.
+    RefreshDigest,
+    /// Open paper draft in external $EDITOR.
+    OpenExternalEditor,
 }
 
 impl CommandId {
@@ -47,6 +51,8 @@ impl CommandId {
             CommandId::OpenSource => "open_source",
             CommandId::CiteSource => "cite_source",
             CommandId::CaptureNote => "capture_note",
+            CommandId::RefreshDigest => "refresh_digest",
+            CommandId::OpenExternalEditor => "open_external_editor",
         }
     }
 }
@@ -141,6 +147,20 @@ impl CommandSpec {
                     Ok(())
                 }
             }
+            CommandId::RefreshDigest => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
+                } else {
+                    Ok(())
+                }
+            }
+            CommandId::OpenExternalEditor => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -208,7 +228,7 @@ pub fn all_commands() -> &'static [CommandSpec] {
             id: CommandId::ParseAll,
             title: "Parse All Sources",
             aliases: &["parse-all", "batch-parse"],
-            default_keys: "",
+            default_keys: "Shift+E",
             tab: Some(ActiveTab::Sources),
             description: "Queue background parsing for all unparsed source documents",
         },
@@ -235,6 +255,22 @@ pub fn all_commands() -> &'static [CommandSpec] {
             default_keys: "n",
             tab: Some(ActiveTab::Sources),
             description: "Park an idea note linked to selected source onto paper_draft.tex",
+        },
+        CommandSpec {
+            id: CommandId::RefreshDigest,
+            title: "Refresh Literature Digest",
+            aliases: &["digest", "refresh-digest", "literature"],
+            default_keys: "",
+            tab: Some(ActiveTab::Dashboard),
+            description: "Query OpenAlex for recent publications matching digest query",
+        },
+        CommandSpec {
+            id: CommandId::OpenExternalEditor,
+            title: "Open Draft in External Editor",
+            aliases: &["editor", "external-editor", "nvim", "vim", "helix"],
+            default_keys: "v, o",
+            tab: Some(ActiveTab::PaperDraft),
+            description: "Open paper_draft.tex in external $EDITOR (nvim / helix / vim)",
         },
         CommandSpec {
             id: CommandId::Quit,

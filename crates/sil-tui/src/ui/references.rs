@@ -229,14 +229,17 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
 
     if filtered_refs.is_empty() {
         let empty_msg = if total_refs == 0 {
-            "(no project references found)"
+            "No references extracted. Select a parsed source in Sources tab and press 'v' to view/extract refs."
         } else {
             "(no search matches)"
         };
-        right_items.push(ListItem::new(Span::styled(
-            empty_msg,
-            Style::default().fg(Color::DarkGray),
-        )));
+        let avail_w = right_width.saturating_sub(2).max(10);
+        let wrapped = textwrap::wrap(empty_msg, avail_w);
+        let lines: Vec<Line> = wrapped
+            .into_iter()
+            .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::DarkGray))))
+            .collect();
+        right_items.push(ListItem::new(lines));
     } else {
         for (i, entry) in filtered_refs.iter().enumerate() {
             let is_sel = i == app.selected_source_ref_index;

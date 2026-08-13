@@ -309,7 +309,7 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
 
     if model.digest_publications.is_empty() {
         digest_lines.push(Line::from(vec![Span::styled(
-            "No digest cached. Run Settings digest query or sil source digest.",
+            "No digest entries. Configure topic query in Settings (Tab 5) or press ':' for palette to Refresh digest.",
             Style::default().fg(Color::DarkGray),
         )]));
     } else {
@@ -337,13 +337,13 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
                 Span::styled(&pub_item.title, style),
             ]));
         }
-    }
 
-    digest_lines.push(Line::from(""));
-    digest_lines.push(Line::from(vec![Span::styled(
-        "Run Settings digest query or sil source digest to update feed.",
-        Style::default().fg(Color::Reset),
-    )]));
+        digest_lines.push(Line::from(""));
+        digest_lines.push(Line::from(vec![Span::styled(
+            "Run Settings digest query or sil source digest to update feed.",
+            Style::default().fg(Color::Reset),
+        )]));
+    }
 
     let digest_block = Block::default()
         .title(" [3] Literature Digest (Top Journals) ")
@@ -524,8 +524,8 @@ Second idea content line
         assert!(app.dashboard.digest_publications.is_empty());
 
         let rendered = render_to_string(&mut app);
-        assert!(rendered.contains("No digest cached"));
-        assert!(rendered.contains("sil source digest"));
+        assert!(rendered.contains("No digest entries"));
+        assert!(rendered.contains("Refresh digest"));
         assert!(!rendered.contains(concat!("Quantum", " Advantage")));
         assert!(!rendered.contains(concat!("self-attention", " baseline")));
         assert!(!rendered.contains(concat!("Stage 5", " (Polish")));

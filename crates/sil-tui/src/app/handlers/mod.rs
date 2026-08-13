@@ -194,6 +194,11 @@ impl App {
                     self.status_message = "Sorted references by Title.".to_string();
                 }
             }
+            KeyCode::Char('o') | KeyCode::Char('O') => {
+                if self.active_tab == ActiveTab::PaperDraft {
+                    self.dispatch(CommandId::OpenExternalEditor);
+                }
+            }
             KeyCode::Char('v') => {
                 if self.active_tab == ActiveTab::References {
                     self.source_references
@@ -208,9 +213,7 @@ impl App {
                         self.load_and_view_references(&doc_id, &filename, ref_text.as_deref());
                     }
                 } else if self.active_tab == ActiveTab::PaperDraft || self.project_root.is_some() {
-                    self.pending_external_editor = true;
-                    self.status_message =
-                        "Launching external editor ($EDITOR / nvim / helix)...".to_string();
+                    self.dispatch(CommandId::OpenExternalEditor);
                 }
             }
 
@@ -303,17 +306,20 @@ impl App {
             KeyCode::Enter => match self.active_tab {
                 ActiveTab::Dashboard => self.queue_selected_digest_fetch(),
                 ActiveTab::PaperDraft => self.start_editing_selected_field(),
-                ActiveTab::Sources => self.dispatch(CommandId::OpenSource),
+                ActiveTab::Sources => {
+                    if self.sources.is_empty() {
+                        self.dispatch(CommandId::AddSourceLink);
+                    } else {
+                        self.dispatch(CommandId::OpenSource);
+                    }
+                }
                 ActiveTab::Settings => self.start_editing_selected_field(),
                 _ => {}
             },
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 if self.active_tab == ActiveTab::Sources {
                     if key.code == KeyCode::Char('E') || key.modifiers.contains(KeyModifiers::SHIFT) {
-                        if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
-                            let doc = self.sources[self.selected_source_index].clone();
-                            self.queue_source_parse(doc, true);
-                        }
+                        self.dispatch(CommandId::ParseAll);
                     } else {
                         self.dispatch(CommandId::ParseSelected);
                     }

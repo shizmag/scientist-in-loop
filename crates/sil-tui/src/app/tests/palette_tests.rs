@@ -166,8 +166,12 @@ fn test_command_id_as_str_and_display() {
     assert_eq!(CommandId::OpenSource.as_str(), "open_source");
     assert_eq!(CommandId::CiteSource.as_str(), "cite_source");
     assert_eq!(CommandId::CaptureNote.as_str(), "capture_note");
+    assert_eq!(CommandId::RefreshDigest.as_str(), "refresh_digest");
+    assert_eq!(CommandId::OpenExternalEditor.as_str(), "open_external_editor");
 
     assert_eq!(format!("{}", CommandId::SaveAll), "save_all");
+    assert_eq!(format!("{}", CommandId::RefreshDigest), "refresh_digest");
+    assert_eq!(format!("{}", CommandId::OpenExternalEditor), "open_external_editor");
 }
 
 #[test]
@@ -178,8 +182,12 @@ fn test_command_spec_availability() {
     let parse_cmd = all.iter().find(|c| c.id == CommandId::ParseSelected).unwrap();
     let quit_cmd = all.iter().find(|c| c.id == CommandId::Quit).unwrap();
     let reload_cmd = all.iter().find(|c| c.id == CommandId::Reload).unwrap();
+    let refresh_digest_cmd = all.iter().find(|c| c.id == CommandId::RefreshDigest).unwrap();
+    let editor_cmd = all.iter().find(|c| c.id == CommandId::OpenExternalEditor).unwrap();
 
     assert!(quit_cmd.is_available(&app_without_root).is_ok());
     assert!(parse_cmd.is_available(&app_without_root).is_err());
     assert!(reload_cmd.is_available(&app_without_root).is_err());
+    assert!(refresh_digest_cmd.is_available(&app_without_root).is_err());
+    assert!(editor_cmd.is_available(&app_without_root).is_err());
 }

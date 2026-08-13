@@ -54,11 +54,19 @@ impl App {
                     self.status_message = "No source documents in project to parse.".to_string();
                     return;
                 }
-                let count = self.sources.len();
-                for doc in self.sources.clone() {
-                    self.queue_source_parse(doc, false);
+                let unparsed: Vec<_> = self.sources.iter().filter(|s| !s.parsed).cloned().collect();
+                let (docs_to_parse, force) = if unparsed.is_empty() {
+                    (self.sources.clone(), true)
+                } else {
+                    (unparsed, false)
+                };
+                let count = docs_to_parse.len();
+                for doc in docs_to_parse {
+                    self.queue_source_parse(doc, force);
                 }
-                self.status_message = format!("Queued background parsing for {count} sources.");
+                if count > 1 {
+                    self.status_message = format!("Queued background parsing for {count} sources.");
+                }
             }
             CommandId::AddSourceLink => {
                 if !self.check_mutation_lock("add_source") {
@@ -104,6 +112,23 @@ impl App {
                 self.input_mode = InputMode::ModalCaptureNote;
                 self.status_message =
                     "Capture note for draft (Enter to save, Esc to cancel)".to_string();
+            }
+            CommandId::RefreshDigest => {
+                let effective_query = sil_core::effective_digest_query(
+                    &self.global_settings.digest_query,
+                    &self.local_settings.digest_query,
+                );
+                if effective_query.is_none() {
+                    self.status_message =
+                        "No digest query configured. Set query in Settings tab (Tab 5).".to_string();
+                    return;
+                }
+                self.queue_digest_refresh();
+            }
+            CommandId::OpenExternalEditor => {
+                self.pending_external_editor = true;
+                self.status_message =
+                    "Launching external editor ($EDITOR / nvim / helix)...".to_string();
             }
         }
     }

@@ -18,12 +18,16 @@ pub(crate) fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         .split(area);
 
     // Left Column: LaTeX Section Outline / Parser Tree
+    let avail_w = (chunks[0].width.saturating_sub(4) as usize).max(10);
     let mut items = Vec::new();
     if app.paper_sections.is_empty() {
-        items.push(ListItem::new(Line::from(Span::styled(
-            " (no sections / empty paper_draft.tex)",
-            Style::default().fg(Color::Reset),
-        ))));
+        let empty_msg = "Draft has no \\section yet — [o: Open in $EDITOR]";
+        let wrapped = textwrap::wrap(empty_msg, avail_w);
+        let lines: Vec<Line> = wrapped
+            .into_iter()
+            .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::DarkGray))))
+            .collect();
+        items.push(ListItem::new(lines));
     } else {
         for (idx, sec) in app.paper_sections.iter().enumerate() {
             let is_selected = app.paper_section_index == idx;
@@ -66,20 +70,20 @@ pub(crate) fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         let sec = &app.paper_sections[app.paper_section_index];
         (
             format!(
-                " Section: {} (Press 'e': edit, 'v': $EDITOR, PgUp/PgDn: scroll) ",
+                " Section: {} (Press 'e': edit, 'v'/'o': $EDITOR, PgUp/PgDn: scroll) ",
                 sec.title
             ),
             sec.body.clone(),
         )
     } else if !app.paper_draft_content.is_empty() {
         (
-            " paper_draft.tex (Full View — Press 'v' for $EDITOR) ".to_string(),
+            " paper_draft.tex (Full View — Press 'v'/'o' for $EDITOR) ".to_string(),
             app.paper_draft_content.clone(),
         )
     } else {
         (
             " Section Content ".to_string(),
-            "No paper_draft.tex found or empty file.\nPress 'v' to launch external editor (nvim/helix) or 'e' to create draft.".to_string(),
+            "Draft has no \\section yet — [o: Open in $EDITOR]".to_string(),
         )
     };
 

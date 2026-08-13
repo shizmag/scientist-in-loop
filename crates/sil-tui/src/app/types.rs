@@ -222,10 +222,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("j / Down", "Select next source document"),
             ("k / Up", "Select previous source document"),
             ("PageUp / PageDown", "Scroll source list by 5 items"),
-            ("Enter", "Read full source document in Markdown viewer"),
+            ("Enter", "Read full source document in Markdown viewer (or add source if empty)"),
             (
                 "e / E",
-                "Parse/extract text and references for selected source ('E' / Shift+E for force re-parse)",
+                "Parse selected source ('e') / Parse all unparsed sources ('E' / Shift+E)",
             ),
             (
                 "v",
@@ -341,7 +341,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("PageUp / PageDown", "Scroll section content preview"),
             ("e / Enter", "Edit section body in TUI popup editor"),
             (
-                "v",
+                "v / o",
                 "Launch external $EDITOR (nvim / helix / vim) on paper_draft.tex",
             ),
             ("J", "Open background job history + retry failed jobs"),

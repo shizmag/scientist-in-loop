@@ -196,7 +196,7 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             "[?] Help | [Tab] Pane | [p] Add Bib | [m] Sort | [X] Recompute | [J] Jobs"
         }
         crate::app::HelpMode::PaperDraft => {
-            "[?] Help | [e] Edit | [v] $EDITOR | [J] Jobs | [1-5] Tabs"
+            "[?] Help | [e] Edit | [v/o] $EDITOR | [J] Jobs | [1-5] Tabs"
         }
         crate::app::HelpMode::Settings => {
             "[?] Help | [e] Edit | [a] Add | [d] Delete | [J] Jobs | [u] Use Cache"
