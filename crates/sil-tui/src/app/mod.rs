@@ -76,6 +76,7 @@ pub struct App {
 
     pub input_buffer: String,
     pub status_message: String,
+    pub last_user_error: Option<sil_core::UserError>,
     pub dirty: bool,
     pub should_quit: bool,
 
@@ -205,6 +206,7 @@ impl App {
 
             input_buffer: String::new(),
             status_message: "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string(),
+            last_user_error: None,
             dirty: false,
             should_quit: false,
 

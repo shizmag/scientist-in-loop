@@ -396,8 +396,10 @@ impl App {
                     });
                 }
                 Err(err_msg) => {
+                    let user_err = sil_core::UserError::classify(&err_msg);
                     self.status_message =
-                        format!("⚠ Failed parsing source '{}': {}", res.label, err_msg);
+                        format!("⚠ Failed parsing source '{}': {}", res.label, user_err.title);
+                    self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
                         id,
@@ -480,7 +482,9 @@ impl App {
                     });
                 }
                 Err(err_msg) => {
-                    self.status_message = format!("⚠ Fetch failed for '{}': {err_msg}", res.label);
+                    let user_err = sil_core::UserError::classify(&err_msg);
+                    self.status_message = format!("⚠ Fetch failed for '{}': {}", res.label, user_err.title);
+                    self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
                         id,
@@ -561,8 +565,10 @@ impl App {
                     });
                 }
                 Err(err_msg) => {
+                    let user_err = sil_core::UserError::classify(&err_msg);
                     self.status_message =
-                        format!("⚠ Failed computing similarity scores: {err_msg}");
+                        format!("⚠ Failed computing similarity scores: {}", user_err.title);
+                    self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
                         id,
@@ -644,6 +650,7 @@ impl App {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error writing references.bib: {e}");
+                                self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
                                 let id = self.alloc_job_id();
                                 self.push_job_outcome(JobOutcome {
                                     id,
@@ -663,6 +670,7 @@ impl App {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error reading references.bib: {e}");
+                                self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
                                 let id = self.alloc_job_id();
                                 self.push_job_outcome(JobOutcome {
                                     id,
@@ -709,6 +717,7 @@ impl App {
                                 }
                                 Err(e) => {
                                     let err_msg = format!("Error writing references.bib: {e}");
+                                    self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
                                     let id = self.alloc_job_id();
                                     self.push_job_outcome(JobOutcome {
                                         id,
@@ -751,6 +760,8 @@ impl App {
                 }
                 HydrationOutcome::Failure { reason } => {
                     self.hydration_batch_failed += 1;
+                    let user_err = sil_core::UserError::classify(&reason);
+                    self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
                         id,
@@ -785,8 +796,10 @@ impl App {
                         .back()
                         .map(|h| (h.label.as_str(), h.detail.as_str()))
                         .unwrap_or(("source", "unknown error"));
+                    let user_err = sil_core::UserError::classify(reason);
                     self.status_message =
-                        format!("⚠ Metadata fetch failed for '{last_label}': {reason}");
+                        format!("⚠ Metadata fetch failed for '{last_label}': {}", user_err.title);
+                    self.last_user_error = Some(user_err);
                 } else {
                     self.status_message = format!(
                         "✓ Hydration complete: {} succeeded, {} failed",
@@ -805,7 +818,9 @@ impl App {
     /// Trigger background manuscript estimate job.
     pub fn run_estimate_job(&mut self) {
         let Some(root) = self.project_root.clone() else {
-            self.status_message = "Estimate error: not inside a sil project root.".to_string();
+            let user_err = sil_core::UserError::classify("not inside a sil project");
+            self.status_message = format!("Estimate error: {}", user_err.title);
+            self.last_user_error = Some(user_err);
             return;
         };
 
@@ -867,7 +882,9 @@ impl App {
                     });
                 }
                 Err(err_msg) => {
-                    self.status_message = format!("⚠ Estimate failed: {err_msg}");
+                    let user_err = sil_core::UserError::classify(&err_msg);
+                    self.status_message = format!("⚠ Estimate failed: {}", user_err.title);
+                    self.last_user_error = Some(user_err);
                     self.push_job_outcome(JobOutcome {
                         id,
                         kind: JobKind::Estimate,
@@ -961,8 +978,10 @@ impl App {
                     });
                 }
                 Err(err_msg) => {
+                    let user_err = sil_core::UserError::classify(&err_msg);
                     self.status_message =
-                        format!("⚠ Digest refresh failed for '{}': {err_msg}", res.query);
+                        format!("⚠ Digest refresh failed for '{}': {}", res.query, user_err.title);
+                    self.last_user_error = Some(user_err);
                     self.push_job_outcome(JobOutcome {
                         id,
                         kind: JobKind::Digest,

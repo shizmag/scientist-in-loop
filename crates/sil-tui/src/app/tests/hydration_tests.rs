@@ -256,7 +256,11 @@ fn test_toggle_help_overlay_and_current_help_mode() {
 fn test_run_estimate_job() {
     let mut app = App::new(None);
     app.run_estimate_job();
-    assert!(app.status_message.contains("not inside a sil project root"));
+    assert_eq!(app.status_message, "Estimate error: Not inside a sil project");
+    assert_eq!(
+        app.last_user_error.as_ref().map(|e| e.code),
+        Some("project.not_found")
+    );
 }
 
 #[test]
@@ -1051,4 +1055,92 @@ fn test_poll_background_digest_success_and_failure() {
     let outcome = app.recent_job_outcomes.back().unwrap();
     assert_eq!(outcome.kind, JobKind::Digest);
     assert!(!outcome.ok);
+}
+
+#[test]
+fn test_failed_job_maps_to_user_error_title_not_debug_dump() {
+    let mut app = App::new(None);
+    app.in_flight_fetch_targets
+        .insert("10.1000/ratelimit".to_string());
+
+    // 1. Fetch failure with HTTP 429 rate limit and raw stack trace
+    let raw_debug_error = "HTTP status: 429 Too Many Requests\nstack backtrace:\n   0: std::backtrace::Backtrace::create";
+    app.fetch_tx
+        .send(FetchJobResult {
+            target: "10.1000/ratelimit".to_string(),
+            label: "10.1000/ratelimit".to_string(),
+            result: Err(raw_debug_error.to_string()),
+            duration_ms: Some(25),
+        })
+        .unwrap();
+
+    app.poll_background_fetch();
+
+    // Status message must show clean UserError title, NOT the raw stack backtrace
+    assert_eq!(
+        app.status_message,
+        "⚠ Fetch failed for '10.1000/ratelimit': Literature service is busy"
+    );
+    assert!(!app.status_message.contains("stack backtrace"));
+
+    let user_err = app.last_user_error.as_ref().expect("last_user_error must be set");
+    assert_eq!(user_err.code, "crossref.rate_limited");
+    assert_eq!(user_err.title, "Literature service is busy");
+    assert_eq!(user_err.hint, "Retry in a few seconds. Palette: Retry last job");
+    assert_eq!(user_err.retry, Some("retry-last-job"));
+
+    // Outcome detail retains technical info
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert!(!outcome.ok);
+    assert!(outcome.detail.contains("429"));
+
+    // 2. Parse failure with marker missing
+    app.in_flight_parse_ids
+        .insert(sil_core::SourceId::from("paper1"));
+    app.parse_tx
+        .send(ParseJobResult {
+            source_id: sil_core::SourceId::from("paper1"),
+            label: "paper1.pdf".to_string(),
+            result: Err("marker-pdf binary is missing from PATH".to_string()),
+            duration_ms: Some(10),
+            force: false,
+        })
+        .unwrap();
+
+    app.poll_background_parse();
+
+    assert_eq!(
+        app.status_message,
+        "⚠ Failed parsing source 'paper1.pdf': PDF parser (Marker) missing"
+    );
+    let parse_err = app.last_user_error.as_ref().expect("last_user_error set");
+    assert_eq!(parse_err.code, "parse.marker_missing");
+    assert_eq!(parse_err.title, "PDF parser (Marker) missing");
+    assert_eq!(parse_err.hint, "Install marker or use text/markdown sources");
+    assert_eq!(parse_err.retry, None);
+
+    // 3. Hydration single failure
+    app.in_flight_hydration_keys
+        .insert("doi:10.1000/networkerr".to_string());
+    app.hydration_tx
+        .send(HydrationResult {
+            dedup_key: "doi:10.1000/networkerr".to_string(),
+            label: "Offline Paper".to_string(),
+            outcome: HydrationOutcome::Failure {
+                reason: "network connection refused: failed to lookup host".to_string(),
+            },
+            duration_ms: Some(30),
+        })
+        .unwrap();
+
+    app.poll_background_hydration();
+
+    assert_eq!(
+        app.status_message,
+        "⚠ Metadata fetch failed for 'Offline Paper': Network connection failed"
+    );
+    let hyd_err = app.last_user_error.as_ref().expect("last_user_error set");
+    assert_eq!(hyd_err.code, "network.offline");
+    assert_eq!(hyd_err.title, "Network connection failed");
+    assert_eq!(hyd_err.retry, Some("retry-last-job"));
 }

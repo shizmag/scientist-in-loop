@@ -42,7 +42,7 @@ pub use bib::{
 };
 pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
 pub use digest::JournalPublication;
-pub use error::{ConfigError, SilError, StructureError, ValidationError};
+pub use error::{ConfigError, SilError, StructureError, UserError, ValidationError};
 pub use health::{DiagnosticLevel, HealthDiagnostic, ManuscriptHealthReport};
 pub use paths::{ProjectPaths, project_root_from_cwd};
 pub use sci_action::{SciAction, extract_from_message};
