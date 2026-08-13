@@ -746,6 +746,8 @@ pub struct FetchBibSummary {
 pub struct FetchJobSuccess {
     pub downloaded_path: camino::Utf8PathBuf,
     pub bib: Option<FetchBibSummary>,
+    pub parsed: Option<sil_app::ParseSummary>,
+    pub parse_error: Option<String>,
 }
 
 /// Result of a background source fetch job.

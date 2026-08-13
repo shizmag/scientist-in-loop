@@ -275,7 +275,7 @@ impl App {
                         &ctx,
                         sil_app::FetchSource {
                             target: target.clone(),
-                            parse: false,
+                            parse: true,
                         },
                     )
                     .map_err(|e| e.to_string())?;
@@ -286,6 +286,8 @@ impl App {
                             cite_key: b.cite_key,
                             replaced: b.replaced,
                         }),
+                        parsed: fetch_res.parsed,
+                        parse_error: fetch_res.parse_error,
                     })
                 })()
             }));
@@ -430,56 +432,88 @@ impl App {
             match res.result {
                 Ok(succ) => {
                     let saved_path = &succ.downloaded_path;
-                    // Best-effort DB upsert so list_sources picks up metadata quickly.
-                    if let Some(ref root) = self.project_root {
-                        let paths = ProjectPaths::new(root);
-                        let config = self.loaded_config.clone().unwrap_or_default();
-                        let sources_dir = paths.sources(&config);
-                        let pdf_path = if saved_path.is_absolute() {
-                            saved_path.clone()
-                        } else if sources_dir
-                            .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
-                            .exists()
-                        {
-                            sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
-                        } else {
-                            root.join(saved_path)
-                        };
-                        if pdf_path.exists()
-                            && let Ok(db) = sil_db::SilDb::open(&paths.db())
-                        {
-                            let doc = SourceDocument::new(pdf_path);
-                            let _ = db.upsert_parsed(&doc, "");
+                    // Best-effort DB upsert so list_sources picks up metadata quickly if not parsed.
+                    if succ.parsed.is_none() {
+                        if let Some(ref root) = self.project_root {
+                            let paths = ProjectPaths::new(root);
+                            let config = self.loaded_config.clone().unwrap_or_default();
+                            let sources_dir = paths.sources(&config);
+                            let pdf_path = if saved_path.is_absolute() {
+                                saved_path.clone()
+                            } else if sources_dir
+                                .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+                                .exists()
+                            {
+                                sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+                            } else {
+                                root.join(saved_path)
+                            };
+                            if pdf_path.exists()
+                                && let Ok(db) = sil_db::SilDb::open(&paths.db())
+                            {
+                                let doc = SourceDocument::new(pdf_path);
+                                let _ = db.upsert_parsed(&doc, "");
+                            }
                         }
                     }
                     self.reload_sources();
+                    if succ.parsed.is_some() {
+                        self.load_all_source_references();
+                    }
                     if succ.bib.is_some() {
                         self.load_project_references_bib();
                     }
 
-                    let bib_msg = match &succ.bib {
-                        Some(b) if b.replaced => {
-                            format!(" (updated bibliography entry '{}')", b.cite_key)
-                        }
-                        Some(b) => format!(" (added bibliography entry '{}')", b.cite_key),
-                        None => String::new(),
-                    };
-                    self.status_message = format!("✓ Fetched source '{}'{bib_msg}", res.label);
+                    if let Some(ref parse_err) = succ.parse_error {
+                        let user_err = sil_core::UserError::classify(parse_err);
+                        self.status_message = format!(
+                            "⚠ Source fetched but parse failed: {}",
+                            user_err.title
+                        );
+                        self.last_user_error = Some(user_err);
+                        let id = self.alloc_job_id();
+                        self.push_job_outcome(JobOutcome {
+                            id,
+                            kind: JobKind::Fetch,
+                            label: res.label.clone(),
+                            ok: false,
+                            detail: format!("Downloaded → {saved_path}, parse failed: {parse_err}"),
+                            duration_ms: res.duration_ms,
+                            retry_payload: Some(RetryPayload::Fetch {
+                                target: res.target.clone(),
+                            }),
+                        });
+                    } else {
+                        let bib_msg = match &succ.bib {
+                            Some(b) if b.replaced => {
+                                format!(" (updated bibliography entry '{}')", b.cite_key)
+                            }
+                            Some(b) => format!(" (added bibliography entry '{}')", b.cite_key),
+                            None => String::new(),
+                        };
+                        self.status_message = format!(
+                            "✓ Source fetched & parsed{bib_msg} — Open from Sources or palette"
+                        );
 
-                    let detail_bib = match &succ.bib {
-                        Some(b) => format!(" + bib '{}'", b.cite_key),
-                        None => String::new(),
-                    };
-                    let id = self.alloc_job_id();
-                    self.push_job_outcome(JobOutcome {
-                        id,
-                        kind: JobKind::Fetch,
-                        label: res.label.clone(),
-                        ok: true,
-                        detail: format!("Downloaded → {saved_path}{detail_bib}"),
-                        duration_ms: res.duration_ms,
-                        retry_payload: None,
-                    });
+                        let detail_bib = match &succ.bib {
+                            Some(b) => format!(" + bib '{}'", b.cite_key),
+                            None => String::new(),
+                        };
+                        let detail_parse = match &succ.parsed {
+                            Some(p) => format!(", parsed ({} refs)", p.reference_count),
+                            None => String::new(),
+                        };
+                        let id = self.alloc_job_id();
+                        self.push_job_outcome(JobOutcome {
+                            id,
+                            kind: JobKind::Fetch,
+                            label: res.label.clone(),
+                            ok: true,
+                            detail: format!("Downloaded → {saved_path}{detail_parse}{detail_bib}"),
+                            duration_ms: res.duration_ms,
+                            retry_payload: None,
+                        });
+                    }
                 }
                 Err(err_msg) => {
                     let user_err = sil_core::UserError::classify(&err_msg);

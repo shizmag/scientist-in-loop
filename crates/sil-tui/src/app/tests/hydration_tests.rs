@@ -839,7 +839,7 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
     app.in_flight_fetch_targets
         .insert("https://example.com/paper.pdf".to_string());
 
-    // Send result without bib
+    // Send result without bib, but with successful parse
     app.fetch_tx
         .send(FetchJobResult {
             target: "https://example.com/paper.pdf".to_string(),
@@ -847,6 +847,13 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
             result: Ok(FetchJobSuccess {
                 downloaded_path: root.join("sources/paper.pdf"),
                 bib: None,
+                parsed: Some(sil_app::ParseSummary {
+                    filename: "paper.pdf".to_string(),
+                    title: Some("Sample Paper Title".to_string()),
+                    source_id: "paper.pdf".to_string(),
+                    reference_count: 12,
+                }),
+                parse_error: None,
             }),
             duration_ms: Some(50),
         })
@@ -860,10 +867,12 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
     );
     assert_eq!(
         app.status_message,
-        "✓ Fetched source 'https://example.com/paper.pdf'"
+        "✓ Source fetched & parsed — Open from Sources or palette"
     );
+    assert!(app.reading_md_content.is_none(), "Must not auto-open reader on fetch+parse success");
+    assert_eq!(app.input_mode, InputMode::Normal);
 
-    // Send result with bib
+    // Send result with bib and successful parse
     std::fs::write(
         bib_path.as_std_path(),
         "@article{Vaswani2017, title={Attention}}\n",
@@ -882,6 +891,13 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
                     cite_key: "Vaswani2017".to_string(),
                     replaced: false,
                 }),
+                parsed: Some(sil_app::ParseSummary {
+                    filename: "vaswani.pdf".to_string(),
+                    title: Some("Attention Is All You Need".to_string()),
+                    source_id: "vaswani.pdf".to_string(),
+                    reference_count: 40,
+                }),
+                parse_error: None,
             }),
             duration_ms: Some(100),
         })
@@ -893,8 +909,55 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
     assert_eq!(app.bib_file_entries.len(), 1);
     assert_eq!(
         app.status_message,
-        "✓ Fetched source '10.1000/182' (added bibliography entry 'Vaswani2017')"
+        "✓ Source fetched & parsed (added bibliography entry 'Vaswani2017') — Open from Sources or palette"
     );
+    assert!(app.reading_md_content.is_none(), "Must not auto-open reader");
+}
+
+#[test]
+fn test_poll_background_fetch_download_ok_parse_failed() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    app.in_flight_fetch_targets
+        .insert("10.1000/badparse".to_string());
+
+    app.fetch_tx
+        .send(FetchJobResult {
+            target: "10.1000/badparse".to_string(),
+            label: "10.1000/badparse".to_string(),
+            result: Ok(FetchJobSuccess {
+                downloaded_path: root.join("sources/badparse.pdf"),
+                bib: None,
+                parsed: None,
+                parse_error: Some("parse error: failed to extract text from damaged PDF".to_string()),
+            }),
+            duration_ms: Some(80),
+        })
+        .unwrap();
+
+    app.poll_background_fetch();
+
+    assert!(!app.in_flight_fetch_targets.contains("10.1000/badparse"));
+    assert!(
+        app.status_message.contains("Source fetched but parse failed"),
+        "Status should report parse failure: {}",
+        app.status_message
+    );
+    assert!(app.reading_md_content.is_none(), "Must not auto-open reader on parse failure");
+
+    let err = app.last_user_error.as_ref().expect("last_user_error set");
+    assert_eq!(err.code, "parse.failed");
+    assert_eq!(err.title, "Failed to parse source");
+
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert!(!outcome.ok);
+    assert_eq!(outcome.kind, JobKind::Fetch);
+    assert!(outcome.detail.contains("parse failed"));
+    assert!(matches!(outcome.retry_payload, Some(RetryPayload::Fetch { .. })));
 }
 
 #[test]
@@ -925,6 +988,75 @@ fn test_poll_background_fetch_failure() {
         outcome.retry_payload,
         Some(RetryPayload::Fetch { .. })
     ));
+}
+
+#[test]
+fn test_dispatch_fetch_parse_and_open_source() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+
+    // 1. Dispatch FetchParse
+    app.dispatch(CommandId::FetchParse);
+    assert_eq!(app.input_mode, InputMode::ModalAddSourceLink);
+    assert_eq!(app.active_tab, ActiveTab::Sources);
+
+    // 2. Dispatch OpenSource when sources list is populated
+    app.input_mode = InputMode::Normal;
+    let doc_path = root.join("sources/test.pdf");
+    std::fs::create_dir_all(root.join("sources")).unwrap();
+    std::fs::write(doc_path.as_std_path(), "dummy").unwrap();
+
+    let mut doc = SourceDocument::new(doc_path);
+    doc.parsed = true;
+    doc.title = Some("Test Source".to_string());
+    app.sources = vec![doc];
+    app.selected_source_index = 0;
+
+    app.dispatch(CommandId::OpenSource);
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    assert!(app.reading_md_content.is_some());
+    assert!(app.status_message.contains("Reading test.pdf"));
+}
+
+#[test]
+fn test_digest_enter_queues_fetch_and_updates_inflight() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    app.active_tab = ActiveTab::Dashboard;
+    app.dashboard.digest_publications = vec![sil_core::JournalPublication {
+        doi: Some("10.1038/nature14539".to_string()),
+        title: "Deep Learning Foundations".to_string(),
+        authors: "LeCun, Bengio, Hinton".to_string(),
+        journal: "Nature".to_string(),
+        year: Some(2015),
+        abstract_text: "Deep learning allows computational models...".to_string(),
+        citation_count: Some(50000),
+        url: "https://doi.org/10.1038/nature14539".to_string(),
+        pdf_url: None,
+    }];
+    app.selected_digest_index = 0;
+
+    // Simulate Enter on Dashboard
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+
+    assert!(
+        app.in_flight_fetch_targets.contains("10.1038/nature14539"),
+        "In-flight fetch targets must track the queued target"
+    );
+    assert!(
+        app.status_message.contains("Fetching Deep Learning Foundations"),
+        "Status should show fetching publication title: {}",
+        app.status_message
+    );
 }
 
 #[test]

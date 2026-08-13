@@ -68,7 +68,7 @@ impl App {
                     self.status_message = format!("Queued background parsing for {count} sources.");
                 }
             }
-            CommandId::AddSourceLink => {
+            CommandId::AddSourceLink | CommandId::FetchParse => {
                 if !self.check_mutation_lock("add_source") {
                     return;
                 }

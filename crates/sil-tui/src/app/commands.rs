@@ -23,6 +23,8 @@ pub enum CommandId {
     ParseAll,
     /// Open modal to add and download a source via DOI, arXiv, or URL.
     AddSourceLink,
+    /// Fetch and parse a source document via DOI, arXiv, or URL.
+    FetchParse,
     /// Open and read the selected source document in Markdown viewer.
     OpenSource,
     /// Append the selected source document to references.bib.
@@ -50,6 +52,7 @@ impl CommandId {
             CommandId::ParseSelected => "parse_selected",
             CommandId::ParseAll => "parse_all",
             CommandId::AddSourceLink => "add_source_link",
+            CommandId::FetchParse => "fetch_parse",
             CommandId::OpenSource => "open_source",
             CommandId::CiteSource => "cite_source",
             CommandId::CaptureNote => "capture_note",
@@ -118,7 +121,7 @@ impl CommandSpec {
                     Ok(())
                 }
             }
-            CommandId::AddSourceLink => {
+            CommandId::AddSourceLink | CommandId::FetchParse => {
                 if app.project_root.is_none() {
                     Err("requires active project")
                 } else {
