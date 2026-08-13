@@ -181,6 +181,10 @@ impl App {
             InputMode::CommandPalette => HelpMode::CommandPalette,
             InputMode::Editing => HelpMode::Editing,
             InputMode::EditingPaper => HelpMode::EditingPaper,
+            InputMode::Wizard => HelpMode::Wizard,
+            InputMode::WizardOpenPath => HelpMode::WizardOpenPath,
+            InputMode::WizardCreateProject => HelpMode::WizardCreateProject,
+            InputMode::WizardDoctorReport => HelpMode::WizardDoctorReport,
             InputMode::Normal => match self.active_tab {
                 ActiveTab::Dashboard => HelpMode::Dashboard,
                 ActiveTab::Sources => HelpMode::SourcesList,

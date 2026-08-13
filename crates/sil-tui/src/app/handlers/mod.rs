@@ -25,6 +25,10 @@ impl App {
             InputMode::SearchingBib => self.handle_searching_bib_mode(key),
             InputMode::ReadingSourceMd => self.handle_reading_source_md_mode(key),
             InputMode::SearchingViewingRefs => self.handle_searching_viewing_refs_mode(key),
+            InputMode::Wizard => self.handle_wizard_mode(key),
+            InputMode::WizardOpenPath => self.handle_wizard_open_path_mode(key),
+            InputMode::WizardCreateProject => self.handle_wizard_create_project_mode(key),
+            InputMode::WizardDoctorReport => self.handle_wizard_doctor_report_mode(key),
         }
     }
 
@@ -1737,5 +1741,162 @@ impl App {
         self.disk_conflict_dismissed = false;
         self.update_file_mtimes();
         self.status_message = format!("✓ {}", messages.join(" | "));
+    }
+
+    fn handle_wizard_mode(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('k') => {
+                    if self.wizard_state.selected_menu_index > 0 {
+                        self.wizard_state.selected_menu_index -= 1;
+                    }
+                    return;
+                }
+                KeyCode::Char('j') => {
+                    if self.wizard_state.selected_menu_index + 1 < 4 {
+                        self.wizard_state.selected_menu_index += 1;
+                    }
+                    return;
+                }
+                _ => {}
+            }
+        }
+
+        match key.code {
+            KeyCode::Char('q') => {
+                self.should_quit = true;
+            }
+            KeyCode::Char('?') | KeyCode::F(1) => {
+                self.toggle_help_overlay();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if self.wizard_state.selected_menu_index > 0 {
+                    self.wizard_state.selected_menu_index -= 1;
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if self.wizard_state.selected_menu_index + 1 < 4 {
+                    self.wizard_state.selected_menu_index += 1;
+                }
+            }
+            KeyCode::Left | KeyCode::Char('h') => {
+                if self.wizard_state.selected_menu_index == 0
+                    && !self.wizard_state.recent_projects.is_empty()
+                    && self.wizard_state.selected_recent_index > 0
+                {
+                    self.wizard_state.selected_recent_index -= 1;
+                }
+            }
+            KeyCode::Right | KeyCode::Char('l') => {
+                if self.wizard_state.selected_menu_index == 0
+                    && !self.wizard_state.recent_projects.is_empty()
+                    && self.wizard_state.selected_recent_index + 1
+                        < self.wizard_state.recent_projects.len()
+                {
+                    self.wizard_state.selected_recent_index += 1;
+                }
+            }
+            KeyCode::Char('1') => {
+                self.wizard_state.selected_menu_index = 0;
+                self.activate_wizard_selection();
+            }
+            KeyCode::Char('2') => {
+                self.wizard_state.selected_menu_index = 1;
+                self.activate_wizard_selection();
+            }
+            KeyCode::Char('3') => {
+                self.wizard_state.selected_menu_index = 2;
+                self.activate_wizard_selection();
+            }
+            KeyCode::Char('4') => {
+                self.wizard_state.selected_menu_index = 3;
+                self.activate_wizard_selection();
+            }
+            KeyCode::Enter => {
+                self.activate_wizard_selection();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_wizard_open_path_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Wizard;
+                self.status_message = "Returned to wizard menu.".to_string();
+            }
+            KeyCode::Enter => {
+                let path_str = self.wizard_state.open_path_buffer.trim().to_string();
+                if path_str.is_empty() {
+                    self.status_message = "Path cannot be empty.".to_string();
+                } else {
+                    let path = Utf8PathBuf::from(path_str);
+                    self.open_project_path(path);
+                }
+            }
+            KeyCode::Backspace => {
+                self.wizard_state.open_path_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.wizard_state.open_path_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_wizard_create_project_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Wizard;
+                self.status_message = "Returned to wizard menu.".to_string();
+            }
+            KeyCode::Enter => {
+                let name = self.wizard_state.create_project_buffer.trim().to_string();
+                if name.is_empty() {
+                    self.status_message = "Project name cannot be empty.".to_string();
+                } else {
+                    self.create_and_open_project(&name);
+                }
+            }
+            KeyCode::Backspace => {
+                self.wizard_state.create_project_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.wizard_state.create_project_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_wizard_doctor_report_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => {
+                self.input_mode = InputMode::Wizard;
+                self.status_message = "Returned to wizard menu.".to_string();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if self.wizard_state.doctor_scroll_offset > 0 {
+                    self.wizard_state.doctor_scroll_offset -= 1;
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let count = self.wizard_state.doctor_checks.len();
+                if count > 0 && self.wizard_state.doctor_scroll_offset + 1 < count {
+                    self.wizard_state.doctor_scroll_offset += 1;
+                }
+            }
+            KeyCode::PageUp => {
+                self.wizard_state.doctor_scroll_offset =
+                    self.wizard_state.doctor_scroll_offset.saturating_sub(5);
+            }
+            KeyCode::PageDown => {
+                let count = self.wizard_state.doctor_checks.len();
+                if count > 0 {
+                    self.wizard_state.doctor_scroll_offset =
+                        (self.wizard_state.doctor_scroll_offset + 5).min(count - 1);
+                }
+            }
+            _ => {}
+        }
     }
 }

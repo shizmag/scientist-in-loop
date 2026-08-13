@@ -418,6 +418,11 @@ impl GlobalSettings {
             self.recent_projects.truncate(20);
         }
     }
+
+    /// Add a project path to recent projects list (deduplicating and capping at 20).
+    pub fn touch_recent(&mut self, path: impl Into<Utf8PathBuf>) {
+        self.touch_recent_project(path.into());
+    }
 }
 
 impl SettingsCache {

@@ -5378,10 +5378,16 @@ dependencies = [
 name = "sil-app"
 version = "1.0.0"
 dependencies = [
+ "anyhow",
  "camino",
+ "dirs",
+ "serde",
+ "serde_json",
+ "serde_yaml",
  "sil-core",
  "sil-db",
  "sil-git",
+ "sil-latex",
  "sil-parse",
  "sil-regex",
  "tempfile",

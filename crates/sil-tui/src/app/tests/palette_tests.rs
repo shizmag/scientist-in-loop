@@ -23,6 +23,7 @@ fn test_filter_parse_commands() {
 #[test]
 fn test_esc_restores_previous_mode() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     assert_eq!(app.input_mode, InputMode::Normal);
 
     // Open palette from Normal mode
@@ -46,6 +47,7 @@ fn test_esc_restores_previous_mode() {
 #[test]
 fn test_dispatch_save_all_matches_ctrl_s() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
 
     // 1. Test Ctrl+S
     app.dirty = true;
@@ -83,6 +85,7 @@ fn test_palette_does_not_quit_on_q() {
 #[test]
 fn test_colon_and_ctrl_k_open_palette() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
 
     // Test ':' from normal mode
     app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::empty()));

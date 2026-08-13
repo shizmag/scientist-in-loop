@@ -31,6 +31,7 @@ fn normalize_whitespace(s: &str) -> String {
 #[test]
 fn test_empty_sources_shows_fetch_copy() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Sources;
     assert!(app.sources.is_empty());
 
@@ -45,6 +46,7 @@ fn test_empty_sources_shows_fetch_copy() {
 #[test]
 fn test_unparsed_sources_shows_parse_copy() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Sources;
 
     let mut doc1 = SourceDocument::new(Utf8PathBuf::from("sources/doc1.pdf"));
@@ -66,6 +68,7 @@ fn test_unparsed_sources_shows_parse_copy() {
 #[test]
 fn test_non_empty_sources_does_not_show_empty_state() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Sources;
 
     let mut doc = SourceDocument::new(Utf8PathBuf::from("sources/parsed_doc.pdf"));
@@ -89,6 +92,7 @@ fn test_non_empty_sources_does_not_show_empty_state() {
 #[test]
 fn test_draft_with_no_sections_shows_external_editor_copy() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::PaperDraft;
     app.paper_sections.clear();
     app.paper_draft_content.clear();
@@ -104,6 +108,7 @@ fn test_draft_with_no_sections_shows_external_editor_copy() {
 #[test]
 fn test_empty_references_right_pane_shows_extract_refs_copy() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::References;
     app.source_references.clear();
 
@@ -118,6 +123,7 @@ fn test_empty_references_right_pane_shows_extract_refs_copy() {
 #[test]
 fn test_empty_dashboard_digest_shows_refresh_copy() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Dashboard;
     app.dashboard.digest_publications.clear();
 
@@ -182,6 +188,7 @@ fn test_sources_unparsed_e_and_shift_e_dispatches_parse() {
 #[test]
 fn test_draft_o_and_v_dispatches_open_external_editor() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::PaperDraft;
     assert!(!app.pending_external_editor);
 

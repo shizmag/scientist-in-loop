@@ -6,10 +6,15 @@
 
 mod bib;
 mod context;
+pub mod doctor;
 mod error;
 mod fetch;
+pub mod init;
+pub mod templates;
 
 pub use bib::{PromoteBib, PromoteBibResult, UpsertBib, UpsertBibResult, promote_bib, upsert_bib};
 pub use context::AppContext;
 pub use error::AppError;
 pub use fetch::{FetchSource, FetchSourceResult, ParseSummary, fetch_source};
+pub use init::{init_project, update_project};
+

@@ -5,12 +5,13 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 fn app_initialization() {
     let app = App::new(None);
     assert_eq!(app.active_tab, ActiveTab::Dashboard);
-    assert_eq!(app.input_mode, InputMode::Normal);
+    assert_eq!(app.input_mode, InputMode::Wizard);
 }
 
 #[test]
 fn test_tab_navigation() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     assert_eq!(app.active_tab, ActiveTab::Dashboard);
 
     app.handle_key(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::empty()));
@@ -32,6 +33,7 @@ fn test_tab_navigation() {
 #[test]
 fn test_references_tab_navigation() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
 
     // Go to References
     app.handle_key(KeyEvent::new(KeyCode::Char('3'), KeyModifiers::empty()));
@@ -52,6 +54,7 @@ fn test_references_tab_navigation() {
 #[test]
 fn test_references_marking_and_searching() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::References;
     app.source_references = vec![
         sil_core::ReferenceEntry {
@@ -174,6 +177,7 @@ fn test_app_with_project_root_files() {
 #[test]
 fn test_normal_mode_navigation_and_shortcuts() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
 
     // Ctrl+s saves
     app.dirty = true;
@@ -201,6 +205,7 @@ fn test_normal_mode_navigation_and_shortcuts() {
 #[test]
 fn test_dashboard_up_down_keys() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Dashboard;
     app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::empty()));
     app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::empty()));
@@ -210,6 +215,7 @@ fn test_dashboard_up_down_keys() {
 #[test]
 fn test_sources_tab_actions() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Sources;
     app.sources = vec![SourceDocument::new(Utf8PathBuf::from("test.md"))];
 
@@ -597,6 +603,7 @@ fn test_save_all_in_project() {
 #[test]
 fn test_left_bib_search_and_filtering() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::References;
     app.active_ref_pane = RefPane::LeftBib;
 
@@ -633,6 +640,7 @@ fn test_left_bib_search_and_filtering() {
 #[test]
 fn test_references_tab_right_pane_sorting() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::References;
     app.active_ref_pane = RefPane::RightSources;
 
@@ -882,6 +890,7 @@ fn test_sources_tab_append_selected_to_bib() {
 #[test]
 fn test_references_similarity_sorting_and_filtering() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     let ref1 = ReferenceEntry {
         id: "ref_1".to_string(),
         source_id: "src".into(),

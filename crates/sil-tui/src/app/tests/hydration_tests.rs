@@ -230,6 +230,7 @@ fn test_keymap_for_all_modes() {
 #[test]
 fn test_toggle_help_overlay_and_current_help_mode() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     assert_eq!(app.input_mode, InputMode::Normal);
     assert_eq!(app.current_help_mode(), HelpMode::Dashboard);
 
@@ -267,6 +268,7 @@ fn test_run_estimate_job() {
 #[test]
 fn test_references_title_sort_binding() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::References;
     app.active_ref_pane = RefPane::RightSources;
     app.source_references = vec![
@@ -661,6 +663,7 @@ fn test_sources_parse_keymap() {
 #[test]
 fn test_sources_parse_already_parsed_status() {
     let mut app = App::new(None);
+    app.input_mode = InputMode::Normal;
     app.active_tab = ActiveTab::Sources;
     let mut doc = SourceDocument::new(camino::Utf8PathBuf::from("test.txt"));
     doc.parsed = true;

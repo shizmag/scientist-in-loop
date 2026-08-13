@@ -144,6 +144,9 @@ pub struct App {
     pub disk_conflict_pending: bool,
     pub confirm_disk_overwrite: bool,
     pub disk_conflict_dismissed: bool,
+
+    // First-run wizard state
+    pub wizard_state: WizardState,
 }
 
 impl App {
@@ -168,6 +171,9 @@ impl App {
         let (similarity_tx, similarity_rx) = std::sync::mpsc::channel();
         let (estimate_tx, estimate_rx) = std::sync::mpsc::channel();
         let (digest_tx, digest_rx) = std::sync::mpsc::channel();
+
+        let is_no_project = project_root.is_none();
+        let wizard_state = WizardState::new(&global_settings);
 
         let mut app = Self {
             hydration_tx,
@@ -202,8 +208,16 @@ impl App {
             local_settings,
             active_tab: ActiveTab::Dashboard,
             active_ref_pane: RefPane::RightSources,
-            input_mode: InputMode::Normal,
-            saved_input_mode: InputMode::Normal,
+            input_mode: if is_no_project {
+                InputMode::Wizard
+            } else {
+                InputMode::Normal
+            },
+            saved_input_mode: if is_no_project {
+                InputMode::Wizard
+            } else {
+                InputMode::Normal
+            },
 
             source_references: Vec::new(),
             marked_ref_ids: std::collections::HashSet::new(),
@@ -225,7 +239,11 @@ impl App {
             local_grant_index: 0,
 
             input_buffer: String::new(),
-            status_message: "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string(),
+            status_message: if is_no_project {
+                "Welcome to scientist-in-loop! Select an option below or press 1-4.".to_string()
+            } else {
+                "Ready. Press 'Tab' to switch views, 'e' to edit section, 'v' for external $EDITOR, 's' to save.".to_string()
+            },
             last_user_error: None,
             dirty: false,
             should_quit: false,
@@ -280,6 +298,8 @@ impl App {
             disk_conflict_pending: false,
             confirm_disk_overwrite: false,
             disk_conflict_dismissed: false,
+
+            wizard_state,
         };
 
         // Acquire initial advisory session lock if inside a project
@@ -523,5 +543,182 @@ impl App {
         self.confirm_disk_overwrite = false;
         self.disk_conflict_dismissed = false;
         self.update_file_mtimes();
+    }
+
+    /// Open a sil project at the given path.
+    ///
+    /// Validates that the directory exists and contains a sil project (`.sil/config.yaml` or `.sil`).
+    /// If invalid, sets `last_user_error` with `project.not_found` and an error status message.
+    /// If valid, sets `project_root`, loads config, sources, bib, draft, updates recent projects,
+    /// and resets `input_mode` to `InputMode::Normal`.
+    pub fn open_project_path(&mut self, path: Utf8PathBuf) -> bool {
+        let resolved = if path.is_absolute() {
+            path
+        } else if let Ok(cwd) = std::env::current_dir() {
+            if let Ok(cwd_utf8) = Utf8PathBuf::from_path_buf(cwd) {
+                cwd_utf8.join(path)
+            } else {
+                path
+            }
+        } else {
+            path
+        };
+
+        let paths = ProjectPaths::new(&resolved);
+        let is_valid = resolved.is_dir() && (paths.config().is_file() || paths.sil_dir().is_dir());
+
+        if !is_valid {
+            self.last_user_error = Some(sil_core::UserError::new(
+                "project.not_found",
+                "Not a valid sil project",
+                format!("Directory '{resolved}' does not contain .sil/config.yaml or .sil directory"),
+                None,
+            ));
+            self.status_message = format!("Not a valid sil project: {resolved}");
+            return false;
+        }
+
+        self.project_root = Some(resolved.clone());
+
+        if let Ok(cfg) = Config::load(&paths.config()) {
+            self.local_settings = cfg.settings.clone();
+            self.loaded_config = Some(cfg);
+        } else {
+            self.local_settings = LocalSettings::default();
+            self.loaded_config = None;
+        }
+
+        // Advisory session lock check
+        if let Ok(sil_core::TakeLockResult::Held(lock)) =
+            sil_core::try_acquire_lock(&paths, "tui", "session")
+        {
+            let pid_str = lock
+                .pid
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            let banner = format!("{} is {} (pid {})", lock.holder, lock.op, pid_str);
+            self.lock_holder_banner = Some(banner.clone());
+            self.last_user_error = Some(sil_core::UserError::new(
+                "lock.held",
+                "Workspace lock is held",
+                format!("{banner} — confirm to override"),
+                None,
+            ));
+            self.status_message = format!("Warning: {banner}. Confirm to proceed.");
+            self.active_lock_conflict = Some(lock);
+        } else {
+            self.active_lock_conflict = None;
+            self.lock_holder_banner = None;
+        }
+
+        self.reload_paper_draft();
+        self.reload_sources();
+        self.load_project_references_bib();
+        self.load_all_source_references();
+        self.refresh_dashboard();
+        self.update_file_mtimes();
+
+        // Record in recents
+        self.global_settings.touch_recent_project(resolved.clone());
+        let _ = self.global_settings.save(None);
+        self.wizard_state.refresh_recent_projects(&self.global_settings);
+
+        self.input_mode = InputMode::Normal;
+        self.dirty = false;
+        let proj_name = resolved.file_name().unwrap_or(resolved.as_str());
+        self.status_message = format!("✓ Opened project: {proj_name}");
+        true
+    }
+
+    /// Create a new sil project at `name_or_path` and open it.
+    pub fn create_and_open_project(&mut self, name_or_path: &str) -> bool {
+        let trimmed = name_or_path.trim();
+        if trimmed.is_empty() {
+            self.status_message = "Project name cannot be empty.".to_string();
+            return false;
+        }
+
+        let target_path = if camino::Utf8Path::new(trimmed).is_absolute() {
+            Utf8PathBuf::from(trimmed)
+        } else if let Ok(cwd) = std::env::current_dir() {
+            if let Ok(cwd_utf8) = Utf8PathBuf::from_path_buf(cwd) {
+                cwd_utf8.join(trimmed)
+            } else {
+                Utf8PathBuf::from(trimmed)
+            }
+        } else {
+            Utf8PathBuf::from(trimmed)
+        };
+
+        let ui = sil_core::NullUi::new();
+        match sil_app::init::init_project(&target_path, &ui) {
+            Ok(_) => {
+                let ok = self.open_project_path(target_path.clone());
+                if ok {
+                    let proj_name = target_path.file_name().unwrap_or(target_path.as_str());
+                    self.status_message = format!("✓ Created and opened project: {proj_name}");
+                }
+                ok
+            }
+            Err(e) => {
+                self.last_user_error = Some(sil_core::UserError::classify(&e.to_string()));
+                self.status_message = format!("Project creation failed: {e}");
+                false
+            }
+        }
+    }
+
+    /// Run host environment doctor checks and switch to WizardDoctorReport mode.
+    pub fn run_wizard_doctor(&mut self) {
+        self.wizard_state.doctor_checks = sil_app::doctor::run_host_checks();
+        self.wizard_state.doctor_scroll_offset = 0;
+        self.input_mode = InputMode::WizardDoctorReport;
+        let ok_count = self.wizard_state.doctor_checks.iter().filter(|c| c.ok).count();
+        let total = self.wizard_state.doctor_checks.len();
+        self.status_message =
+            format!("Host doctor finished: {ok_count}/{total} checks passed (Esc to back).");
+    }
+
+    /// Activate the currently selected option in the Wizard menu.
+    pub fn activate_wizard_selection(&mut self) {
+        match self.wizard_state.selected_menu_index {
+            0 => {
+                // Open Recent Project
+                if self.wizard_state.recent_projects.is_empty() {
+                    self.last_user_error = Some(sil_core::UserError::new(
+                        "project.not_found",
+                        "No recent projects found",
+                        "Choose 'Open Directory / Path' or 'Create New Project' to get started",
+                        None,
+                    ));
+                    self.status_message = "No recent projects found.".to_string();
+                } else {
+                    let idx = self.wizard_state.selected_recent_index;
+                    if idx < self.wizard_state.recent_projects.len() {
+                        let path = self.wizard_state.recent_projects[idx].clone();
+                        self.open_project_path(path);
+                    }
+                }
+            }
+            1 => {
+                // Open Directory / Path
+                self.wizard_state.open_path_buffer.clear();
+                self.input_mode = InputMode::WizardOpenPath;
+                self.status_message =
+                    "Enter project directory path (Enter to open, Esc to back)".to_string();
+            }
+            2 => {
+                // Create New Project
+                self.wizard_state.create_project_buffer.clear();
+                self.input_mode = InputMode::WizardCreateProject;
+                self.status_message =
+                    "Enter project name or path (Enter to create, Esc to back)".to_string();
+            }
+            3 => {
+                // Run System Doctor
+                self.run_wizard_doctor();
+            }
+            _ => {}
+        }
     }
 }

@@ -59,6 +59,10 @@ pub enum InputMode {
     HelpOverlay,
     JobHistory,
     CommandPalette,
+    Wizard,
+    WizardOpenPath,
+    WizardCreateProject,
+    WizardDoctorReport,
 }
 
 /// Sorting key for references display in TUI.
@@ -164,6 +168,10 @@ pub enum HelpMode {
     SearchingViewingRefs,
     JobHistory,
     CommandPalette,
+    Wizard,
+    WizardOpenPath,
+    WizardCreateProject,
+    WizardDoctorReport,
 }
 
 impl HelpMode {
@@ -191,6 +199,10 @@ impl HelpMode {
             HelpMode::SearchingViewingRefs => "Searching Source References",
             HelpMode::JobHistory => "Background Job History",
             HelpMode::CommandPalette => "Command Palette",
+            HelpMode::Wizard => "First-Run Wizard",
+            HelpMode::WizardOpenPath => "Open Directory / Project Path",
+            HelpMode::WizardCreateProject => "Create New Project",
+            HelpMode::WizardDoctorReport => "System Doctor Report",
         }
     }
 }
@@ -488,6 +500,35 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("Enter", "Execute selected command"),
             ("Esc", "Close command palette and restore previous mode"),
         ],
+        HelpMode::Wizard => vec![
+            ("j / Down", "Select next wizard menu option"),
+            ("k / Up", "Select previous wizard menu option"),
+            ("Enter", "Activate selected menu option"),
+            ("1 - 4", "Quick select: 1: Recent, 2: Open Path, 3: Create, 4: Doctor"),
+            ("q / Esc", "Quit application"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::WizardOpenPath => vec![
+            ("Char", "Type directory or project path"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Open project at path"),
+            ("Esc", "Cancel and return to wizard menu"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::WizardCreateProject => vec![
+            ("Char", "Type project directory name or path"),
+            ("Backspace", "Delete character"),
+            ("Enter", "Create project and open it"),
+            ("Esc", "Cancel and return to wizard menu"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::WizardDoctorReport => vec![
+            ("j / Down", "Scroll down doctor report"),
+            ("k / Up", "Scroll up doctor report"),
+            ("PageUp / PageDown", "Scroll by 5 checks"),
+            ("Esc / q / Enter", "Return to wizard menu"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
     }
 }
 
@@ -733,3 +774,53 @@ pub struct DigestJobResult {
     pub result: Result<usize, String>,
     pub duration_ms: Option<u64>,
 }
+
+/// State for the first-run wizard when no project root is specified.
+#[derive(Debug, Clone)]
+pub struct WizardState {
+    /// Selected menu item in Wizard main menu (0: Recent, 1: Open Path, 2: Create, 3: Doctor).
+    pub selected_menu_index: usize,
+    /// List of valid existing recent projects from GlobalSettings.
+    pub recent_projects: Vec<camino::Utf8PathBuf>,
+    /// Selected recent project index.
+    pub selected_recent_index: usize,
+    /// Input buffer for "Open Path" sub-mode.
+    pub open_path_buffer: String,
+    /// Input buffer for "Create Project" sub-mode.
+    pub create_project_buffer: String,
+    /// Results of running host system doctor.
+    pub doctor_checks: Vec<sil_app::doctor::Check>,
+    /// Scroll offset for doctor report view.
+    pub doctor_scroll_offset: usize,
+}
+
+impl WizardState {
+    /// Create new wizard state initialized from global settings.
+    pub fn new(global_settings: &sil_core::GlobalSettings) -> Self {
+        let mut state = Self {
+            selected_menu_index: 0,
+            recent_projects: Vec::new(),
+            selected_recent_index: 0,
+            open_path_buffer: String::new(),
+            create_project_buffer: String::new(),
+            doctor_checks: Vec::new(),
+            doctor_scroll_offset: 0,
+        };
+        state.refresh_recent_projects(global_settings);
+        state
+    }
+
+    /// Refresh recent projects from global settings, retaining only paths that exist on disk.
+    pub fn refresh_recent_projects(&mut self, global_settings: &sil_core::GlobalSettings) {
+        self.recent_projects = global_settings
+            .recent_projects
+            .iter()
+            .filter(|p| p.exists())
+            .cloned()
+            .collect();
+        if !self.recent_projects.is_empty() && self.selected_recent_index >= self.recent_projects.len() {
+            self.selected_recent_index = self.recent_projects.len() - 1;
+        }
+    }
+}
+

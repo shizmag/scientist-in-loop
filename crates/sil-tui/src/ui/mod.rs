@@ -6,6 +6,7 @@ pub(crate) mod modals;
 pub(crate) mod references;
 pub(crate) mod settings;
 pub(crate) mod sources;
+pub(crate) mod wizard;
 
 #[cfg(test)]
 mod tests;
@@ -27,6 +28,7 @@ use ratatui::{
 use references::draw_references;
 use settings::draw_settings;
 use sources::{draw_sources, draw_viewing_source_refs};
+use wizard::draw_wizard;
 
 use crate::app::{ActiveTab, App, InputMode};
 
@@ -43,12 +45,22 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     draw_header(frame, app, chunks[0]);
 
-    match app.active_tab {
-        ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
-        ActiveTab::Sources => draw_sources(frame, app, chunks[1]),
-        ActiveTab::References => draw_references(frame, app, chunks[1]),
-        ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
-        ActiveTab::Settings => draw_settings(frame, app, chunks[1]),
+    if matches!(
+        app.input_mode,
+        InputMode::Wizard
+            | InputMode::WizardOpenPath
+            | InputMode::WizardCreateProject
+            | InputMode::WizardDoctorReport
+    ) {
+        draw_wizard(frame, app, chunks[1]);
+    } else {
+        match app.active_tab {
+            ActiveTab::Dashboard => draw_dashboard(frame, app, chunks[1]),
+            ActiveTab::Sources => draw_sources(frame, app, chunks[1]),
+            ActiveTab::References => draw_references(frame, app, chunks[1]),
+            ActiveTab::PaperDraft => draw_paper_draft(frame, app, chunks[1]),
+            ActiveTab::Settings => draw_settings(frame, app, chunks[1]),
+        }
     }
 
     draw_footer(frame, app, chunks[2]);
@@ -70,7 +82,11 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ViewingSourceRefs | InputMode::SearchingViewingRefs => {
             draw_viewing_source_refs(frame, app)
         }
-        InputMode::SearchingRefs
+        InputMode::Wizard
+        | InputMode::WizardOpenPath
+        | InputMode::WizardCreateProject
+        | InputMode::WizardDoctorReport
+        | InputMode::SearchingRefs
         | InputMode::SearchingBib
         | InputMode::ReadingSourceMd
         | InputMode::Normal => {}
@@ -95,7 +111,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let project_label = if let Some(ref root) = app.project_root {
         format!(" Project: {} ", root.file_name().unwrap_or("active"))
     } else {
-        " Global Mode ".to_string()
+        " First-Run Wizard ".to_string()
     };
 
     let mut header_block = Block::default()
@@ -206,6 +222,18 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         }
         crate::app::HelpMode::CommandPalette => {
             "[Enter] Run | [↑/↓/Tab] Navigate | [Esc] Close | Type to filter"
+        }
+        crate::app::HelpMode::Wizard => {
+            "[1-4] Quick Select | [j/k] Navigate | [Enter] Select | [q] Quit | [?] Help"
+        }
+        crate::app::HelpMode::WizardOpenPath => {
+            "[Enter] Open Path | [Esc] Back to Wizard | [?] Help"
+        }
+        crate::app::HelpMode::WizardCreateProject => {
+            "[Enter] Create Project | [Esc] Back to Wizard | [?] Help"
+        }
+        crate::app::HelpMode::WizardDoctorReport => {
+            "[j/k] Scroll Report | [Esc/q/Enter] Back to Wizard | [?] Help"
         }
         _ => "[?] / [F1] Help Overlay | [Esc] Cancel",
     };
