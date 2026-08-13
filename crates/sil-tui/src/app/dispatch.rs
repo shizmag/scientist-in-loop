@@ -130,6 +130,38 @@ impl App {
                 self.status_message =
                     "Launching external editor ($EDITOR / nvim / helix)...".to_string();
             }
+            CommandId::Undo => {
+                if let Some(ref root) = self.project_root.clone() {
+                    match sil_core::undo(root) {
+                        Ok(Some(generation)) => {
+                            let paths = ProjectPaths::new(root);
+                            let draft_path = root.join("paper_draft.tex");
+                            if draft_path.is_file() {
+                                if let Ok(content) = std::fs::read_to_string(draft_path.as_std_path()) {
+                                    let _ = sil_latex::write_draft_sections_from_file(
+                                        &draft_path,
+                                        &paths.draft_sections_dir(),
+                                    );
+                                    if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                                        let ideas = sil_latex::parse_idea_blocks(&content);
+                                        let _ = db.replace_todo_ideas(&ideas);
+                                    }
+                                }
+                            }
+                            self.reload_sources_and_bib_sync();
+                            self.status_message = format!("Undone: {}", generation.op);
+                        }
+                        Ok(None) => {
+                            self.status_message = "Nothing to undo".to_string();
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Undo failed: {e}");
+                        }
+                    }
+                } else {
+                    self.status_message = "No active project loaded".to_string();
+                }
+            }
         }
     }
 }

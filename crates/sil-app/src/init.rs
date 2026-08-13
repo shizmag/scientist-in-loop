@@ -433,6 +433,7 @@ mod tests {
                 || block.contains(templates::GITIGNORE_MANAGED_END)
         );
         assert!(block.contains(".sil/db.sqlite"));
+        assert!(block.contains(".sil/undo/"));
         assert!(block.contains("figures/images/**"));
         assert!(block.contains("data/**"));
         // Must not ignore improvement proposals or draft section cache
@@ -446,5 +447,10 @@ mod tests {
                 || t == ".sil/draft_sections/"
         }));
         assert!(block.contains("improvement/") || block.contains("draft_sections/"));
+    }
+
+    #[test]
+    fn gitignore_template_contains_undo_dir() {
+        assert!(templates::GITIGNORE.contains(".sil/undo/"));
     }
 }

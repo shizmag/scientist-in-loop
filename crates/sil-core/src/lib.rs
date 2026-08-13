@@ -30,6 +30,8 @@ pub mod health;
 pub mod todo;
 /// Advisory workspace lock for agent/TUI coordination.
 pub mod workspace_lock;
+/// Undo journal for tracking and reverting file mutations.
+pub mod undo;
 
 pub use atomic::{write_atomic, write_atomic_str};
 pub use bib::{
@@ -60,6 +62,7 @@ pub use structure::{CompletionSummary, Section, SectionCompletion, Structure};
 pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
 pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
+pub use undo::{UndoFileSnapshot, UndoGeneration, UndoJournal, snapshot, undo};
 pub use workspace_lock::{
     TakeLock, TakeLockResult, WorkspaceLock, clear_lock, is_busy, lock_path, lock_to_yaml,
     parse_lock_yaml, pid_is_alive, read_lock, take_or_stale, try_acquire_lock,

@@ -229,6 +229,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Quit application"),
             ("Ctrl+S / s", "Save all settings and project state"),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::SourcesList => vec![
             ("j / Down", "Select next source document"),
@@ -263,6 +264,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Quit application"),
             ("Ctrl+S / s", "Save all settings and project state"),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::ReadingSourceMd => vec![
             ("j / Down", "Scroll down 1 line"),
@@ -314,6 +316,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Clear search filter (or quit if search empty)"),
             ("Ctrl+S / s", "Save all settings and project state"),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::ReferencesRight => vec![
             ("j / Down", "Select next extracted reference"),
@@ -346,6 +349,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Clear search filter (or quit if search empty)"),
             ("Ctrl+S", "Save all settings and project state"),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::PaperDraft => vec![
             ("j / Down", "Select next manuscript section"),
@@ -362,6 +366,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Quit application"),
             ("Ctrl+S / s", "Save manuscript and re-index draft sections"),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::Settings => vec![
             ("j / Down", "Move cursor to next setting field"),
@@ -385,6 +390,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
                 "Ctrl+S / s",
                 "Save global settings, local config, and cache",
             ),
+            ("Ctrl+Z", "Undo last file mutation (delete/insert)"),
         ],
         HelpMode::ModalPicker => vec![
             ("j / Down", "Navigate down cache list"),

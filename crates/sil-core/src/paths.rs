@@ -34,6 +34,8 @@ pub mod rel {
     pub const REVIEWS: &str = ".sil/reviews";
     /// Advisory workspace lock (agent/TUI coordination).
     pub const WORKSPACE_LOCK: &str = ".sil/workspace.lock";
+    /// Undo generation journal directory.
+    pub const UNDO: &str = ".sil/undo";
     /// Agent-readable draft section split (regenerated from paper_draft.tex).
     /// Source of truth remains paper_draft.tex; this tree is a cache for agents.
     pub const DRAFT_SECTIONS: &str = ".sil/draft_sections";
@@ -115,6 +117,11 @@ impl ProjectPaths {
     /// Advisory workspace lock path (`.sil/workspace.lock`).
     pub fn workspace_lock(&self) -> Utf8PathBuf {
         self.join(rel::WORKSPACE_LOCK)
+    }
+
+    /// Undo generation journal directory (`.sil/undo/`).
+    pub fn undo_dir(&self) -> Utf8PathBuf {
+        self.join(rel::UNDO)
     }
 
     /// Path for a numbered improvement suggestion (`suggestion_n`).

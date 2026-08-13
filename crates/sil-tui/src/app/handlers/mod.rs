@@ -119,6 +119,10 @@ impl App {
                     self.dispatch(CommandId::SaveAll);
                     return;
                 }
+                KeyCode::Char('z') => {
+                    self.dispatch(CommandId::Undo);
+                    return;
+                }
                 _ => {}
             }
         }
@@ -403,6 +407,11 @@ impl App {
                             "Delete source '{}'? Press 'y' or Enter to confirm, 'n' or Esc to cancel.",
                             self.sources[self.selected_source_index].filename
                         );
+                    }
+                }
+                ActiveTab::References => {
+                    if self.active_ref_pane == RefPane::LeftBib {
+                        self.delete_selected_bib_entry();
                     }
                 }
                 ActiveTab::Settings => {
@@ -1377,6 +1386,19 @@ impl App {
                     self.confirm_lock_override = false;
                     let doc = self.sources.remove(self.selected_source_index);
                     if let Some(ref root) = self.project_root {
+                        let bib_path = root.join("references.bib");
+                        let mut files_to_snap = Vec::new();
+                        if bib_path.is_file() {
+                            files_to_snap.push(bib_path);
+                        }
+                        if doc.path.is_file() {
+                            files_to_snap.push(doc.path.clone());
+                        }
+                        let _ = sil_core::undo::snapshot(
+                            root,
+                            format!("Delete source {}", doc.filename),
+                            &files_to_snap,
+                        );
                         let paths = ProjectPaths::new(root);
                         if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
                             let _ = db.remove_source(&doc.id);
@@ -1654,6 +1676,11 @@ impl App {
         block.tags = vec!["from-source".to_string()];
 
         let updated = sil_latex::update_or_insert_idea_block(&existing, &block);
+        let _ = sil_core::undo::snapshot(
+            root,
+            format!("Capture note from {}", doc.filename),
+            std::slice::from_ref(&draft_path),
+        );
         if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated) {
             self.status_message = format!("Error writing paper_draft.tex: {e}");
         } else {

@@ -695,6 +695,14 @@ impl App {
             if self.selected_bib_index < filtered.len() {
                 let target = filtered[self.selected_bib_index].clone();
                 if let Some(pos) = self.bib_file_entries.iter().position(|e| e == &target) {
+                    if let Some(ref root) = self.project_root {
+                        let bib_path = root.join("references.bib");
+                        let _ = sil_core::undo::snapshot(
+                            root,
+                            "Delete bib entry",
+                            std::slice::from_ref(&bib_path),
+                        );
+                    }
                     self.bib_file_entries.remove(pos);
                     if let Some(ref root) = self.project_root {
                         let bib_path = root.join("references.bib");

@@ -33,6 +33,8 @@ pub enum CommandId {
     RefreshDigest,
     /// Open paper draft in external $EDITOR.
     OpenExternalEditor,
+    /// Undo the last file deletion or insertion mutation.
+    Undo,
 }
 
 impl CommandId {
@@ -53,6 +55,7 @@ impl CommandId {
             CommandId::CaptureNote => "capture_note",
             CommandId::RefreshDigest => "refresh_digest",
             CommandId::OpenExternalEditor => "open_external_editor",
+            CommandId::Undo => "undo",
         }
     }
 }
@@ -154,7 +157,7 @@ impl CommandSpec {
                     Ok(())
                 }
             }
-            CommandId::OpenExternalEditor => {
+            CommandId::OpenExternalEditor | CommandId::Undo => {
                 if app.project_root.is_none() {
                     Err("requires active project")
                 } else {
@@ -183,6 +186,14 @@ pub fn all_commands() -> &'static [CommandSpec] {
             default_keys: "Ctrl+S, s",
             tab: None,
             description: "Save all modified settings, draft, and project state",
+        },
+        CommandSpec {
+            id: CommandId::Undo,
+            title: "Undo",
+            aliases: &["undo", "revert", "z"],
+            default_keys: "Ctrl+Z",
+            tab: None,
+            description: "Undo the last file deletion or insertion mutation",
         },
         CommandSpec {
             id: CommandId::OpenHelp,

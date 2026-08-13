@@ -120,6 +120,7 @@ pub const GITIGNORE: &str = r#"# >>> sil-managed
 # Ephemeral build artifacts and caches
 .sil/cache/
 .sil/models/
+.sil/undo/
 target/
 
 # Generated PDF outputs (manuscript drafts are source)
