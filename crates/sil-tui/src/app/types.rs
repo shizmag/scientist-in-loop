@@ -254,10 +254,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Scroll up 1 line"),
             ("PageUp / PageDown", "Scroll up / down 10 lines"),
             ("b", "Append this source to references.bib"),
-            (
-                "n",
-                "Park a note on paper_draft.tex (from: this source)",
-            ),
+            ("n", "Park a note on paper_draft.tex (from: this source)"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Exit Markdown reader mode"),
         ],

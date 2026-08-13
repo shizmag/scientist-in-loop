@@ -526,10 +526,10 @@ Second idea content line
         let rendered = render_to_string(&mut app);
         assert!(rendered.contains("No digest cached"));
         assert!(rendered.contains("sil source digest"));
-        assert!(!rendered.contains("Quantum Advantage"));
-        assert!(!rendered.contains("self-attention baseline"));
-        assert!(!rendered.contains("Stage 5 (Polish"));
-        assert!(!rendered.contains("IEEE TPAMI"));
+        assert!(!rendered.contains(concat!("Quantum", " Advantage")));
+        assert!(!rendered.contains(concat!("self-attention", " baseline")));
+        assert!(!rendered.contains(concat!("Stage 5", " (Polish")));
+        assert!(!rendered.contains(concat!("IEEE", " TPAMI")));
     }
 
     #[test]

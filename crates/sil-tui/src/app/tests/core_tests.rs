@@ -1288,7 +1288,10 @@ fn test_dashboard_digest_key_navigation_and_enter_fetch() {
 
     // Enter on item 0 resolves DOI and queues fetch
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
-    assert!(app.in_flight_fetch_targets.contains("10.1038/s41586-024-00000-0"));
+    assert!(
+        app.in_flight_fetch_targets
+            .contains("10.1038/s41586-024-00000-0")
+    );
     assert_eq!(app.active_tab, ActiveTab::Dashboard);
     assert_eq!(app.input_mode, InputMode::Normal);
     assert!(app.status_message.contains("Fetching Quantum Supremacy…"));

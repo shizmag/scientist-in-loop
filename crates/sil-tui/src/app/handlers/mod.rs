@@ -1551,10 +1551,8 @@ impl App {
             self.status_message = format!("Error writing paper_draft.tex: {e}");
         } else {
             let paths = ProjectPaths::new(root);
-            let _ = sil_latex::write_draft_sections_from_file(
-                &draft_path,
-                &paths.draft_sections_dir(),
-            );
+            let _ =
+                sil_latex::write_draft_sections_from_file(&draft_path, &paths.draft_sections_dir());
             if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
                 let ideas = sil_latex::parse_idea_blocks(&updated);
                 let _ = db.replace_todo_ideas(&ideas);
