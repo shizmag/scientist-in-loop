@@ -63,5 +63,8 @@ fn estimate_command_write_creates_review() {
         .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("md"))
         .collect();
 
-    assert!(!entries.is_empty(), "expected review markdown file under .sil/reviews/");
+    assert!(
+        !entries.is_empty(),
+        "expected review markdown file under .sil/reviews/"
+    );
 }

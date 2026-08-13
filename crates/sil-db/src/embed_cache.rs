@@ -1,8 +1,8 @@
 //! Embedding vector cache in SQLite database keyed by content hash, model name, and dimension.
 
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 use rusqlite::{Connection, params};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use crate::chunks::{blob_to_embedding, embedding_to_blob};
 use crate::error::DbError;

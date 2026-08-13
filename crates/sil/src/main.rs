@@ -7,9 +7,9 @@ use sil_agent::ContextFlags;
 mod cli;
 mod commands;
 mod init;
+mod mcp_install;
 mod templates;
 mod util;
-mod mcp_install;
 
 use cli::{Cli, Commands, GitCmd, PaperCmd, ProjectCmd, SourceCmd, StructureCmd};
 use util::make_ui;
@@ -81,7 +81,9 @@ fn run() -> Result<()> {
             PaperCmd::Pack { output } => commands::pack(output, ui.as_ref()),
         },
         Commands::Project { action } => match action {
-            ProjectCmd::Doctor { json, fix_rag, fix } => commands::doctor(json, fix_rag, fix, ui.as_ref()),
+            ProjectCmd::Doctor { json, fix_rag, fix } => {
+                commands::doctor(json, fix_rag, fix, ui.as_ref())
+            }
             ProjectCmd::Context {
                 paper,
                 agent,

@@ -58,10 +58,18 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             let (cited, total) = report.bib_citation_ratio();
             (cited, total, unmentioned)
         } else {
-            (0, app.bib_file_entries.len(), std::collections::HashSet::new())
+            (
+                0,
+                app.bib_file_entries.len(),
+                std::collections::HashSet::new(),
+            )
         }
     } else {
-        (0, app.bib_file_entries.len(), std::collections::HashSet::new())
+        (
+            0,
+            app.bib_file_entries.len(),
+            std::collections::HashSet::new(),
+        )
     };
 
     let filtered_bib = app.filtered_bib_entries();
@@ -107,8 +115,14 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
             };
 
             let entry_key = extract_bib_key_from_entry_text(entry);
-            let is_cited = entry_key.as_ref().is_some_and(|k| !unmentioned_keys.contains(k));
-            let status_tag = if is_cited { "[✓ cited] " } else { "[uncited] " };
+            let is_cited = entry_key
+                .as_ref()
+                .is_some_and(|k| !unmentioned_keys.contains(k));
+            let status_tag = if is_cited {
+                "[✓ cited] "
+            } else {
+                "[uncited] "
+            };
             let status_style = if is_cited {
                 Style::default().fg(Color::Green)
             } else {

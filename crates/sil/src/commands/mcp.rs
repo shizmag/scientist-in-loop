@@ -1,8 +1,8 @@
 //! Command handler for `sil mcp` and `sil mcp install`.
 
-use anyhow::Result;
 use crate::cli::McpCmd;
-use crate::mcp_install::{run_installer, InstallOptions};
+use crate::mcp_install::{InstallOptions, run_installer};
+use anyhow::Result;
 
 /// Run the `sil mcp` stdio server or subcommands.
 pub fn run(action: Option<McpCmd>, quiet: bool) -> Result<()> {

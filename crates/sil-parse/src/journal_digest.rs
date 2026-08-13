@@ -10,7 +10,7 @@ fn map_api_err(e: sil_api::ApiError) -> ParseError {
 }
 
 pub use sil_api::{
-    build_crossref_digest_url, parse_crossref_item, title_similarity, TitleLookupOutcome,
+    TitleLookupOutcome, build_crossref_digest_url, parse_crossref_item, title_similarity,
 };
 
 /// Enforce a minimal rate-limiting delay (250ms) between external HTTP API requests.

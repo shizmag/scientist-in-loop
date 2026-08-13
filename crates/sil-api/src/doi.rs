@@ -138,9 +138,9 @@ pub fn fetch_bibtex_by_doi(doi: &str) -> Result<Option<String>, ApiError> {
             }
         };
 
-        let body = response
-            .into_string()
-            .map_err(|e| ApiError::ParseError(format!("Failed reading DOI BibTeX response: {e}")))?;
+        let body = response.into_string().map_err(|e| {
+            ApiError::ParseError(format!("Failed reading DOI BibTeX response: {e}"))
+        })?;
 
         let trimmed = body.trim();
         if trimmed
@@ -224,9 +224,9 @@ pub fn verify_doi_with_metadata(doi: &str) -> Result<DoiMetadataResult, ApiError
         )));
     }
 
-    let json: serde_json::Value = response
-        .into_json()
-        .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}")))?;
+    let json: serde_json::Value = response.into_json().map_err(|e| {
+        ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}"))
+    })?;
 
     let title = extract_title_from_crossref_json(&json);
 
@@ -235,4 +235,3 @@ pub fn verify_doi_with_metadata(doi: &str) -> Result<DoiMetadataResult, ApiError
         title,
     })
 }
-

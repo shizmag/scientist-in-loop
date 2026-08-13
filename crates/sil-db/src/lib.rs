@@ -75,7 +75,9 @@ impl SilDb {
 
     /// Check SQLite database integrity using `PRAGMA integrity_check`.
     pub fn integrity_check(&self) -> Result<String, DbError> {
-        let res: String = self.conn.query_row("PRAGMA integrity_check;", [], |row| row.get(0))?;
+        let res: String = self
+            .conn
+            .query_row("PRAGMA integrity_check;", [], |row| row.get(0))?;
         Ok(res)
     }
 
@@ -338,7 +340,13 @@ impl SilDb {
         dimension: usize,
         embedding: &[f32],
     ) -> Result<(), DbError> {
-        embed_cache::put_cached_embedding(&self.conn, content_hash, model_name, dimension, embedding)
+        embed_cache::put_cached_embedding(
+            &self.conn,
+            content_hash,
+            model_name,
+            dimension,
+            embedding,
+        )
     }
 
     /// Clear vector embedding cache.

@@ -94,80 +94,82 @@ pub fn fetch_work_by_arxiv_id(arxiv_id: &str) -> Result<Option<JournalPublicatio
             .timeout(std::time::Duration::from_secs(10))
             .build();
 
-    let response = agent
-        .get(&url)
-        .set(
-            "User-Agent",
-            "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
-        )
-        .call()
-        .map_err(|e| match e {
-            ureq::Error::Status(429, _) => {
-                ApiError::RateLimited("arXiv API rate limit exceeded".into())
-            }
-            ureq::Error::Status(s, _) => ApiError::NetworkError(format!("HTTP status {s}")),
-            ureq::Error::Transport(t) => ApiError::NetworkError(format!("ArXiv API request failed: {t}")),
+        let response = agent
+            .get(&url)
+            .set(
+                "User-Agent",
+                "scientist-in-loop/0.1.0 (mailto:info@scientist-in-loop.org)",
+            )
+            .call()
+            .map_err(|e| match e {
+                ureq::Error::Status(429, _) => {
+                    ApiError::RateLimited("arXiv API rate limit exceeded".into())
+                }
+                ureq::Error::Status(s, _) => ApiError::NetworkError(format!("HTTP status {s}")),
+                ureq::Error::Transport(t) => {
+                    ApiError::NetworkError(format!("ArXiv API request failed: {t}"))
+                }
+            })?;
+
+        let xml = response.into_string().map_err(|e| {
+            ApiError::ParseError(format!("Failed to read ArXiv response string: {e}"))
         })?;
 
-    let xml = response
-        .into_string()
-        .map_err(|e| ApiError::ParseError(format!("Failed to read ArXiv response string: {e}")))?;
-
-    if !xml.contains("<entry>") {
-        return Ok(None);
-    }
-
-    let entry_start = match xml.find("<entry>") {
-        Some(pos) => pos,
-        None => return Ok(None),
-    };
-    let entry_xml = &xml[entry_start..];
-
-    let extract_tag = |tag: &str| -> Option<String> {
-        let open = format!("<{tag}>");
-        let close = format!("</{tag}>");
-        if let Some(sp) = entry_xml.find(&open)
-            && let Some(ep) = entry_xml[sp..].find(&close)
-        {
-            let raw = &entry_xml[sp + open.len()..sp + ep];
-            let clean = raw.replace('\n', " ").trim().to_string();
-            if !clean.is_empty() {
-                return Some(clean);
-            }
+        if !xml.contains("<entry>") {
+            return Ok(None);
         }
-        None
-    };
 
-    let title = extract_tag("title").unwrap_or_default();
-    if title.is_empty() || title.contains("Error") {
-        return Ok(None);
-    }
+        let entry_start = match xml.find("<entry>") {
+            Some(pos) => pos,
+            None => return Ok(None),
+        };
+        let entry_xml = &xml[entry_start..];
 
-    let mut authors_vec = Vec::new();
-    let mut search_pos = 0;
-    while let Some(sp) = entry_xml[search_pos..].find("<author>") {
-        let abs_sp = search_pos + sp;
-        if let Some(ep) = entry_xml[abs_sp..].find("</author>") {
-            let author_block = &entry_xml[abs_sp..abs_sp + ep];
-            if let Some(nsp) = author_block.find("<name>")
-                && let Some(nep) = author_block[nsp..].find("</name>")
+        let extract_tag = |tag: &str| -> Option<String> {
+            let open = format!("<{tag}>");
+            let close = format!("</{tag}>");
+            if let Some(sp) = entry_xml.find(&open)
+                && let Some(ep) = entry_xml[sp..].find(&close)
             {
-                let name = author_block[nsp + 6..nsp + nep].trim();
-                if !name.is_empty() {
-                    authors_vec.push(name.to_string());
+                let raw = &entry_xml[sp + open.len()..sp + ep];
+                let clean = raw.replace('\n', " ").trim().to_string();
+                if !clean.is_empty() {
+                    return Some(clean);
                 }
             }
-            search_pos = abs_sp + ep + 9;
-        } else {
-            break;
-        }
-    }
-    let authors = authors_vec.join(", ");
+            None
+        };
 
-    let published = extract_tag("published").unwrap_or_default();
-    let year = sil_regex::extract_year(&published);
-    let abstract_text = extract_tag("summary").unwrap_or_default();
-    let doi = extract_tag("arxiv:doi");
+        let title = extract_tag("title").unwrap_or_default();
+        if title.is_empty() || title.contains("Error") {
+            return Ok(None);
+        }
+
+        let mut authors_vec = Vec::new();
+        let mut search_pos = 0;
+        while let Some(sp) = entry_xml[search_pos..].find("<author>") {
+            let abs_sp = search_pos + sp;
+            if let Some(ep) = entry_xml[abs_sp..].find("</author>") {
+                let author_block = &entry_xml[abs_sp..abs_sp + ep];
+                if let Some(nsp) = author_block.find("<name>")
+                    && let Some(nep) = author_block[nsp..].find("</name>")
+                {
+                    let name = author_block[nsp + 6..nsp + nep].trim();
+                    if !name.is_empty() {
+                        authors_vec.push(name.to_string());
+                    }
+                }
+                search_pos = abs_sp + ep + 9;
+            } else {
+                break;
+            }
+        }
+        let authors = authors_vec.join(", ");
+
+        let published = extract_tag("published").unwrap_or_default();
+        let year = sil_regex::extract_year(&published);
+        let abstract_text = extract_tag("summary").unwrap_or_default();
+        let doi = extract_tag("arxiv:doi");
 
         Ok(Some(JournalPublication {
             doi,
@@ -216,4 +218,3 @@ pub fn verify_arxiv_with_metadata(arxiv_id: &str) -> Result<DoiMetadataResult, A
         }),
     }
 }
-

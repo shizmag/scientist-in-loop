@@ -109,7 +109,9 @@ mod tests {
         assert!(should_retry(&ApiError::NetworkError("500".into())));
         assert!(!should_retry(&ApiError::NotFound("404".into())));
         assert!(!should_retry(&ApiError::ParseError("bad json".into())));
-        assert!(!should_retry(&ApiError::InvalidIdentifier("invalid".into())));
+        assert!(!should_retry(&ApiError::InvalidIdentifier(
+            "invalid".into()
+        )));
     }
 
     #[test]

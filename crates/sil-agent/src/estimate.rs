@@ -10,9 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
-use sil_core::{
-    ProjectPaths, SciAction, SectionCompletion, Structure, paths::rel,
-};
+use sil_core::{ProjectPaths, SciAction, SectionCompletion, Structure, paths::rel};
 use sil_latex::audit_manuscript;
 
 use crate::error::ContextError;
@@ -188,10 +186,7 @@ pub fn run_heuristic_estimate(input: &EstimateInput<'_>) -> Result<EstimateRepor
     let paths = ProjectPaths::new(input.root);
     let draft_path = paths.paper_draft();
     if !draft_path.is_file() {
-        return Err(ContextError::Io(format!(
-            "missing {}",
-            rel::PAPER_DRAFT
-        )));
+        return Err(ContextError::Io(format!("missing {}", rel::PAPER_DRAFT)));
     }
     let tex = fs::read_to_string(draft_path.as_str())
         .map_err(|e| ContextError::Io(format!("{draft_path}: {e}")))?;
@@ -303,17 +298,18 @@ pub fn run_heuristic_estimate(input: &EstimateInput<'_>) -> Result<EstimateRepor
 
     let mut findings = Vec::new();
     let mut n = 1u32;
-    let mut push = |persona: &str, severity: &str, location: &str, summary: &str, suggestion: &str| {
-        findings.push(EstimateFinding {
-            id: format!("F{n}"),
-            persona: persona.into(),
-            severity: severity.into(),
-            location: location.into(),
-            summary: summary.into(),
-            suggestion: suggestion.into(),
-        });
-        n += 1;
-    };
+    let mut push =
+        |persona: &str, severity: &str, location: &str, summary: &str, suggestion: &str| {
+            findings.push(EstimateFinding {
+                id: format!("F{n}"),
+                persona: persona.into(),
+                severity: severity.into(),
+                location: location.into(),
+                summary: summary.into(),
+                suggestion: suggestion.into(),
+            });
+            n += 1;
+        };
 
     for title in &empty_sections {
         push(
@@ -550,7 +546,11 @@ mod tests {
     fn write_project(root: &Utf8Path, tex: &str) {
         fs::create_dir_all(root.join(".sil").as_str()).unwrap();
         fs::write(root.join("paper_draft.tex").as_str(), tex).unwrap();
-        fs::write(root.join("references.bib").as_str(), "@article{ok,\n  title={T},\n}\n").unwrap();
+        fs::write(
+            root.join("references.bib").as_str(),
+            "@article{ok,\n  title={T},\n}\n",
+        )
+        .unwrap();
     }
 
     #[test]
@@ -580,7 +580,12 @@ Some text with \cite{missing}.
         .unwrap();
         assert!(report.read_only);
         assert_eq!(report.layer, "L0_heuristic");
-        assert!(report.findings.iter().any(|f| f.location.contains("Methods")));
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.location.contains("Methods"))
+        );
         assert!(report.findings.iter().any(|f| f.location == "citations"));
         assert!(report.overall_score <= 100);
     }

@@ -91,7 +91,9 @@ pub fn run(target: Option<String>, legacy_release: bool, ui: &dyn SilUi) -> Resu
     let bg_doi_handle = if bib_path.is_file() {
         let db_path = _paths.db().into_std_path_buf();
         let bib_std = bib_path.clone().into_std_path_buf();
-        Some(sil_parse::spawn_background_bib_doi_check(db_path, bib_std, false))
+        Some(sil_parse::spawn_background_bib_doi_check(
+            db_path, bib_std, false,
+        ))
     } else {
         None
     };

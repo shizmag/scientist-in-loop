@@ -152,7 +152,9 @@ pub fn run_all_checkers_incremental(
             } else {
                 "Unknown panic occurred during reference check".to_string()
             };
-            Err(ParseError::Message(format!("Reference check panicked: {msg}")))
+            Err(ParseError::Message(format!(
+                "Reference check panicked: {msg}"
+            )))
         }
     }
 }
@@ -174,9 +176,7 @@ fn run_all_checkers_incremental_inner(
 
     for block in &blocks {
         let entry_info = sil_core::bib::extract_bib_entry_info(block);
-        let cite_key = entry_info
-            .cite_key
-            .unwrap_or_else(|| "unknown".to_string());
+        let cite_key = entry_info.cite_key.unwrap_or_else(|| "unknown".to_string());
         let local_title = extract_local_title(block);
 
         let mut checked_any = false;
@@ -267,8 +267,10 @@ fn run_all_checkers_incremental_inner(
                                     && let Ok(Some(official_bib)) =
                                         checker.fetch_official_bibtex(&id)
                                 {
-                                    let (updated, _replaced) =
-                                        sil_core::bib::upsert_bib_entry(&working_bib_content, &official_bib);
+                                    let (updated, _replaced) = sil_core::bib::upsert_bib_entry(
+                                        &working_bib_content,
+                                        &official_bib,
+                                    );
                                     working_bib_content = updated;
                                     report.autofixed_count += 1;
                                 }
@@ -355,16 +357,26 @@ mod tests {
     fn test_doi_extraction_and_caching() {
         let db = SilDb::open_in_memory().unwrap();
         let checker = DoiChecker;
-        let block = "@article{paper1,\n  title={Attention Is All You Need},\n  doi={10.5555/doi12345}\n}\n";
+        let block =
+            "@article{paper1,\n  title={Attention Is All You Need},\n  doi={10.5555/doi12345}\n}\n";
 
         let id = checker.extract_identifier(block);
         assert_eq!(id.as_deref(), Some("10.5555/doi12345"));
 
-        assert!(checker.get_cached_verification(&db, "10.5555/doi12345").unwrap().is_none());
+        assert!(
+            checker
+                .get_cached_verification(&db, "10.5555/doi12345")
+                .unwrap()
+                .is_none()
+        );
 
-        checker.save_verification(&db, "10.5555/doi12345", true, None).unwrap();
+        checker
+            .save_verification(&db, "10.5555/doi12345", true, None)
+            .unwrap();
 
-        let cached = checker.get_cached_verification(&db, "10.5555/doi12345").unwrap();
+        let cached = checker
+            .get_cached_verification(&db, "10.5555/doi12345")
+            .unwrap();
         assert_eq!(cached, Some((true, None)));
     }
 
@@ -377,11 +389,21 @@ mod tests {
         let id = checker.extract_identifier(block);
         assert_eq!(id.as_deref(), Some("1512.03385"));
 
-        assert!(checker.get_cached_verification(&db, "1512.03385").unwrap().is_none());
+        assert!(
+            checker
+                .get_cached_verification(&db, "1512.03385")
+                .unwrap()
+                .is_none()
+        );
 
-        checker.save_verification(&db, "1512.03385", true, None).unwrap();
+        checker
+            .save_verification(&db, "1512.03385", true, None)
+            .unwrap();
 
-        let cached = checker.get_cached_verification(&db, "1512.03385").unwrap().unwrap();
+        let cached = checker
+            .get_cached_verification(&db, "1512.03385")
+            .unwrap()
+            .unwrap();
         assert_eq!(cached, (true, None));
     }
 
@@ -394,11 +416,21 @@ mod tests {
         let id = checker.extract_identifier(block);
         assert_eq!(id.as_deref(), Some("u5v2a7xyz99"));
 
-        assert!(checker.get_cached_verification(&db, "u5v2a7xyz99").unwrap().is_none());
+        assert!(
+            checker
+                .get_cached_verification(&db, "u5v2a7xyz99")
+                .unwrap()
+                .is_none()
+        );
 
-        checker.save_verification(&db, "u5v2a7xyz99", true, Some("title_mismatch")).unwrap();
+        checker
+            .save_verification(&db, "u5v2a7xyz99", true, Some("title_mismatch"))
+            .unwrap();
 
-        let cached = checker.get_cached_verification(&db, "u5v2a7xyz99").unwrap().unwrap();
+        let cached = checker
+            .get_cached_verification(&db, "u5v2a7xyz99")
+            .unwrap()
+            .unwrap();
         assert_eq!(cached, (true, Some("title_mismatch".to_string())));
     }
 
@@ -427,14 +459,23 @@ mod tests {
 "#;
 
         // Pre-populate DB caches
-        DoiChecker.save_verification(&db, "10.5555/cached_doi_1", true, None).unwrap();
-        ArxivChecker.save_verification(&db, "1706.03762", true, None).unwrap();
-        OpenReviewChecker.save_verification(&db, "ab12cd34ef56", false, Some("http_404")).unwrap();
+        DoiChecker
+            .save_verification(&db, "10.5555/cached_doi_1", true, None)
+            .unwrap();
+        ArxivChecker
+            .save_verification(&db, "1706.03762", true, None)
+            .unwrap();
+        OpenReviewChecker
+            .save_verification(&db, "ab12cd34ef56", false, Some("http_404"))
+            .unwrap();
 
         let report = run_all_checkers_incremental(&db, bib, false).unwrap();
         assert_eq!(report.total_entries, 4);
         assert_eq!(report.entries_with_identifier, 3);
-        assert_eq!(report.checked_online, 0, "All entries with identifiers should hit cache");
+        assert_eq!(
+            report.checked_online, 0,
+            "All entries with identifiers should hit cache"
+        );
         assert_eq!(report.skipped_cached, 3);
         assert_eq!(report.valid_identifiers, 2);
         assert_eq!(report.broken_identifiers.len(), 1);
@@ -445,15 +486,27 @@ mod tests {
         // Verify item reports
         assert_eq!(report.items.len(), 4);
         assert_eq!(report.items[0].identifier_type, "DOI");
-        assert_eq!(report.items[0].category, ReferenceCheckCategory::SkippedCached);
+        assert_eq!(
+            report.items[0].category,
+            ReferenceCheckCategory::SkippedCached
+        );
 
         assert_eq!(report.items[1].identifier_type, "arXiv");
-        assert_eq!(report.items[1].category, ReferenceCheckCategory::SkippedCached);
+        assert_eq!(
+            report.items[1].category,
+            ReferenceCheckCategory::SkippedCached
+        );
 
         assert_eq!(report.items[2].identifier_type, "OpenReview");
-        assert_eq!(report.items[2].category, ReferenceCheckCategory::SkippedCached);
+        assert_eq!(
+            report.items[2].category,
+            ReferenceCheckCategory::SkippedCached
+        );
 
         assert_eq!(report.items[3].identifier_type, "None");
-        assert_eq!(report.items[3].category, ReferenceCheckCategory::InvalidFormat);
+        assert_eq!(
+            report.items[3].category,
+            ReferenceCheckCategory::InvalidFormat
+        );
     }
 }

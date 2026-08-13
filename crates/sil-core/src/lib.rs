@@ -20,6 +20,8 @@ mod types;
 /// Global/local settings and cache.
 pub mod settings;
 
+/// Crash-safe atomic file writing.
+pub mod atomic;
 /// Journal publication digest entries.
 pub mod digest;
 /// Manuscript health check diagnostic tools.
@@ -28,8 +30,6 @@ pub mod health;
 pub mod todo;
 /// Advisory workspace lock for agent/TUI coordination.
 pub mod workspace_lock;
-/// Crash-safe atomic file writing.
-pub mod atomic;
 
 pub use atomic::{write_atomic, write_atomic_str};
 pub use bib::{

@@ -15,7 +15,9 @@ pub fn run(output: Option<camino::Utf8PathBuf>, ui: &dyn SilUi) -> Result<()> {
     let (root, config, paths) = load_project()?;
 
     let zip_name = output.unwrap_or_else(|| root.join("paper_pack.zip"));
-    ui.info(&format!("Generating reproducible paper pack bundle: {zip_name}"));
+    ui.info(&format!(
+        "Generating reproducible paper pack bundle: {zip_name}"
+    ));
 
     let file = File::create(zip_name.as_std_path())
         .with_context(|| format!("failed to create zip file at {zip_name}"))?;

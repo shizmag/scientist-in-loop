@@ -25,9 +25,9 @@ pub fn write_atomic(path: &Utf8Path, bytes: &[u8]) -> io::Result<()> {
 
     fs::create_dir_all(parent)?;
 
-    let file_name = path.file_name().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "path has no file name")
-    })?;
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"))?;
 
     let pid = process::id();
     let count = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);

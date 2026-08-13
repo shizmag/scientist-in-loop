@@ -284,11 +284,7 @@ fn second_init_fails_clearly() {
 #[test]
 fn atomic_write_cli_structure_and_settings_persistence() {
     let (_dir, project) = init_project("atomic-cli");
-    sil()
-        .current_dir(&project)
-        .arg("status")
-        .assert()
-        .success();
+    sil().current_dir(&project).arg("status").assert().success();
     assert!(project.join(".sil/config.yaml").exists());
     assert!(project.join(".sil/structure.yaml").exists());
 }

@@ -55,7 +55,10 @@ fn test_error_categorization() {
     assert_eq!(not_found.to_string(), "Not found: DOI 10.0000/foo");
 
     let rate_limited = ApiError::RateLimited("429 Too Many Requests".into());
-    assert_eq!(rate_limited.to_string(), "Rate limited: 429 Too Many Requests");
+    assert_eq!(
+        rate_limited.to_string(),
+        "Rate limited: 429 Too Many Requests"
+    );
 
     let net_err = ApiError::NetworkError("Connection refused".into());
     assert_eq!(net_err.to_string(), "Network error: Connection refused");
@@ -64,7 +67,10 @@ fn test_error_categorization() {
     assert_eq!(parse_err.to_string(), "Parse error: Invalid JSON");
 
     let invalid_id = ApiError::InvalidIdentifier("Malformed input".into());
-    assert_eq!(invalid_id.to_string(), "Invalid identifier: Malformed input");
+    assert_eq!(
+        invalid_id.to_string(),
+        "Invalid identifier: Malformed input"
+    );
 }
 
 #[test]
@@ -308,5 +314,3 @@ fn test_verify_arxiv_with_metadata_empty() {
         }
     );
 }
-
-

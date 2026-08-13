@@ -1,7 +1,6 @@
 //! `sil-tui` library exposing Ratatui app state, UI rendering, and terminal event loop.
 
 #![deny(missing_docs)]
-
 #![allow(clippy::collapsible_if, clippy::collapsible_match)]
 #![allow(dead_code)]
 

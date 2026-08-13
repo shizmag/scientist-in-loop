@@ -126,7 +126,9 @@ pub fn audit_manuscript(
             level: DiagnosticLevel::Warning,
             category: "unmentioned_reference".to_string(),
             line: None,
-            message: format!("Reference key '{key}' in references.bib is never mentioned in paper_*.tex"),
+            message: format!(
+                "Reference key '{key}' in references.bib is never mentioned in paper_*.tex"
+            ),
         });
     }
 
@@ -233,7 +235,13 @@ fn extract_bib_keys(bib_text: &str) -> HashSet<String> {
 
 fn extract_cite_keys(tex: &str) -> Vec<(usize, String)> {
     let mut results = Vec::new();
-    let cite_prefixes = ["\\cite", "\\nocite", "\\autocite", "\\parencite", "\\textcite"];
+    let cite_prefixes = [
+        "\\cite",
+        "\\nocite",
+        "\\autocite",
+        "\\parencite",
+        "\\textcite",
+    ];
     for (idx, line) in tex.lines().enumerate() {
         let line_num = idx + 1;
         let mut rest = line;

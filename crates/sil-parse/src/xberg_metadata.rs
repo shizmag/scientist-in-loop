@@ -179,7 +179,10 @@ fn push_author_if_clean(authors: &mut Vec<String>, name: &str) {
         return;
     }
     // Drop pure years / page-like tokens that bleed from in-text citations.
-    if name.chars().all(|c| c.is_ascii_digit() || c == '-' || c == '–') {
+    if name
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '-' || c == '–')
+    {
         return;
     }
     // Very short tokens are rarely full author names (keep initials like "J. Smith" via space/dot).
@@ -188,11 +191,7 @@ fn push_author_if_clean(authors: &mut Vec<String>, name: &str) {
     }
     // Citation bleed: "Kadavath et al" style leftovers after split.
     if lower.contains(" et al") {
-        let cleaned = lower
-            .split(" et al")
-            .next()
-            .unwrap_or("")
-            .trim();
+        let cleaned = lower.split(" et al").next().unwrap_or("").trim();
         if cleaned.is_empty() {
             return;
         }

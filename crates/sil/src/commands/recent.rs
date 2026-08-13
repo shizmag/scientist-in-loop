@@ -8,7 +8,10 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     let settings = GlobalSettings::load_or_default(None);
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&settings.recent_projects)?);
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&settings.recent_projects)?
+        );
         return Ok(());
     }
 

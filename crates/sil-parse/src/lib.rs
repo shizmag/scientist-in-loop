@@ -4,6 +4,10 @@
 
 /// Batch PDF parsing and hydration.
 pub mod batch;
+/// Abstract Factory & Trait-based Reference Checkers.
+pub mod checkers;
+/// Incremental DOI checking and background orchestrator.
+pub mod doi_checker;
 mod error;
 mod fetch;
 mod interactive;
@@ -15,23 +19,18 @@ pub mod references;
 mod validate;
 /// CrossRef (xberg) metadata fetching.
 pub mod xberg_metadata;
-/// Incremental DOI checking and background orchestrator.
-pub mod doi_checker;
-/// Abstract Factory & Trait-based Reference Checkers.
-pub mod checkers;
 
 pub use batch::{
     ParseOptions, ParseResult, hydrate_source_document_metadata, parse_many, parse_one,
     parse_one_with_options,
 };
 pub use checkers::{
-    run_all_checkers_incremental, ArxivChecker, BibItemCheckReport, CheckerFactory,
-    DoiChecker, OpenReviewChecker, ReferenceCheckCategory, ReferenceChecker,
-    UnifiedBibCheckReport,
+    ArxivChecker, BibItemCheckReport, CheckerFactory, DoiChecker, OpenReviewChecker,
+    ReferenceCheckCategory, ReferenceChecker, UnifiedBibCheckReport, run_all_checkers_incremental,
 };
 pub use doi_checker::{
-    check_bib_dois_incremental, spawn_background_bib_doi_check, BibDoiItemReport,
-    DoiCheckCategory, DoiCheckReport,
+    BibDoiItemReport, DoiCheckCategory, DoiCheckReport, check_bib_dois_incremental,
+    spawn_background_bib_doi_check,
 };
 pub use error::ParseError;
 

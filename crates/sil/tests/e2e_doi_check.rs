@@ -9,7 +9,11 @@ fn test_doi_check_doctor_integration_e2e() {
 
     // 1. sil init
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("init").arg("doi-paper").current_dir(dir.path()).assert().success();
+    cmd.arg("init")
+        .arg("doi-paper")
+        .current_dir(dir.path())
+        .assert()
+        .success();
 
     // 2. Add custom references.bib with DOIs
     let bib_content = r#"@article{vaswani2017,
@@ -30,13 +34,25 @@ fn test_doi_check_doctor_integration_e2e() {
 
     // 3. sil project doctor (first run — checks DOIs)
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
+    cmd.arg("project")
+        .arg("doctor")
+        .current_dir(&project)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "manuscript health: bib identifiers",
+        ));
 
     // 4. sil project doctor (second run — verifies incremental cache)
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
+    cmd.arg("project")
+        .arg("doctor")
+        .current_dir(&project)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "manuscript health: bib identifiers",
+        ));
 }
 
 #[test]
@@ -45,7 +61,11 @@ fn test_doi_check_title_mismatch_and_fix_e2e() {
     let project = dir.path().join("mismatch-paper");
 
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("init").arg("mismatch-paper").current_dir(dir.path()).assert().success();
+    cmd.arg("init")
+        .arg("mismatch-paper")
+        .current_dir(dir.path())
+        .assert()
+        .success();
 
     let bib_content = r#"@article{alphafold,
   author = {Jumper, John},
@@ -58,10 +78,21 @@ fn test_doi_check_title_mismatch_and_fix_e2e() {
 
     // Doctor detects title mismatch
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("project").arg("doctor").current_dir(&project).assert().success()
-        .stdout(predicate::str::contains("manuscript health: bib identifiers"));
+    cmd.arg("project")
+        .arg("doctor")
+        .current_dir(&project)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "manuscript health: bib identifiers",
+        ));
 
     // Doctor --fix autofixes references.bib
     let mut cmd = Command::cargo_bin("sil").unwrap();
-    cmd.arg("project").arg("doctor").arg("--fix").current_dir(&project).assert().success();
+    cmd.arg("project")
+        .arg("doctor")
+        .arg("--fix")
+        .current_dir(&project)
+        .assert()
+        .success();
 }

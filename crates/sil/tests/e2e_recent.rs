@@ -7,11 +7,7 @@ fn recent_command_tracks_and_lists_projects() {
     let (_dir, project) = init_project("recent_test");
 
     // Running sil status in project dir touches recent projects
-    sil()
-        .current_dir(&project)
-        .arg("status")
-        .assert()
-        .success();
+    sil().current_dir(&project).arg("status").assert().success();
 
     let output = sil()
         .current_dir(&project)
@@ -30,11 +26,7 @@ fn recent_command_tracks_and_lists_projects() {
 fn recent_command_json_output() {
     let (_dir, project) = init_project("recent_json_test");
 
-    sil()
-        .current_dir(&project)
-        .arg("status")
-        .assert()
-        .success();
+    sil().current_dir(&project).arg("status").assert().success();
 
     let output = sil()
         .current_dir(&project)

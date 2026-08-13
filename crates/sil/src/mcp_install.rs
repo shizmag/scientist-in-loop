@@ -2,9 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use dialoguer::{Input, Select};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Supported target AI clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +69,9 @@ pub fn get_config_path(client: TargetClient, custom_path: Option<&Path>) -> Resu
             if let Some(path) = custom_path {
                 Ok(path.to_path_buf())
             } else {
-                bail!("Custom path must be provided via --path when using --client custom non-interactively")
+                bail!(
+                    "Custom path must be provided via --path when using --client custom non-interactively"
+                )
             }
         }
     }
@@ -156,7 +158,10 @@ pub fn run_installer(options: InstallOptions) -> Result<PathBuf> {
         "args": ["project", "mcp", "--quiet"]
     });
 
-    let is_merged_config = matches!(target_client, TargetClient::ClaudeDesktop | TargetClient::Cursor);
+    let is_merged_config = matches!(
+        target_client,
+        TargetClient::ClaudeDesktop | TargetClient::Cursor
+    );
 
     let content_to_write = if is_merged_config {
         let mut root = if config_path.exists() {
@@ -197,7 +202,10 @@ pub fn run_installer(options: InstallOptions) -> Result<PathBuf> {
     std::fs::write(&config_path, format!("{content_to_write}\n"))
         .with_context(|| format!("Failed to write MCP config to {}", config_path.display()))?;
 
-    println!("✔ Installed sil MCP server config to {}", config_path.display());
+    println!(
+        "✔ Installed sil MCP server config to {}",
+        config_path.display()
+    );
 
     Ok(config_path)
 }

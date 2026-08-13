@@ -208,18 +208,22 @@ pub fn fetch_journal_publications_native(
                     ApiError::NotFound("Crossref publications endpoint not found".into())
                 }
                 ureq::Error::Status(s, _) => ApiError::NetworkError(format!("HTTP status {s}")),
-                ureq::Error::Transport(t) => ApiError::NetworkError(format!("Network transport error: {t}")),
+                ureq::Error::Transport(t) => {
+                    ApiError::NetworkError(format!("Network transport error: {t}"))
+                }
             })?;
 
-        let json: serde_json::Value = response
-            .into_json()
-            .map_err(|e| ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}")))?;
+        let json: serde_json::Value = response.into_json().map_err(|e| {
+            ApiError::ParseError(format!("Failed to parse Crossref response JSON: {e}"))
+        })?;
 
         let items = json
             .get("message")
             .and_then(|m| m.get("items"))
             .and_then(|i| i.as_array())
-            .ok_or_else(|| ApiError::ParseError("Invalid Crossref API payload structure".to_string()))?;
+            .ok_or_else(|| {
+                ApiError::ParseError("Invalid Crossref API payload structure".to_string())
+            })?;
 
         let mut publications = Vec::new();
         for item in items {
@@ -426,10 +430,7 @@ pub fn lookup_doi_by_title_detailed(
 
 /// Lookup DOI for a paper title and optional author list using Crossref API.
 /// Rejects matches with title similarity below 0.6 threshold.
-pub fn lookup_doi_by_title(
-    title: &str,
-    authors: Option<&str>,
-) -> Result<Option<String>, ApiError> {
+pub fn lookup_doi_by_title(title: &str, authors: Option<&str>) -> Result<Option<String>, ApiError> {
     match lookup_doi_by_title_detailed(title, authors)? {
         TitleLookupOutcome::Match { doi, .. } => Ok(Some(doi)),
         TitleLookupOutcome::LowConfidence { .. } | TitleLookupOutcome::NoMatch => Ok(None),

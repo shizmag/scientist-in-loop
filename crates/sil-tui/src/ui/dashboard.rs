@@ -44,7 +44,10 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let (coverage_text, coverage_color) = if total_count == 0 {
-        ("0 references in references.bib".to_string(), Color::DarkGray)
+        (
+            "0 references in references.bib".to_string(),
+            Color::DarkGray,
+        )
     } else if cited_count == total_count {
         (
             format!("{cited_count}/{total_count} mentioned (100%)"),

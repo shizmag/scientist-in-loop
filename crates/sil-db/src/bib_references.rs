@@ -318,11 +318,7 @@ pub fn upsert_bib_reference(
     let existing: Option<(Option<String>, Option<bool>, String)> = stmt
         .query_row(params![cite_key], |row| {
             let doi_exists_raw: Option<i32> = row.get(1)?;
-            Ok((
-                row.get(0)?,
-                doi_exists_raw.map(|v| v != 0),
-                row.get(2)?,
-            ))
+            Ok((row.get(0)?, doi_exists_raw.map(|v| v != 0), row.get(2)?))
         })
         .optional()?;
 
@@ -404,7 +400,10 @@ mod tests {
             "@article{vaswani2017, title={Attention is all you need}}",
         )
         .unwrap();
-        assert!(mutated_field, "Modifying doi_exists should mutate and return true");
+        assert!(
+            mutated_field,
+            "Modifying doi_exists should mutate and return true"
+        );
 
         let refs_after_modified = get_bib_references(&db.conn).unwrap();
         assert_eq!(refs_after_modified.len(), 1);
@@ -419,7 +418,10 @@ mod tests {
             "@article{vaswani2017, title={Attention is all you need - Updated}}",
         )
         .unwrap();
-        assert!(mutated_bibtex, "Modifying raw_bibtex should mutate and return true");
+        assert!(
+            mutated_bibtex,
+            "Modifying raw_bibtex should mutate and return true"
+        );
 
         // 5. Modifying doi -> assert returns true
         let mutated_doi = upsert_bib_reference(
@@ -465,7 +467,10 @@ mod tests {
             "@misc{key_none, title={No DOI}}",
         )
         .unwrap();
-        assert!(!re_up, "Identical re-upsert with None fields should return false");
+        assert!(
+            !re_up,
+            "Identical re-upsert with None fields should return false"
+        );
     }
 
     #[test]
@@ -475,7 +480,11 @@ mod tests {
         // Initially empty
         let initial_map = get_doi_verifications(&db.conn).unwrap();
         assert!(initial_map.is_empty());
-        assert!(get_doi_verification(&db.conn, "10.1000/1").unwrap().is_none());
+        assert!(
+            get_doi_verification(&db.conn, "10.1000/1")
+                .unwrap()
+                .is_none()
+        );
 
         // Store valid DOI verification
         upsert_doi_verification(&db.conn, "10.1000/1", true, None).unwrap();
@@ -505,7 +514,11 @@ mod tests {
         // Initially empty
         let initial_map = get_arxiv_verifications(&db.conn).unwrap();
         assert!(initial_map.is_empty());
-        assert!(get_arxiv_verification(&db.conn, "2106.09685").unwrap().is_none());
+        assert!(
+            get_arxiv_verification(&db.conn, "2106.09685")
+                .unwrap()
+                .is_none()
+        );
 
         // Initial insert (Create)
         upsert_arxiv_verification(&db.conn, "2106.09685", true, None).unwrap();
@@ -526,7 +539,9 @@ mod tests {
         // Update surgery (Update existing entry with new status/error_cat)
         upsert_arxiv_verification(&db.conn, "2106.09685", false, Some("http_404")).unwrap();
 
-        let updated = get_arxiv_verification(&db.conn, "2106.09685").unwrap().unwrap();
+        let updated = get_arxiv_verification(&db.conn, "2106.09685")
+            .unwrap()
+            .unwrap();
         assert_eq!(updated.arxiv_id, "2106.09685");
         assert!(!updated.exists_flag);
         assert_eq!(updated.error_cat.as_deref(), Some("http_404"));
@@ -565,12 +580,19 @@ mod tests {
         );
 
         // Update surgery (Update existing entry with new status/error_cat)
-        upsert_openreview_verification(&db.conn, "forum?id=abc12345", false, Some("network_timeout")).unwrap();
+        upsert_openreview_verification(
+            &db.conn,
+            "forum?id=abc12345",
+            false,
+            Some("network_timeout"),
+        )
+        .unwrap();
 
-        let updated = get_openreview_verification(&db.conn, "forum?id=abc12345").unwrap().unwrap();
+        let updated = get_openreview_verification(&db.conn, "forum?id=abc12345")
+            .unwrap()
+            .unwrap();
         assert_eq!(updated.openreview_id, "forum?id=abc12345");
         assert!(!updated.exists_flag);
         assert_eq!(updated.error_cat.as_deref(), Some("network_timeout"));
     }
 }
-

@@ -69,7 +69,8 @@ impl ManuscriptHealthReport {
 
     /// Count of bib keys defined in references.bib that are NOT mentioned in paper_*.tex.
     pub fn unmentioned_bib_keys_count(&self) -> usize {
-        self.total_bib_keys_count.saturating_sub(self.cited_bib_keys_count)
+        self.total_bib_keys_count
+            .saturating_sub(self.cited_bib_keys_count)
     }
 }
 

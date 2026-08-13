@@ -31,4 +31,3 @@ impl From<ParseError> for SilError {
         SilError::Parse(value.to_string())
     }
 }
-

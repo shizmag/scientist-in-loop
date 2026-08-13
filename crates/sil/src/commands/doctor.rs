@@ -217,9 +217,16 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                         && let Ok(db) = sil_db::SilDb::open(&paths.db())
                         && let Ok(bib_content) = std::fs::read_to_string(bib_path.as_path())
                     {
-                        match sil_parse::checkers::run_all_checkers_incremental(&db, &bib_content, fix) {
+                        match sil_parse::checkers::run_all_checkers_incremental(
+                            &db,
+                            &bib_content,
+                            fix,
+                        ) {
                             Ok(rep) => {
-                                if fix && rep.autofixed_count > 0 && let Some(ref updated) = rep.updated_bib_content {
+                                if fix
+                                    && rep.autofixed_count > 0
+                                    && let Some(ref updated) = rep.updated_bib_content
+                                {
                                     let _ = sil_core::write_atomic_str(&bib_path, updated);
                                     ui.success(&format!(
                                         "🔧 Autofixed {} reference entry(ies) in references.bib",
@@ -247,7 +254,10 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                                                 format!("{k} ({id_type} title mismatch: '{loc}' vs '{off}', sim {sim:.2})")
                                             })
                                             .collect();
-                                        parts.push(format!("{mismatched} title mismatch(es) [{}]", m_list.join("; ")));
+                                        parts.push(format!(
+                                            "{mismatched} title mismatch(es) [{}]",
+                                            m_list.join("; ")
+                                        ));
                                     }
                                     if broken > 0 {
                                         let b_list: Vec<String> = rep
@@ -255,7 +265,10 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                                             .iter()
                                             .map(|(k, id_type, id)| format!("{k} ({id_type} {id})"))
                                             .collect();
-                                        parts.push(format!("{broken} broken identifier(s) [{}]", b_list.join("; ")));
+                                        parts.push(format!(
+                                            "{broken} broken identifier(s) [{}]",
+                                            b_list.join("; ")
+                                        ));
                                     }
                                     format!("references.bib issues: {}", parts.join("; "))
                                 };

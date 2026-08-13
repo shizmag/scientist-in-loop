@@ -147,9 +147,15 @@ pub fn check_bib_dois_incremental(
                 crate::checkers::ReferenceCheckCategory::SkippedCached => {
                     report.skipped_cached += 1;
                     let doi_str = doi.as_deref().unwrap_or("");
-                    let is_mismatched = report.mismatched_dois.iter().any(|(k, _, _, _)| k == &item.cite_key);
+                    let is_mismatched = report
+                        .mismatched_dois
+                        .iter()
+                        .any(|(k, _, _, _)| k == &item.cite_key);
                     let is_broken = report.broken_dois.iter().any(|(k, _)| k == &item.cite_key);
-                    let is_net_err = report.network_errors.iter().any(|(k, _, _)| k == &item.cite_key);
+                    let is_net_err = report
+                        .network_errors
+                        .iter()
+                        .any(|(k, _, _)| k == &item.cite_key);
                     if !is_mismatched && !is_broken && !is_net_err && !doi_str.is_empty() {
                         report.valid_dois += 1;
                     }
@@ -190,8 +196,9 @@ pub fn spawn_background_bib_doi_check(
         let utf8_db_path = camino::Utf8PathBuf::from_path_buf(db_path)
             .map_err(|p| ParseError::Message(format!("invalid utf-8 path: {p:?}")))?;
         let db = SilDb::open(&utf8_db_path)?;
-        let bib_content = std::fs::read_to_string(&bib_path)
-            .map_err(|e| ParseError::Message(format!("failed to read bib file {bib_path:?}: {e}")))?;
+        let bib_content = std::fs::read_to_string(&bib_path).map_err(|e| {
+            ParseError::Message(format!("failed to read bib file {bib_path:?}: {e}"))
+        })?;
         check_bib_dois_incremental(&db, &bib_content, autofix)
     })
 }
@@ -203,15 +210,21 @@ mod tests {
     #[test]
     fn test_incremental_doi_check_skips_cached_dois() {
         let db = SilDb::open_in_memory().unwrap();
-        let bib = "@article{paper1,\n  title={Attention Is All You Need},\n  doi={10.5555/cached_1}\n}\n";
+        let bib =
+            "@article{paper1,\n  title={Attention Is All You Need},\n  doi={10.5555/cached_1}\n}\n";
 
-        db.upsert_doi_verification("10.5555/cached_1", true, None).unwrap();
-        db.upsert_bib_reference("paper1", Some("10.5555/cached_1"), Some(true), bib).unwrap();
+        db.upsert_doi_verification("10.5555/cached_1", true, None)
+            .unwrap();
+        db.upsert_bib_reference("paper1", Some("10.5555/cached_1"), Some(true), bib)
+            .unwrap();
 
         let report = check_bib_dois_incremental(&db, bib, false).unwrap();
         assert_eq!(report.total_entries, 1);
         assert_eq!(report.entries_with_doi, 1);
-        assert_eq!(report.checked_online, 0, "Cached DOI should perform 0 network checks");
+        assert_eq!(
+            report.checked_online, 0,
+            "Cached DOI should perform 0 network checks"
+        );
         assert_eq!(report.skipped_cached, 1);
         assert_eq!(report.valid_dois, 1);
         assert_eq!(report.items.len(), 1);
@@ -224,11 +237,16 @@ mod tests {
         let old_bib = "@article{paper1,\n  title={Old Title},\n  doi={10.5555/cached_2}\n}\n";
         let new_bib = "@article{paper1,\n  title={New Updated Title},\n  author={Vaswani, A.},\n  doi={10.5555/cached_2}\n}\n";
 
-        db.upsert_doi_verification("10.5555/cached_2", true, None).unwrap();
-        db.upsert_bib_reference("paper1", Some("10.5555/cached_2"), Some(true), old_bib).unwrap();
+        db.upsert_doi_verification("10.5555/cached_2", true, None)
+            .unwrap();
+        db.upsert_bib_reference("paper1", Some("10.5555/cached_2"), Some(true), old_bib)
+            .unwrap();
 
         let report = check_bib_dois_incremental(&db, new_bib, false).unwrap();
-        assert_eq!(report.checked_online, 0, "Editing text with same DOI must skip network check");
+        assert_eq!(
+            report.checked_online, 0,
+            "Editing text with same DOI must skip network check"
+        );
         assert_eq!(report.skipped_cached, 1);
 
         let refs = db.get_bib_references().unwrap();
@@ -241,14 +259,24 @@ mod tests {
         let db = SilDb::open_in_memory().unwrap();
         let bib = "@article{cached_paper,\n  title={Cached Paper},\n  doi={10.5555/cached_3}\n}\n\n@article{new_paper,\n  title={New Paper},\n  doi={10.0000/nonexistent_new_doi_12345}\n}\n";
 
-        db.upsert_doi_verification("10.5555/cached_3", true, None).unwrap();
-        db.upsert_bib_reference("cached_paper", Some("10.5555/cached_3"), Some(true), "@article{cached_paper, doi={10.5555/cached_3}}").unwrap();
+        db.upsert_doi_verification("10.5555/cached_3", true, None)
+            .unwrap();
+        db.upsert_bib_reference(
+            "cached_paper",
+            Some("10.5555/cached_3"),
+            Some(true),
+            "@article{cached_paper, doi={10.5555/cached_3}}",
+        )
+        .unwrap();
 
         let report = check_bib_dois_incremental(&db, bib, false).unwrap();
         assert_eq!(report.total_entries, 2);
         assert_eq!(report.entries_with_doi, 2);
         assert_eq!(report.skipped_cached, 1, "Cached paper must be skipped");
-        assert_eq!(report.checked_online, 1, "Only new paper should be checked online");
+        assert_eq!(
+            report.checked_online, 1,
+            "Only new paper should be checked online"
+        );
         assert_eq!(report.items[0].category, DoiCheckCategory::SkippedCached);
         assert!(
             matches!(
@@ -266,12 +294,17 @@ mod tests {
         let old_bib = "@article{paper1,\n  title={Paper 1},\n  doi={10.5555/old_doi}\n}\n";
         let updated_bib = "@article{paper1,\n  title={Paper 1},\n  doi={10.0000/nonexistent_updated_doi_67890}\n}\n";
 
-        db.upsert_doi_verification("10.5555/old_doi", true, None).unwrap();
-        db.upsert_bib_reference("paper1", Some("10.5555/old_doi"), Some(true), old_bib).unwrap();
+        db.upsert_doi_verification("10.5555/old_doi", true, None)
+            .unwrap();
+        db.upsert_bib_reference("paper1", Some("10.5555/old_doi"), Some(true), old_bib)
+            .unwrap();
 
         let report = check_bib_dois_incremental(&db, updated_bib, false).unwrap();
         assert_eq!(report.skipped_cached, 0, "Changed DOI must not be skipped");
-        assert_eq!(report.checked_online, 1, "Updated DOI must be checked online");
+        assert_eq!(
+            report.checked_online, 1,
+            "Updated DOI must be checked online"
+        );
         assert!(
             matches!(
                 report.items[0].category,
@@ -282,21 +315,45 @@ mod tests {
         );
 
         let refs = db.get_bib_references().unwrap();
-        assert_eq!(refs[0].doi.as_deref(), Some("10.0000/nonexistent_updated_doi_67890"));
+        assert_eq!(
+            refs[0].doi.as_deref(),
+            Some("10.0000/nonexistent_updated_doi_67890")
+        );
     }
 
     #[test]
     fn test_categorized_errors() {
         let db = SilDb::open_in_memory().unwrap();
 
-        db.upsert_doi_verification("10.5555/valid_1", true, None).unwrap();
-        db.upsert_bib_reference("k1", Some("10.5555/valid_1"), Some(true), "@article{k1, doi={10.5555/valid_1}}").unwrap();
+        db.upsert_doi_verification("10.5555/valid_1", true, None)
+            .unwrap();
+        db.upsert_bib_reference(
+            "k1",
+            Some("10.5555/valid_1"),
+            Some(true),
+            "@article{k1, doi={10.5555/valid_1}}",
+        )
+        .unwrap();
 
-        db.upsert_doi_verification("10.5555/404_1", false, Some("http_404")).unwrap();
-        db.upsert_bib_reference("k2", Some("10.5555/404_1"), Some(false), "@article{k2, doi={10.5555/404_1}}").unwrap();
+        db.upsert_doi_verification("10.5555/404_1", false, Some("http_404"))
+            .unwrap();
+        db.upsert_bib_reference(
+            "k2",
+            Some("10.5555/404_1"),
+            Some(false),
+            "@article{k2, doi={10.5555/404_1}}",
+        )
+        .unwrap();
 
-        db.upsert_doi_verification("10.5555/net_1", false, Some("network_error")).unwrap();
-        db.upsert_bib_reference("k3", Some("10.5555/net_1"), Some(false), "@article{k3, doi={10.5555/net_1}}").unwrap();
+        db.upsert_doi_verification("10.5555/net_1", false, Some("network_error"))
+            .unwrap();
+        db.upsert_bib_reference(
+            "k3",
+            Some("10.5555/net_1"),
+            Some(false),
+            "@article{k3, doi={10.5555/net_1}}",
+        )
+        .unwrap();
 
         let bib = "@article{k1, doi={10.5555/valid_1}}\n\n@article{k2, doi={10.5555/404_1}}\n\n@article{k3, doi={10.5555/net_1}}\n\n@article{k4, title={No DOI Entry}}\n";
 
@@ -307,7 +364,10 @@ mod tests {
         assert_eq!(report.checked_online, 0);
 
         assert_eq!(report.valid_dois, 1);
-        assert_eq!(report.broken_dois, vec![("k2".to_string(), "10.5555/404_1".to_string())]);
+        assert_eq!(
+            report.broken_dois,
+            vec![("k2".to_string(), "10.5555/404_1".to_string())]
+        );
         assert_eq!(report.network_errors.len(), 1);
         assert_eq!(report.network_errors[0].0, "k3");
         assert_eq!(report.network_errors[0].1, "10.5555/net_1");
@@ -330,8 +390,10 @@ mod tests {
         {
             let utf8_db_path = camino::Utf8PathBuf::from_path_buf(db_path.clone()).unwrap();
             let db = SilDb::open(&utf8_db_path).unwrap();
-            db.upsert_doi_verification("10.5555/bg_cached", true, None).unwrap();
-            db.upsert_bib_reference("bg1", Some("10.5555/bg_cached"), Some(true), bib_content).unwrap();
+            db.upsert_doi_verification("10.5555/bg_cached", true, None)
+                .unwrap();
+            db.upsert_bib_reference("bg1", Some("10.5555/bg_cached"), Some(true), bib_content)
+                .unwrap();
         }
 
         let handle = spawn_background_bib_doi_check(db_path, bib_path, false);
@@ -350,7 +412,11 @@ mod tests {
         assert_eq!(report.checked_online, 1);
 
         match &report.items[0].category {
-            DoiCheckCategory::TitleMismatch { local_title, official_title, similarity } => {
+            DoiCheckCategory::TitleMismatch {
+                local_title,
+                official_title,
+                similarity,
+            } => {
                 assert_eq!(local_title, "Totally Incorrect Local Title");
                 assert!(!official_title.is_empty());
                 assert!(*similarity < 0.60);
@@ -383,7 +449,10 @@ mod tests {
                 assert_eq!(report.autofixed_count, 1);
                 assert!(report.updated_bib_content.is_some());
                 let updated = report.updated_bib_content.as_ref().unwrap();
-                assert!(updated.contains("@article{paper1,") || updated.contains("10.1038/s41586-020-2649-2"));
+                assert!(
+                    updated.contains("@article{paper1,")
+                        || updated.contains("10.1038/s41586-020-2649-2")
+                );
             }
             DoiCheckCategory::NetworkError(_) => {
                 assert_eq!(report.autofixed_count, 0);
@@ -408,7 +477,11 @@ mod tests {
 
         for input in malformed_inputs {
             let res = check_bib_dois_incremental(&db, input, false);
-            assert!(res.is_ok(), "Expected safe Result return, got error for input: {:?}", input);
+            assert!(
+                res.is_ok(),
+                "Expected safe Result return, got error for input: {:?}",
+                input
+            );
         }
     }
 }

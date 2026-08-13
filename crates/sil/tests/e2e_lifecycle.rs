@@ -42,7 +42,10 @@ Abstract: The dominant sequence transduction models are based on complex recurre
     let db = SilDb::open(&db_path).unwrap();
     let sources = db.list_sources().unwrap();
     assert_eq!(sources.len(), 1);
-    assert_eq!(sources[0].title.as_deref(), Some("Attention Is All You Need"));
+    assert_eq!(
+        sources[0].title.as_deref(),
+        Some("Attention Is All You Need")
+    );
 
     let fts_hits = db.search("transduction models", 10).unwrap();
     assert!(!fts_hits.is_empty(), "FTS5 index must contain search hits");
@@ -66,7 +69,11 @@ Abstract: The dominant sequence transduction models are based on complex recurre
             "draft": true
         })),
     );
-    assert!(res_upsert.is_error != Some(true), "sil_cite action=upsert should succeed: {:?}", res_upsert);
+    assert!(
+        res_upsert.is_error != Some(true),
+        "sil_cite action=upsert should succeed: {:?}",
+        res_upsert
+    );
 
     let bib_content = std::fs::read_to_string(project_dir.join("references.bib")).unwrap();
     assert!(
@@ -75,7 +82,10 @@ Abstract: The dominant sequence transduction models are based on complex recurre
     );
 
     let res_get_struct = call_tool("sil_context", Some(json!({"include_structure": true})));
-    assert!(res_get_struct.is_error != Some(true), "sil_context should succeed");
+    assert!(
+        res_get_struct.is_error != Some(true),
+        "sil_context should succeed"
+    );
 
     let res_update_struct = call_tool(
         "sil_draft",
