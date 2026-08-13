@@ -37,6 +37,8 @@ pub enum CommandId {
     OpenExternalEditor,
     /// Undo the last file deletion or insertion mutation.
     Undo,
+    /// Rebuild SQLite database from sources/ when database is corrupt.
+    RepairDb,
 }
 
 impl CommandId {
@@ -59,6 +61,7 @@ impl CommandId {
             CommandId::RefreshDigest => "refresh_digest",
             CommandId::OpenExternalEditor => "open_external_editor",
             CommandId::Undo => "undo",
+            CommandId::RepairDb => "repair_db",
         }
     }
 }
@@ -160,7 +163,7 @@ impl CommandSpec {
                     Ok(())
                 }
             }
-            CommandId::OpenExternalEditor | CommandId::Undo => {
+            CommandId::OpenExternalEditor | CommandId::Undo | CommandId::RepairDb => {
                 if app.project_root.is_none() {
                     Err("requires active project")
                 } else {
@@ -189,6 +192,14 @@ pub fn all_commands() -> &'static [CommandSpec] {
             default_keys: "Ctrl+S, s",
             tab: None,
             description: "Save all modified settings, draft, and project state",
+        },
+        CommandSpec {
+            id: CommandId::RepairDb,
+            title: "Repair Database",
+            aliases: &["repair", "rebuild-db", "repair-db", "restore-db", "doctor-repair"],
+            default_keys: "",
+            tab: None,
+            description: "Backup and rebuild SQLite index from sources/ (safe for files)",
         },
         CommandSpec {
             id: CommandId::Undo,

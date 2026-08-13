@@ -177,7 +177,9 @@ impl App {
             InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
             InputMode::ModalCaptureNote => HelpMode::ModalCaptureNote,
             InputMode::NoteSectionPicker => HelpMode::NoteSectionPicker,
-            InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
+            InputMode::ConfirmDeleteSource | InputMode::ConfirmRepairDb => {
+                HelpMode::ConfirmDeleteSource
+            }
             InputMode::JobHistory => HelpMode::JobHistory,
             InputMode::CommandPalette => HelpMode::CommandPalette,
             InputMode::Editing => HelpMode::Editing,

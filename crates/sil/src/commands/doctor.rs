@@ -1,13 +1,67 @@
 use anyhow::Result;
 #[allow(unused_imports)]
-pub use sil_app::doctor::{Check, DoctorReport, latex_engine_hint, run_host_checks, tool_hint, which_ok};
+pub use sil_app::doctor::{
+    Check, DatabaseRepairReport, DoctorReport, SourceRepairOutcome, latex_engine_hint,
+    repair_sqlite_database, run_host_checks, tool_hint, which_ok,
+};
 use sil_core::SilUi;
 
 use crate::util::load_project;
 
+/// Arguments for the doctor command.
+#[derive(Debug, Clone, Default)]
+pub struct DoctorArgs {
+    /// Machine-readable JSON output
+    pub json: bool,
+    /// Provide ONNX model cache bootstrap directories and export recipe
+    pub fix_rag: bool,
+    /// Automatically repair mismatched or corrupted references.bib entries with official BibTeX
+    pub fix: bool,
+    /// Rebuild SQLite database from on-disk sources when corrupt
+    pub repair_db: bool,
+}
+
 /// Run environment + project diagnostics.
-pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
-    if fix_rag && let Some(cache_dir) = dirs::cache_dir() {
+pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
+    if args.repair_db {
+        let (root, _config, _paths) = load_project()?;
+        let report = sil_app::repair_sqlite_database(root.as_std_path(), ui)?;
+        if args.json {
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            return Ok(());
+        }
+
+        ui.println("");
+        ui.info("Database Repair Report");
+        if let Some(ref backup) = report.backup_path {
+            ui.success(&format!("  ✓ Backed up corrupt database to: {backup}"));
+        }
+        ui.success("  ✓ Fresh database initialized");
+        ui.info(&format!(
+            "  • Sources scanned: {}\n  • Sources re-parsed: {}\n  • Sources failed: {}",
+            report.sources_scanned, report.sources_reparsed, report.sources_failed
+        ));
+        for outcome in &report.outcomes {
+            if outcome.ok {
+                ui.success(&format!("    ✓ {}", outcome.filename));
+            } else {
+                let err = outcome.error.as_deref().unwrap_or("unknown error");
+                ui.warn(&format!("    ✖ {} ({err})", outcome.filename));
+            }
+        }
+        ui.println("");
+        if report.sources_failed == 0 {
+            ui.success("Database repair completed successfully.");
+        } else {
+            ui.warn("Database repair completed with some source parsing failures.");
+        }
+        return Ok(());
+    }
+
+    let json = args.json;
+    let fix = args.fix;
+
+    if args.fix_rag && let Some(cache_dir) = dirs::cache_dir() {
         let base = cache_dir.join("sil/models");
         let embed_dir = base.join("bge-small-en-v1.5");
         let rerank_dir = base.join("ms-marco-MiniLM-L-6-v2");

@@ -99,6 +99,11 @@ impl ProjectPaths {
         self.join(rel::DB)
     }
 
+    /// Sources directory (`sources/` relative to root).
+    pub fn sources_dir(&self) -> Utf8PathBuf {
+        self.join(rel::SOURCES)
+    }
+
     /// Skills directory.
     pub fn skills_dir(&self) -> Utf8PathBuf {
         self.join(rel::SKILLS)

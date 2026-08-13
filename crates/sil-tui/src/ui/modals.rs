@@ -439,6 +439,46 @@ pub(crate) fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
     frame.render_widget(paragraph, area);
 }
 
+pub(crate) fn draw_confirm_repair_db(frame: &mut Frame, _app: &App) {
+    let area = centered_rect(65, 30, frame.area());
+    frame.render_widget(Clear, area);
+
+    let text = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "Are you sure you want to repair the SQLite database?",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "This will back up the existing db.sqlite and rebuild the index from sources/.",
+            Style::default().fg(Color::Gray),
+        )),
+        Line::from(Span::styled(
+            "On-disk source files in sources/ will NOT be modified or deleted.",
+            Style::default().fg(Color::Green),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Press 'y' or Enter to confirm, 'n' or Esc to cancel.",
+            Style::default().fg(Color::Yellow),
+        )),
+    ];
+
+    let block = Block::default()
+        .title(" 🔧 Confirm Database Repair ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .alignment(Alignment::Center);
+    frame.render_widget(paragraph, area);
+}
+
 pub(crate) fn draw_command_palette(frame: &mut Frame, app: &App) {
     let area = centered_rect(70, 65, frame.area());
     frame.render_widget(Clear, area);

@@ -70,7 +70,7 @@ pub fn list_unparsed_pdfs(
                 let lower = e.to_ascii_lowercase();
                 matches!(
                     lower.as_str(),
-                    "pdf" | "md" | "markdown" | "txt" | "html" | "htm"
+                    "pdf" | "md" | "markdown" | "txt" | "html" | "htm" | "tex" | "latex"
                 )
             })
             .unwrap_or(false);

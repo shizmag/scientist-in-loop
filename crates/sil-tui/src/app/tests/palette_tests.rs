@@ -171,10 +171,12 @@ fn test_command_id_as_str_and_display() {
     assert_eq!(CommandId::CaptureNote.as_str(), "capture_note");
     assert_eq!(CommandId::RefreshDigest.as_str(), "refresh_digest");
     assert_eq!(CommandId::OpenExternalEditor.as_str(), "open_external_editor");
+    assert_eq!(CommandId::RepairDb.as_str(), "repair_db");
 
     assert_eq!(format!("{}", CommandId::SaveAll), "save_all");
     assert_eq!(format!("{}", CommandId::RefreshDigest), "refresh_digest");
     assert_eq!(format!("{}", CommandId::OpenExternalEditor), "open_external_editor");
+    assert_eq!(format!("{}", CommandId::RepairDb), "repair_db");
 }
 
 #[test]
@@ -187,10 +189,44 @@ fn test_command_spec_availability() {
     let reload_cmd = all.iter().find(|c| c.id == CommandId::Reload).unwrap();
     let refresh_digest_cmd = all.iter().find(|c| c.id == CommandId::RefreshDigest).unwrap();
     let editor_cmd = all.iter().find(|c| c.id == CommandId::OpenExternalEditor).unwrap();
+    let repair_cmd = all.iter().find(|c| c.id == CommandId::RepairDb).unwrap();
 
     assert!(quit_cmd.is_available(&app_without_root).is_ok());
     assert!(parse_cmd.is_available(&app_without_root).is_err());
     assert!(reload_cmd.is_available(&app_without_root).is_err());
     assert!(refresh_digest_cmd.is_available(&app_without_root).is_err());
     assert!(editor_cmd.is_available(&app_without_root).is_err());
+    assert!(repair_cmd.is_available(&app_without_root).is_err());
+}
+
+#[test]
+fn test_repair_db_dispatch_and_confirm_modal() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
+    let sil_dir = root.join(".sil");
+    let sources_dir = root.join("sources");
+    std::fs::create_dir_all(&sil_dir).unwrap();
+    std::fs::create_dir_all(&sources_dir).unwrap();
+
+    let doc_content = "# Doc\nContent";
+    std::fs::write(sources_dir.join("paper.md"), doc_content).unwrap();
+
+    let root_utf8 = camino::Utf8PathBuf::from_path_buf(root.to_path_buf()).unwrap();
+    let mut app = App::new(Some(root_utf8));
+
+    // Dispatch RepairDb enters confirm mode
+    app.dispatch(CommandId::RepairDb);
+    assert_eq!(app.input_mode, InputMode::ConfirmRepairDb);
+
+    // Esc cancels
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(app.status_message.contains("cancelled"));
+
+    // Dispatch RepairDb again and confirm with 'y'
+    app.dispatch(CommandId::RepairDb);
+    assert_eq!(app.input_mode, InputMode::ConfirmRepairDb);
+    app.handle_key(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(app.status_message.contains("repaired"));
 }

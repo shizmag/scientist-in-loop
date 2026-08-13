@@ -162,6 +162,16 @@ impl App {
                     self.status_message = "No active project loaded".to_string();
                 }
             }
+            CommandId::RepairDb => {
+                if self.project_root.is_none() {
+                    self.status_message = "No active project loaded".to_string();
+                    return;
+                }
+                self.input_mode = InputMode::ConfirmRepairDb;
+                self.status_message =
+                    "Repair SQLite database from sources/? (y/Enter to confirm, Esc to cancel)"
+                        .to_string();
+            }
         }
     }
 }

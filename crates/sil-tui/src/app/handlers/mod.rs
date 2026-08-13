@@ -20,6 +20,7 @@ impl App {
             InputMode::ModalCaptureNote => self.handle_modal_capture_note_mode(key),
             InputMode::NoteSectionPicker => self.handle_note_section_picker_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
+            InputMode::ConfirmRepairDb => self.handle_confirm_repair_db_mode(key),
             InputMode::JobHistory => self.handle_job_history_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
             InputMode::SearchingRefs => self.handle_searching_refs_mode(key),
@@ -1420,6 +1421,37 @@ impl App {
             KeyCode::Char('n') | KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Delete source cancelled.".to_string();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_confirm_repair_db_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::F(1) => {
+                self.toggle_help_overlay();
+            }
+            KeyCode::Char('y') | KeyCode::Enter => {
+                self.input_mode = InputMode::Normal;
+                if let Some(ref root) = self.project_root.clone() {
+                    let null_ui = sil_core::NullUi::new();
+                    match sil_app::repair_sqlite_database(root.as_std_path(), &null_ui) {
+                        Ok(report) => {
+                            self.reload_sources_and_bib_sync();
+                            self.status_message = format!(
+                                "✓ Database repaired: {} reparsed, {} failed",
+                                report.sources_reparsed, report.sources_failed
+                            );
+                        }
+                        Err(e) => {
+                            self.status_message = format!("✖ Database repair failed: {e}");
+                        }
+                    }
+                }
+            }
+            KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Database repair cancelled.".to_string();
             }
             _ => {}
         }

@@ -383,6 +383,13 @@ pub fn probe_source(path: &Utf8Path) -> Result<DocumentStatus, ValidationError> 
                 Ok(DocumentStatus::Corrupted)
             }
         }
+        Some("tex" | "latex") => {
+            if std::str::from_utf8(&bytes).is_ok() {
+                Ok(DocumentStatus::Valid(SourceKind::Text))
+            } else {
+                Ok(DocumentStatus::Corrupted)
+            }
+        }
         _ => Ok(DocumentStatus::UnsupportedFormat),
     }
 }

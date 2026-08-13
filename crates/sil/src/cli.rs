@@ -245,6 +245,9 @@ pub enum ProjectCmd {
         /// Automatically repair mismatched or corrupted references.bib entries with official BibTeX
         #[arg(long = "fix", short = 'f')]
         fix: bool,
+        /// Rebuild SQLite database from on-disk sources when corrupt
+        #[arg(long = "repair-db")]
+        repair_db: bool,
     },
     /// Generate structured context for a human or agent
     Context {

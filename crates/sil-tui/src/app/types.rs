@@ -52,6 +52,7 @@ pub enum InputMode {
     ModalCaptureNote,
     NoteSectionPicker,
     ConfirmDeleteSource,
+    ConfirmRepairDb,
     ViewingSourceRefs,
     SearchingRefs,
     SearchingBib,

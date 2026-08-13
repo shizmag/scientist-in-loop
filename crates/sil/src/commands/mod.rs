@@ -29,7 +29,7 @@ pub use build::run as build;
 pub use cite::run as cite;
 pub use context::run as context;
 pub use digest::run as digest;
-pub use doctor::run as doctor;
+pub use doctor::{DoctorArgs, run as doctor};
 pub use estimate::run as estimate;
 pub use init::run as init;
 pub use log::run as log;
