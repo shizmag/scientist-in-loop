@@ -109,6 +109,9 @@ pub struct App {
     pub new_source_link_buffer: String,
     pub rename_source_buffer: String,
     pub capture_note_buffer: String,
+    pub pending_note_text: String,
+    pub note_picker_selected: usize,
+    pub note_picker_sections: Vec<Option<String>>,
 
     // Draft similarity state
     pub draft_ref_similarities: std::collections::HashMap<String, f32>,
@@ -271,6 +274,9 @@ impl App {
             new_source_link_buffer: String::new(),
             rename_source_buffer: String::new(),
             capture_note_buffer: String::new(),
+            pending_note_text: String::new(),
+            note_picker_selected: 0,
+            note_picker_sections: Vec::new(),
 
             draft_ref_similarities: std::collections::HashMap::new(),
             draft_similarity_hash: None,

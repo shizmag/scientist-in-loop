@@ -344,7 +344,7 @@ pub(crate) fn draw_modal_capture_note(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, area);
 
     let block = Block::default()
-        .title(" Capture note for draft (Enter to save, Esc to cancel) ")
+        .title(" Capture note for draft (Enter to choose section, Esc to cancel) ")
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(Color::Yellow));
@@ -358,6 +358,43 @@ pub(crate) fn draw_modal_capture_note(frame: &mut Frame, app: &App) {
         .block(block);
 
     frame.render_widget(paragraph, area);
+}
+
+pub(crate) fn draw_modal_note_section_picker(frame: &mut Frame, app: &App) {
+    let area = centered_rect(65, 45, frame.area());
+    frame.render_widget(Clear, area);
+
+    let items: Vec<ListItem> = app
+        .note_picker_sections
+        .iter()
+        .enumerate()
+        .map(|(idx, sec)| {
+            let is_sel = idx == app.note_picker_selected;
+            let (prefix, label) = match sec {
+                Some(title) => ("§ ", title.as_str()),
+                None => ("• ", "[End of draft]"),
+            };
+            let style = if is_sel {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            let cursor = if is_sel { "► " } else { "  " };
+            ListItem::new(format!("{cursor}{prefix}{label}")).style(style)
+        })
+        .collect();
+
+    let block = Block::default()
+        .title(" Select Target Section for Note (j/k: Navigate, Enter: Confirm, Esc: Cancel) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let list = List::new(items).block(block);
+
+    frame.render_widget(list, area);
 }
 
 pub(crate) fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {

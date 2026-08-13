@@ -156,6 +156,7 @@ fn test_draw_modal_popups_rendering() {
         InputMode::ModalAddSourceLink,
         InputMode::ModalRenameSource,
         InputMode::ModalCaptureNote,
+        InputMode::NoteSectionPicker,
         InputMode::ConfirmDeleteSource,
         InputMode::JobHistory,
         InputMode::ViewingSourceRefs,

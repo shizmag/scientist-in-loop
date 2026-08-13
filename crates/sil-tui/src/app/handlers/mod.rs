@@ -18,6 +18,7 @@ impl App {
             InputMode::ModalAddSourceLink => self.handle_modal_add_source_link_mode(key),
             InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
             InputMode::ModalCaptureNote => self.handle_modal_capture_note_mode(key),
+            InputMode::NoteSectionPicker => self.handle_note_section_picker_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
             InputMode::JobHistory => self.handle_job_history_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
@@ -1607,19 +1608,71 @@ impl App {
             KeyCode::F(1) => self.toggle_help_overlay(),
             KeyCode::Esc => {
                 self.input_mode = InputMode::ReadingSourceMd;
+                self.capture_note_buffer.clear();
             }
             KeyCode::Enter => {
                 let note = self.capture_note_buffer.trim().to_string();
-                if !note.is_empty() {
-                    self.save_reader_note(&note);
+                if note.is_empty() {
+                    self.input_mode = InputMode::ReadingSourceMd;
+                    self.capture_note_buffer.clear();
+                } else {
+                    self.pending_note_text = note;
+                    self.capture_note_buffer.clear();
+                    let mut sections: Vec<Option<String>> = self
+                        .paper_sections
+                        .iter()
+                        .filter(|s| s.kind != "document")
+                        .map(|s| Some(s.title.clone()))
+                        .collect();
+                    sections.push(None);
+                    self.note_picker_sections = sections;
+                    self.note_picker_selected = 0;
+                    self.input_mode = InputMode::NoteSectionPicker;
+                    self.status_message =
+                        "Select draft section for note (Enter to confirm, Esc to cancel)".to_string();
                 }
-                self.input_mode = InputMode::ReadingSourceMd;
             }
             KeyCode::Backspace => {
                 self.capture_note_buffer.pop();
             }
             KeyCode::Char(c) => {
                 self.capture_note_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_note_section_picker_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('?') | KeyCode::F(1) => self.toggle_help_overlay(),
+            KeyCode::Esc => {
+                self.input_mode = InputMode::ReadingSourceMd;
+                self.pending_note_text.clear();
+                self.note_picker_sections.clear();
+                self.note_picker_selected = 0;
+                self.status_message = "Note capture cancelled.".to_string();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.note_picker_selected = self.note_picker_selected.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !self.note_picker_sections.is_empty()
+                    && self.note_picker_selected + 1 < self.note_picker_sections.len()
+                {
+                    self.note_picker_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                let section_target = self
+                    .note_picker_sections
+                    .get(self.note_picker_selected)
+                    .cloned()
+                    .flatten();
+                let note = std::mem::take(&mut self.pending_note_text);
+                self.note_picker_sections.clear();
+                self.note_picker_selected = 0;
+                self.save_reader_note_to_section(&note, section_target.as_deref());
+                self.input_mode = InputMode::ReadingSourceMd;
             }
             _ => {}
         }
@@ -1635,6 +1688,10 @@ impl App {
     }
 
     pub fn save_reader_note(&mut self, note: &str) {
+        self.save_reader_note_to_section(note, None);
+    }
+
+    pub fn save_reader_note_to_section(&mut self, note: &str, section_id: Option<&str>) {
         if !self.check_mutation_lock("capture_note") {
             return;
         }
@@ -1669,7 +1726,8 @@ impl App {
         let block_id = format!("from-{}-{}", doc.id.as_str(), note_hash);
         let content = format!("from: {}\n{}", doc.filename, note);
 
-        let mut block = sil_core::IdeaBlock::new(block_id, content, None, 0, 0);
+        let mut block =
+            sil_core::IdeaBlock::new(block_id, content, section_id.map(|s| s.to_string()), 0, 0);
         block.status = "open".to_string();
         block.priority = "medium".to_string();
         block.author_type = "human".to_string();
@@ -1692,7 +1750,11 @@ impl App {
                 let _ = db.replace_todo_ideas(&ideas);
             }
             self.reload_paper_draft();
-            self.status_message = format!("Parked note from {}", doc.filename);
+            if let Some(sec) = section_id {
+                self.status_message = format!("Note captured into section {sec}");
+            } else {
+                self.status_message = format!("Parked note from {}", doc.filename);
+            }
         }
     }
 

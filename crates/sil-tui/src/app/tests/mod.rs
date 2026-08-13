@@ -3,6 +3,7 @@ mod core_tests;
 mod empty_states_tests;
 mod hydration_tests;
 mod lock_tests;
+mod note_section_tests;
 mod palette_tests;
 mod undo_tests;
 mod wizard_tests;

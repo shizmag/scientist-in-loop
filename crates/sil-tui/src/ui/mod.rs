@@ -16,7 +16,8 @@ use draft::{draw_editing_paper_popup, draw_paper_draft};
 use modals::{
     draw_command_palette, draw_confirm_delete_source, draw_editing_popup, draw_help_overlay,
     draw_job_history, draw_modal_add_author, draw_modal_add_grant, draw_modal_add_source_link,
-    draw_modal_capture_note, draw_modal_picker, draw_modal_rename_source,
+    draw_modal_capture_note, draw_modal_note_section_picker, draw_modal_picker,
+    draw_modal_rename_source,
 };
 use ratatui::{
     Frame,
@@ -76,6 +77,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalAddSourceLink => draw_modal_add_source_link(frame, app),
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ModalCaptureNote => draw_modal_capture_note(frame, app),
+        InputMode::NoteSectionPicker => draw_modal_note_section_picker(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
         InputMode::JobHistory => draw_job_history(frame, app),
         InputMode::CommandPalette => draw_command_palette(frame, app),
@@ -200,7 +202,7 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
             "[?] Help | [e/E] Parse | [a] Fetch | [J] Jobs | [Enter] Read | [v] Refs | [d] Del"
         }
         crate::app::HelpMode::ReadingSourceMd => {
-            "[?] Help | [b] Bib | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit"
+            "[?] Help | [b] Bib | [n] Note | [j/k] Scroll | [PgUp/PgDn] Page | [Esc] Exit"
         }
         crate::app::HelpMode::ViewingSourceRefs => {
             "[?] Help | [c] Add Bib | [a] Add All | [Space] Mark | [/] Filter"
@@ -234,6 +236,9 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         }
         crate::app::HelpMode::WizardDoctorReport => {
             "[j/k] Scroll Report | [Esc/q/Enter] Back to Wizard | [?] Help"
+        }
+        crate::app::HelpMode::NoteSectionPicker => {
+            "[j/k] Select Section | [Enter] Confirm | [Esc] Cancel"
         }
         _ => "[?] / [F1] Help Overlay | [Esc] Cancel",
     };

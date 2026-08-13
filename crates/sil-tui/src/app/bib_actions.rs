@@ -176,6 +176,7 @@ impl App {
             InputMode::ModalAddSourceLink => HelpMode::ModalAddSourceLink,
             InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
             InputMode::ModalCaptureNote => HelpMode::ModalCaptureNote,
+            InputMode::NoteSectionPicker => HelpMode::NoteSectionPicker,
             InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
             InputMode::JobHistory => HelpMode::JobHistory,
             InputMode::CommandPalette => HelpMode::CommandPalette,

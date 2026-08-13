@@ -1095,12 +1095,16 @@ fn test_reader_mode_note_workflow() {
         "\\section{Introduction}\nInitial text.\n"
     );
 
-    // 4. Non-empty note on Enter writes # -- X -- # block, reloads draft/ideas, status set
+    // 4. Non-empty note on Enter opens section picker; selecting End of draft writes block
     app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
     let note1 = "Residual stream carries the unembedding (Smith 2024, §3)";
     for c in note1.chars() {
         app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
     }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::NoteSectionPicker);
+    // Select End of draft (item 1)
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::empty()));
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
 
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
@@ -1127,6 +1131,9 @@ fn test_reader_mode_note_workflow() {
     for c in note2.chars() {
         app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
     }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::NoteSectionPicker);
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::empty()));
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
 
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
@@ -1157,6 +1164,8 @@ fn test_reader_mode_note_missing_paper_draft() {
     for c in "Test note".chars() {
         app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
     }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::NoteSectionPicker);
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
 
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
