@@ -481,6 +481,7 @@ sil context --task "edit introduction in paper_draft.tex"
 crates/
   sil/          # binary only — clap + wiring
   sil-api/      # external API interactions (Crossref, arXiv, OpenReview) & rate limiting
+  sil-app/      # application use-cases (upsert_bib, promote_bib, fetch_source)
   sil-core/     # domain types, Config, settings, errors, paths, terminal UX
   sil-db/       # SQLite + FTS5 + update surgery for bib verifications
   sil-git/      # status, commit proposals, Sci-Action trailers

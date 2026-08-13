@@ -57,5 +57,17 @@ Plan: `docs/pr-plan-08-12/pr-plan.md`. ADR: `docs/adr/ADR-013-crash-safe-robustn
 - **Atomic PDF Downloads**: `.part` temporary file download + atomic `os.replace` + exponential retry on HTTP 429/5xx and network errors.
 - **TUI Robustness & Async Estimate**: `catch_unwind` panic isolation on all background worker threads; converted manuscript L0 estimate into a non-blocking background job (`run_estimate_job`).
 
+## Stage 12 — Three-surface use-case layer (`sil-app`) ✅
+Plan: `docs/plan-sil-app/pr-plan.md`. ADR: `docs/adr/ADR-014-sil-app-usecase-layer.md`.
+- **`sil-app` Crate**: Centralized sync use-case layer (`AppContext`, `AppError`, `upsert_bib`, `promote_bib`, `fetch_source`) to prevent feature/policy drift across CLI, MCP, and TUI surfaces without creating dependency cycles with the `sil` binary crate.
+- **Unified Bib Writers**: Unified `upsert_bib` (always enforces `preserve_cite_key = true`, atomic write, draft markers `% [sil: tui-added]`, commit proposal) and `promote_bib` (strips draft markers, updates references, commit proposal).
+- **Unified Source Fetch**: Centralized `fetch_source` orchestrating atomic PDF/source download, optional parsing via Marker, and richest official BibTeX resolution (`target` DOI/arXiv -> document DOI/arXiv/metadata resolver -> `upsert_bib(draft=false)`).
+- **Surface Adapter Alignment**:
+  - CLI: `sil source cite --append` / `--promote` and `sil source fetch` delegate to `sil-app`. `cite` output remains quiet (no commit proposal stdout printed).
+  - MCP: `sil_cite` (upsert / promote) and `sil_sources` (fetch) delegate to `sil-app`. MCP fetch automatically upserts official BibTeX when resolved; parse errors surface on response (`parse_error`) without swallowing failures.
+  - TUI: Explicit bibliography actions (append/promote) and background fetch job delegate to `sil-app` with `parse=false`.
+- **Residual Drift**: Search still FTS-only on CLI vs dense RAG on MCP; rank embedder settings differ across surfaces; TUI hydration apply (`jobs.rs`) still updates `references.bib` directly.
+
+
 
 
