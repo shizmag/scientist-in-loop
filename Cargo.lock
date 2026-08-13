@@ -5517,6 +5517,7 @@ dependencies = [
  "crossterm",
  "dirs",
  "ratatui",
+ "regex",
  "serde",
  "serde_yaml",
  "sil-agent",

@@ -5,12 +5,14 @@ pub(crate) mod commands;
 pub(crate) mod dispatch;
 pub(crate) mod handlers;
 pub(crate) mod jobs;
+pub mod source_badges;
 pub(crate) mod types;
 
 #[cfg(test)]
 mod tests;
 
 pub use commands::*;
+pub use source_badges::SourceBadges;
 pub use types::*;
 
 use camino::Utf8PathBuf;

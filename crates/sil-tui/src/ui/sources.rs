@@ -12,7 +12,7 @@ use ratatui::{
 };
 
 use super::{centered_rect, references::draw_reference_inspector_card};
-use crate::app::{App, InputMode};
+use crate::app::{App, InputMode, SourceBadges};
 
 pub(crate) fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
     if app.input_mode == InputMode::ReadingSourceMd {
@@ -79,6 +79,12 @@ pub(crate) fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
     // Left column: Sources list
     let avail_w = (chunks[0].width.saturating_sub(4) as usize).max(10);
     let mut items = Vec::new();
+    let bib_entries: Vec<sil_core::BibEntryInfo> = app
+        .bib_file_entries
+        .iter()
+        .map(|s| sil_core::extract_bib_entry_info(s))
+        .collect();
+
     if app.sources.is_empty() {
         let empty_msg =
             "No sources found. Drop a PDF/MD in sources/ or Fetch by DOI/URL [a: Add Source]";
@@ -105,6 +111,9 @@ pub(crate) fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default()
             };
 
+            let badges =
+                SourceBadges::derive(src, &bib_entries, &app.paper_draft_content);
+
             let status_span = if app.in_flight_parse_ids.contains(&src.id) {
                 Span::styled(
                     "[⏳ Parsing...] ",
@@ -112,15 +121,18 @@ pub(crate) fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 )
-            } else if src.parsed {
+            } else if badges.parsed {
                 Span::styled(
-                    "[✓ Parsed] ",
+                    format!("{} ", badges.format_badge()),
                     Style::default()
                         .fg(Color::Green)
                         .add_modifier(Modifier::BOLD),
                 )
             } else {
-                Span::styled("[Unparsed] ", Style::default().fg(Color::DarkGray))
+                Span::styled(
+                    format!("{} ", badges.format_badge()),
+                    Style::default().fg(Color::Yellow),
+                )
             };
 
             let kind_span = Span::styled(

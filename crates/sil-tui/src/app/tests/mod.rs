@@ -5,5 +5,6 @@ mod hydration_tests;
 mod lock_tests;
 mod note_section_tests;
 mod palette_tests;
+mod source_badges_tests;
 mod undo_tests;
 mod wizard_tests;
