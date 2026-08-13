@@ -28,9 +28,25 @@ pub fn run_tui(project_root: Option<Utf8PathBuf>) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let panic_root = project_root.clone();
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(ref root) = panic_root {
+            let paths = sil_core::ProjectPaths::new(root);
+            if let Ok(Some(lock)) = sil_core::read_lock(&paths) {
+                if lock.holder == "tui" && lock.pid == Some(std::process::id()) {
+                    let _ = sil_core::clear_lock(&paths);
+                }
+            }
+        }
+        prev_hook(info);
+    }));
+
     let mut app = App::new(project_root);
 
     let res = run_app(&mut terminal, &mut app);
+
+    app.cleanup_lock();
 
     // Restore terminal
     disable_raw_mode()?;

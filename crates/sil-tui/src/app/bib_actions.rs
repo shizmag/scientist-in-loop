@@ -296,6 +296,10 @@ impl App {
     }
 
     pub fn append_source_to_bib(&mut self, doc: &SourceDocument) {
+        if !self.check_mutation_lock("cite_source") {
+            return;
+        }
+        self.confirm_lock_override = false;
         let doc_name = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
 
         let local_bib = sil_core::suggest_from_source(doc).bibtex;
@@ -454,6 +458,10 @@ impl App {
     }
 
     pub fn append_selected_extracted_refs_to_bib(&mut self) {
+        if !self.check_mutation_lock("bib_upsert") {
+            return;
+        }
+        self.confirm_lock_override = false;
         if let Some(ref root) = self.project_root {
             let ctx = match sil_app::AppContext::from_root(root) {
                 Ok(c) => c,
@@ -510,6 +518,10 @@ impl App {
     }
 
     pub fn append_selected_viewing_ref_to_bib(&mut self) {
+        if !self.check_mutation_lock("bib_upsert") {
+            return;
+        }
+        self.confirm_lock_override = false;
         if let Some(ref root) = self.project_root {
             let ctx = match sil_app::AppContext::from_root(root) {
                 Ok(c) => c,
@@ -568,6 +580,10 @@ impl App {
     }
 
     pub fn append_all_viewing_refs_to_bib(&mut self) {
+        if !self.check_mutation_lock("bib_upsert") {
+            return;
+        }
+        self.confirm_lock_override = false;
         if let Some(ref root) = self.project_root {
             let ctx = match sil_app::AppContext::from_root(root) {
                 Ok(c) => c,
@@ -615,6 +631,10 @@ impl App {
     }
 
     pub fn promote_selected_bib_entry(&mut self) {
+        if !self.check_mutation_lock("bib_promote") {
+            return;
+        }
+        self.confirm_lock_override = false;
         let filtered = self.filtered_bib_entries();
         if filtered.is_empty() || self.selected_bib_index >= filtered.len() {
             self.status_message = "No bibliography entry selected to promote".to_string();
@@ -662,6 +682,10 @@ impl App {
     }
 
     pub fn delete_selected_bib_entry(&mut self) {
+        if !self.check_mutation_lock("bib_delete") {
+            return;
+        }
+        self.confirm_lock_override = false;
         if self.active_tab == ActiveTab::References && self.active_ref_pane == RefPane::LeftBib {
             let filtered = self.filtered_bib_entries();
             if self.selected_bib_index < filtered.len() {

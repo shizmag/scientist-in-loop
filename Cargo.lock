@@ -5396,6 +5396,7 @@ dependencies = [
  "console 0.16.4",
  "dirs",
  "indicatif",
+ "libc",
  "owo-colors",
  "serde",
  "serde_yaml",

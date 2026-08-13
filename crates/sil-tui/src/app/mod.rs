@@ -132,6 +132,11 @@ pub struct App {
     pub palette_filter: String,
     pub palette_selected_index: usize,
     pub palette_previous_mode: InputMode,
+
+    // Advisory workspace lock & conflict state
+    pub active_lock_conflict: Option<sil_core::WorkspaceLock>,
+    pub lock_holder_banner: Option<String>,
+    pub confirm_lock_override: bool,
 }
 
 impl App {
@@ -258,13 +263,101 @@ impl App {
             palette_filter: String::new(),
             palette_selected_index: 0,
             palette_previous_mode: InputMode::Normal,
+
+            active_lock_conflict: None,
+            lock_holder_banner: None,
+            confirm_lock_override: false,
         };
+
+        // Acquire initial advisory session lock if inside a project
+        if let Some(ref root) = app.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(sil_core::TakeLockResult::Held(lock)) =
+                sil_core::try_acquire_lock(&paths, "tui", "session")
+            {
+                let pid_str = lock
+                    .pid
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
+                let banner = format!("{} is {} (pid {})", lock.holder, lock.op, pid_str);
+                app.lock_holder_banner = Some(banner.clone());
+                app.last_user_error = Some(sil_core::UserError::new(
+                    "lock.held",
+                    "Workspace lock is held",
+                    format!("{banner} — confirm to override"),
+                    None,
+                ));
+                app.status_message = format!("Warning: {banner}. Confirm to proceed.");
+                app.active_lock_conflict = Some(lock);
+            }
+        }
+
         app.reload_paper_draft();
         app.reload_sources();
         app.load_project_references_bib();
         app.load_all_source_references();
         app.refresh_dashboard();
         app
+    }
+
+    /// Check whether another live process holds the workspace lock before executing a mutating command.
+    ///
+    /// If lock is held and `confirm_lock_override` is false, this sets the warning banner,
+    /// sets `confirm_lock_override = true`, and returns `false` (blocking the mutation).
+    /// If confirmed or acquired, returns `true`.
+    pub fn check_mutation_lock(&mut self, op: &str) -> bool {
+        let Some(ref root) = self.project_root else {
+            return true;
+        };
+
+        let paths = ProjectPaths::new(root);
+
+        if self.confirm_lock_override {
+            // User confirmed override: claim lock for TUI now
+            let _ = sil_core::write_lock(&paths, &sil_core::WorkspaceLock::new("tui", op));
+            self.active_lock_conflict = None;
+            self.lock_holder_banner = None;
+            return true;
+        }
+
+        match sil_core::try_acquire_lock(&paths, "tui", op) {
+            Ok(sil_core::TakeLockResult::Acquired) => {
+                self.active_lock_conflict = None;
+                self.lock_holder_banner = None;
+                true
+            }
+            Ok(sil_core::TakeLockResult::Held(lock)) => {
+                self.active_lock_conflict = Some(lock.clone());
+                let pid_str = lock
+                    .pid
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
+                let banner = format!("{} is {} (pid {})", lock.holder, lock.op, pid_str);
+                self.lock_holder_banner = Some(banner.clone());
+                self.last_user_error = Some(sil_core::UserError::new(
+                    "lock.held",
+                    "Workspace lock is held",
+                    format!("{banner} — confirm to override"),
+                    None,
+                ));
+                self.status_message = format!("Warning: {banner}. Confirm to proceed.");
+                self.confirm_lock_override = true;
+                false
+            }
+            Err(_) => true,
+        }
+    }
+
+    /// Clear the session lock on exit if owned by this TUI process.
+    pub fn cleanup_lock(&self) {
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(Some(lock)) = sil_core::read_lock(&paths) {
+                if lock.holder == "tui" && lock.pid == Some(std::process::id()) {
+                    let _ = sil_core::clear_lock(&paths);
+                }
+            }
+        }
     }
 
     pub fn clamp_digest_selection(&mut self) {

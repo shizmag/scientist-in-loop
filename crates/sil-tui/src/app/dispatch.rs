@@ -15,9 +15,14 @@ impl App {
                     "Command palette — type to filter, Enter to run, Esc to close".to_string();
             }
             CommandId::SaveAll => {
+                if !self.check_mutation_lock("save_all") {
+                    return;
+                }
+                self.confirm_lock_override = false;
                 self.save_all();
             }
             CommandId::Quit => {
+                self.cleanup_lock();
                 self.should_quit = true;
             }
             CommandId::OpenHelp => {
@@ -60,6 +65,10 @@ impl App {
                 self.status_message = format!("Queued background parsing for {count} sources.");
             }
             CommandId::AddSourceLink => {
+                if !self.check_mutation_lock("add_source") {
+                    return;
+                }
+                self.confirm_lock_override = false;
                 self.active_tab = ActiveTab::Sources;
                 self.new_source_link_buffer.clear();
                 self.input_mode = InputMode::ModalAddSourceLink;
@@ -80,6 +89,10 @@ impl App {
                 self.status_message = format!("Reading {}. Press Esc to exit.", doc.filename);
             }
             CommandId::CiteSource => {
+                if !self.check_mutation_lock("cite_source") {
+                    return;
+                }
+                self.confirm_lock_override = false;
                 self.append_selected_source_to_bib();
             }
             CommandId::CaptureNote => {
@@ -87,6 +100,10 @@ impl App {
                     self.status_message = "No active source document selected.".to_string();
                     return;
                 }
+                if !self.check_mutation_lock("capture_note") {
+                    return;
+                }
+                self.confirm_lock_override = false;
                 self.capture_note_buffer.clear();
                 self.input_mode = InputMode::ModalCaptureNote;
                 self.status_message =

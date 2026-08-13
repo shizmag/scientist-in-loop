@@ -140,6 +140,7 @@ impl App {
                     self.ref_search_query.clear();
                     self.clamp_source_ref_selection();
                 } else {
+                    self.cleanup_lock();
                     self.should_quit = true;
                 }
             }
@@ -1353,6 +1354,11 @@ impl App {
             }
             KeyCode::Char('y') | KeyCode::Enter => {
                 if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                    if !self.check_mutation_lock("delete_source") {
+                        self.input_mode = InputMode::Normal;
+                        return;
+                    }
+                    self.confirm_lock_override = false;
                     let doc = self.sources.remove(self.selected_source_index);
                     if let Some(ref root) = self.project_root {
                         let paths = ProjectPaths::new(root);
@@ -1591,6 +1597,10 @@ impl App {
     }
 
     pub fn save_reader_note(&mut self, note: &str) {
+        if !self.check_mutation_lock("capture_note") {
+            return;
+        }
+        self.confirm_lock_override = false;
         if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
             self.status_message = "No active source document selected.".to_string();
             return;
@@ -1644,6 +1654,10 @@ impl App {
     }
 
     pub fn save_all(&mut self) {
+        if !self.check_mutation_lock("save_all") {
+            return;
+        }
+        self.confirm_lock_override = false;
         let mut messages = Vec::new();
 
         // 1. Save global settings

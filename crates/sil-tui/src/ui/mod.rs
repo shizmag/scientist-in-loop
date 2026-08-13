@@ -98,24 +98,33 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         " Global Mode ".to_string()
     };
 
+    let mut header_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Blue))
+        .title(Span::styled(
+            " 🔬 scientist-in-loop ",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ))
+        .title_alignment(Alignment::Left)
+        .title(Span::styled(
+            project_label,
+            Style::default().fg(Color::Yellow),
+        ));
+
+    if let Some(ref banner) = app.lock_holder_banner {
+        header_block = header_block.title(Span::styled(
+            format!(" [LOCK: {banner}] "),
+            Style::default()
+                .fg(Color::LightRed)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
     let tabs = Tabs::new(titles)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .border_style(Style::default().fg(Color::Blue))
-                .title(Span::styled(
-                    " 🔬 scientist-in-loop ",
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                ))
-                .title_alignment(Alignment::Left)
-                .title(Span::styled(
-                    project_label,
-                    Style::default().fg(Color::Yellow),
-                )),
-        )
+        .block(header_block)
         .select(app.active_tab as usize)
         .highlight_style(Style::default().fg(Color::Cyan));
 

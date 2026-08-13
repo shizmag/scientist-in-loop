@@ -61,6 +61,7 @@ pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
 pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
 pub use workspace_lock::{
-    WorkspaceLock, clear_lock, is_busy, lock_path, lock_to_yaml, parse_lock_yaml, read_lock,
-    write_lock,
+    TakeLock, TakeLockResult, WorkspaceLock, clear_lock, is_busy, lock_path, lock_to_yaml,
+    parse_lock_yaml, pid_is_alive, read_lock, take_or_stale, try_acquire_lock,
+    try_acquire_lock_root, write_lock,
 };

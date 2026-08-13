@@ -58,6 +58,7 @@ dirs = "6"
 zip = "8.6"
 assert_cmd = "2"
 predicates = "3"
+libc = "0.2"
 termimad = "0.35"
 xberg = { version = "1.0.14", features = ["pdf", "ocr", "layout-types", "layout-detection", "ner-onnx"] }
 # Pin to match xberg/xberg-gliner transitive ort (dual-runtime spike / KD-20).

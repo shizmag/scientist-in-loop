@@ -15,6 +15,7 @@ serde = { workspace = true }
 serde_yaml = { workspace = true }
 dirs = { workspace = true }
 thiserror = { workspace = true }
+libc = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
