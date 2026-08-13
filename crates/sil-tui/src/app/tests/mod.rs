@@ -1,3 +1,4 @@
+mod conflict_tests;
 mod core_tests;
 mod hydration_tests;
 mod lock_tests;

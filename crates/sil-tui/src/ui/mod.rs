@@ -123,6 +123,15 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
         ));
     }
 
+    if let Some(ref banner) = app.disk_conflict_banner {
+        header_block = header_block.title(Span::styled(
+            format!(" [CONFLICT: {banner}] "),
+            Style::default()
+                .fg(Color::LightRed)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
     let tabs = Tabs::new(titles)
         .block(header_block)
         .select(app.active_tab as usize)
@@ -143,6 +152,9 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         || app.status_message.contains("Error")
         || app.status_message.contains("failed")
         || app.status_message.contains('⚠')
+        || app.status_message.contains("conflict")
+        || app.status_message.contains("externally")
+        || app.disk_conflict_banner.is_some()
     {
         Style::default()
             .fg(Color::LightRed)

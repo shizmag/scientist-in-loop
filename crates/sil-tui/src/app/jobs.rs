@@ -636,6 +636,9 @@ impl App {
         self.poll_background_estimate();
         self.poll_background_digest();
         self.check_auto_digest_refresh();
+        if self.dirty && !self.disk_conflict_pending && !self.disk_conflict_dismissed {
+            self.check_disk_conflicts();
+        }
         let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
             polled_any = true;

@@ -127,6 +127,12 @@ impl App {
                 self.dispatch(CommandId::OpenHelp);
             }
             KeyCode::Char('q') | KeyCode::Esc => {
+                if self.disk_conflict_banner.is_some() && key.code == KeyCode::Esc {
+                    self.dismiss_disk_conflict();
+                    self.status_message =
+                        "Dismissed conflict banner. Save will prompt to overwrite.".to_string();
+                    return;
+                }
                 if self.active_tab == ActiveTab::References
                     && !self.bib_search_query.is_empty()
                     && self.active_ref_pane == RefPane::LeftBib
@@ -1658,6 +1664,15 @@ impl App {
             return;
         }
         self.confirm_lock_override = false;
+
+        if !self.confirm_disk_overwrite && self.check_disk_conflicts() {
+            self.confirm_disk_overwrite = true;
+            self.status_message =
+                "Disk files modified externally! Save again (Ctrl+S) to confirm overwrite, or 'R' to reload from disk."
+                    .to_string();
+            return;
+        }
+
         let mut messages = Vec::new();
 
         // 1. Save global settings
@@ -1710,6 +1725,11 @@ impl App {
         }
 
         self.dirty = false;
+        self.confirm_disk_overwrite = false;
+        self.disk_conflict_pending = false;
+        self.disk_conflict_banner = None;
+        self.disk_conflict_dismissed = false;
+        self.update_file_mtimes();
         self.status_message = format!("✓ {}", messages.join(" | "));
     }
 }

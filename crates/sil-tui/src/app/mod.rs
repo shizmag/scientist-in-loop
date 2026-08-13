@@ -137,6 +137,13 @@ pub struct App {
     pub active_lock_conflict: Option<sil_core::WorkspaceLock>,
     pub lock_holder_banner: Option<String>,
     pub confirm_lock_override: bool,
+
+    // Disk snapshot mtimes & conflict banner state
+    pub file_mtimes: std::collections::HashMap<Utf8PathBuf, std::time::SystemTime>,
+    pub disk_conflict_banner: Option<String>,
+    pub disk_conflict_pending: bool,
+    pub confirm_disk_overwrite: bool,
+    pub disk_conflict_dismissed: bool,
 }
 
 impl App {
@@ -267,6 +274,12 @@ impl App {
             active_lock_conflict: None,
             lock_holder_banner: None,
             confirm_lock_override: false,
+
+            file_mtimes: std::collections::HashMap::new(),
+            disk_conflict_banner: None,
+            disk_conflict_pending: false,
+            confirm_disk_overwrite: false,
+            disk_conflict_dismissed: false,
         };
 
         // Acquire initial advisory session lock if inside a project
@@ -297,6 +310,7 @@ impl App {
         app.load_project_references_bib();
         app.load_all_source_references();
         app.refresh_dashboard();
+        app.update_file_mtimes();
         app
     }
 
@@ -399,5 +413,115 @@ impl App {
         } else if self.palette_selected_index >= count {
             self.palette_selected_index = count - 1;
         }
+    }
+
+    /// Return the list of watched file paths for conflict detection.
+    pub fn watched_files(&self) -> Vec<Utf8PathBuf> {
+        let Some(ref root) = self.project_root else {
+            return Vec::new();
+        };
+        let paths = ProjectPaths::new(root);
+        vec![
+            paths.paper_draft(),
+            root.join("references.bib"),
+            paths.config(),
+        ]
+    }
+
+    /// Snapshot modified times for watched files on disk.
+    pub fn update_file_mtimes(&mut self) {
+        self.file_mtimes.clear();
+        for path in self.watched_files() {
+            if let Ok(metadata) = std::fs::metadata(path.as_std_path()) {
+                if let Ok(mtime) = metadata.modified() {
+                    self.file_mtimes.insert(path, mtime);
+                }
+            }
+        }
+    }
+
+    /// Check whether any watched files on disk were modified externally after our snapshot.
+    ///
+    /// If disk is newer AND `self.dirty`:
+    /// - Sets `disk_conflict_banner`, `disk_conflict_pending = true`, sets `last_user_error` with `"conflict.disk_newer"`.
+    /// - Returns `true` (conflict active, blocking overwrite).
+    ///
+    /// If disk is newer AND NOT `self.dirty`:
+    /// - Sets status message warning without blocking navigation.
+    /// - Returns `false`.
+    ///
+    /// If no files are newer, returns `false`.
+    pub fn check_disk_conflicts(&mut self) -> bool {
+        let mut conflict = false;
+        let mut conflict_file: Option<String> = None;
+
+        for path in self.watched_files() {
+            if let Ok(metadata) = std::fs::metadata(path.as_std_path()) {
+                if let Ok(mtime) = metadata.modified() {
+                    if let Some(&recorded) = self.file_mtimes.get(&path) {
+                        if mtime > recorded {
+                            conflict = true;
+                            conflict_file = Some(path.file_name().unwrap_or("file").to_string());
+                            break;
+                        }
+                    } else if !self.file_mtimes.is_empty() {
+                        // File appeared on disk after initial snapshot
+                        conflict = true;
+                        conflict_file = Some(path.file_name().unwrap_or("file").to_string());
+                        break;
+                    }
+                }
+            }
+        }
+
+        if conflict {
+            if self.dirty {
+                self.disk_conflict_pending = true;
+                let banner = "Disk changed externally: Reload (R) or Keep TUI (Ctrl+S again to overwrite)".to_string();
+                self.disk_conflict_banner = Some(banner);
+                self.last_user_error = Some(sil_core::UserError::new(
+                    "conflict.disk_newer",
+                    "Disk files modified externally",
+                    "Press R to reload from disk, or save again to overwrite disk changes",
+                    None,
+                ));
+                true
+            } else {
+                let file_str = conflict_file.as_deref().unwrap_or("Disk files");
+                self.status_message = format!("Disk changed externally ({file_str}) — press R to reload");
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Dismiss the disk conflict banner ("Keep TUI").
+    pub fn dismiss_disk_conflict(&mut self) {
+        self.disk_conflict_banner = None;
+        self.disk_conflict_pending = false;
+        self.disk_conflict_dismissed = true;
+    }
+
+    /// Reload all project state (sources, bib, draft, config) from disk and refresh snapshots.
+    pub fn reload_sources_and_bib_sync(&mut self) {
+        if let Some(ref root) = self.project_root {
+            let paths = ProjectPaths::new(root);
+            if let Ok(cfg) = Config::load(&paths.config()) {
+                self.local_settings = cfg.settings.clone();
+                self.loaded_config = Some(cfg);
+            }
+        }
+        self.reload_paper_draft();
+        self.reload_sources();
+        self.load_project_references_bib();
+        self.load_all_source_references();
+        self.refresh_dashboard();
+        self.dirty = false;
+        self.disk_conflict_banner = None;
+        self.disk_conflict_pending = false;
+        self.confirm_disk_overwrite = false;
+        self.disk_conflict_dismissed = false;
+        self.update_file_mtimes();
     }
 }

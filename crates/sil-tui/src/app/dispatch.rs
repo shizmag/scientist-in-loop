@@ -29,11 +29,7 @@ impl App {
                 self.toggle_help_overlay();
             }
             CommandId::Reload => {
-                self.reload_paper_draft();
-                self.reload_sources();
-                self.load_project_references_bib();
-                self.load_all_source_references();
-                self.refresh_dashboard();
+                self.reload_sources_and_bib_sync();
                 self.status_message = if self.active_tab == ActiveTab::Sources {
                     "✓ Reloaded sources".to_string()
                 } else if self.active_tab == ActiveTab::Dashboard {
