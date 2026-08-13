@@ -201,6 +201,7 @@ fn test_keymap_for_all_modes() {
         HelpMode::ModalAddGrant,
         HelpMode::ModalAddSourceLink,
         HelpMode::ModalRenameSource,
+        HelpMode::ModalCaptureNote,
         HelpMode::ConfirmDeleteSource,
         HelpMode::Editing,
         HelpMode::EditingPaper,

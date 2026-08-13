@@ -104,6 +104,7 @@ pub struct App {
     pub ref_sort_key: RefSortKey,
     pub new_source_link_buffer: String,
     pub rename_source_buffer: String,
+    pub capture_note_buffer: String,
 
     // Draft similarity state
     pub draft_ref_similarities: std::collections::HashMap<String, f32>,
@@ -228,6 +229,7 @@ impl App {
             ref_sort_key: RefSortKey::Index,
             new_source_link_buffer: String::new(),
             rename_source_buffer: String::new(),
+            capture_note_buffer: String::new(),
 
             draft_ref_similarities: std::collections::HashMap::new(),
             draft_similarity_hash: None,

@@ -520,4 +520,32 @@ More text here."#;
         assert!(stripped.contains("Some text here."));
         assert!(stripped.contains("More text here."));
     }
+
+    #[test]
+    fn test_reader_note_idea_block_formatting_and_parsing() {
+        let draft = "\\section{Introduction}\nExisting text.\n";
+        let mut block = IdeaBlock::new(
+            "from-doc1-12345678",
+            "from: attention.pdf\nResidual stream carries the unembedding (Smith 2024, §3)",
+            None,
+            0,
+            0,
+        );
+        block.tags = vec!["from-source".to_string()];
+        block.status = "open".to_string();
+        block.priority = "medium".to_string();
+        block.author_type = "human".to_string();
+
+        let updated = update_or_insert_idea_block(draft, &block);
+        assert!(updated.contains("% # -- X -- #"));
+        assert!(updated.contains("% from: attention.pdf"));
+        assert!(updated.contains("% Residual stream carries the unembedding (Smith 2024, §3)"));
+        assert!(updated.contains("tags=from-source"));
+
+        let parsed = parse_idea_blocks(&updated);
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].id, "from-doc1-12345678");
+        assert_eq!(parsed[0].tags, vec!["from-source"]);
+        assert!(parsed[0].content.contains("from: attention.pdf"));
+    }
 }

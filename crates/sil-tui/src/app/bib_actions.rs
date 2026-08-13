@@ -175,6 +175,7 @@ impl App {
             InputMode::ModalAddGrant => HelpMode::ModalAddGrant,
             InputMode::ModalAddSourceLink => HelpMode::ModalAddSourceLink,
             InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
+            InputMode::ModalCaptureNote => HelpMode::ModalCaptureNote,
             InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
             InputMode::JobHistory => HelpMode::JobHistory,
             InputMode::Editing => HelpMode::Editing,
@@ -293,16 +294,10 @@ impl App {
         refs
     }
 
-    pub fn append_selected_source_to_bib(&mut self) {
-        if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
-            self.status_message = "No source document selected to append".to_string();
-            return;
-        }
-
-        let doc = self.sources[self.selected_source_index].clone();
+    pub fn append_source_to_bib(&mut self, doc: &SourceDocument) {
         let doc_name = doc.title.as_deref().unwrap_or(&doc.filename).to_string();
 
-        let local_bib = sil_core::suggest_from_source(&doc).bibtex;
+        let local_bib = sil_core::suggest_from_source(doc).bibtex;
         if let Some(ref root) = self.project_root {
             let ctx = match sil_app::AppContext::from_root(root) {
                 Ok(c) => c,
@@ -325,7 +320,7 @@ impl App {
         }
 
         if doc.should_attempt_metadata_fetch() {
-            self.queue_source_hydration(doc);
+            self.queue_source_hydration(doc.clone());
             self.status_message =
                 format!("✓ Added '{doc_name}' to references.bib; fetching official metadata…");
         } else {
@@ -333,6 +328,16 @@ impl App {
                 "✓ Added '{doc_name}' to references.bib (⚠ No DOI/arXiv/title — cannot hydrate)"
             );
         }
+    }
+
+    pub fn append_selected_source_to_bib(&mut self) {
+        if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
+            self.status_message = "No source document selected to append".to_string();
+            return;
+        }
+
+        let doc = self.sources[self.selected_source_index].clone();
+        self.append_source_to_bib(&doc);
     }
 
     pub fn recompute_draft_ref_similarities(&mut self) {

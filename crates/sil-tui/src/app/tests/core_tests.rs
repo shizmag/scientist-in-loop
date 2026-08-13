@@ -973,3 +973,183 @@ fn test_tui_added_bib_entry_marking_and_promote() {
     assert!(!promoted_content.contains("tui-added"));
     assert!(promoted_content.contains("@"));
 }
+
+#[test]
+fn test_reading_source_md_keymap_includes_b() {
+    let keymap = keymap_for(HelpMode::ReadingSourceMd);
+    assert!(
+        keymap
+            .iter()
+            .any(|(k, v)| *k == "b" && v.contains("Append this source to references.bib")),
+        "Keymap for ReadingSourceMd must document 'b'"
+    );
+}
+
+#[test]
+fn test_reader_mode_cite_b() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+    let bib_path = root.join("references.bib");
+    std::fs::write(bib_path.as_std_path(), "").unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    let doc = SourceDocument::new(Utf8PathBuf::from("paper.pdf"));
+    app.sources.push(doc);
+    app.selected_source_index = 0;
+    app.input_mode = InputMode::ReadingSourceMd;
+    app.reading_md_content = Some("Markdown body text".to_string());
+
+    // Pressing 'b' in reader mode upserts source into references.bib
+    app.handle_key(KeyEvent::new(KeyCode::Char('b'), KeyModifiers::empty()));
+
+    // Mode remains ReadingSourceMd (does NOT exit reader mode)
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    assert_eq!(
+        app.reading_md_content.as_deref(),
+        Some("Markdown body text")
+    );
+
+    // Status message should indicate success/attempt
+    assert!(
+        app.status_message
+            .contains("Added 'paper.pdf' to references.bib")
+    );
+
+    // File should have been updated with draft entry
+    let content = std::fs::read_to_string(bib_path.as_std_path()).unwrap();
+    assert!(content.contains("% [sil: tui-added]"));
+
+    // Pressing 'q' exits ReadingSourceMd mode
+    app.handle_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(app.reading_md_content.is_none());
+}
+
+#[test]
+fn test_reading_source_md_keymap_includes_n() {
+    let keymap = keymap_for(HelpMode::ReadingSourceMd);
+    assert!(
+        keymap
+            .iter()
+            .any(|(k, v)| *k == "n" && v.contains("Park a note on paper_draft.tex")),
+        "Keymap for ReadingSourceMd must document 'n'"
+    );
+}
+
+#[test]
+fn test_reader_mode_note_workflow() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+    let draft_path = root.join("paper_draft.tex");
+    std::fs::write(
+        draft_path.as_std_path(),
+        "\\section{Introduction}\nInitial text.\n",
+    )
+    .unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    let doc = SourceDocument::new(Utf8PathBuf::from("attention.pdf"));
+    app.sources.push(doc);
+    app.selected_source_index = 0;
+    app.input_mode = InputMode::ReadingSourceMd;
+    app.reading_md_content = Some("Markdown body text".to_string());
+
+    // 1. Pressing 'n' opens ModalCaptureNote with cleared buffer
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::ModalCaptureNote);
+    assert!(app.capture_note_buffer.is_empty());
+
+    // 2. Esc cancels and stays in ReadingSourceMd without writing
+    for c in "draft note".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
+    }
+    assert_eq!(app.capture_note_buffer, "draft note");
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    let content_after_esc = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
+    assert!(!content_after_esc.contains("draft note"));
+
+    // 3. Empty note on Enter cancels and stays in ReadingSourceMd without writing
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::ModalCaptureNote);
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    let content_after_empty = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
+    assert_eq!(
+        content_after_empty,
+        "\\section{Introduction}\nInitial text.\n"
+    );
+
+    // 4. Non-empty note on Enter writes # -- X -- # block, reloads draft/ideas, status set
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+    let note1 = "Residual stream carries the unembedding (Smith 2024, §3)";
+    for c in note1.chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    assert!(
+        app.status_message
+            .contains("Parked note from attention.pdf")
+    );
+    assert!(app.paper_draft_content.contains(note1));
+
+    let content1 = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
+    assert!(content1.contains("% # -- X -- #"));
+    assert!(content1.contains("% from: attention.pdf"));
+    assert!(content1.contains(note1));
+    assert!(content1.contains("tags=from-source"));
+
+    let blocks1 = sil_latex::parse_idea_blocks(&content1);
+    assert_eq!(blocks1.len(), 1);
+    assert!(blocks1[0].id.starts_with("from-attention.pdf-"));
+    assert_eq!(blocks1[0].tags, vec!["from-source"]);
+
+    // 5. Second different note produces distinct unique ID (no clobber)
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+    let note2 = "Second key observation from paper";
+    for c in note2.chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    let content2 = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
+    let blocks2 = sil_latex::parse_idea_blocks(&content2);
+    assert_eq!(blocks2.len(), 2);
+    assert_ne!(blocks2[0].id, blocks2[1].id);
+    assert!(blocks2[0].id.starts_with("from-attention.pdf-"));
+    assert!(blocks2[1].id.starts_with("from-attention.pdf-"));
+}
+
+#[test]
+fn test_reader_mode_note_missing_paper_draft() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+    // paper_draft.tex is NOT created
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    let doc = SourceDocument::new(Utf8PathBuf::from("paper.pdf"));
+    app.sources.push(doc);
+    app.selected_source_index = 0;
+    app.input_mode = InputMode::ReadingSourceMd;
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()));
+    for c in "Test note".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+    assert!(app.status_message.contains("paper_draft.tex not found"));
+}

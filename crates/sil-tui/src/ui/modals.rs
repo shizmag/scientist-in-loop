@@ -339,6 +339,27 @@ pub(crate) fn draw_modal_rename_source(frame: &mut Frame, app: &App) {
     frame.render_widget(paragraph, area);
 }
 
+pub(crate) fn draw_modal_capture_note(frame: &mut Frame, app: &App) {
+    let area = centered_rect(65, 25, frame.area());
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .title(" Capture note for draft (Enter to save, Esc to cancel) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(app.capture_note_buffer.as_str())
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
+        .block(block);
+
+    frame.render_widget(paragraph, area);
+}
+
 pub(crate) fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
     let area = centered_rect(60, 25, frame.area());
     frame.render_widget(Clear, area);

@@ -16,6 +16,7 @@ impl App {
             InputMode::ModalAddGrant => self.handle_modal_add_grant_mode(key),
             InputMode::ModalAddSourceLink => self.handle_modal_add_source_link_mode(key),
             InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
+            InputMode::ModalCaptureNote => self.handle_modal_capture_note_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
             InputMode::JobHistory => self.handle_job_history_mode(key),
             InputMode::ViewingSourceRefs => self.handle_viewing_source_refs_mode(key),
@@ -1419,6 +1420,13 @@ impl App {
                 self.reading_md_content = None;
                 self.status_message = "Exited Markdown reader.".to_string();
             }
+            KeyCode::Char('b') => {
+                self.append_selected_source_to_bib();
+            }
+            KeyCode::Char('n') => {
+                self.capture_note_buffer.clear();
+                self.input_mode = InputMode::ModalCaptureNote;
+            }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.source_scroll_offset = self.source_scroll_offset.saturating_sub(1);
             }
@@ -1432,6 +1440,93 @@ impl App {
                 self.source_scroll_offset += 10;
             }
             _ => {}
+        }
+    }
+
+    fn handle_modal_capture_note_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::F(1) => self.toggle_help_overlay(),
+            KeyCode::Esc => {
+                self.input_mode = InputMode::ReadingSourceMd;
+            }
+            KeyCode::Enter => {
+                let note = self.capture_note_buffer.trim().to_string();
+                if !note.is_empty() {
+                    self.save_reader_note(&note);
+                }
+                self.input_mode = InputMode::ReadingSourceMd;
+            }
+            KeyCode::Backspace => {
+                self.capture_note_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.capture_note_buffer.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn short_hash(s: &str) -> String {
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for b in s.as_bytes() {
+            hash ^= u64::from(*b);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        format!("{:08x}", (hash ^ (hash >> 32)) as u32)
+    }
+
+    pub fn save_reader_note(&mut self, note: &str) {
+        if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
+            self.status_message = "No active source document selected.".to_string();
+            return;
+        }
+        let doc = self.sources[self.selected_source_index].clone();
+        let root = match self.project_root.as_ref() {
+            Some(r) => r,
+            None => {
+                self.status_message = "Error: paper_draft.tex not found.".to_string();
+                return;
+            }
+        };
+        let draft_path = root.join("paper_draft.tex");
+        if !draft_path.is_file() {
+            self.status_message = "Error: paper_draft.tex not found.".to_string();
+            return;
+        }
+
+        let existing = match std::fs::read_to_string(draft_path.as_std_path()) {
+            Ok(c) => c,
+            Err(e) => {
+                self.status_message = format!("Error reading paper_draft.tex: {e}");
+                return;
+            }
+        };
+
+        let note_hash = Self::short_hash(note);
+        let block_id = format!("from-{}-{}", doc.id.as_str(), note_hash);
+        let content = format!("from: {}\n{}", doc.filename, note);
+
+        let mut block = sil_core::IdeaBlock::new(block_id, content, None, 0, 0);
+        block.status = "open".to_string();
+        block.priority = "medium".to_string();
+        block.author_type = "human".to_string();
+        block.tags = vec!["from-source".to_string()];
+
+        let updated = sil_latex::update_or_insert_idea_block(&existing, &block);
+        if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated) {
+            self.status_message = format!("Error writing paper_draft.tex: {e}");
+        } else {
+            let paths = ProjectPaths::new(root);
+            let _ = sil_latex::write_draft_sections_from_file(
+                &draft_path,
+                &paths.draft_sections_dir(),
+            );
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                let ideas = sil_latex::parse_idea_blocks(&updated);
+                let _ = db.replace_todo_ideas(&ideas);
+            }
+            self.reload_paper_draft();
+            self.status_message = format!("Parked note from {}", doc.filename);
         }
     }
 
