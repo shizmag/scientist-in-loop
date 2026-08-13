@@ -13,8 +13,8 @@ mod tests;
 use dashboard::draw_dashboard;
 use draft::{draw_editing_paper_popup, draw_paper_draft};
 use modals::{
-    draw_confirm_delete_source, draw_editing_popup, draw_help_overlay, draw_job_history,
-    draw_modal_add_author, draw_modal_add_grant, draw_modal_add_source_link,
+    draw_command_palette, draw_confirm_delete_source, draw_editing_popup, draw_help_overlay,
+    draw_job_history, draw_modal_add_author, draw_modal_add_grant, draw_modal_add_source_link,
     draw_modal_capture_note, draw_modal_picker, draw_modal_rename_source,
 };
 use ratatui::{
@@ -66,6 +66,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalCaptureNote => draw_modal_capture_note(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
         InputMode::JobHistory => draw_job_history(frame, app),
+        InputMode::CommandPalette => draw_command_palette(frame, app),
         InputMode::ViewingSourceRefs | InputMode::SearchingViewingRefs => {
             draw_viewing_source_refs(frame, app)
         }
@@ -181,6 +182,9 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         }
         crate::app::HelpMode::JobHistory => {
             "[?] Help | [j/k] Navigate | [Enter/r] Retry failed | [Esc] Close"
+        }
+        crate::app::HelpMode::CommandPalette => {
+            "[Enter] Run | [↑/↓/Tab] Navigate | [Esc] Close | Type to filter"
         }
         _ => "[?] / [F1] Help Overlay | [Esc] Cancel",
     };

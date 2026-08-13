@@ -178,6 +178,7 @@ impl App {
             InputMode::ModalCaptureNote => HelpMode::ModalCaptureNote,
             InputMode::ConfirmDeleteSource => HelpMode::ConfirmDeleteSource,
             InputMode::JobHistory => HelpMode::JobHistory,
+            InputMode::CommandPalette => HelpMode::CommandPalette,
             InputMode::Editing => HelpMode::Editing,
             InputMode::EditingPaper => HelpMode::EditingPaper,
             InputMode::Normal => match self.active_tab {

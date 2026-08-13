@@ -209,6 +209,7 @@ fn test_keymap_for_all_modes() {
         HelpMode::SearchingBib,
         HelpMode::SearchingViewingRefs,
         HelpMode::JobHistory,
+        HelpMode::CommandPalette,
     ];
 
     for mode in modes {

@@ -2,7 +2,7 @@
 
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
@@ -401,3 +401,138 @@ pub(crate) fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
         .alignment(Alignment::Center);
     frame.render_widget(paragraph, area);
 }
+
+pub(crate) fn draw_command_palette(frame: &mut Frame, app: &App) {
+    let area = centered_rect(70, 65, frame.area());
+    frame.render_widget(Clear, area);
+
+    let main_block = Block::default()
+        .title(Span::styled(
+            " ⌨ Command Palette (: / Ctrl+K) ",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let inner_area = main_block.inner(area);
+    frame.render_widget(main_block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Search input box
+            Constraint::Min(0),    // Filtered command list
+        ])
+        .split(inner_area);
+
+    // Search input
+    let search_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(Color::Yellow))
+        .title(" Filter (type to search title, aliases, description) ");
+
+    let query_display = format!("> {}█", app.palette_filter);
+    let search_p = Paragraph::new(query_display)
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
+        .block(search_block);
+    frame.render_widget(search_p, chunks[0]);
+
+    // Command list
+    let filtered = app.filtered_commands();
+    if filtered.is_empty() {
+        let empty_msg = Paragraph::new("No matching commands found.")
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Center)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Color::DarkGray)),
+            );
+        frame.render_widget(empty_msg, chunks[1]);
+        return;
+    }
+
+    let items: Vec<ListItem> = filtered
+        .iter()
+        .enumerate()
+        .map(|(idx, spec)| {
+            let is_sel = idx == app.palette_selected_index;
+            let availability = spec.is_available(app);
+
+            let prefix = if is_sel { "► " } else { "  " };
+
+            match availability {
+                Ok(()) => {
+                    let title_style = if is_sel {
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::White)
+                    };
+                    let key_style = Style::default().fg(Color::Cyan);
+                    let desc_style = Style::default().fg(Color::DarkGray);
+
+                    let key_text = if spec.default_keys.is_empty() {
+                        "".to_string()
+                    } else {
+                        format!(" [{}]", spec.default_keys)
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(prefix, title_style),
+                        Span::styled(spec.title, title_style),
+                        Span::styled(key_text, key_style),
+                        Span::styled(format!(" — {}", spec.description), desc_style),
+                    ]))
+                }
+                Err(reason) => {
+                    let title_style = if is_sel {
+                        Style::default()
+                            .fg(Color::DarkGray)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
+                    let reason_style = Style::default().fg(Color::LightRed);
+                    let desc_style = Style::default().fg(Color::DarkGray);
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(prefix, title_style),
+                        Span::styled(spec.title, title_style),
+                        Span::styled(format!(" (disabled: {reason})"), reason_style),
+                        Span::styled(format!(" — {}", spec.description), desc_style),
+                    ]))
+                }
+            }
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(Color::Blue))
+                .title(" Commands (Enter: Run, ↑/↓/Tab: Navigate, Esc: Close) "),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    let mut state = ListState::default();
+    state.select(Some(app.palette_selected_index));
+    frame.render_stateful_widget(list, chunks[1], &mut state);
+}
+

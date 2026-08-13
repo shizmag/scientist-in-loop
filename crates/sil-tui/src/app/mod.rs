@@ -1,6 +1,8 @@
 //! Application state and logic for `sil-tui`.
 
 pub(crate) mod bib_actions;
+pub(crate) mod commands;
+pub(crate) mod dispatch;
 pub(crate) mod handlers;
 pub(crate) mod jobs;
 pub(crate) mod types;
@@ -8,6 +10,7 @@ pub(crate) mod types;
 #[cfg(test)]
 mod tests;
 
+pub use commands::*;
 pub use types::*;
 
 use camino::Utf8PathBuf;
@@ -124,6 +127,11 @@ pub struct App {
     // Live dashboard state
     pub selected_digest_index: usize,
     pub dashboard: crate::ui::dashboard::DashboardModel,
+
+    // Command palette state
+    pub palette_filter: String,
+    pub palette_selected_index: usize,
+    pub palette_previous_mode: InputMode,
 }
 
 impl App {
@@ -246,6 +254,10 @@ impl App {
             selected_setting_index: 0,
             selected_digest_index: 0,
             dashboard: crate::ui::dashboard::DashboardModel::default(),
+
+            palette_filter: String::new(),
+            palette_selected_index: 0,
+            palette_previous_mode: InputMode::Normal,
         };
         app.reload_paper_draft();
         app.reload_sources();
@@ -267,5 +279,32 @@ impl App {
     pub fn refresh_dashboard(&mut self) {
         self.dashboard = crate::ui::dashboard::DashboardModel::from_app(self);
         self.clamp_digest_selection();
+    }
+
+    /// Return commands matching current `palette_filter` string.
+    pub fn filtered_commands(&self) -> Vec<&'static CommandSpec> {
+        let query = self.palette_filter.trim().to_lowercase();
+        all_commands()
+            .iter()
+            .filter(|spec| {
+                if query.is_empty() {
+                    return true;
+                }
+                spec.title.to_lowercase().contains(&query)
+                    || spec.id.as_str().to_lowercase().contains(&query)
+                    || spec.description.to_lowercase().contains(&query)
+                    || spec.aliases.iter().any(|a| a.to_lowercase().contains(&query))
+            })
+            .collect()
+    }
+
+    /// Clamp selected palette index to bounds of filtered commands.
+    pub fn clamp_palette_selection(&mut self) {
+        let count = self.filtered_commands().len();
+        if count == 0 {
+            self.palette_selected_index = 0;
+        } else if self.palette_selected_index >= count {
+            self.palette_selected_index = count - 1;
+        }
     }
 }

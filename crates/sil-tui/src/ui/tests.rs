@@ -160,6 +160,7 @@ fn test_draw_modal_popups_rendering() {
         InputMode::JobHistory,
         InputMode::ViewingSourceRefs,
         InputMode::HelpOverlay,
+        InputMode::CommandPalette,
     ];
 
     for mode in modes {

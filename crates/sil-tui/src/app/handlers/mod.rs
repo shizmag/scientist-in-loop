@@ -8,6 +8,7 @@ impl App {
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::HelpOverlay => self.handle_help_overlay_mode(key),
+            InputMode::CommandPalette => self.handle_command_palette_mode(key),
             InputMode::Normal => self.handle_normal_mode(key),
             InputMode::Editing => self.handle_editing_mode(key),
             InputMode::EditingPaper => self.handle_editing_paper_mode(key),
@@ -31,16 +32,99 @@ impl App {
         self.input_mode = self.saved_input_mode;
     }
 
-    fn handle_normal_mode(&mut self, key: KeyEvent) {
-        // Global shortcuts
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('s') {
-            self.save_all();
-            return;
+    fn handle_command_palette_mode(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('p') | KeyCode::Char('k') => {
+                    if self.palette_selected_index > 0 {
+                        self.palette_selected_index -= 1;
+                    }
+                    return;
+                }
+                KeyCode::Char('n') | KeyCode::Char('j') => {
+                    let count = self.filtered_commands().len();
+                    if count > 0 && self.palette_selected_index + 1 < count {
+                        self.palette_selected_index += 1;
+                    }
+                    return;
+                }
+                KeyCode::Char('u') => {
+                    self.palette_filter.clear();
+                    self.palette_selected_index = 0;
+                    return;
+                }
+                KeyCode::Char('c') => {
+                    self.input_mode = self.palette_previous_mode;
+                    self.status_message = "Command palette closed.".to_string();
+                    return;
+                }
+                _ => {}
+            }
         }
 
         match key.code {
+            KeyCode::Esc => {
+                self.input_mode = self.palette_previous_mode;
+                self.status_message = "Command palette closed.".to_string();
+            }
+            KeyCode::Enter => {
+                let filtered = self.filtered_commands();
+                if !filtered.is_empty() && self.palette_selected_index < filtered.len() {
+                    let spec = filtered[self.palette_selected_index];
+                    if let Err(reason) = spec.is_available(self) {
+                        self.status_message = format!("Cannot run '{}': {}", spec.title, reason);
+                    } else {
+                        let cmd_id = spec.id;
+                        self.input_mode = self.palette_previous_mode;
+                        self.dispatch(cmd_id);
+                    }
+                }
+            }
+            KeyCode::Up | KeyCode::BackTab => {
+                if self.palette_selected_index > 0 {
+                    self.palette_selected_index -= 1;
+                }
+            }
+            KeyCode::Down | KeyCode::Tab => {
+                let count = self.filtered_commands().len();
+                if count > 0 && self.palette_selected_index + 1 < count {
+                    self.palette_selected_index += 1;
+                }
+            }
+            KeyCode::Backspace => {
+                self.palette_filter.pop();
+                self.clamp_palette_selection();
+            }
+            KeyCode::Char(c) => {
+                self.palette_filter.push(c);
+                self.clamp_palette_selection();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_normal_mode(&mut self, key: KeyEvent) {
+        // Global shortcuts
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('k') => {
+                    self.dispatch(CommandId::OpenPalette);
+                    return;
+                }
+                KeyCode::Char('s') => {
+                    self.dispatch(CommandId::SaveAll);
+                    return;
+                }
+                _ => {}
+            }
+        }
+
+        match key.code {
+            KeyCode::Char(':') => {
+                self.dispatch(CommandId::OpenPalette);
+            }
             KeyCode::Char('?') | KeyCode::F(1) => {
-                self.toggle_help_overlay();
+                self.dispatch(CommandId::OpenHelp);
             }
             KeyCode::Char('q') | KeyCode::Esc => {
                 if self.active_tab == ActiveTab::References
@@ -92,7 +176,7 @@ impl App {
                     self.sort_source_references();
                     self.clamp_source_ref_selection();
                 } else {
-                    self.save_all();
+                    self.dispatch(CommandId::SaveAll);
                 }
             }
             KeyCode::Char('t') => {
@@ -203,36 +287,28 @@ impl App {
             },
             // Uppercase J / Shift+j: job history (before lowercase j navigation).
             KeyCode::Char('J') => {
-                self.open_job_history();
+                self.dispatch(CommandId::OpenJobHistory);
             }
             KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::SHIFT) => {
-                self.open_job_history();
+                self.dispatch(CommandId::OpenJobHistory);
             }
             KeyCode::Down | KeyCode::Char('j') => self.navigate_down(),
             KeyCode::Enter => match self.active_tab {
                 ActiveTab::Dashboard => self.queue_selected_digest_fetch(),
                 ActiveTab::PaperDraft => self.start_editing_selected_field(),
-                ActiveTab::Sources => {
-                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
-                        let doc = &self.sources[self.selected_source_index];
-                        let content = self.fetch_source_markdown_content(doc);
-                        self.reading_md_content = Some(content);
-                        self.input_mode = InputMode::ReadingSourceMd;
-                        self.source_scroll_offset = 0;
-                        self.status_message =
-                            format!("Reading {}. Press Esc to exit.", doc.filename);
-                    }
-                }
+                ActiveTab::Sources => self.dispatch(CommandId::OpenSource),
                 ActiveTab::Settings => self.start_editing_selected_field(),
                 _ => {}
             },
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 if self.active_tab == ActiveTab::Sources {
-                    if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
-                        let force = key.code == KeyCode::Char('E')
-                            || key.modifiers.contains(KeyModifiers::SHIFT);
-                        let doc = self.sources[self.selected_source_index].clone();
-                        self.queue_source_parse(doc, force);
+                    if key.code == KeyCode::Char('E') || key.modifiers.contains(KeyModifiers::SHIFT) {
+                        if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
+                            let doc = self.sources[self.selected_source_index].clone();
+                            self.queue_source_parse(doc, true);
+                        }
+                    } else {
+                        self.dispatch(CommandId::ParseSelected);
                     }
                 } else if key.code == KeyCode::Char('e') {
                     self.start_editing_selected_field();
@@ -241,13 +317,7 @@ impl App {
 
             // Actions for Sources & Settings
             KeyCode::Char('a') => match self.active_tab {
-                ActiveTab::Sources => {
-                    self.new_source_link_buffer.clear();
-                    self.input_mode = InputMode::ModalAddSourceLink;
-                    self.status_message =
-                        "Fetch/download source — enter URL / DOI / arXiv (Enter to start fetch, Esc to cancel)"
-                            .to_string();
-                }
+                ActiveTab::Sources => self.dispatch(CommandId::AddSourceLink),
                 ActiveTab::Settings => {
                     let items = self.setting_items();
                     if self.selected_setting_index < items.len() {
@@ -291,23 +361,11 @@ impl App {
                 _ => {}
             },
             KeyCode::Char('R') => {
-                if self.active_tab == ActiveTab::Sources {
-                    self.reload_sources();
-                    self.status_message = "✓ Reloaded sources".to_string();
-                } else if self.active_tab == ActiveTab::Dashboard {
-                    self.reload_paper_draft();
-                    self.reload_sources();
-                    self.load_project_references_bib();
-                    self.refresh_dashboard();
-                    self.status_message = "✓ Reloaded dashboard".to_string();
-                }
+                self.dispatch(CommandId::Reload);
             }
             KeyCode::Char('r') => {
                 if key.modifiers.contains(KeyModifiers::SHIFT) {
-                    if self.active_tab == ActiveTab::Sources {
-                        self.reload_sources();
-                        self.status_message = "✓ Reloaded sources".to_string();
-                    }
+                    self.dispatch(CommandId::Reload);
                 } else if self.active_tab == ActiveTab::Sources
                     && !self.sources.is_empty()
                     && self.selected_source_index < self.sources.len()
@@ -435,7 +493,7 @@ impl App {
             }
             KeyCode::Char('b') => {
                 if self.active_tab == ActiveTab::Sources {
-                    self.append_selected_source_to_bib();
+                    self.dispatch(CommandId::CiteSource);
                 }
             }
             KeyCode::Char('m') | KeyCode::Char('c') => {
@@ -1179,7 +1237,7 @@ impl App {
         }
     }
 
-    fn open_job_history(&mut self) {
+    pub(crate) fn open_job_history(&mut self) {
         if self.recent_job_outcomes.is_empty() {
             self.selected_job_history_index = 0;
         } else if self.selected_job_history_index >= self.recent_job_outcomes.len() {
@@ -1191,8 +1249,16 @@ impl App {
     }
 
     fn handle_job_history_mode(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('k') {
+            self.dispatch(CommandId::OpenPalette);
+            return;
+        }
+
         match key.code {
-            KeyCode::F(1) | KeyCode::Char('?') => self.toggle_help_overlay(),
+            KeyCode::Char(':') => {
+                self.dispatch(CommandId::OpenPalette);
+            }
+            KeyCode::F(1) | KeyCode::Char('?') => self.dispatch(CommandId::OpenHelp),
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('J') => {
                 self.input_mode = InputMode::Normal;
                 self.status_message = "Closed job history.".to_string();
@@ -1315,10 +1381,18 @@ impl App {
     }
 
     fn handle_viewing_source_refs_mode(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('k') {
+            self.dispatch(CommandId::OpenPalette);
+            return;
+        }
+
         let count = self.filtered_viewing_source_references().len();
         match key.code {
+            KeyCode::Char(':') => {
+                self.dispatch(CommandId::OpenPalette);
+            }
             KeyCode::Char('?') | KeyCode::F(1) => {
-                self.toggle_help_overlay();
+                self.dispatch(CommandId::OpenHelp);
             }
             KeyCode::Esc | KeyCode::Char('q') => {
                 if !self.viewing_ref_search_query.is_empty() {
@@ -1445,9 +1519,17 @@ impl App {
     }
 
     fn handle_reading_source_md_mode(&mut self, key: KeyEvent) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('k') {
+            self.dispatch(CommandId::OpenPalette);
+            return;
+        }
+
         match key.code {
+            KeyCode::Char(':') => {
+                self.dispatch(CommandId::OpenPalette);
+            }
             KeyCode::Char('?') | KeyCode::F(1) => {
-                self.toggle_help_overlay();
+                self.dispatch(CommandId::OpenHelp);
             }
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.input_mode = InputMode::Normal;
@@ -1455,11 +1537,10 @@ impl App {
                 self.status_message = "Exited Markdown reader.".to_string();
             }
             KeyCode::Char('b') => {
-                self.append_selected_source_to_bib();
+                self.dispatch(CommandId::CiteSource);
             }
             KeyCode::Char('n') => {
-                self.capture_note_buffer.clear();
-                self.input_mode = InputMode::ModalCaptureNote;
+                self.dispatch(CommandId::CaptureNote);
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.source_scroll_offset = self.source_scroll_offset.saturating_sub(1);

@@ -1,0 +1,185 @@
+use super::super::*;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+#[test]
+fn test_filter_parse_commands() {
+    let mut app = App::new(None);
+    app.palette_filter = "parse".to_string();
+
+    let filtered = app.filtered_commands();
+    assert!(!filtered.is_empty(), "Should match parse commands");
+
+    let ids: Vec<CommandId> = filtered.iter().map(|c| c.id).collect();
+    assert!(ids.contains(&CommandId::ParseSelected));
+    assert!(ids.contains(&CommandId::ParseAll));
+
+    assert!(!ids.contains(&CommandId::SaveAll));
+    assert!(!ids.contains(&CommandId::Quit));
+    assert!(!ids.contains(&CommandId::OpenPalette));
+    assert!(!ids.contains(&CommandId::OpenHelp));
+    assert!(!ids.contains(&CommandId::Reload));
+}
+
+#[test]
+fn test_esc_restores_previous_mode() {
+    let mut app = App::new(None);
+    assert_eq!(app.input_mode, InputMode::Normal);
+
+    // Open palette from Normal mode
+    app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+
+    // Esc closes palette and restores Normal mode
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+
+    // Set to ReadingSourceMd mode
+    app.input_mode = InputMode::ReadingSourceMd;
+    app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+
+    // Esc closes palette and restores ReadingSourceMd mode
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
+}
+
+#[test]
+fn test_dispatch_save_all_matches_ctrl_s() {
+    let mut app = App::new(None);
+
+    // 1. Test Ctrl+S
+    app.dirty = true;
+    app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL));
+    assert!(!app.dirty, "Ctrl+S should clear dirty flag");
+    assert!(
+        app.status_message.contains("saved") || app.status_message.contains('✓'),
+        "Ctrl+S should update status message"
+    );
+
+    // 2. Test dispatch(CommandId::SaveAll)
+    app.dirty = true;
+    app.dispatch(CommandId::SaveAll);
+    assert!(!app.dirty, "dispatch(SaveAll) should clear dirty flag");
+    assert!(
+        app.status_message.contains("saved") || app.status_message.contains('✓'),
+        "dispatch(SaveAll) should update status message"
+    );
+}
+
+#[test]
+fn test_palette_does_not_quit_on_q() {
+    let mut app = App::new(None);
+    app.dispatch(CommandId::OpenPalette);
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+
+    // Press 'q'
+    app.handle_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::empty()));
+
+    assert!(!app.should_quit, "'q' in palette should not quit app");
+    assert_eq!(app.palette_filter, "q");
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+}
+
+#[test]
+fn test_colon_and_ctrl_k_open_palette() {
+    let mut app = App::new(None);
+
+    // Test ':' from normal mode
+    app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+
+    // Close palette
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()));
+    assert_eq!(app.input_mode, InputMode::Normal);
+
+    // Test Ctrl+K from normal mode
+    app.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL));
+    assert_eq!(app.input_mode, InputMode::CommandPalette);
+}
+
+#[test]
+fn test_palette_navigation_and_clamping() {
+    let mut app = App::new(None);
+    app.dispatch(CommandId::OpenPalette);
+
+    let total = app.filtered_commands().len();
+    assert!(total > 2);
+    assert_eq!(app.palette_selected_index, 0);
+
+    // Down arrow moves selection down
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::empty()));
+    assert_eq!(app.palette_selected_index, 1);
+
+    // Ctrl+N moves selection down
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL));
+    assert_eq!(app.palette_selected_index, 2);
+
+    // Tab moves selection down
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::empty()));
+    assert_eq!(app.palette_selected_index, 3);
+
+    // Up arrow moves selection up
+    app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::empty()));
+    assert_eq!(app.palette_selected_index, 2);
+
+    // Ctrl+P moves selection up
+    app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+    assert_eq!(app.palette_selected_index, 1);
+
+    // BackTab moves selection up
+    app.handle_key(KeyEvent::new(KeyCode::BackTab, KeyModifiers::empty()));
+    assert_eq!(app.palette_selected_index, 0);
+
+    // Clamping on Up at 0 stays at 0
+    app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::empty()));
+    assert_eq!(app.palette_selected_index, 0);
+}
+
+#[test]
+fn test_palette_enter_runs_command() {
+    let mut app = App::new(None);
+    app.dispatch(CommandId::OpenPalette);
+
+    // Filter to "quit"
+    app.palette_filter = "quit".to_string();
+    let filtered = app.filtered_commands();
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].id, CommandId::Quit);
+
+    app.palette_selected_index = 0;
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+
+    assert!(app.should_quit, "Enter on Quit command should set should_quit");
+}
+
+#[test]
+fn test_command_id_as_str_and_display() {
+    assert_eq!(CommandId::SaveAll.as_str(), "save_all");
+    assert_eq!(CommandId::OpenPalette.as_str(), "open_palette");
+    assert_eq!(CommandId::Quit.as_str(), "quit");
+    assert_eq!(CommandId::OpenHelp.as_str(), "open_help");
+    assert_eq!(CommandId::Reload.as_str(), "reload");
+    assert_eq!(CommandId::OpenJobHistory.as_str(), "open_job_history");
+    assert_eq!(CommandId::ParseSelected.as_str(), "parse_selected");
+    assert_eq!(CommandId::ParseAll.as_str(), "parse_all");
+    assert_eq!(CommandId::AddSourceLink.as_str(), "add_source_link");
+    assert_eq!(CommandId::OpenSource.as_str(), "open_source");
+    assert_eq!(CommandId::CiteSource.as_str(), "cite_source");
+    assert_eq!(CommandId::CaptureNote.as_str(), "capture_note");
+
+    assert_eq!(format!("{}", CommandId::SaveAll), "save_all");
+}
+
+#[test]
+fn test_command_spec_availability() {
+    let app_without_root = App::new(None);
+
+    let all = all_commands();
+    let parse_cmd = all.iter().find(|c| c.id == CommandId::ParseSelected).unwrap();
+    let quit_cmd = all.iter().find(|c| c.id == CommandId::Quit).unwrap();
+    let reload_cmd = all.iter().find(|c| c.id == CommandId::Reload).unwrap();
+
+    assert!(quit_cmd.is_available(&app_without_root).is_ok());
+    assert!(parse_cmd.is_available(&app_without_root).is_err());
+    assert!(reload_cmd.is_available(&app_without_root).is_err());
+}

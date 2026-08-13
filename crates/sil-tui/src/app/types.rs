@@ -58,6 +58,7 @@ pub enum InputMode {
     SearchingViewingRefs,
     HelpOverlay,
     JobHistory,
+    CommandPalette,
 }
 
 /// Sorting key for references display in TUI.
@@ -162,6 +163,7 @@ pub enum HelpMode {
     SearchingBib,
     SearchingViewingRefs,
     JobHistory,
+    CommandPalette,
 }
 
 impl HelpMode {
@@ -188,6 +190,7 @@ impl HelpMode {
             HelpMode::SearchingBib => "Searching references.bib",
             HelpMode::SearchingViewingRefs => "Searching Source References",
             HelpMode::JobHistory => "Background Job History",
+            HelpMode::CommandPalette => "Command Palette",
         }
     }
 }
@@ -476,6 +479,14 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc / q / J", "Close job history modal"),
+        ],
+        HelpMode::CommandPalette => vec![
+            ("Char", "Type query to filter commands"),
+            ("Backspace", "Delete character from filter query"),
+            ("Up / Down / Tab", "Navigate matching commands"),
+            ("Ctrl+P / Ctrl+N", "Previous / next command"),
+            ("Enter", "Execute selected command"),
+            ("Esc", "Close command palette and restore previous mode"),
         ],
     }
 }
