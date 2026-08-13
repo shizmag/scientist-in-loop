@@ -40,6 +40,7 @@ impl App {
         if self.selected_source_index >= self.sources.len() && !self.sources.is_empty() {
             self.selected_source_index = self.sources.len() - 1;
         }
+        self.refresh_dashboard();
     }
 
     pub fn setting_items(&self) -> Vec<SettingItem> {
@@ -52,7 +53,11 @@ impl App {
         for f in RagField::ALL {
             items.push(SettingItem::Rag(f));
         }
-        // 3. Cache section
+        // 3. Digest Settings
+        for f in DigestField::ALL {
+            items.push(SettingItem::Digest(f));
+        }
+        // 4. Cache section
         if self.cache.co_authors.is_empty() {
             items.push(SettingItem::CacheCoAuthorEmpty);
         } else {
@@ -97,6 +102,7 @@ impl App {
                 }
             }
         }
+        self.refresh_dashboard();
     }
 
     pub fn load_project_references_bib(&mut self) {
@@ -109,6 +115,7 @@ impl App {
                 }
             }
         }
+        self.refresh_dashboard();
     }
 
     pub fn load_all_source_references(&mut self) {

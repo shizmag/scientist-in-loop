@@ -288,6 +288,12 @@ impl App {
                 if self.active_tab == ActiveTab::Sources {
                     self.reload_sources();
                     self.status_message = "✓ Reloaded sources".to_string();
+                } else if self.active_tab == ActiveTab::Dashboard {
+                    self.reload_paper_draft();
+                    self.reload_sources();
+                    self.load_project_references_bib();
+                    self.refresh_dashboard();
+                    self.status_message = "✓ Reloaded dashboard".to_string();
                 }
             }
             KeyCode::Char('r') => {
@@ -672,6 +678,23 @@ impl App {
                                 "Editing RAG setting. Press Enter to confirm, Esc to cancel."
                                     .to_string();
                         }
+                        SettingItem::Digest(f) => {
+                            self.input_buffer = match f {
+                                DigestField::GlobalQuery => {
+                                    self.global_settings.digest_query.clone()
+                                }
+                                DigestField::RefreshHours => {
+                                    self.global_settings.digest_refresh_hours.to_string()
+                                }
+                                DigestField::LocalQuery => {
+                                    self.local_settings.digest_query.clone()
+                                }
+                            };
+                            self.input_mode = InputMode::Editing;
+                            self.status_message =
+                                "Editing digest setting. Press Enter to confirm, Esc to cancel."
+                                    .to_string();
+                        }
                         SettingItem::LocalTitle => {
                             self.input_buffer = self.local_settings.title.clone();
                             self.input_mode = InputMode::Editing;
@@ -874,6 +897,20 @@ impl App {
                             if let Ok(n) = val.parse::<usize>() {
                                 self.global_settings.rag.child_chunk_size = n;
                             }
+                        }
+                    },
+                    SettingItem::Digest(f) => match f {
+                        DigestField::GlobalQuery => {
+                            self.global_settings.digest_query = val;
+                        }
+                        DigestField::RefreshHours => {
+                            if let Ok(n) = val.parse::<u32>() {
+                                self.global_settings.digest_refresh_hours =
+                                    sil_core::effective_digest_refresh_hours(n);
+                            }
+                        }
+                        DigestField::LocalQuery => {
+                            self.local_settings.digest_query = val;
                         }
                     },
                     SettingItem::LocalTitle => self.local_settings.title = val,

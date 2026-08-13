@@ -448,6 +448,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
 pub enum SettingItem {
     Global(GlobalField),
     Rag(RagField),
+    Digest(DigestField),
     CacheCoAuthor(usize),
     CacheCoAuthorEmpty,
     CacheGrant(usize),
@@ -458,6 +459,22 @@ pub enum SettingItem {
     LocalCoAuthorEmpty,
     LocalGrant(usize),
     LocalGrantEmpty,
+}
+
+/// Currently active input field in Digest settings form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DigestField {
+    GlobalQuery = 0,
+    RefreshHours = 1,
+    LocalQuery = 2,
+}
+
+impl DigestField {
+    pub const ALL: [DigestField; 3] = [
+        DigestField::GlobalQuery,
+        DigestField::RefreshHours,
+        DigestField::LocalQuery,
+    ];
 }
 
 /// Currently active input field in forms.

@@ -59,6 +59,47 @@ pub struct GlobalSettings {
     /// Recently opened sil project paths (up to 20).
     #[serde(default)]
     pub recent_projects: Vec<Utf8PathBuf>,
+    /// Global literature digest query.
+    #[serde(default)]
+    pub digest_query: String,
+    /// Refresh interval for literature digest in hours (minimum 1).
+    #[serde(
+        default = "default_digest_refresh_hours",
+        deserialize_with = "deserialize_refresh_hours"
+    )]
+    pub digest_refresh_hours: u32,
+}
+
+fn default_digest_refresh_hours() -> u32 {
+    1
+}
+
+fn deserialize_refresh_hours<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let hours = u32::deserialize(deserializer)?;
+    Ok(effective_digest_refresh_hours(hours))
+}
+
+/// Helper to ensure digest refresh interval is at least 1 hour (KD-6).
+pub fn effective_digest_refresh_hours(hours: u32) -> u32 {
+    hours.max(1)
+}
+
+/// Resolve effective digest query given global and local query strings (KD-5).
+/// Local non-empty (trimmed) takes precedence over global non-empty (trimmed).
+/// If both are empty, returns `None` (auto-refresh disabled).
+pub fn effective_digest_query<'a>(global: &'a str, local: &'a str) -> Option<&'a str> {
+    let local_trimmed = local.trim();
+    if !local_trimmed.is_empty() {
+        return Some(local_trimmed);
+    }
+    let global_trimmed = global.trim();
+    if !global_trimmed.is_empty() {
+        return Some(global_trimmed);
+    }
+    None
 }
 
 fn default_engine() -> String {
@@ -253,6 +294,8 @@ impl Default for GlobalSettings {
             custom_fields: BTreeMap::new(),
             rag: RagSettings::default(),
             recent_projects: Vec::new(),
+            digest_query: String::new(),
+            digest_refresh_hours: default_digest_refresh_hours(),
         }
     }
 }
@@ -272,6 +315,9 @@ pub struct LocalSettings {
     /// Project notes or specific work details.
     #[serde(default)]
     pub notes: String,
+    /// Project-specific digest query override (wins when non-empty).
+    #[serde(default)]
+    pub digest_query: String,
 }
 
 /// Global cache for remembering previously used co-authors and grant requisites.
@@ -354,7 +400,10 @@ impl GlobalSettings {
             std::fs::create_dir_all(parent.as_std_path())?;
         }
 
-        let yaml = serde_yaml::to_string(self)
+        let mut clamped = self.clone();
+        clamped.digest_refresh_hours = effective_digest_refresh_hours(clamped.digest_refresh_hours);
+
+        let yaml = serde_yaml::to_string(&clamped)
             .map_err(|e| SilError::Message(format!("failed to serialize global settings: {e}")))?;
 
         crate::atomic::write_atomic_str(&target_path, &yaml)?;
@@ -691,5 +740,67 @@ mod tests {
         };
         assert_eq!(empty_rag.resolve_reranker_path(), None);
         assert_eq!(empty_rag.resolve_embedder_path(), None);
+    }
+
+    #[test]
+    fn digest_settings_deserialize_from_empty() {
+        let gs: GlobalSettings = serde_yaml::from_str("{}").unwrap();
+        assert_eq!(gs.digest_query, "");
+        assert_eq!(gs.digest_refresh_hours, 1);
+
+        let ls: LocalSettings = serde_yaml::from_str("{}").unwrap();
+        assert_eq!(ls.digest_query, "");
+    }
+
+    #[test]
+    fn digest_settings_yaml_missing_keys_defaults() {
+        let yaml_g = "default_latex_engine: tectonic\n";
+        let gs: GlobalSettings = serde_yaml::from_str(yaml_g).unwrap();
+        assert_eq!(gs.digest_query, "");
+        assert_eq!(gs.digest_refresh_hours, 1);
+
+        let yaml_l = "title: Sample Paper\n";
+        let ls: LocalSettings = serde_yaml::from_str(yaml_l).unwrap();
+        assert_eq!(ls.digest_query, "");
+    }
+
+    #[test]
+    fn effective_digest_query_precedence_test() {
+        // Local trimmed non-empty wins over global
+        assert_eq!(
+            effective_digest_query("machine learning", "  quantum computing  "),
+            Some("quantum computing")
+        );
+        // Local empty falls back to global trimmed non-empty
+        assert_eq!(
+            effective_digest_query("  machine learning  ", "   "),
+            Some("machine learning")
+        );
+        // Both empty yields None
+        assert_eq!(effective_digest_query("   ", ""), None);
+        assert_eq!(effective_digest_query("", "  "), None);
+    }
+
+    #[test]
+    fn digest_refresh_hours_clamping_test() {
+        assert_eq!(effective_digest_refresh_hours(0), 1);
+        assert_eq!(effective_digest_refresh_hours(5), 5);
+
+        // Deserializing 0 clamps to 1
+        let yaml = "digest_refresh_hours: 0\n";
+        let gs: GlobalSettings = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(gs.digest_refresh_hours, 1);
+
+        // Saving 0 clamps to 1 in YAML output
+        let dir = tempdir().unwrap();
+        let path = Utf8PathBuf::from_path_buf(dir.path().join("settings.yaml")).unwrap();
+        let gs_zero = GlobalSettings {
+            digest_refresh_hours: 0,
+            ..Default::default()
+        };
+        gs_zero.save(Some(&path)).unwrap();
+
+        let loaded = GlobalSettings::load_or_default(Some(&path));
+        assert_eq!(loaded.digest_refresh_hours, 1);
     }
 }

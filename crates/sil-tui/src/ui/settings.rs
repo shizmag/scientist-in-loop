@@ -11,7 +11,7 @@ use ratatui::{
     },
 };
 
-use crate::app::{App, GlobalField, RagField, SettingItem};
+use crate::app::{App, DigestField, GlobalField, RagField, SettingItem};
 
 pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
     let items = app.setting_items();
@@ -22,6 +22,7 @@ pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
     let num_threads_str = app.global_settings.rag.num_threads.to_string();
     let parent_chunk_str = app.global_settings.rag.parent_chunk_size.to_string();
     let child_chunk_str = app.global_settings.rag.child_chunk_size.to_string();
+    let digest_refresh_str = app.global_settings.digest_refresh_hours.to_string();
 
     for (flat_idx, item) in items.iter().enumerate() {
         let is_sel = app.selected_setting_index == flat_idx;
@@ -37,6 +38,7 @@ pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
         let section_name = match item {
             SettingItem::Global(_) => "Global Settings",
             SettingItem::Rag(_) => "RAG Settings",
+            SettingItem::Digest(_) => "Digest Settings",
             SettingItem::CacheCoAuthor(_)
             | SettingItem::CacheCoAuthorEmpty
             | SettingItem::CacheGrant(_)
@@ -54,6 +56,7 @@ pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
             let icon = match section_name {
                 "Global Settings" => "👤",
                 "RAG Settings" => "🤖",
+                "Digest Settings" => "📰",
                 "Co-Author & Grant Caches" => "💾",
                 _ => "📄",
             };
@@ -163,6 +166,29 @@ pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
                     Span::styled(
                         if val.is_empty() { "<none>" } else { val },
                         Style::default().fg(Color::Magenta),
+                    ),
+                ])
+            }
+            SettingItem::Digest(f) => {
+                let (label, val) = match f {
+                    DigestField::GlobalQuery => (
+                        "Global Digest Query",
+                        app.global_settings.digest_query.as_str(),
+                    ),
+                    DigestField::RefreshHours => (
+                        "Refresh Interval (Hours)",
+                        digest_refresh_str.as_str(),
+                    ),
+                    DigestField::LocalQuery => (
+                        "Local Digest Query",
+                        app.local_settings.digest_query.as_str(),
+                    ),
+                };
+                Line::from(vec![
+                    Span::styled(format!("{prefix}{label:<24}: "), style),
+                    Span::styled(
+                        if val.is_empty() { "<none>" } else { val },
+                        Style::default().fg(Color::Yellow),
                     ),
                 ])
             }

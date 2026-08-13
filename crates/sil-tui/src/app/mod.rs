@@ -115,6 +115,9 @@ pub struct App {
 
     // Unified settings navigation
     pub selected_setting_index: usize,
+
+    // Live dashboard state
+    pub dashboard: crate::ui::dashboard::DashboardModel,
 }
 
 impl App {
@@ -229,11 +232,17 @@ impl App {
             dashboard_scroll_offset: 0,
 
             selected_setting_index: 0,
+            dashboard: crate::ui::dashboard::DashboardModel::default(),
         };
         app.reload_paper_draft();
         app.reload_sources();
         app.load_project_references_bib();
         app.load_all_source_references();
+        app.refresh_dashboard();
         app
+    }
+
+    pub fn refresh_dashboard(&mut self) {
+        self.dashboard = crate::ui::dashboard::DashboardModel::from_app(self);
     }
 }

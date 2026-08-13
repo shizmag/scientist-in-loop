@@ -48,6 +48,7 @@ pub use paths::{ProjectPaths, project_root_from_cwd};
 pub use sci_action::{SciAction, extract_from_message};
 pub use settings::{
     AuthorDetails, GlobalSettings, GrantDetails, LocalSettings, RagSettings, SettingsCache,
+    effective_digest_query, effective_digest_refresh_hours,
 };
 pub use source::{
     DocumentStatus, ReferenceEntry, SourceDocument, SourceId, SourceKind, compute_draft_hash,

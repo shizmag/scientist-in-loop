@@ -115,6 +115,7 @@ fn test_enums_and_titles() {
     assert_eq!(GlobalField::ALL.len(), 9);
     assert_eq!(LocalField::ALL.len(), 4);
     assert_eq!(RagField::ALL.len(), 9);
+    assert_eq!(DigestField::ALL.len(), 3);
 }
 
 #[test]
@@ -339,6 +340,34 @@ fn test_editing_all_rag_settings_fields() {
     assert_eq!(app.global_settings.rag.num_threads, 16);
     assert_eq!(app.global_settings.rag.parent_chunk_size, 2000);
     assert_eq!(app.global_settings.rag.child_chunk_size, 500);
+}
+
+#[test]
+fn test_editing_all_digest_settings_fields() {
+    let mut app = App::new(None);
+    app.active_tab = ActiveTab::Settings;
+
+    let items = app.setting_items();
+    for (idx, item) in items.iter().enumerate() {
+        if let SettingItem::Digest(field) = item {
+            app.selected_setting_index = idx;
+            app.start_editing_selected_field();
+            assert_eq!(app.input_mode, InputMode::Editing);
+
+            app.input_buffer = match field {
+                DigestField::GlobalQuery => "global test query".to_string(),
+                DigestField::RefreshHours => "0".to_string(), // should clamp to 1
+                DigestField::LocalQuery => "local test override".to_string(),
+            };
+
+            app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+            assert_eq!(app.input_mode, InputMode::Normal);
+        }
+    }
+
+    assert_eq!(app.global_settings.digest_query, "global test query");
+    assert_eq!(app.global_settings.digest_refresh_hours, 1);
+    assert_eq!(app.local_settings.digest_query, "local test override");
 }
 
 #[test]
