@@ -638,8 +638,26 @@ impl App {
                     self.hydration_batch_succeeded += 1;
 
                     if let Some(ref root) = self.project_root {
-                        let bib_path = root.join(sil_core::paths::rel::REFERENCES);
-                        let current = match std::fs::read_to_string(bib_path.as_std_path()) {
+                        let ctx = match sil_app::AppContext::from_root(root) {
+                            Ok(c) => c,
+                            Err(e) => {
+                                let err_msg = format!("Error writing references.bib: {e}");
+                                let id = self.alloc_job_id();
+                                self.push_job_outcome(JobOutcome {
+                                    id,
+                                    kind: JobKind::Hydrate,
+                                    label: res.label.clone(),
+                                    ok: false,
+                                    detail: err_msg,
+                                    duration_ms: res.duration_ms,
+                                    retry_payload: retry,
+                                });
+                                continue;
+                            }
+                        };
+
+                        let bib_path = ctx.paths.join(sil_core::paths::rel::REFERENCES);
+                        let current = match std::fs::read_to_string(bib_path.as_str()) {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error reading references.bib: {e}");
@@ -665,45 +683,41 @@ impl App {
                         });
 
                         if let Some(matching_block) = existing_block {
-                            let is_tui_added = sil_core::is_tui_added_bib_block(matching_block);
-                            let entry_to_upsert = if is_tui_added {
-                                sil_core::mark_tui_added_bib_entry(&official_bib)
-                            } else {
-                                sil_core::unmark_tui_added_bib_entry(&official_bib)
-                            };
+                            let draft = sil_core::is_tui_added_bib_block(matching_block);
 
-                            let (updated, _) = sil_core::bib::upsert_bib_entry_with_options(
-                                &current,
-                                &entry_to_upsert,
-                                sil_core::bib::UpsertOptions {
-                                    preserve_cite_key: true,
+                            match sil_app::upsert_bib(
+                                &ctx,
+                                sil_app::UpsertBib {
+                                    entry: official_bib,
+                                    draft,
                                 },
-                            );
-
-                            if let Err(e) = sil_core::write_atomic_str(&bib_path, &updated) {
-                                let err_msg = format!("Error writing references.bib: {e}");
-                                let id = self.alloc_job_id();
-                                self.push_job_outcome(JobOutcome {
-                                    id,
-                                    kind: JobKind::Hydrate,
-                                    label: res.label.clone(),
-                                    ok: false,
-                                    detail: err_msg,
-                                    duration_ms: res.duration_ms,
-                                    retry_payload: retry,
-                                });
-                            } else {
-                                self.load_project_references_bib();
-                                let id = self.alloc_job_id();
-                                self.push_job_outcome(JobOutcome {
-                                    id,
-                                    kind: JobKind::Hydrate,
-                                    label: res.label.clone(),
-                                    ok: true,
-                                    detail: format!("Official metadata for '{}'", res.label),
-                                    duration_ms: res.duration_ms,
-                                    retry_payload: None,
-                                });
+                            ) {
+                                Ok(_) => {
+                                    self.load_project_references_bib();
+                                    let id = self.alloc_job_id();
+                                    self.push_job_outcome(JobOutcome {
+                                        id,
+                                        kind: JobKind::Hydrate,
+                                        label: res.label.clone(),
+                                        ok: true,
+                                        detail: format!("Official metadata for '{}'", res.label),
+                                        duration_ms: res.duration_ms,
+                                        retry_payload: None,
+                                    });
+                                }
+                                Err(e) => {
+                                    let err_msg = format!("Error writing references.bib: {e}");
+                                    let id = self.alloc_job_id();
+                                    self.push_job_outcome(JobOutcome {
+                                        id,
+                                        kind: JobKind::Hydrate,
+                                        label: res.label.clone(),
+                                        ok: false,
+                                        detail: err_msg,
+                                        duration_ms: res.duration_ms,
+                                        retry_payload: retry,
+                                    });
+                                }
                             }
                         } else {
                             let id = self.alloc_job_id();

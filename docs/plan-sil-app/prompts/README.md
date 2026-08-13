@@ -49,6 +49,7 @@ C1 only needs A1 (not B*). It can start as soon as A1 lands.
 | **PR-C3** MCP fetch adapter | [PR-C3-mcp-fetch.md](PR-C3-mcp-fetch.md) | C1 | C2, C4 |
 | **PR-C4** TUI fetch job | [PR-C4-tui-fetch.md](PR-C4-tui-fetch.md) | C1 | C2, C3 |
 | **PR-Z** STAGES + ADR-014 | [PR-Z-docs-adr-014.md](PR-Z-docs-adr-014.md) | B* + C* | last |
+| **PR-D1** Remaining bib writers | [PR-D1-remaining-bib-writers.md](PR-D1-remaining-bib-writers.md) | B3, C4, Z | after Stage 12 |
 
 ## Product defaults (KD)
 

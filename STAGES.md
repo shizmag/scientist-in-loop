@@ -66,7 +66,7 @@ Plan: `docs/plan-sil-app/pr-plan.md`. ADR: `docs/adr/ADR-014-sil-app-usecase-lay
   - CLI: `sil source cite --append` / `--promote` and `sil source fetch` delegate to `sil-app`. `cite` output remains quiet (no commit proposal stdout printed).
   - MCP: `sil_cite` (upsert / promote) and `sil_sources` (fetch) delegate to `sil-app`. MCP fetch automatically upserts official BibTeX when resolved; parse errors surface on response (`parse_error`) without swallowing failures.
   - TUI: Explicit bibliography actions (append/promote) and background fetch job delegate to `sil-app` with `parse=false`.
-- **Residual Drift**: Search still FTS-only on CLI vs dense RAG on MCP; rank embedder settings differ across surfaces; TUI hydration apply (`jobs.rs`) still updates `references.bib` directly.
+- **Residual Drift**: Search still FTS-only on CLI vs dense RAG on MCP; rank embedder settings differ across surfaces; `sil-parse` checker `--fix` stays in `sil-parse` (policy-aligned with `preserve_cite_key = true`).
 
 
 

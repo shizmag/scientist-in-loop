@@ -397,53 +397,7 @@ impl App {
             }
             KeyCode::Char('p') => {
                 if self.active_tab == ActiveTab::References {
-                    if let Some(ref root) = self.project_root {
-                        let bib_path = root.join("references.bib");
-                        let mut entries_to_add = Vec::new();
-                        if self.marked_ref_ids.is_empty() {
-                            let filtered = self.filtered_source_references();
-                            if self.selected_source_ref_index < filtered.len() {
-                                entries_to_add
-                                    .push(filtered[self.selected_source_ref_index].clone());
-                            }
-                        } else {
-                            for r in &self.source_references {
-                                if self.marked_ref_ids.contains(&r.id) {
-                                    entries_to_add.push(r.clone());
-                                }
-                            }
-                        }
-                        if !entries_to_add.is_empty() {
-                            let mut current =
-                                std::fs::read_to_string(bib_path.as_std_path()).unwrap_or_default();
-                            let mut fetch_count = 0;
-                            for e in &entries_to_add {
-                                let local_bib = e.to_bibtex();
-                                let marked = sil_core::mark_tui_added_bib_entry(&local_bib);
-                                let (updated, _) =
-                                    sil_core::bib::upsert_bib_entry(&current, &marked);
-                                current = updated;
-                                if e.should_attempt_metadata_fetch() {
-                                    fetch_count += 1;
-                                    self.queue_ref_hydration(e.clone());
-                                }
-                            }
-                            if let Err(e) = sil_core::write_atomic_str(&bib_path, &current) {
-                                self.status_message = format!("Error writing references.bib: {e}");
-                            }
-                            self.load_project_references_bib();
-                            let count = entries_to_add.len();
-                            self.marked_ref_ids.clear();
-                            if fetch_count > 0 {
-                                self.status_message =
-                                    format!("✓ Added {count} ref(s); fetching official metadata…");
-                            } else {
-                                self.status_message = format!(
-                                    "✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)"
-                                );
-                            }
-                        }
-                    }
+                    self.append_selected_extracted_refs_to_bib();
                 }
             }
             KeyCode::Char('P') => {

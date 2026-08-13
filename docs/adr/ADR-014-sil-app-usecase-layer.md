@@ -31,5 +31,5 @@ CLI (`crates/sil`), TUI (`sil-tui`), and MCP (`sil-mcp`) each orchestrated liter
 ## Residuals
 
 - **Search & Rank Parity**: Search on CLI remains FTS-only while MCP supports RAG hybrid search; rank embedder configuration still differs across surfaces.
-- **TUI Hydration Apply**: TUI hydration jobs (`jobs.rs` official bib merge) still write `references.bib` via direct `sil_core::bib` calls rather than `sil-app`.
+- **Checker `--fix` Autofix**: `sil-parse` checker `--fix` (autofix) is aligned with richest policy (`preserve_cite_key: true`), but remains in `sil-parse` to avoid introducing a dependency on `sil-app` (preventing cycle `sil-app` → `sil-parse`). Note that TUI `p` handler and hydration apply now write `references.bib` via `sil_app::upsert_bib`.
 - **URL + TUI `parse=false`**: Fetching a raw URL in TUI with `parse=false` yields no title or extracted DOI, resulting in `bib = None` until the source is parsed and hydrated.

@@ -440,6 +440,62 @@ impl App {
         }
     }
 
+    pub fn append_selected_extracted_refs_to_bib(&mut self) {
+        if let Some(ref root) = self.project_root {
+            let ctx = match sil_app::AppContext::from_root(root) {
+                Ok(c) => c,
+                Err(e) => {
+                    self.status_message = format!("Error writing references.bib: {e}");
+                    return;
+                }
+            };
+            let mut entries_to_add = Vec::new();
+            if self.marked_ref_ids.is_empty() {
+                let filtered = self.filtered_source_references();
+                if self.selected_source_ref_index < filtered.len() {
+                    entries_to_add.push(filtered[self.selected_source_ref_index].clone());
+                }
+            } else {
+                for r in &self.source_references {
+                    if self.marked_ref_ids.contains(&r.id) {
+                        entries_to_add.push(r.clone());
+                    }
+                }
+            }
+
+            if !entries_to_add.is_empty() {
+                let mut fetch_count = 0;
+                for e in &entries_to_add {
+                    let local_bib = e.to_bibtex();
+                    if let Err(err) = sil_app::upsert_bib(
+                        &ctx,
+                        sil_app::UpsertBib {
+                            entry: local_bib,
+                            draft: true,
+                        },
+                    ) {
+                        self.status_message = format!("Error writing references.bib: {err}");
+                        return;
+                    }
+                    if e.should_attempt_metadata_fetch() {
+                        fetch_count += 1;
+                        self.queue_ref_hydration(e.clone());
+                    }
+                }
+                let count = entries_to_add.len();
+                self.marked_ref_ids.clear();
+                self.load_project_references_bib();
+                if fetch_count > 0 {
+                    self.status_message =
+                        format!("✓ Added {count} ref(s); fetching official metadata…");
+                } else {
+                    self.status_message =
+                        format!("✓ Added {count} ref(s) (⚠ No DOI/arXiv/title — cannot hydrate)");
+                }
+            }
+        }
+    }
+
     pub fn append_selected_viewing_ref_to_bib(&mut self) {
         if let Some(ref root) = self.project_root {
             let ctx = match sil_app::AppContext::from_root(root) {

@@ -164,8 +164,17 @@ fn run_all_checkers_incremental_inner(
     bib_content: &str,
     autofix: bool,
 ) -> Result<UnifiedBibCheckReport, ParseError> {
-    let blocks = sil_core::bib::parse_bib_blocks(bib_content);
     let checkers = CheckerFactory::all_checkers();
+    run_checkers_list_incremental_inner(db, bib_content, &checkers, autofix)
+}
+
+fn run_checkers_list_incremental_inner(
+    db: &SilDb,
+    bib_content: &str,
+    checkers: &[Box<dyn ReferenceChecker>],
+    autofix: bool,
+) -> Result<UnifiedBibCheckReport, ParseError> {
+    let blocks = sil_core::bib::parse_bib_blocks(bib_content);
 
     let mut report = UnifiedBibCheckReport {
         total_entries: blocks.len(),
@@ -181,7 +190,7 @@ fn run_all_checkers_incremental_inner(
 
         let mut checked_any = false;
 
-        for checker in &checkers {
+        for checker in checkers {
             let Some(id) = checker.extract_identifier(block) else {
                 continue;
             };
@@ -267,10 +276,14 @@ fn run_all_checkers_incremental_inner(
                                     && let Ok(Some(official_bib)) =
                                         checker.fetch_official_bibtex(&id)
                                 {
-                                    let (updated, _replaced) = sil_core::bib::upsert_bib_entry(
-                                        &working_bib_content,
-                                        &official_bib,
-                                    );
+                                    let (updated, _replaced) =
+                                        sil_core::bib::upsert_bib_entry_with_options(
+                                            &working_bib_content,
+                                            &official_bib,
+                                            sil_core::bib::UpsertOptions {
+                                                preserve_cite_key: true,
+                                            },
+                                        );
                                     working_bib_content = updated;
                                     report.autofixed_count += 1;
                                 }
@@ -508,5 +521,77 @@ mod tests {
             report.items[3].category,
             ReferenceCheckCategory::InvalidFormat
         );
+    }
+
+    #[test]
+    fn test_autofix_preserves_existing_cite_key() {
+        struct MockAutofixChecker;
+        impl ReferenceChecker for MockAutofixChecker {
+            fn identifier_name(&self) -> &'static str {
+                "DOI"
+            }
+            fn extract_identifier(&self, _block: &str) -> Option<String> {
+                Some("10.1234/testdoi".to_string())
+            }
+            fn verify_online(
+                &self,
+                _id: &str,
+            ) -> Result<sil_api::DoiMetadataResult, sil_api::ApiError> {
+                Ok(sil_api::DoiMetadataResult {
+                    exists: true,
+                    title: Some("Official Crossref Title".to_string()),
+                })
+            }
+            fn fetch_official_bibtex(
+                &self,
+                _id: &str,
+            ) -> Result<Option<String>, sil_api::ApiError> {
+                Ok(Some(
+                    r#"@article{OfficialKey2026,
+  title={Official Crossref Title},
+  author={Official Author},
+  doi={10.1234/testdoi}
+}"#
+                    .to_string(),
+                ))
+            }
+            fn get_cached_verification(
+                &self,
+                _db: &SilDb,
+                _id: &str,
+            ) -> Result<Option<(bool, Option<String>)>, DbError> {
+                Ok(None)
+            }
+            fn save_verification(
+                &self,
+                _db: &SilDb,
+                _id: &str,
+                _exists: bool,
+                _error_cat: Option<&str>,
+            ) -> Result<(), DbError> {
+                Ok(())
+            }
+        }
+
+        let db = SilDb::open_in_memory().unwrap();
+        let bib = r#"@article{local_custom_key,
+  title={Mismatched Local Title},
+  doi={10.1234/testdoi}
+}"#;
+
+        let checkers: Vec<Box<dyn ReferenceChecker>> = vec![Box::new(MockAutofixChecker)];
+        let report = run_checkers_list_incremental_inner(&db, bib, &checkers, true).unwrap();
+
+        assert_eq!(report.autofixed_count, 1);
+        let updated = report.updated_bib_content.expect("should have updated bib");
+        assert!(
+            updated.contains("@article{local_custom_key,"),
+            "Autofix must preserve existing cite key 'local_custom_key', got:\n{updated}"
+        );
+        assert!(
+            !updated.contains("OfficialKey2026"),
+            "Autofix should not overwrite existing cite key with official key, got:\n{updated}"
+        );
+        assert!(updated.contains("Official Author"));
     }
 }
