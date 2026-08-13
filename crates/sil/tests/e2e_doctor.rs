@@ -48,6 +48,101 @@ fn doctor_json_has_checks() {
             == Some(true)
     );
     assert!(v.get("ok").is_some());
+
+    let checks = v["checks"].as_array().unwrap();
+    for c in checks {
+        assert!(c.get("name").is_some());
+        assert!(c.get("ok").is_some());
+        assert!(c.get("detail").is_some());
+        // If hint is present, it must be a non-empty string
+        if let Some(hint) = c.get("hint") {
+            assert!(hint.is_string() && !hint.as_str().unwrap().is_empty());
+        }
+    }
+}
+
+#[test]
+fn doctor_outside_project_reports_hint() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = sil()
+        .current_dir(tmp.path())
+        .args(["project", "doctor"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8_lossy(&out);
+    assert!(stdout.contains("sil project"), "{stdout}");
+    assert!(stdout.contains("Hint: Run `sil init`"), "{stdout}");
+
+    // Also check JSON format outside project
+    let json_out = sil()
+        .current_dir(tmp.path())
+        .args(["project", "doctor", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&json_out)).expect("doctor --json");
+    let checks = v["checks"].as_array().expect("checks");
+    let proj_check = checks
+        .iter()
+        .find(|c| c["name"] == "sil project")
+        .expect("sil project check");
+    assert_eq!(proj_check["ok"], false);
+    assert!(
+        proj_check["hint"]
+            .as_str()
+            .unwrap()
+            .contains("Run `sil init`")
+    );
+}
+
+#[test]
+fn doctor_missing_sources_shows_hint() {
+    let (_tmp, project) = init_project("doc-missing-sources");
+    let sources_dir = project.join("sources");
+    if sources_dir.exists() {
+        std::fs::remove_dir_all(&sources_dir).unwrap();
+    }
+
+    let out = sil()
+        .current_dir(&project)
+        .args(["project", "doctor"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8_lossy(&out);
+    assert!(stdout.contains("sources"), "{stdout}");
+    assert!(stdout.contains("Create `sources/` directory"), "{stdout}");
+
+    let json_out = sil()
+        .current_dir(&project)
+        .args(["project", "doctor", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&json_out)).expect("doctor --json");
+    let checks = v["checks"].as_array().expect("checks");
+    let sources_check = checks
+        .iter()
+        .find(|c| c["name"] == "sources")
+        .expect("sources check");
+    assert_eq!(sources_check["ok"], false);
+    assert!(
+        sources_check["hint"]
+            .as_str()
+            .unwrap()
+            .contains("Create `sources/` directory")
+    );
 }
 
 #[test]

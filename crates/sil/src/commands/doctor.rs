@@ -3,34 +3,53 @@
 use std::process::Command;
 
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sil_core::SilUi;
 
 use crate::util::load_project;
 
-#[derive(Debug, Serialize)]
-struct DoctorReport {
-    project: Option<String>,
-    ok: bool,
-    checks: Vec<Check>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DoctorReport {
+    pub project: Option<String>,
+    pub ok: bool,
+    pub checks: Vec<Check>,
 }
 
-#[derive(Debug, Serialize)]
-struct Check {
-    name: String,
-    ok: bool,
-    detail: String,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Check {
+    pub name: String,
+    pub ok: bool,
+    pub detail: String,
+    /// Optional actionable guidance to resolve failure / missing dependency.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
     /// Optional machine-readable payload (e.g. dense RAG mode/reason).
     #[serde(skip_serializing_if = "Option::is_none")]
-    extra: Option<serde_json::Value>,
+    pub extra: Option<serde_json::Value>,
 }
 
 impl Check {
-    fn simple(name: impl Into<String>, ok: bool, detail: impl Into<String>) -> Self {
+    pub fn simple(name: impl Into<String>, ok: bool, detail: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             ok,
             detail: detail.into(),
+            hint: None,
+            extra: None,
+        }
+    }
+
+    pub fn with_hint(
+        name: impl Into<String>,
+        ok: bool,
+        detail: impl Into<String>,
+        hint: Option<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            ok,
+            detail: detail.into(),
+            hint,
             extra: None,
         }
     }
@@ -65,7 +84,7 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
     let mut checks = Vec::new();
     let mut project_root = None;
 
-    // Always: git, python, uv (optional), cargo (optional), latex engines
+    // Always: git, python, uv (optional), cargo (optional), latex engines, marker (optional)
     checks.push(check_cmd("git", &["git", "--version"]));
     checks.push(check_cmd("python3", &["python3", "--version"]));
     // uv manages project Python deps (pyproject.toml); non-fatal if absent
@@ -73,35 +92,78 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
     checks.push(check_which("tectonic"));
     checks.push(check_which("pdflatex"));
     checks.push(check_which("latexmk"));
+    checks.push(check_marker());
 
     match load_project() {
         Ok((root, config, paths)) => {
             project_root = Some(root.to_string());
             checks.push(Check::simple("sil project", true, format!("root={root}")));
-            checks.push(Check::simple(
+            let cfg_ok = paths.config().is_file();
+            checks.push(Check::with_hint(
                 "config.yaml",
-                paths.config().is_file(),
+                cfg_ok,
                 paths.config().to_string(),
+                if cfg_ok {
+                    None
+                } else {
+                    Some("Run `sil init` or restore .sil/config.yaml".to_string())
+                },
             ));
-            checks.push(Check::simple(
+            let struct_ok = paths.structure().is_file();
+            checks.push(Check::with_hint(
                 "structure.yaml",
-                paths.structure().is_file(),
+                struct_ok,
                 paths.structure().to_string(),
+                if struct_ok {
+                    None
+                } else {
+                    Some("Run `sil init` or restore .sil/structure.yaml".to_string())
+                },
             ));
-            checks.push(Check::simple(
+            let draft_ok = paths.paper_draft().is_file();
+            checks.push(Check::with_hint(
                 "paper_draft.tex",
-                paths.paper_draft().is_file(),
+                draft_ok,
                 paths.paper_draft().to_string(),
+                if draft_ok {
+                    None
+                } else {
+                    Some("Create paper_draft.tex or run `sil init`".to_string())
+                },
             ));
-            checks.push(Check::simple(
+            let sec_ok = paths.draft_sections_dir().is_dir();
+            checks.push(Check::with_hint(
                 "draft_sections",
-                paths.draft_sections_dir().is_dir(),
+                sec_ok,
                 paths.draft_sections_dir().to_string(),
+                if sec_ok {
+                    None
+                } else {
+                    Some("Run `sil split` or `sil init` to scaffold draft sections".to_string())
+                },
             ));
-            checks.push(Check::simple(
+            let imp_ok = paths.improvement_dir().is_dir();
+            checks.push(Check::with_hint(
                 "improvement",
-                paths.improvement_dir().is_dir(),
+                imp_ok,
                 paths.improvement_dir().to_string(),
+                if imp_ok {
+                    None
+                } else {
+                    Some("Create .sil/improvement directory or run `sil init`".to_string())
+                },
+            ));
+            let sources_path = paths.sources(&config);
+            let sources_ok = sources_path.is_dir();
+            checks.push(Check::with_hint(
+                "sources",
+                sources_ok,
+                sources_path.to_string(),
+                if sources_ok {
+                    None
+                } else {
+                    Some("Create `sources/` directory or run `sil init`".to_string())
+                },
             ));
             let (db_open_ok, integrity_res) = match sil_db::SilDb::open(&paths.db()) {
                 Ok(db) => match db.integrity_check() {
@@ -110,20 +172,30 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                 },
                 Err(e) => (false, Err(e.to_string())),
             };
-            checks.push(Check::simple(
+            checks.push(Check::with_hint(
                 "sqlite db openable",
                 db_open_ok,
                 paths.db().to_string(),
+                if db_open_ok {
+                    None
+                } else {
+                    Some("Ensure .sil/db.sqlite is readable and not locked by another process".to_string())
+                },
             ));
             let (integrity_ok, integrity_detail) = match integrity_res {
                 Ok(ref res) if res == "ok" => (true, "ok".to_string()),
                 Ok(ref res) => (false, format!("integrity check: {res}")),
                 Err(ref err) => (false, format!("integrity check failed: {err}")),
             };
-            checks.push(Check::simple(
+            checks.push(Check::with_hint(
                 "sqlite integrity",
                 integrity_ok,
                 integrity_detail,
+                if integrity_ok {
+                    None
+                } else {
+                    Some("Database integrity failed. Backup db.sqlite before repair. Do not delete sources/".to_string())
+                },
             ));
             checks.push(Check::simple(
                 "configured latex engine",
@@ -131,22 +203,19 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                 format!("{}", config.latex.engine),
             ));
             let engine = config.latex.engine.to_string();
-            if engine != "tectonic"
-                && engine != "pdflatex"
-                && engine != "xelatex"
-                && engine != "lualatex"
-                && engine != "latexmk"
-            {
-                // still ok — just report
-            }
             let eng_ok = which_ok(&engine);
-            checks.push(Check::simple(
+            checks.push(Check::with_hint(
                 format!("engine '{engine}' on PATH"),
                 eng_ok,
                 if eng_ok {
                     "found".to_string()
                 } else {
                     "not found (build may fail)".to_string()
+                },
+                if eng_ok {
+                    None
+                } else {
+                    Some(latex_engine_hint(&engine))
                 },
             ));
 
@@ -163,19 +232,25 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
             match sil_latex::audit_manuscript(&paths.paper_draft(), bib_opt) {
                 Ok(report) => {
                     let missing = report.missing_citations_count;
-                    checks.push(Check::simple(
+                    let missing_ok = missing == 0;
+                    checks.push(Check::with_hint(
                         "manuscript health: citations",
-                        missing == 0,
-                        if missing == 0 {
+                        missing_ok,
+                        if missing_ok {
                             "all cite keys resolved".to_string()
                         } else {
                             format!("{missing} missing citation key(s) in references.bib")
+                        },
+                        if missing_ok {
+                            None
+                        } else {
+                            Some("Add missing citation keys to references.bib or fetch with `sil paper fetch`".to_string())
                         },
                     ));
 
                     let (cited, total) = report.bib_citation_ratio();
                     let bib_cov_ok = total == 0 || cited == total;
-                    checks.push(Check::simple(
+                    checks.push(Check::with_hint(
                         "manuscript health: bib coverage",
                         bib_cov_ok,
                         if total == 0 {
@@ -187,6 +262,11 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                                 "{cited}/{total} references mentioned in paper_*.tex ({} unmentioned)",
                                 total - cited
                             )
+                        },
+                        if bib_cov_ok {
+                            None
+                        } else {
+                            Some("Reference uncited bibliography items in manuscript or clean up references.bib".to_string())
                         },
                     ));
 
@@ -272,10 +352,15 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                                     }
                                     format!("references.bib issues: {}", parts.join("; "))
                                 };
-                                checks.push(Check::simple(
+                                checks.push(Check::with_hint(
                                     "manuscript health: bib identifiers",
                                     ok,
                                     detail,
+                                    if ok {
+                                        None
+                                    } else {
+                                        Some("Fix broken or mismatched identifiers in references.bib or run `sil project doctor --fix`".to_string())
+                                    },
                                 ));
                             }
                             Err(e) => {
@@ -289,19 +374,21 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
                     }
                 }
                 Err(e) => {
-                    checks.push(Check::simple(
+                    checks.push(Check::with_hint(
                         "manuscript health audit",
                         false,
                         format!("audit failed: {e}"),
+                        Some("Check paper_draft.tex and references.bib for syntax errors".to_string()),
                     ));
                 }
             }
         }
         Err(e) => {
-            checks.push(Check::simple(
+            checks.push(Check::with_hint(
                 "sil project",
                 false,
                 format!("not inside a project: {e}"),
+                Some("Run `sil init` to initialize a project or open an existing project".to_string()),
             ));
             // Still report dense RAG even outside a project (uses global defaults).
             checks.push(dense_rag_check_from_settings(
@@ -330,8 +417,14 @@ pub fn run(json: bool, fix_rag: bool, fix: bool, ui: &dyn SilUi) -> Result<()> {
             ui.success(&format!("  ✓ {}: {}", c.name, c.detail));
         } else if is_soft(&c.name) {
             ui.muted(&format!("  · {}: {}", c.name, c.detail));
+            if let Some(ref hint) = c.hint {
+                ui.muted(&format!("    ↳ Hint: {hint}"));
+            }
         } else {
             ui.warn(&format!("  ✖ {}: {}", c.name, c.detail));
+            if let Some(ref hint) = c.hint {
+                ui.warn(&format!("    ↳ Hint: {hint}"));
+            }
         }
     }
     ui.println("");
@@ -349,9 +442,54 @@ fn is_soft(name: &str) -> bool {
         || name == "pdflatex"
         || name == "latexmk"
         || name == "uv"
+        || name == "marker"
         || name == "dense_rag"
         || name.starts_with("engine ")
         || name == "manuscript health: bib coverage"
+        || name == "manuscript health: labels"
+        || name == "manuscript health: word count"
+        || name == "manuscript health: # -- X -- # ideas"
+}
+
+pub fn tool_hint(name: &str) -> Option<String> {
+    match name {
+        "git" => Some(
+            "Install git via your system package manager (e.g. `brew install git` or `apt install git`)"
+                .to_string(),
+        ),
+        "python3" | "python" => Some(
+            "Install Python 3.10+ (e.g. `brew install python` or `apt install python3`)".to_string(),
+        ),
+        "uv" => Some(
+            "Install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`) or Python 3.10+"
+                .to_string(),
+        ),
+        "tectonic" => Some(
+            "Install tectonic (`brew install tectonic`) or configure latexmk/pdflatex in .sil/config.yaml"
+                .to_string(),
+        ),
+        "pdflatex" => Some(
+            "Install TeX Live / MacTeX (e.g. `brew install --cask mactex` or `apt install texlive-latex-base`)"
+                .to_string(),
+        ),
+        "latexmk" => Some(
+            "Install latexmk (e.g. `brew install latexmk` or `apt install latexmk`)".to_string(),
+        ),
+        "marker" => Some(
+            "Install marker-pdf (`uv pip install marker-pdf`) for PDF parsing, or use text/markdown sources"
+                .to_string(),
+        ),
+        _ => None,
+    }
+}
+
+pub fn latex_engine_hint(engine: &str) -> String {
+    match engine {
+        "tectonic" => "Install tectonic (`brew install tectonic`) or configure latexmk/pdflatex in .sil/config.yaml".to_string(),
+        "latexmk" => "Install latexmk (`brew install latexmk`) or configure tectonic in .sil/config.yaml".to_string(),
+        "pdflatex" | "xelatex" | "lualatex" => "Install TeX Live / MacTeX (e.g. `brew install --cask mactex`) or configure tectonic in .sil/config.yaml".to_string(),
+        other => format!("Install '{other}' or configure a supported engine (tectonic, pdflatex, latexmk) in .sil/config.yaml"),
+    }
 }
 
 fn dense_rag_check(config: &sil_core::Config) -> Check {
@@ -412,10 +550,17 @@ fn dense_rag_check_from_settings(rag: &sil_core::RagSettings) -> Check {
         }
     };
 
+    let hint = if configured_but_broken {
+        Some("Ensure ONNX model files (model.onnx and tokenizer.json) exist at configured paths or run `sil project doctor --fix-rag`".to_string())
+    } else {
+        None
+    };
+
     Check {
         name: "dense_rag".into(),
         ok,
         detail,
+        hint,
         extra: Some(serde_json::json!({
             "mode": mode,
             "reason": reason,
@@ -437,7 +582,7 @@ fn check_cmd(name: &str, args: &[&str]) -> Check {
             true,
             String::from_utf8_lossy(&o.stdout).trim().to_string(),
         ),
-        Ok(o) => Check::simple(
+        Ok(o) => Check::with_hint(
             name,
             false,
             format!(
@@ -445,14 +590,20 @@ fn check_cmd(name: &str, args: &[&str]) -> Check {
                 o.status.code(),
                 String::from_utf8_lossy(&o.stderr).trim()
             ),
+            tool_hint(name),
         ),
-        Err(e) => Check::simple(name, false, format!("not available: {e}")),
+        Err(e) => Check::with_hint(
+            name,
+            false,
+            format!("not available: {e}"),
+            tool_hint(name),
+        ),
     }
 }
 
 fn check_which(bin: &str) -> Check {
     let ok = which_ok(bin);
-    Check::simple(
+    Check::with_hint(
         bin,
         ok,
         if ok {
@@ -460,6 +611,22 @@ fn check_which(bin: &str) -> Check {
         } else {
             "not on PATH (optional unless selected in config)"
         },
+        if ok { None } else { tool_hint(bin) },
+    )
+}
+
+fn check_marker() -> Check {
+    let runner = sil_parse::discover_marker_runner();
+    let ok = runner.is_ok();
+    Check::with_hint(
+        "marker",
+        ok,
+        if ok {
+            "available"
+        } else {
+            "not found (optional; needed for PDF parsing)"
+        },
+        if ok { None } else { tool_hint("marker") },
     )
 }
 
@@ -469,4 +636,54 @@ fn which_ok(bin: &str) -> bool {
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tool_hints_contain_actionable_guidance() {
+        assert!(tool_hint("git").unwrap().contains("brew install git"));
+        assert!(tool_hint("python3").unwrap().contains("Python 3.10+"));
+        assert!(tool_hint("uv").unwrap().contains("curl -LsSf https://astral.sh/uv/install.sh"));
+        assert!(tool_hint("tectonic").unwrap().contains("brew install tectonic"));
+        assert!(tool_hint("pdflatex").unwrap().contains("TeX Live"));
+        assert!(tool_hint("latexmk").unwrap().contains("brew install latexmk"));
+        assert!(tool_hint("marker").unwrap().contains("uv pip install marker-pdf"));
+        assert_eq!(tool_hint("unknown_tool"), None);
+    }
+
+    #[test]
+    fn test_latex_engine_hint() {
+        let tectonic_hint = latex_engine_hint("tectonic");
+        assert!(tectonic_hint.contains("brew install tectonic"));
+        assert!(tectonic_hint.contains("latexmk/pdflatex"));
+
+        let latexmk_hint = latex_engine_hint("latexmk");
+        assert!(latexmk_hint.contains("brew install latexmk"));
+
+        let pdflatex_hint = latex_engine_hint("pdflatex");
+        assert!(pdflatex_hint.contains("TeX Live"));
+
+        let custom_hint = latex_engine_hint("custom-engine");
+        assert!(custom_hint.contains("custom-engine"));
+    }
+
+    #[test]
+    fn test_check_serialization_with_and_without_hint() {
+        let check_no_hint = Check::simple("git", true, "git version 2.40.0");
+        let json_no_hint = serde_json::to_string(&check_no_hint).unwrap();
+        assert!(!json_no_hint.contains("\"hint\""));
+
+        let check_with_hint = Check::with_hint(
+            "tectonic",
+            false,
+            "not on PATH",
+            Some("Install tectonic (`brew install tectonic`)".to_string()),
+        );
+        let json_with_hint = serde_json::to_string(&check_with_hint).unwrap();
+        assert!(json_with_hint.contains("\"hint\":"));
+        assert!(json_with_hint.contains("brew install tectonic"));
+    }
 }
