@@ -68,6 +68,15 @@ Plan: `docs/plan-sil-app/pr-plan.md`. ADR: `docs/adr/ADR-014-sil-app-usecase-lay
   - TUI: Explicit bibliography actions (append/promote) and background fetch job delegate to `sil-app` with `parse=false`.
 - **Residual Drift**: Search still FTS-only on CLI vs dense RAG on MCP; rank embedder settings differ across surfaces; `sil-parse` checker `--fix` stays in `sil-parse` (policy-aligned with `preserve_cite_key = true`).
 
+## Stage 13 — Daily Command Center & Reader Verbs (Wave 08-13) ✅
+Plan: `docs/plan-08-13/pr-plan.md`. ADR: `docs/adr/ADR-015-daily-command-center.md`.
+- **Live Dashboard**: Replaced static mock strings in TUI Dashboard (tab 1) with real project truth: manuscript stage, LaTeX engine/main file, audit bib coverage and label status, real `# -- X -- #` draft TODO/idea blocks, and `journal_digest` feed.
+- **Digest Settings & Background Refresh**: Added global `digest_query` and `digest_refresh_hours` in `~/.config/sil/settings.yaml` and optional local `digest_query` override in `.sil/config.yaml`. TUI spawns a background worker (`JobKind::Digest`) when Dashboard tab is active and cache age ≥ interval (min 1 hour).
+- **Reader Verbs**: Reader key `b` upserts current source to `references.bib` via `sil_app::upsert_bib` (`draft: true`). Key `n` opens note modal and inserts a `# -- X -- #` idea block tagged `from-source` with `from: <filename>` via atomic write to `paper_draft.tex`.
+- **Digest Ingest**: Pressing `Enter` on a publication row in the Dashboard digest pane queues an async fetch (`sil_app::fetch_source` with `parse=false`) for DOI/URL sources.
+- **Honest Surface**: No new `sil daily` CLI command (Dashboard *is* the daily view), no JSON twin, no OS daemon/cron.
+
+
 
 
 

@@ -223,11 +223,16 @@ Sci-Action: fetch-source
 
 `sil tui` (or `sil settings`) opens a 5-tab Ratatui interface:
 
-1. **Dashboard (`1`)**: High-level overview of project status, manuscript completion audit, active `# -- X -- #` ideas, top journal digest feed, and daily scientist helper shortcuts.
+1. **Dashboard (`1`)**: Live daily command center with four real-time panes:
+   - **Health**: Stage, LaTeX engine & main file, manuscript audit (bib coverage ratio and unmatched label counts), word count, and active TODO counts.
+   - **Ideas**: Real active `# -- X -- #` TODO and idea blocks parsed from `paper_draft.tex`.
+   - **Digest**: Live literature publication digest feed backed by global/local settings query with non-blocking TUI background auto-refresh; press `Enter` on a row to queue an async source fetch.
+   - **Shortcuts**: Keyboard command reference and factual project status counts.
 2. **Sources (`2`)**: Comprehensive literature manager for registered documents in `sources/`:
    - Paginated pretty Markdown reader (`Enter`, `j`/`k`, `PageUp`/`PageDown`).
+   - Append current source document to `references.bib` (`b`) with metadata hydration (`% [sil: tui-added]` marker) in reader or sources list.
+   - Park note / capture claim from reader (`n`) into a `# -- X -- #` block tagged `from-source` with `from: <filename>` in `paper_draft.tex`.
    - Add new works via link / URL / DOI / arXiv (`a`).
-   - Append source document to `references.bib` (`b`) with metadata hydration.
    - Real-time parse status indicator (`[✓ Parsed]` / `[Unparsed]`).
    - Source statistics (word count, extracted reference count).
    - Extracted references viewer per document (`v`) with single-item (`c`/`b`/`p`) or batch (`a`) append to `references.bib`.
@@ -242,10 +247,10 @@ Sci-Action: fetch-source
    - Delete entries from `references.bib` (`Delete`).
 4. **Paper Draft (`4`)**: Interactive section-by-section LaTeX manuscript viewer & editor with `$EDITOR` integration (`e` for TUI popup, `v` for external `$EDITOR`).
 5. **Settings (`5`)**: Unified settings window with distinct section dividers:
-   - **Global Settings**: Default author requisites, default grant, engine, and template defaults (`~/.config/sil/settings.yaml`).
+   - **Global Settings**: Default author requisites, default grant, engine, template defaults, literature digest query (`digest_query`), and background refresh interval in hours (`digest_refresh_hours`, min 1) (`~/.config/sil/settings.yaml`).
    - **ONNX & Local RAG Settings**: Model paths, thread allocation, chunk sizes, and execution providers.
    - **Co-Author & Grant Caches**: Fast import/export alias for cached authors and grants (`~/.config/sil/cache.yaml`).
-   - **Local Project Settings**: Article title, co-authors list, active grant requisites, and project notes (`.sil/config.yaml`).
+   - **Local Project Settings**: Article title, co-authors list, active grant requisites, literature digest query override (`digest_query`), and project notes (`.sil/config.yaml`).
 
 ### Keybindings in TUI
 
@@ -253,10 +258,11 @@ Sci-Action: fetch-source
 - `?` / `F1`: Open mode-aware keyboard help overlay showing actual shortcuts for the current view/modal context.
 - `R`: Reload project sources and bibliography entries from disk.
 - `↑`/`↓` or `j`/`k`: Navigate sources, fields, references, or sections.
-- `Enter` / `e`: Edit selected setting field or section body, read source Markdown, or parse selected unparsed source (Sources tab).
+- `Enter` / `e`: Edit selected setting field or section body, read source Markdown, parse selected unparsed source (Sources tab), or queue async source fetch for DOI/URL (Dashboard digest pane).
 - `E` / `Shift+E`: Parse all unparsed source documents (Sources tab).
 - `a`: Add source link / URL / DOI / arXiv (Sources tab) or add author / grant (Settings tab).
-- `b`: Append selected source document to `references.bib` (Sources tab).
+- `b`: Append selected source document to `references.bib` (Sources tab & Reader mode).
+- `n`: Open note capture modal to insert `# -- X -- #` block tagged `from-source` into `paper_draft.tex` (Reader mode).
 - `r`: Rename selected source document title.
 - `d` / `Delete`: Delete source document (Sources tab), delete setting item (Settings tab), or remove entry from `references.bib` (References tab).
 - `v`: View extracted references for selected source (Sources tab), launch external `$EDITOR` (Paper Draft tab), or sort by venue (References tab).
@@ -458,7 +464,7 @@ Both human researchers and AI agents can bound ideas, questions, or revision not
 ```
 
 `sil` automatically parses these blocks into SQLite memory. They are surfaced in:
-- `sil dashboard` / `sil daily` (TUI Command Center)
+- `sil tui dashboard` (TUI Command Center)
 - `sil todo` (CLI list of active ideas)
 - `sil context` (automatically loaded into AI agent context)
 
