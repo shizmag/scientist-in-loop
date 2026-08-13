@@ -281,8 +281,8 @@ impl SilDb {
         item: &sil_core::JournalPublication,
     ) -> Result<(), DbError> {
         self.conn.execute(
-            "INSERT OR REPLACE INTO journal_digest (doi, title, authors, journal, year, abstract_text, citation_count, url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT OR REPLACE INTO journal_digest (doi, title, authors, journal, year, abstract_text, citation_count, url, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, datetime('now'))",
             rusqlite::params![
                 item.doi.as_deref().unwrap_or(&item.title),
                 item.title,
@@ -295,6 +295,15 @@ impl SilDb {
             ],
         )?;
         Ok(())
+    }
+
+    /// Return the timestamp (ISO format) of the most recently fetched journal publication in the digest cache.
+    pub fn digest_last_fetched_at(&self) -> Result<Option<String>, DbError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT MAX(fetched_at) FROM journal_digest")?;
+        let res: Option<String> = stmt.query_row([], |row| row.get(0))?;
+        Ok(res)
     }
 
     /// List top journal publications.
@@ -882,6 +891,29 @@ mod tests {
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].title, "Quantum Advantage in Scientific Discovery");
         assert_eq!(list[0].journal, "Nature");
+    }
+
+    #[test]
+    fn digest_last_fetched_at_roundtrip() {
+        let db = SilDb::open_in_memory().unwrap();
+        assert_eq!(db.digest_last_fetched_at().unwrap(), None);
+
+        let item = sil_core::JournalPublication {
+            doi: Some("10.1038/s41586-023-00000-0".into()),
+            title: "Quantum Advantage".into(),
+            authors: "A. Scientist".into(),
+            journal: "Nature".into(),
+            year: Some(2024),
+            abstract_text: "Abstract".into(),
+            citation_count: Some(10),
+            url: "https://doi.org/10.1038/s41586-023-00000-0".into(),
+            pdf_url: None,
+        };
+        db.save_journal_publication(&item).unwrap();
+
+        let fetched_at = db.digest_last_fetched_at().unwrap();
+        assert!(fetched_at.is_some());
+        assert!(!fetched_at.unwrap().is_empty());
     }
 
     #[test]

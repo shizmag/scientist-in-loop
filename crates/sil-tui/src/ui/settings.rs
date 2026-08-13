@@ -175,10 +175,9 @@ pub(crate) fn draw_settings(frame: &mut Frame, app: &App, area: Rect) {
                         "Global Digest Query",
                         app.global_settings.digest_query.as_str(),
                     ),
-                    DigestField::RefreshHours => (
-                        "Refresh Interval (Hours)",
-                        digest_refresh_str.as_str(),
-                    ),
+                    DigestField::RefreshHours => {
+                        ("Refresh Interval (Hours)", digest_refresh_str.as_str())
+                    }
                     DigestField::LocalQuery => (
                         "Local Digest Query",
                         app.local_settings.digest_query.as_str(),

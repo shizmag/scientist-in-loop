@@ -917,3 +917,137 @@ fn test_poll_background_fetch_failure() {
         Some(RetryPayload::Fetch { .. })
     ));
 }
+
+#[test]
+fn test_digest_refresh_empty_query_is_noop() {
+    let mut app = App::new(None);
+    app.active_tab = ActiveTab::Dashboard;
+    app.global_settings.digest_query = "".to_string();
+    app.local_settings.digest_query = "".to_string();
+
+    app.queue_digest_refresh();
+    assert!(!app.in_flight_digest);
+
+    app.check_auto_digest_refresh();
+    assert!(!app.in_flight_digest);
+}
+
+#[test]
+fn test_digest_refresh_fresh_cache_no_second_spawn() {
+    use camino::Utf8Path;
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8Path::from_path(dir.path()).unwrap();
+
+    let paths = sil_core::ProjectPaths::new(root);
+    let db = sil_db::SilDb::open(&paths.db()).unwrap();
+    let item = sil_core::JournalPublication {
+        doi: Some("10.1038/s41586-024-00000-0".into()),
+        title: "Fresh Paper".into(),
+        authors: "A. Author".into(),
+        journal: "Nature".into(),
+        year: Some(2026),
+        abstract_text: "Abstract".into(),
+        citation_count: Some(10),
+        url: "https://doi.org/10.1038/s41586-024-00000-0".into(),
+        pdf_url: None,
+    };
+    db.save_journal_publication(&item).unwrap();
+
+    let mut app = App::new(Some(root.to_path_buf()));
+    app.active_tab = ActiveTab::Dashboard;
+    app.global_settings.digest_query = "quantum".to_string();
+    app.global_settings.digest_refresh_hours = 1;
+
+    app.check_auto_digest_refresh();
+    assert!(!app.in_flight_digest);
+}
+
+#[test]
+fn test_digest_refresh_inflight_deduplication() {
+    let mut app = App::new(None);
+    app.active_tab = ActiveTab::Dashboard;
+    app.global_settings.digest_query = "quantum".to_string();
+    app.in_flight_digest = true;
+
+    app.queue_digest_refresh();
+    assert!(app.in_flight_digest);
+
+    app.check_auto_digest_refresh();
+    assert!(app.in_flight_digest);
+}
+
+#[test]
+fn test_is_digest_cache_stale_helper() {
+    use jobs::{is_digest_cache_stale, parse_utc_timestamp};
+
+    // 1. Missing timestamp -> stale
+    assert!(is_digest_cache_stale(None, 1, 100000));
+
+    // 2. Unparseable -> stale
+    assert!(is_digest_cache_stale(Some("invalid-date"), 1, 100000));
+
+    // 3. 30 minutes old with 1h refresh -> fresh (not stale)
+    let base_secs = parse_utc_timestamp("2026-08-13 10:00:00").unwrap();
+    let now_30m = base_secs + 1800; // 30 mins later
+    assert!(!is_digest_cache_stale(
+        Some("2026-08-13 10:00:00"),
+        1,
+        now_30m
+    ));
+
+    // 4. 2 hours old with 1h refresh -> stale
+    let now_2h = base_secs + 7200; // 2 hours later
+    assert!(is_digest_cache_stale(
+        Some("2026-08-13 10:00:00"),
+        1,
+        now_2h
+    ));
+}
+
+#[test]
+fn test_poll_background_digest_success_and_failure() {
+    let mut app = App::new(None);
+    app.in_flight_digest = true;
+
+    // Send success
+    app.digest_tx
+        .send(DigestJobResult {
+            query: "semantic entropy".to_string(),
+            result: Ok(5),
+            duration_ms: Some(120),
+        })
+        .unwrap();
+
+    app.poll_background_digest();
+
+    assert!(!app.in_flight_digest);
+    assert_eq!(
+        app.status_message,
+        "✓ Refreshed literature digest for 'semantic entropy' (5 paper(s))"
+    );
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert_eq!(outcome.kind, JobKind::Digest);
+    assert!(outcome.ok);
+
+    // Send failure
+    app.in_flight_digest = true;
+    app.digest_tx
+        .send(DigestJobResult {
+            query: "quantum computing".to_string(),
+            result: Err("API error 500".to_string()),
+            duration_ms: Some(150),
+        })
+        .unwrap();
+
+    app.poll_background_digest();
+
+    assert!(!app.in_flight_digest);
+    assert_eq!(
+        app.status_message,
+        "⚠ Digest refresh failed for 'quantum computing': API error 500"
+    );
+    let outcome = app.recent_job_outcomes.back().unwrap();
+    assert_eq!(outcome.kind, JobKind::Digest);
+    assert!(!outcome.ok);
+}

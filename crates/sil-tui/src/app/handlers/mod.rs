@@ -686,9 +686,7 @@ impl App {
                                 DigestField::RefreshHours => {
                                     self.global_settings.digest_refresh_hours.to_string()
                                 }
-                                DigestField::LocalQuery => {
-                                    self.local_settings.digest_query.clone()
-                                }
+                                DigestField::LocalQuery => self.local_settings.digest_query.clone(),
                             };
                             self.input_mode = InputMode::Editing;
                             self.status_message =

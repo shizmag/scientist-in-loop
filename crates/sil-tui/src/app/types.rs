@@ -575,6 +575,7 @@ pub enum JobKind {
     Parse,
     Similarity,
     Estimate,
+    Digest,
 }
 
 impl JobKind {
@@ -585,6 +586,7 @@ impl JobKind {
             JobKind::Parse => "parse",
             JobKind::Similarity => "similarity",
             JobKind::Estimate => "estimate",
+            JobKind::Digest => "digest",
         }
     }
 }
@@ -673,5 +675,13 @@ pub struct SimilarityJobResult {
 #[derive(Debug)]
 pub struct EstimateJobResult {
     pub result: Result<sil_agent::EstimateReport, String>,
+    pub duration_ms: Option<u64>,
+}
+
+/// Result of a background digest refresh job.
+#[derive(Debug)]
+pub struct DigestJobResult {
+    pub query: String,
+    pub result: Result<usize, String>,
     pub duration_ms: Option<u64>,
 }

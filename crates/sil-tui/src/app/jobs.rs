@@ -628,6 +628,8 @@ impl App {
         self.poll_background_fetch();
         self.poll_background_similarity();
         self.poll_background_estimate();
+        self.poll_background_digest();
+        self.check_auto_digest_refresh();
         let mut polled_any = false;
         while let Ok(res) = self.hydration_rx.try_recv() {
             polled_any = true;
@@ -879,4 +881,188 @@ impl App {
             }
         }
     }
+
+    pub fn queue_digest_refresh(&mut self) {
+        let effective_query = sil_core::effective_digest_query(
+            &self.global_settings.digest_query,
+            &self.local_settings.digest_query,
+        );
+
+        let Some(query) = effective_query.map(|s| s.to_string()) else {
+            return;
+        };
+
+        if self.in_flight_digest {
+            return;
+        }
+
+        let Some(root) = self.project_root.clone() else {
+            return;
+        };
+
+        self.in_flight_digest = true;
+        self.status_message = format!("⏳ Refreshing literature digest for '{query}'...");
+
+        let tx = self.digest_tx.clone();
+        let query_clone = query.clone();
+
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                (|| -> Result<usize, String> {
+                    let items = sil_parse::fetch_journal_publications(&query_clone, 10, None, None)
+                        .map_err(|e| e.to_string())?;
+
+                    let paths = sil_core::ProjectPaths::new(&root);
+                    let db = sil_db::SilDb::open(&paths.db())
+                        .map_err(|e| format!("Database error: {e}"))?;
+
+                    for item in &items {
+                        db.save_journal_publication(item)
+                            .map_err(|e| format!("Failed to save publication: {e}"))?;
+                    }
+
+                    Ok(items.len())
+                })()
+            }));
+
+            let result = match catch_res {
+                Ok(res) => res,
+                Err(p) => Err(extract_panic_message(p)),
+            };
+
+            let _ = tx.send(DigestJobResult {
+                query,
+                result,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
+            });
+        });
+    }
+
+    pub fn poll_background_digest(&mut self) {
+        while let Ok(res) = self.digest_rx.try_recv() {
+            self.in_flight_digest = false;
+            let id = self.alloc_job_id();
+            match res.result {
+                Ok(count) => {
+                    self.refresh_dashboard();
+                    self.status_message = format!(
+                        "✓ Refreshed literature digest for '{}' ({count} paper(s))",
+                        res.query
+                    );
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Digest,
+                        label: format!("digest: {}", res.query),
+                        ok: true,
+                        detail: format!("Refreshed {count} publication(s) for '{}'", res.query),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+                Err(err_msg) => {
+                    self.status_message =
+                        format!("⚠ Digest refresh failed for '{}': {err_msg}", res.query);
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Digest,
+                        label: format!("digest: {}", res.query),
+                        ok: false,
+                        detail: err_msg,
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+            }
+        }
+    }
+
+    pub fn check_auto_digest_refresh(&mut self) {
+        if self.active_tab != ActiveTab::Dashboard || self.in_flight_digest {
+            return;
+        }
+
+        let effective_query = sil_core::effective_digest_query(
+            &self.global_settings.digest_query,
+            &self.local_settings.digest_query,
+        );
+
+        if effective_query.is_none() {
+            return;
+        }
+
+        let is_stale = if let Some(ref root) = self.project_root {
+            let paths = sil_core::ProjectPaths::new(root);
+            if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                let last_fetched = db.digest_last_fetched_at().ok().flatten();
+                let hours = sil_core::effective_digest_refresh_hours(
+                    self.global_settings.digest_refresh_hours,
+                );
+                let now_secs = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                is_digest_cache_stale(last_fetched.as_deref(), hours, now_secs)
+            } else {
+                true
+            }
+        } else {
+            false
+        };
+
+        if is_stale {
+            self.queue_digest_refresh();
+        }
+    }
+}
+
+/// Helper to parse ISO/SQLite UTC timestamp ("YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SSZ") into Unix epoch seconds.
+pub fn parse_utc_timestamp(s: &str) -> Option<u64> {
+    let s = s.trim();
+    if s.len() < 19 {
+        return None;
+    }
+    let year: i64 = s[0..4].parse().ok()?;
+    let month: i64 = s[5..7].parse().ok()?;
+    let day: i64 = s[8..10].parse().ok()?;
+    let hour: u64 = s[11..13].parse().ok()?;
+    let min: u64 = s[14..16].parse().ok()?;
+    let sec: u64 = s[17..19].parse().ok()?;
+
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || min > 59 || sec > 59 {
+        return None;
+    }
+
+    let days_before_month = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    let is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+
+    let y = year - 1970;
+    let leap_years = (year - 1969) / 4 - (year - 1901) / 100 + (year - 1601) / 400;
+    let mut total_days = y * 365 + leap_years + days_before_month[(month - 1) as usize];
+    if month > 2 && is_leap {
+        total_days += 1;
+    }
+    total_days += day - 1;
+
+    let total_secs = (total_days as u64).checked_mul(86400)? + hour * 3600 + min * 60 + sec;
+    Some(total_secs)
+}
+
+/// Determine whether the digest cache is stale based on the last fetched ISO string, configured refresh interval (hours, min 1), and current Unix time.
+pub fn is_digest_cache_stale(
+    last_fetched: Option<&str>,
+    refresh_hours: u32,
+    now_epoch_secs: u64,
+) -> bool {
+    let Some(fetched_str) = last_fetched else {
+        return true;
+    };
+
+    let Some(fetched_secs) = parse_utc_timestamp(fetched_str) else {
+        return true;
+    };
+
+    let age_secs = now_epoch_secs.saturating_sub(fetched_secs);
+    let refresh_secs = (refresh_hours.max(1) as u64) * 3600;
+    age_secs >= refresh_secs
 }

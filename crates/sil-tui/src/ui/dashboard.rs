@@ -166,7 +166,10 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
         )
     } else if model.cited_bib_count == model.total_bib_count {
         (
-            format!("{}/{} mentioned (100%)", model.cited_bib_count, model.total_bib_count),
+            format!(
+                "{}/{} mentioned (100%)",
+                model.cited_bib_count, model.total_bib_count
+            ),
             Color::Green,
         )
     } else {
@@ -216,10 +219,7 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled("• Stage: ", Style::default().fg(Color::Cyan)),
-            Span::styled(
-                &model.stage,
-                Style::default().fg(Color::Green),
-            ),
+            Span::styled(&model.stage, Style::default().fg(Color::Green)),
         ]),
         Line::from(vec![
             Span::styled("• Main Draft: ", Style::default().fg(Color::Cyan)),
@@ -315,7 +315,9 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         for pub_item in model.digest_publications.iter().take(6) {
             let tag = match pub_item.year {
-                Some(y) if !pub_item.journal.is_empty() => format!("• [{} {}] ", pub_item.journal, y),
+                Some(y) if !pub_item.journal.is_empty() => {
+                    format!("• [{} {}] ", pub_item.journal, y)
+                }
                 Some(y) => format!("• [{}] ", y),
                 None if !pub_item.journal.is_empty() => format!("• [{}] ", pub_item.journal),
                 None => "• ".to_string(),
@@ -338,7 +340,9 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Magenta));
     frame.render_widget(
-        Paragraph::new(digest_lines).block(digest_block).wrap(Wrap { trim: true }),
+        Paragraph::new(digest_lines)
+            .block(digest_block)
+            .wrap(Wrap { trim: true }),
         bottom_chunks[0],
     );
 
@@ -418,8 +422,8 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
 mod tests {
     use super::*;
     use camino::Utf8PathBuf;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use tempfile::tempdir;
 
     fn render_to_string(app: &mut App) -> String {
@@ -471,7 +475,10 @@ Second idea content line
         assert_eq!(app.dashboard.ideas[0].section, "Introduction");
         assert_eq!(app.dashboard.ideas[0].first_line, "First idea content line");
         assert_eq!(app.dashboard.ideas[1].section, "Methods");
-        assert_eq!(app.dashboard.ideas[1].first_line, "Second idea content line");
+        assert_eq!(
+            app.dashboard.ideas[1].first_line,
+            "Second idea content line"
+        );
 
         let rendered = render_to_string(&mut app);
         assert!(rendered.contains("First idea content line"));
