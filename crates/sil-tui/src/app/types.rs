@@ -1,6 +1,6 @@
 //! Data types, enums, and classification functions for `sil-tui` app state.
 
-use sil_core::{ReferenceEntry, SourceDocument};
+use sil_core::{JournalPublication, ReferenceEntry, SourceDocument};
 
 /// Navigation tabs in the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,6 +119,25 @@ pub fn classify_source_input(input: &str) -> SourceInputKind {
     }
 }
 
+/// Resolve fetch target string for a journal publication digest item.
+/// Prefers DOI (`10...` or `doi` field), else `url` if it starts with http(s), else `None`.
+pub fn resolve_digest_fetch_target(pub_item: &JournalPublication) -> Option<String> {
+    if let Some(ref doi) = pub_item.doi {
+        let trimmed = doi.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    let trimmed_url = pub_item.url.trim();
+    if !trimmed_url.is_empty() {
+        let lower = trimmed_url.to_lowercase();
+        if lower.starts_with("http://") || lower.starts_with("https://") {
+            return Some(trimmed_url.to_string());
+        }
+    }
+    None
+}
+
 /// Helper context mode for keyboard help overlays.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HelpMode {
@@ -177,6 +196,12 @@ impl HelpMode {
 pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
     match mode {
         HelpMode::Dashboard => vec![
+            ("j / Down", "Select next literature digest paper"),
+            ("k / Up", "Select previous literature digest paper"),
+            (
+                "Enter",
+                "Queue background fetch for selected digest paper (DOI / URL)",
+            ),
             (
                 "1 - 5",
                 "Switch directly to tab (Dashboard, Sources, References, Draft, Settings)",

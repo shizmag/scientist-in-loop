@@ -121,6 +121,7 @@ pub struct App {
     pub selected_setting_index: usize,
 
     // Live dashboard state
+    pub selected_digest_index: usize,
     pub dashboard: crate::ui::dashboard::DashboardModel,
 }
 
@@ -241,6 +242,7 @@ impl App {
             dashboard_scroll_offset: 0,
 
             selected_setting_index: 0,
+            selected_digest_index: 0,
             dashboard: crate::ui::dashboard::DashboardModel::default(),
         };
         app.reload_paper_draft();
@@ -251,7 +253,17 @@ impl App {
         app
     }
 
+    pub fn clamp_digest_selection(&mut self) {
+        let count = self.dashboard.digest_publications.len();
+        if count == 0 {
+            self.selected_digest_index = 0;
+        } else if self.selected_digest_index >= count {
+            self.selected_digest_index = count - 1;
+        }
+    }
+
     pub fn refresh_dashboard(&mut self) {
         self.dashboard = crate::ui::dashboard::DashboardModel::from_app(self);
+        self.clamp_digest_selection();
     }
 }

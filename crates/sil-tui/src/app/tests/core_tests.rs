@@ -1153,3 +1153,150 @@ fn test_reader_mode_note_missing_paper_draft() {
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
     assert!(app.status_message.contains("paper_draft.tex not found"));
 }
+
+#[test]
+fn test_digest_target_resolution() {
+    let pub_doi = sil_core::JournalPublication {
+        doi: Some("10.1038/s41586-024-00000-0".to_string()),
+        title: "Paper with DOI".to_string(),
+        authors: "Author A".to_string(),
+        journal: "Nature".to_string(),
+        year: Some(2024),
+        abstract_text: "".to_string(),
+        citation_count: None,
+        url: "https://nature.com/articles/123".to_string(),
+        pdf_url: None,
+    };
+    assert_eq!(
+        resolve_digest_fetch_target(&pub_doi),
+        Some("10.1038/s41586-024-00000-0".to_string())
+    );
+
+    let pub_url_only = sil_core::JournalPublication {
+        doi: None,
+        title: "Paper with URL only".to_string(),
+        authors: "Author B".to_string(),
+        journal: "IEEE".to_string(),
+        year: Some(2023),
+        abstract_text: "".to_string(),
+        citation_count: None,
+        url: "https://ieeexplore.ieee.org/document/1234567".to_string(),
+        pdf_url: None,
+    };
+    assert_eq!(
+        resolve_digest_fetch_target(&pub_url_only),
+        Some("https://ieeexplore.ieee.org/document/1234567".to_string())
+    );
+
+    let pub_neither = sil_core::JournalPublication {
+        doi: Some("   ".to_string()),
+        title: "Paper with neither".to_string(),
+        authors: "Author C".to_string(),
+        journal: "ArXiv".to_string(),
+        year: None,
+        abstract_text: "".to_string(),
+        citation_count: None,
+        url: "invalid-url".to_string(),
+        pdf_url: None,
+    };
+    assert_eq!(resolve_digest_fetch_target(&pub_neither), None);
+}
+
+#[test]
+fn test_digest_selection_clamping() {
+    let mut app = App::new(None);
+    app.dashboard.digest_publications = vec![
+        sil_core::JournalPublication {
+            doi: Some("10.1000/1".to_string()),
+            title: "Pub 1".to_string(),
+            authors: "".to_string(),
+            journal: "".to_string(),
+            year: None,
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "".to_string(),
+            pdf_url: None,
+        },
+        sil_core::JournalPublication {
+            doi: Some("10.1000/2".to_string()),
+            title: "Pub 2".to_string(),
+            authors: "".to_string(),
+            journal: "".to_string(),
+            year: None,
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "".to_string(),
+            pdf_url: None,
+        },
+    ];
+
+    app.selected_digest_index = 5;
+    app.clamp_digest_selection();
+    assert_eq!(app.selected_digest_index, 1);
+
+    app.dashboard.digest_publications.clear();
+    app.clamp_digest_selection();
+    assert_eq!(app.selected_digest_index, 0);
+}
+
+#[test]
+fn test_dashboard_digest_key_navigation_and_enter_fetch() {
+    use tempfile::tempdir;
+    let dir = tempdir().unwrap();
+    let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+
+    let mut app = App::new(Some(root));
+    app.active_tab = ActiveTab::Dashboard;
+    app.dashboard.digest_publications = vec![
+        sil_core::JournalPublication {
+            doi: Some("10.1038/s41586-024-00000-0".to_string()),
+            title: "Quantum Supremacy".to_string(),
+            authors: "Alice".to_string(),
+            journal: "Nature".to_string(),
+            year: Some(2024),
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "https://nature.com/articles/123".to_string(),
+            pdf_url: None,
+        },
+        sil_core::JournalPublication {
+            doi: None,
+            title: "No Identifier Paper".to_string(),
+            authors: "Bob".to_string(),
+            journal: "Unknown".to_string(),
+            year: None,
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "ftp://invalid".to_string(),
+            pdf_url: None,
+        },
+    ];
+
+    assert_eq!(app.selected_digest_index, 0);
+
+    // j moves selection down
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty()));
+    assert_eq!(app.selected_digest_index, 1);
+
+    // Down at end stays at 1
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::empty()));
+    assert_eq!(app.selected_digest_index, 1);
+
+    // k moves selection up
+    app.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::empty()));
+    assert_eq!(app.selected_digest_index, 0);
+
+    // Enter on item 0 resolves DOI and queues fetch
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert!(app.in_flight_fetch_targets.contains("10.1038/s41586-024-00000-0"));
+    assert_eq!(app.active_tab, ActiveTab::Dashboard);
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(app.status_message.contains("Fetching Quantum Supremacy…"));
+
+    // Move to item 1 and press Enter
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty()));
+    assert_eq!(app.selected_digest_index, 1);
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
+    assert!(app.status_message.contains("cannot fetch (no DOI or URL)"));
+    assert_eq!(app.active_tab, ActiveTab::Dashboard);
+}

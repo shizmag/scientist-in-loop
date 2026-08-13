@@ -166,7 +166,11 @@ impl App {
             }
 
             KeyCode::Up | KeyCode::Char('k') => match self.active_tab {
-                ActiveTab::Dashboard => {}
+                ActiveTab::Dashboard => {
+                    if self.selected_digest_index > 0 {
+                        self.selected_digest_index -= 1;
+                    }
+                }
                 ActiveTab::References => match self.active_ref_pane {
                     RefPane::LeftBib => {
                         if self.selected_bib_index > 0 {
@@ -206,6 +210,7 @@ impl App {
             }
             KeyCode::Down | KeyCode::Char('j') => self.navigate_down(),
             KeyCode::Enter => match self.active_tab {
+                ActiveTab::Dashboard => self.queue_selected_digest_fetch(),
                 ActiveTab::PaperDraft => self.start_editing_selected_field(),
                 ActiveTab::Sources => {
                     if !self.sources.is_empty() && self.selected_source_index < self.sources.len() {
@@ -1107,7 +1112,12 @@ impl App {
 
     fn navigate_down(&mut self) {
         match self.active_tab {
-            ActiveTab::Dashboard => {}
+            ActiveTab::Dashboard => {
+                let count = self.dashboard.digest_publications.len();
+                if count > 0 && self.selected_digest_index + 1 < count {
+                    self.selected_digest_index += 1;
+                }
+            }
             ActiveTab::References => match self.active_ref_pane {
                 RefPane::LeftBib => {
                     let count = self.filtered_bib_entries().len();
@@ -1141,6 +1151,30 @@ impl App {
                 if total > 0 && self.selected_setting_index + 1 < total {
                     self.selected_setting_index += 1;
                 }
+            }
+        }
+    }
+
+    pub fn queue_selected_digest_fetch(&mut self) {
+        self.clamp_digest_selection();
+        if self.dashboard.digest_publications.is_empty() {
+            self.status_message = "cannot fetch (no DOI or URL)".to_string();
+            return;
+        }
+        if let Some(pub_item) = self
+            .dashboard
+            .digest_publications
+            .get(self.selected_digest_index)
+            .cloned()
+        {
+            if let Some(target) = resolve_digest_fetch_target(&pub_item) {
+                let title = pub_item.title.clone();
+                self.queue_source_fetch(target.clone());
+                if self.in_flight_fetch_targets.contains(&target) {
+                    self.status_message = format!("Fetching {title}…");
+                }
+            } else {
+                self.status_message = "cannot fetch (no DOI or URL)".to_string();
             }
         }
     }

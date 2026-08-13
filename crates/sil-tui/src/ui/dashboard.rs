@@ -313,18 +313,28 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(Color::DarkGray),
         )]));
     } else {
-        for pub_item in model.digest_publications.iter().take(6) {
+        for (idx, pub_item) in model.digest_publications.iter().enumerate().take(8) {
+            let is_sel = idx == app.selected_digest_index;
+            let prefix = if is_sel { "► " } else { "  " };
+            let style = if is_sel {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
             let tag = match pub_item.year {
                 Some(y) if !pub_item.journal.is_empty() => {
-                    format!("• [{} {}] ", pub_item.journal, y)
+                    format!("[{} {}] ", pub_item.journal, y)
                 }
-                Some(y) => format!("• [{}] ", y),
-                None if !pub_item.journal.is_empty() => format!("• [{}] ", pub_item.journal),
-                None => "• ".to_string(),
+                Some(y) => format!("[{}] ", y),
+                None if !pub_item.journal.is_empty() => format!("[{}] ", pub_item.journal),
+                None => "".to_string(),
             };
             digest_lines.push(Line::from(vec![
+                Span::styled(prefix, style),
                 Span::styled(tag, Style::default().fg(Color::Green)),
-                Span::styled(&pub_item.title, Style::default().fg(Color::Reset)),
+                Span::styled(&pub_item.title, style),
             ]));
         }
     }
@@ -342,7 +352,7 @@ pub(crate) fn draw_dashboard(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(
         Paragraph::new(digest_lines)
             .block(digest_block)
-            .wrap(Wrap { trim: true }),
+            .wrap(Wrap { trim: false }),
         bottom_chunks[0],
     );
 
@@ -520,5 +530,49 @@ Second idea content line
         assert!(!rendered.contains("self-attention baseline"));
         assert!(!rendered.contains("Stage 5 (Polish"));
         assert!(!rendered.contains("IEEE TPAMI"));
+    }
+
+    #[test]
+    fn test_digest_selection_marker_rendering() {
+        let dir = tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        let db_path = sil_core::ProjectPaths::new(&root).db();
+        let db = sil_db::SilDb::open(&db_path).unwrap();
+        db.save_journal_publication(&sil_core::JournalPublication {
+            doi: Some("10.1038/1".to_string()),
+            title: "First Publication".to_string(),
+            authors: "Author A".to_string(),
+            journal: "Nature".to_string(),
+            year: Some(2024),
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "https://nature.com/1".to_string(),
+            pdf_url: None,
+        })
+        .unwrap();
+        db.save_journal_publication(&sil_core::JournalPublication {
+            doi: Some("10.1038/2".to_string()),
+            title: "Second Publication".to_string(),
+            authors: "Author B".to_string(),
+            journal: "IEEE".to_string(),
+            year: Some(2023),
+            abstract_text: "".to_string(),
+            citation_count: None,
+            url: "https://ieee.org/2".to_string(),
+            pdf_url: None,
+        })
+        .unwrap();
+
+        let mut app = App::new(Some(root));
+
+        app.selected_digest_index = 0;
+        let rendered1 = render_to_string(&mut app);
+        assert!(rendered1.contains("► [Nature 2024] First Publication"));
+        assert!(rendered1.contains("  [IEEE 2023] Second Publication"));
+
+        app.selected_digest_index = 1;
+        let rendered2 = render_to_string(&mut app);
+        assert!(rendered2.contains("  [Nature 2024] First Publication"));
+        assert!(rendered2.contains("► [IEEE 2023] Second Publication"));
     }
 }
