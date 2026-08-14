@@ -177,6 +177,8 @@ impl App {
             InputMode::ModalRenameSource => HelpMode::ModalRenameSource,
             InputMode::ModalCaptureNote => HelpMode::ModalCaptureNote,
             InputMode::NoteSectionPicker => HelpMode::NoteSectionPicker,
+            InputMode::CiteSectionPicker => HelpMode::CiteSectionPicker,
+            InputMode::GroundingModal => HelpMode::GroundingModal,
             InputMode::ConfirmDeleteSource | InputMode::ConfirmRepairDb => {
                 HelpMode::ConfirmDeleteSource
             }
@@ -188,6 +190,8 @@ impl App {
             InputMode::WizardOpenPath => HelpMode::WizardOpenPath,
             InputMode::WizardCreateProject => HelpMode::WizardCreateProject,
             InputMode::WizardDoctorReport => HelpMode::WizardDoctorReport,
+            InputMode::EstimateReport => HelpMode::EstimateReport,
+            InputMode::ProposalDiff => HelpMode::ProposalDiff,
             InputMode::Normal => match self.active_tab {
                 ActiveTab::Dashboard => HelpMode::Dashboard,
                 ActiveTab::Sources => HelpMode::SourcesList,
@@ -720,5 +724,54 @@ impl App {
                 }
             }
         }
+    }
+
+    pub fn insert_cite_into_section(&mut self, sec_title: &str, cite_key: &str) {
+        if !self.check_mutation_lock("cite_section") {
+            return;
+        }
+        self.confirm_lock_override = false;
+        let root = match self.project_root.as_ref() {
+            Some(r) => r.clone(),
+            None => {
+                self.status_message = "Error: paper_draft.tex not found.".to_string();
+                return;
+            }
+        };
+        let draft_path = root.join("paper_draft.tex");
+        if !draft_path.is_file() {
+            self.status_message = "Error: paper_draft.tex not found.".to_string();
+            return;
+        }
+        let existing = match std::fs::read_to_string(draft_path.as_std_path()) {
+            Ok(c) => c,
+            Err(e) => {
+                self.status_message = format!("Error reading paper_draft.tex: {e}");
+                return;
+            }
+        };
+        let updated = match sil_latex::insert_cite_in_section(&existing, sec_title, cite_key) {
+            Ok(u) => u,
+            Err(e) => {
+                self.status_message = format!("Error inserting cite in section: {e}");
+                return;
+            }
+        };
+        if updated == existing {
+            self.status_message = format!("Already cited {cite_key} in section {sec_title}");
+            return;
+        }
+        if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated) {
+            self.status_message = format!("Error writing paper_draft.tex: {e}");
+            return;
+        }
+        let paths = ProjectPaths::new(&root);
+        let _ = sil_latex::write_draft_sections_from_file(&draft_path, &paths.draft_sections_dir());
+        if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+            let ideas = sil_latex::parse_idea_blocks(&updated);
+            let _ = db.replace_todo_ideas(&ideas);
+        }
+        self.reload_paper_draft();
+        self.status_message = format!("Cited {cite_key} in section {sec_title}");
     }
 }

@@ -29,6 +29,10 @@ pub enum CommandId {
     OpenSource,
     /// Append the selected source document to references.bib.
     CiteSource,
+    /// Insert citation of selected source into a chosen section of paper_draft.tex.
+    CiteIntoSection,
+    /// Show ranked sources relevant to the current draft section.
+    GroundSection,
     /// Capture an idea note from the selected source onto paper_draft.tex.
     CaptureNote,
     /// Refresh the literature digest publications.
@@ -39,6 +43,14 @@ pub enum CommandId {
     Undo,
     /// Rebuild SQLite database from sources/ when database is corrupt.
     RepairDb,
+    /// Build the draft manuscript with the configured LaTeX engine.
+    BuildDraft,
+    /// Run the read-only L0 manuscript estimate.
+    RunEstimate,
+    /// Open the newest persisted estimate report.
+    OpenLastReview,
+    /// Show git status, selected uncommitted changes, and the latest proposal.
+    ReviewChanges,
 }
 
 impl CommandId {
@@ -57,11 +69,17 @@ impl CommandId {
             CommandId::FetchParse => "fetch_parse",
             CommandId::OpenSource => "open_source",
             CommandId::CiteSource => "cite_source",
+            CommandId::CiteIntoSection => "cite_into_section",
+            CommandId::GroundSection => "ground_section",
             CommandId::CaptureNote => "capture_note",
             CommandId::RefreshDigest => "refresh_digest",
             CommandId::OpenExternalEditor => "open_external_editor",
             CommandId::Undo => "undo",
             CommandId::RepairDb => "repair_db",
+            CommandId::BuildDraft => "build_draft",
+            CommandId::RunEstimate => "run_estimate",
+            CommandId::OpenLastReview => "open_last_review",
+            CommandId::ReviewChanges => "review_changes",
         }
     }
 }
@@ -99,6 +117,13 @@ impl CommandSpec {
             | CommandId::Quit
             | CommandId::OpenHelp
             | CommandId::OpenJobHistory => Ok(()),
+            CommandId::RunEstimate | CommandId::OpenLastReview => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
+                } else {
+                    Ok(())
+                }
+            }
             CommandId::Reload => {
                 if app.project_root.is_none() {
                     Err("requires active project")
@@ -138,11 +163,18 @@ impl CommandSpec {
                     Ok(())
                 }
             }
-            CommandId::CiteSource => {
+            CommandId::CiteSource | CommandId::CiteIntoSection => {
                 if app.project_root.is_none() {
                     Err("requires active project")
                 } else if app.sources.is_empty() || app.selected_source_index >= app.sources.len() {
                     Err("no source selected")
+                } else {
+                    Ok(())
+                }
+            }
+            CommandId::GroundSection => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
                 } else {
                     Ok(())
                 }
@@ -164,6 +196,20 @@ impl CommandSpec {
                 }
             }
             CommandId::OpenExternalEditor | CommandId::Undo | CommandId::RepairDb => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
+                } else {
+                    Ok(())
+                }
+            }
+            CommandId::BuildDraft => {
+                if app.project_root.is_none() {
+                    Err("requires active project")
+                } else {
+                    Ok(())
+                }
+            }
+            CommandId::ReviewChanges => {
                 if app.project_root.is_none() {
                     Err("requires active project")
                 } else {
@@ -196,10 +242,48 @@ pub fn all_commands() -> &'static [CommandSpec] {
         CommandSpec {
             id: CommandId::RepairDb,
             title: "Repair Database",
-            aliases: &["repair", "rebuild-db", "repair-db", "restore-db", "doctor-repair"],
+            aliases: &[
+                "repair",
+                "rebuild-db",
+                "repair-db",
+                "restore-db",
+                "doctor-repair",
+            ],
             default_keys: "",
             tab: None,
             description: "Backup and rebuild SQLite index from sources/ (safe for files)",
+        },
+        CommandSpec {
+            id: CommandId::BuildDraft,
+            title: "Build Draft",
+            aliases: &["build", "latex", "compile", "pdf"],
+            default_keys: "",
+            tab: Some(ActiveTab::PaperDraft),
+            description: "Build the draft PDF with the configured LaTeX engine",
+        },
+        CommandSpec {
+            id: CommandId::RunEstimate,
+            title: "Run Estimate",
+            aliases: &["estimate", "manuscript", "quality", "l0"],
+            default_keys: "",
+            tab: None,
+            description: "Run read-only L0 manuscript estimate in the background",
+        },
+        CommandSpec {
+            id: CommandId::OpenLastReview,
+            title: "Open Last Review",
+            aliases: &["review", "report", "estimate-report", "last"],
+            default_keys: "",
+            tab: None,
+            description: "Read the newest report from .sil/reviews/",
+        },
+        CommandSpec {
+            id: CommandId::ReviewChanges,
+            title: "Review Changes",
+            aliases: &["diff", "proposal", "git", "changes"],
+            default_keys: "",
+            tab: None,
+            description: "Show git status, draft/bibliography diff, and proposal",
         },
         CommandSpec {
             id: CommandId::Undo,
@@ -272,6 +356,27 @@ pub fn all_commands() -> &'static [CommandSpec] {
             default_keys: "b",
             tab: Some(ActiveTab::Sources),
             description: "Append selected source document citation to references.bib",
+        },
+        CommandSpec {
+            id: CommandId::CiteIntoSection,
+            title: "Cite Source into Draft Section",
+            aliases: &[
+                "cite-section",
+                "cite-into-section",
+                "insert-cite",
+                "draft-cite",
+            ],
+            default_keys: "c",
+            tab: Some(ActiveTab::Sources),
+            description: "Insert \\cite{key} of selected source into a chosen section of paper_draft.tex",
+        },
+        CommandSpec {
+            id: CommandId::GroundSection,
+            title: "Ground Current Draft Section",
+            aliases: &["ground", "grounding", "sources", "support"],
+            default_keys: "g",
+            tab: Some(ActiveTab::PaperDraft),
+            description: "Show ranked read-only source hits for the current draft section",
         },
         CommandSpec {
             id: CommandId::CaptureNote,

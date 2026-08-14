@@ -19,6 +19,8 @@ impl App {
             InputMode::ModalRenameSource => self.handle_modal_rename_source_mode(key),
             InputMode::ModalCaptureNote => self.handle_modal_capture_note_mode(key),
             InputMode::NoteSectionPicker => self.handle_note_section_picker_mode(key),
+            InputMode::CiteSectionPicker => self.handle_cite_section_picker_mode(key),
+            InputMode::GroundingModal => self.handle_grounding_modal_mode(key),
             InputMode::ConfirmDeleteSource => self.handle_confirm_delete_source_mode(key),
             InputMode::ConfirmRepairDb => self.handle_confirm_repair_db_mode(key),
             InputMode::JobHistory => self.handle_job_history_mode(key),
@@ -31,11 +33,61 @@ impl App {
             InputMode::WizardOpenPath => self.handle_wizard_open_path_mode(key),
             InputMode::WizardCreateProject => self.handle_wizard_create_project_mode(key),
             InputMode::WizardDoctorReport => self.handle_wizard_doctor_report_mode(key),
+            InputMode::EstimateReport => self.handle_estimate_report_mode(key),
+            InputMode::ProposalDiff => self.handle_proposal_diff_mode(key),
         }
     }
 
     fn handle_help_overlay_mode(&mut self, _key: KeyEvent) {
         self.input_mode = self.saved_input_mode;
+    }
+
+    fn handle_proposal_diff_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Closed proposal and diff viewer.".to_string();
+            }
+            KeyCode::Char('y') => self.write_last_proposal(),
+            KeyCode::Char('u') => {
+                if let Some(root) = self.project_root.as_ref() {
+                    match sil_core::undo::UndoJournal::list_generations(
+                        &ProjectPaths::new(root).undo_dir(),
+                    ) {
+                        Ok(generations) if generations.is_empty() => {
+                            self.status_message =
+                                "No TUI undo journal; use git yourself — sil will not alter git."
+                                    .to_string();
+                        }
+                        Ok(_) => self.dispatch(CommandId::Undo),
+                        Err(e) => {
+                            self.status_message = format!("Unable to inspect undo journal: {e}")
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn write_last_proposal(&mut self) {
+        let Some(root) = self.project_root.as_ref() else {
+            return;
+        };
+        let Some(text) = self.proposal_text.as_deref() else {
+            return;
+        };
+        let dir = root.join(".sil");
+        let path = dir.join("last_proposal.txt");
+        let tmp = dir.join("last_proposal.txt.tmp");
+        if let Err(e) = std::fs::create_dir_all(dir.as_std_path())
+            .and_then(|_| std::fs::write(tmp.as_std_path(), text))
+            .and_then(|_| std::fs::rename(tmp.as_std_path(), path.as_std_path()))
+        {
+            self.status_message = format!("Could not write proposal: {e}");
+        } else {
+            self.status_message = format!("Wrote proposal to {}", path);
+        }
     }
 
     fn handle_command_palette_mode(&mut self, key: KeyEvent) {
@@ -104,6 +156,31 @@ impl App {
             KeyCode::Char(c) => {
                 self.palette_filter.push(c);
                 self.clamp_palette_selection();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_grounding_modal_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.status_message = "Grounding modal closed.".to_string();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if self.grounding_selected_index + 1 < self.grounding_hits.len() {
+                    self.grounding_selected_index += 1;
+                }
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.grounding_selected_index = self.grounding_selected_index.saturating_sub(1);
+            }
+            KeyCode::Enter => {
+                if let Some(hit) = self.grounding_hits.get(self.grounding_selected_index) {
+                    self.active_tab = ActiveTab::Sources;
+                    self.status_message = format!("Selected grounding source {}.", hit.source_id);
+                    self.input_mode = InputMode::Normal;
+                }
             }
             _ => {}
         }
@@ -195,6 +272,9 @@ impl App {
                 } else {
                     self.dispatch(CommandId::SaveAll);
                 }
+            }
+            KeyCode::Char('g') if self.active_tab == ActiveTab::PaperDraft => {
+                self.dispatch(CommandId::GroundSection);
             }
             KeyCode::Char('t') => {
                 if self.active_tab == ActiveTab::References {
@@ -328,7 +408,8 @@ impl App {
             },
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 if self.active_tab == ActiveTab::Sources {
-                    if key.code == KeyCode::Char('E') || key.modifiers.contains(KeyModifiers::SHIFT) {
+                    if key.code == KeyCode::Char('E') || key.modifiers.contains(KeyModifiers::SHIFT)
+                    {
                         self.dispatch(CommandId::ParseAll);
                     } else {
                         self.dispatch(CommandId::ParseSelected);
@@ -1616,6 +1697,9 @@ impl App {
             KeyCode::Char('b') => {
                 self.dispatch(CommandId::CiteSource);
             }
+            KeyCode::Char('c') => {
+                self.dispatch(CommandId::CiteIntoSection);
+            }
             KeyCode::Char('n') => {
                 self.dispatch(CommandId::CaptureNote);
             }
@@ -1631,6 +1715,27 @@ impl App {
             KeyCode::PageDown => {
                 self.source_scroll_offset += 10;
             }
+            _ => {}
+        }
+    }
+
+    fn handle_estimate_report_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('?') | KeyCode::F(1) => self.toggle_help_overlay(),
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.input_mode = InputMode::Normal;
+                self.estimate_report_content = None;
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.estimate_report_scroll_offset =
+                    self.estimate_report_scroll_offset.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => self.estimate_report_scroll_offset += 1,
+            KeyCode::PageUp => {
+                self.estimate_report_scroll_offset =
+                    self.estimate_report_scroll_offset.saturating_sub(10)
+            }
+            KeyCode::PageDown => self.estimate_report_scroll_offset += 10,
             _ => {}
         }
     }
@@ -1661,7 +1766,8 @@ impl App {
                     self.note_picker_selected = 0;
                     self.input_mode = InputMode::NoteSectionPicker;
                     self.status_message =
-                        "Select draft section for note (Enter to confirm, Esc to cancel)".to_string();
+                        "Select draft section for note (Enter to confirm, Esc to cancel)"
+                            .to_string();
                 }
             }
             KeyCode::Backspace => {
@@ -1705,6 +1811,52 @@ impl App {
                 self.note_picker_selected = 0;
                 self.save_reader_note_to_section(&note, section_target.as_deref());
                 self.input_mode = InputMode::ReadingSourceMd;
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_cite_section_picker_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('?') | KeyCode::F(1) => self.toggle_help_overlay(),
+            KeyCode::Esc => {
+                // The bibliography is prepared when the picker opens; cancel restores it.
+                if let Some(root) = self.project_root.as_ref() {
+                    if let Ok(Some(generation)) = sil_core::undo::UndoJournal::undo(root)
+                        && generation.op == "Cite source in draft section"
+                    {
+                        self.load_project_references_bib();
+                    }
+                }
+                self.input_mode = self.cite_picker_previous_mode;
+                self.pending_cite_key.clear();
+                self.cite_picker_sections.clear();
+                self.cite_picker_selected = 0;
+                self.status_message = "Cite into section cancelled.".to_string();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.cite_picker_selected = self.cite_picker_selected.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !self.cite_picker_sections.is_empty()
+                    && self.cite_picker_selected + 1 < self.cite_picker_sections.len()
+                {
+                    self.cite_picker_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                let section_target = self
+                    .cite_picker_sections
+                    .get(self.cite_picker_selected)
+                    .cloned();
+                let cite_key = std::mem::take(&mut self.pending_cite_key);
+                self.cite_picker_sections.clear();
+                self.cite_picker_selected = 0;
+                let prev_mode = self.cite_picker_previous_mode;
+                if let Some(sec) = section_target {
+                    self.insert_cite_into_section(&sec, &cite_key);
+                }
+                self.input_mode = prev_mode;
             }
             _ => {}
         }

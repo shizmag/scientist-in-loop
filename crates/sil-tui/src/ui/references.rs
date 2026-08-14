@@ -237,7 +237,12 @@ pub(crate) fn draw_references(frame: &mut Frame, app: &App, area: Rect) {
         let wrapped = textwrap::wrap(empty_msg, avail_w);
         let lines: Vec<Line> = wrapped
             .into_iter()
-            .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::DarkGray))))
+            .map(|l| {
+                Line::from(Span::styled(
+                    l.to_string(),
+                    Style::default().fg(Color::DarkGray),
+                ))
+            })
             .collect();
         right_items.push(ListItem::new(lines));
     } else {

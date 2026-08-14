@@ -170,12 +170,10 @@ pub fn draw_wizard(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(info_block, chunks[3]);
 
     // Key hints footer
-    let hints_text = Paragraph::new(Line::from(vec![
-        Span::styled(
-            "[1-4] Quick Select  |  [↑/↓ or j/k] Navigate  |  [Enter] Select  |  [q] Quit",
-            Style::default().fg(Color::DarkGray),
-        ),
-    ]))
+    let hints_text = Paragraph::new(Line::from(vec![Span::styled(
+        "[1-4] Quick Select  |  [↑/↓ or j/k] Navigate  |  [Enter] Select  |  [q] Quit",
+        Style::default().fg(Color::DarkGray),
+    )]))
     .alignment(Alignment::Center);
     frame.render_widget(hints_text, chunks[4]);
 
@@ -213,10 +211,9 @@ fn draw_wizard_open_path(frame: &mut Frame, app: &App) {
 
     frame.render_widget(popup_block, area);
 
-    let hint = Paragraph::new(
-        "Enter directory path containing .sil/ workspace (relative or absolute):",
-    )
-    .style(Style::default().fg(Color::DarkGray));
+    let hint =
+        Paragraph::new("Enter directory path containing .sil/ workspace (relative or absolute):")
+            .style(Style::default().fg(Color::DarkGray));
     frame.render_widget(hint, layout[0]);
 
     let input_text = format!("{}_", app.wizard_state.open_path_buffer);
@@ -261,10 +258,8 @@ fn draw_wizard_create_project(frame: &mut Frame, app: &App) {
 
     frame.render_widget(popup_block, area);
 
-    let hint = Paragraph::new(
-        "Enter folder name or path (e.g. 'my-paper'):",
-    )
-    .style(Style::default().fg(Color::DarkGray));
+    let hint = Paragraph::new("Enter folder name or path (e.g. 'my-paper'):")
+        .style(Style::default().fg(Color::DarkGray));
     frame.render_widget(hint, layout[0]);
 
     let input_text = format!("{}_", app.wizard_state.create_project_buffer);
@@ -306,11 +301,24 @@ fn draw_doctor_report(frame: &mut Frame, app: &App, area: Rect) {
         .skip(offset)
         .map(|c| {
             let (status_symbol, status_style) = if c.ok {
-                ("✔", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+                (
+                    "✔",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                )
             } else if is_soft_check(&c.name) {
-                ("·", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+                (
+                    "·",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )
             } else {
-                ("✖", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+                (
+                    "✖",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                )
             };
 
             let hint_str = c.hint.as_deref().unwrap_or("");
@@ -322,7 +330,12 @@ fn draw_doctor_report(frame: &mut Frame, app: &App, area: Rect) {
 
             Row::new(vec![
                 Span::styled(status_symbol, status_style),
-                Span::styled(&c.name, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    &c.name,
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(detail_text, Style::default().fg(Color::White)),
             ])
         })

@@ -3,9 +3,9 @@
 //! Computes render-time badges: `parsed` / `unparsed`, `in bib`, and `cited`.
 //! No new SQLite schema columns are stored.
 
+use regex::Regex;
 use std::collections::HashSet;
 use std::sync::LazyLock;
-use regex::Regex;
 
 /// Type alias representing a source document record for badge calculation.
 pub type SourceRecord = sil_core::SourceDocument;

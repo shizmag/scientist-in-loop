@@ -15,9 +15,10 @@ use dashboard::draw_dashboard;
 use draft::{draw_editing_paper_popup, draw_paper_draft};
 use modals::{
     draw_command_palette, draw_confirm_delete_source, draw_confirm_repair_db, draw_editing_popup,
-    draw_help_overlay, draw_job_history, draw_modal_add_author, draw_modal_add_grant,
-    draw_modal_add_source_link, draw_modal_capture_note, draw_modal_note_section_picker,
-    draw_modal_picker, draw_modal_rename_source,
+    draw_estimate_report, draw_grounding_modal, draw_help_overlay, draw_job_history,
+    draw_modal_add_author, draw_modal_add_grant, draw_modal_add_source_link,
+    draw_modal_capture_note, draw_modal_cite_section_picker, draw_modal_note_section_picker,
+    draw_modal_picker, draw_modal_rename_source, draw_proposal_diff,
 };
 use ratatui::{
     Frame,
@@ -78,9 +79,13 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         InputMode::ModalRenameSource => draw_modal_rename_source(frame, app),
         InputMode::ModalCaptureNote => draw_modal_capture_note(frame, app),
         InputMode::NoteSectionPicker => draw_modal_note_section_picker(frame, app),
+        InputMode::CiteSectionPicker => draw_modal_cite_section_picker(frame, app),
+        InputMode::GroundingModal => draw_grounding_modal(frame, app),
         InputMode::ConfirmDeleteSource => draw_confirm_delete_source(frame, app),
         InputMode::ConfirmRepairDb => draw_confirm_repair_db(frame, app),
         InputMode::JobHistory => draw_job_history(frame, app),
+        InputMode::EstimateReport => draw_estimate_report(frame, app),
+        InputMode::ProposalDiff => draw_proposal_diff(frame, app),
         InputMode::CommandPalette => draw_command_palette(frame, app),
         InputMode::ViewingSourceRefs | InputMode::SearchingViewingRefs => {
             draw_viewing_source_refs(frame, app)

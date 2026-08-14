@@ -1,20 +1,80 @@
 //! `sil init` / `sil init --update`
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use camino::Utf8PathBuf;
 use sil_core::SilUi;
 use sil_core::paths::{find_project_root, project_root_from_cwd};
+use sil_db::SilDb;
+use sil_parse::{StubMarkerRunner, parse_one};
 
 use crate::init;
 
-pub fn run(name: Option<String>, update: bool, ui: &dyn SilUi) -> Result<()> {
+pub fn run(name: Option<String>, update: bool, demo: bool, ui: &dyn SilUi) -> Result<()> {
+    if update && demo {
+        bail!("--demo is only supported when creating a new project");
+    }
     if update {
         let target = resolve_update_target(name)?;
         init::update_project(&target, ui)?;
     } else {
         let target = resolve_init_target(name)?;
         init::init_project(&target, ui)?;
+        if demo {
+            create_demo(&target, ui)?;
+        }
     }
+    Ok(())
+}
+
+fn create_demo(target: &Utf8PathBuf, ui: &dyn SilUi) -> Result<()> {
+    let source = target.join("sources/demo-attention.md");
+    std::fs::write(
+        &source,
+        "# Demo Attention\n\nThese synthetic notes describe Demo Attention, a fictional study of toy attention patterns.\n\nThe example is deliberately small and contains no real paper or copyrighted material.\n",
+    )?;
+
+    let db = SilDb::open(&target.join(".sil/db.sqlite"))
+        .map_err(|e| anyhow::anyhow!("open demo database: {e}"))?;
+    parse_one(
+        &source,
+        &db,
+        &StubMarkerRunner {
+            content: String::new(),
+        },
+        ui,
+    )
+    .map_err(|e| anyhow::anyhow!("parse demo source: {e}"))?;
+
+    std::fs::write(
+        target.join("paper_draft.tex"),
+        r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Demo Attention is a synthetic fixture for exploring the scientist-in-loop workflow.
+
+% # -- X -- #
+% TODO: compare the toy attention pattern with a real experiment.
+% # -- X -- #
+
+\section{Discussion}
+The fixture is intentionally offline and contains no claims about a real publication.
+We refer to the synthetic source here \cite{demo2024}.
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
+"#,
+    )?;
+    std::fs::write(
+        target.join("references.bib"),
+        r#"@article{demo2024,
+  title = {Demo Attention},
+  author = {Scientist, Example},
+  year = {2024},
+  note = {Synthetic offline fixture; not a real publication}
+}
+"#,
+    )?;
+    ui.success("Created offline demo fixture");
     Ok(())
 }
 

@@ -201,11 +201,11 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil paper assets [--json]` | List and validate figures, graphics, and `\input` dependencies in `paper_draft.tex` |
 | `sil paper pack [-o bundle.zip]` | Generate reproducible manuscript ZIP package containing draft, structure, BibTeX, review reports, and `REPRO.md` |
 | `sil project context [flags]` | Structured context dump for humans/agents |
-| `sil project doctor [--json] [--fix]` | Project layout, host dependencies, and manuscript health audit (citations, labels, word count, and incremental DOI/arXiv/OpenReview identifier & title mismatch verification; `--fix` auto-repairs corrupted entries) |
+| `sil project doctor [--json] [--fix] [--repair-db]` | Project layout, host dependencies, and manuscript health audit with actionable hints; `--fix` repairs bibliography entries and `--repair-db` backs up/rebuilds a corrupt SQLite index from on-disk sources |
 | `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
 | `sil git log` | Git log filtered/annotated by `Sci-Action` trailers |
 | `sil git propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
-| `sil tui dashboard` / `sil tui settings` | Interactive Ratatui TUI for command center dashboard & settings management |
+| `sil tui dashboard` / `sil tui settings` | Interactive five-tab Ratatui TUI for the command center, sources, draft, references, and settings |
 
 Commit proposals always include a trailer such as:
 
@@ -223,6 +223,8 @@ Sci-Action: fetch-source
 
 `sil tui` (or `sil settings`) opens a 5-tab Ratatui interface:
 
+The command palette is available with `:` or `Ctrl-K`. It searches named commands and aliases, including parse, fetch+parse, cite, undo, build, estimate, repair, and review actions. Empty states expose keyboard-reachable next actions instead of requiring memorized shortcuts.
+
 1. **Dashboard (`1`)**: Live daily command center with four real-time panes:
    - **Health**: Stage, LaTeX engine & main file, manuscript audit (bib coverage ratio and unmatched label counts), word count, and active TODO counts.
    - **Ideas**: Real active `# -- X -- #` TODO and idea blocks parsed from `paper_draft.tex`.
@@ -231,9 +233,11 @@ Sci-Action: fetch-source
 2. **Sources (`2`)**: Comprehensive literature manager for registered documents in `sources/`:
    - Paginated pretty Markdown reader (`Enter`, `j`/`k`, `PageUp`/`PageDown`).
    - Append current source document to `references.bib` (`b`) with metadata hydration (`% [sil: tui-added]` marker) in reader or sources list.
-   - Park note / capture claim from reader (`n`) into a `# -- X -- #` block tagged `from-source` with `from: <filename>` in `paper_draft.tex`.
+   - Park note / capture claim from reader (`n`), then choose a draft section or end of draft; the block is tagged `from-source` with `from: <filename>` in `paper_draft.tex`.
+   - Insert the selected source citation into a chosen draft section (`c`) after ensuring the source is in `references.bib`.
    - Add new works via link / URL / DOI / arXiv (`a`).
    - Real-time parse status indicator (`[✓ Parsed]` / `[Unparsed]`).
+   - Derived source badges for parsed state, bibliography presence, and citation in the draft.
    - Source statistics (word count, extracted reference count).
    - Extracted references viewer per document (`v`) with single-item (`c`/`b`/`p`) or batch (`a`) append to `references.bib`.
    - Rename source titles (`r`) and delete sources with confirmation (`d` / `Delete`).
@@ -262,7 +266,8 @@ Sci-Action: fetch-source
 - `E` / `Shift+E`: Parse all unparsed source documents (Sources tab).
 - `a`: Add source link / URL / DOI / arXiv (Sources tab) or add author / grant (Settings tab).
 - `b`: Append selected source document to `references.bib` (Sources tab & Reader mode).
-- `n`: Open note capture modal to insert `# -- X -- #` block tagged `from-source` into `paper_draft.tex` (Reader mode).
+- `n`: Open note capture and section picker to insert a `# -- X -- #` block tagged `from-source` into `paper_draft.tex` (Reader mode).
+- `c`: Insert the selected source's existing cite key into a chosen draft section (Reader mode).
 - `r`: Rename selected source document title.
 - `d` / `Delete`: Delete source document (Sources tab), delete setting item (Settings tab), or remove entry from `references.bib` (References tab).
 - `v`: View extracted references for selected source (Sources tab), launch external `$EDITOR` (Paper Draft tab), or sort by venue (References tab).
@@ -274,6 +279,15 @@ Sci-Action: fetch-source
 - `/` / `f`: Search / filter references or bib entries.
 - `s` or `Ctrl+S`: Save all global settings, local config, and cache.
 - `q` or `Esc`: Quit TUI / close open modal or help overlay.
+
+### TUI Recovery And Onboarding
+
+- `Ctrl+Z` or the command palette restores the latest supported TUI file mutation from the capped, git-independent `.sil/undo/` journal.
+- TUI errors expose a user-facing title and hint; background job history persists in `.sil/jobs.json` and interrupted jobs are marked stale on the next start.
+- Disk-change conflict banners and PID-aware advisory lock banners make competing edits visible and require confirmation before protected mutations.
+- `sil tui` without a project opens a first-run wizard for recent projects, opening a path, initialization, or doctor. `sil init --demo` creates a small offline synthetic fixture for trying the workflow.
+- The TUI can open the latest estimate report, build the draft and jump to the first reported LaTeX error, show grounding results, and review an uncommitted proposal/diff. These surfaces never auto-commit.
+- There is no GUI, daemon, hard `flock`, `sil daily` command, or auto-commit.
 
 ---
 

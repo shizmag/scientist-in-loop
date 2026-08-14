@@ -35,13 +35,17 @@ fn test_dirty_and_newer_mtime_save_blocked_without_confirm() {
     let paths = ProjectPaths::new(&root);
 
     let mut app = App::new(Some(root.clone()));
-    assert_eq!(app.paper_draft_content, "\\documentclass{article}\n\\begin{document}\nInitial Tex\n\\end{document}\n");
+    assert_eq!(
+        app.paper_draft_content,
+        "\\documentclass{article}\n\\begin{document}\nInitial Tex\n\\end{document}\n"
+    );
     assert!(!app.dirty);
     assert!(app.disk_conflict_banner.is_none());
     assert!(!app.confirm_disk_overwrite);
 
     // Modify in-memory TUI state and mark dirty
-    app.paper_draft_content = "\\documentclass{article}\n\\begin{document}\nTUI Edited\n\\end{document}\n".to_string();
+    app.paper_draft_content =
+        "\\documentclass{article}\n\\begin{document}\nTUI Edited\n\\end{document}\n".to_string();
     app.dirty = true;
 
     // External change on disk with newer mtime
@@ -83,7 +87,8 @@ fn test_confirming_save_overwrites_and_updates_snapshot() {
     let paths = ProjectPaths::new(&root);
 
     let mut app = App::new(Some(root.clone()));
-    app.paper_draft_content = "\\documentclass{article}\n\\begin{document}\nTUI Overwrite\n\\end{document}\n".to_string();
+    app.paper_draft_content =
+        "\\documentclass{article}\n\\begin{document}\nTUI Overwrite\n\\end{document}\n".to_string();
     app.dirty = true;
 
     // External modification
@@ -180,7 +185,10 @@ fn test_config_external_modification_detected() {
     // Reload drops dirty and loads disk config
     app.dispatch(CommandId::Reload);
     assert_eq!(app.local_settings.title, "");
-    assert_eq!(app.loaded_config.as_ref().unwrap().project.title, "Disk Title");
+    assert_eq!(
+        app.loaded_config.as_ref().unwrap().project.title,
+        "Disk Title"
+    );
     assert!(!app.dirty);
     assert!(app.disk_conflict_banner.is_none());
 }
@@ -211,10 +219,16 @@ fn test_dismiss_conflict_banner_keep_tui() {
     // Next save is still protected and requires confirm
     app.save_all();
     assert!(app.confirm_disk_overwrite);
-    assert_eq!(std::fs::read_to_string(paths.paper_draft().as_std_path()).unwrap(), "Disk Draft");
+    assert_eq!(
+        std::fs::read_to_string(paths.paper_draft().as_std_path()).unwrap(),
+        "Disk Draft"
+    );
 
     // Second save overwrites
     app.save_all();
-    assert_eq!(std::fs::read_to_string(paths.paper_draft().as_std_path()).unwrap(), "TUI Draft");
+    assert_eq!(
+        std::fs::read_to_string(paths.paper_draft().as_std_path()).unwrap(),
+        "TUI Draft"
+    );
     assert!(!app.dirty);
 }

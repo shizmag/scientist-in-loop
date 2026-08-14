@@ -1,7 +1,7 @@
 //! Host dependency and environment doctor diagnostics.
 
-use std::process::Command;
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 /// Summary report for doctor checks.
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,12 +91,7 @@ pub fn check_cmd(name: &str, args: &[&str]) -> Check {
             ),
             tool_hint(name),
         ),
-        Err(e) => Check::with_hint(
-            name,
-            false,
-            format!("not available: {e}"),
-            tool_hint(name),
-        ),
+        Err(e) => Check::with_hint(name, false, format!("not available: {e}"), tool_hint(name)),
     }
 }
 
@@ -236,8 +231,9 @@ pub fn repair_sqlite_database(
     project_root: &std::path::Path,
     _ui: &dyn sil_core::SilUi,
 ) -> Result<DatabaseRepairReport, sil_core::SilError> {
-    let root_utf8 = camino::Utf8Path::from_path(project_root)
-        .ok_or_else(|| sil_core::SilError::Message("project root path is not valid UTF-8".into()))?;
+    let root_utf8 = camino::Utf8Path::from_path(project_root).ok_or_else(|| {
+        sil_core::SilError::Message("project root path is not valid UTF-8".into())
+    })?;
     let paths = sil_core::ProjectPaths::new(root_utf8);
     let sources_dir = paths.sources_dir();
 
@@ -274,12 +270,12 @@ pub fn repair_sqlite_database(
         let _ = std::fs::create_dir_all(parent.as_std_path());
     }
 
-    let db = sil_db::SilDb::open(&db_path).map_err(|e| sil_core::SilError::Database(e.to_string()))?;
+    let db =
+        sil_db::SilDb::open(&db_path).map_err(|e| sil_core::SilError::Database(e.to_string()))?;
 
     // Collect candidate source files under sources/
     let mut candidate_paths = Vec::new();
-    let read_dir = std::fs::read_dir(sources_dir.as_std_path())
-        .map_err(sil_core::SilError::Io)?;
+    let read_dir = std::fs::read_dir(sources_dir.as_std_path()).map_err(sil_core::SilError::Io)?;
 
     for entry in read_dir {
         let entry = entry.map_err(sil_core::SilError::Io)?;
@@ -368,11 +364,27 @@ mod tests {
     fn test_tool_hints_contain_actionable_guidance() {
         assert!(tool_hint("git").unwrap().contains("brew install git"));
         assert!(tool_hint("python3").unwrap().contains("Python 3.10+"));
-        assert!(tool_hint("uv").unwrap().contains("curl -LsSf https://astral.sh/uv/install.sh"));
-        assert!(tool_hint("tectonic").unwrap().contains("brew install tectonic"));
+        assert!(
+            tool_hint("uv")
+                .unwrap()
+                .contains("curl -LsSf https://astral.sh/uv/install.sh")
+        );
+        assert!(
+            tool_hint("tectonic")
+                .unwrap()
+                .contains("brew install tectonic")
+        );
         assert!(tool_hint("pdflatex").unwrap().contains("TeX Live"));
-        assert!(tool_hint("latexmk").unwrap().contains("brew install latexmk"));
-        assert!(tool_hint("marker").unwrap().contains("uv pip install marker-pdf"));
+        assert!(
+            tool_hint("latexmk")
+                .unwrap()
+                .contains("brew install latexmk")
+        );
+        assert!(
+            tool_hint("marker")
+                .unwrap()
+                .contains("uv pip install marker-pdf")
+        );
         assert_eq!(tool_hint("unknown_tool"), None);
     }
 
@@ -440,7 +452,8 @@ mod tests {
         std::fs::create_dir_all(&sources_dir).unwrap();
 
         // Write a markdown source document
-        let doc_content = "# Test Document\n\nContent paragraph.\n\nReferences\n1. Example Citation 2024.";
+        let doc_content =
+            "# Test Document\n\nContent paragraph.\n\nReferences\n1. Example Citation 2024.";
         std::fs::write(sources_dir.join("paper.md"), doc_content).unwrap();
 
         // Write corrupted db.sqlite
@@ -463,10 +476,14 @@ mod tests {
 
         // Verify source file was NOT deleted or modified
         assert!(sources_dir.join("paper.md").is_file());
-        assert_eq!(std::fs::read_to_string(sources_dir.join("paper.md")).unwrap(), doc_content);
+        assert_eq!(
+            std::fs::read_to_string(sources_dir.join("paper.md")).unwrap(),
+            doc_content
+        );
 
         // Verify new database is openable and passes integrity check
-        let db = sil_db::SilDb::open(&camino::Utf8PathBuf::from_path_buf(db_file).unwrap()).unwrap();
+        let db =
+            sil_db::SilDb::open(&camino::Utf8PathBuf::from_path_buf(db_file).unwrap()).unwrap();
         assert_eq!(db.integrity_check().unwrap(), "ok");
         assert_eq!(db.source_count().unwrap(), 1);
     }

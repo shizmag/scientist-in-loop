@@ -111,7 +111,8 @@ fn test_wizard_recent_projects_selection_and_opening() {
 
     let mut app = App::new(None);
     app.global_settings.recent_projects = vec![root.clone()];
-    app.wizard_state.refresh_recent_projects(&app.global_settings);
+    app.wizard_state
+        .refresh_recent_projects(&app.global_settings);
 
     assert_eq!(app.wizard_state.recent_projects.len(), 1);
     assert_eq!(app.wizard_state.selected_menu_index, 0);
@@ -129,7 +130,8 @@ fn test_wizard_recent_projects_filters_missing_paths() {
         Utf8PathBuf::from("/nonexistent/path/alpha"),
         Utf8PathBuf::from("/nonexistent/path/beta"),
     ];
-    app.wizard_state.refresh_recent_projects(&app.global_settings);
+    app.wizard_state
+        .refresh_recent_projects(&app.global_settings);
 
     // Non-existent paths are filtered out
     assert!(app.wizard_state.recent_projects.is_empty());

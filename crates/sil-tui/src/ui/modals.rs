@@ -6,7 +6,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, Row, Table,
+        Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, Row, Table, Wrap,
     },
 };
 
@@ -318,6 +318,48 @@ pub(crate) fn draw_job_history(frame: &mut Frame, app: &App) {
     frame.render_stateful_widget(list, area, &mut state);
 }
 
+pub(crate) fn draw_estimate_report(frame: &mut Frame, app: &App) {
+    let area = centered_rect(85, 85, frame.area());
+    frame.render_widget(Clear, area);
+    let block = Block::default()
+        .title(" Last Estimate Report (j/k/PgUp/PgDn scroll, Esc/q close) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+    let text = app
+        .estimate_report_content
+        .as_deref()
+        .unwrap_or("no reviews yet — run Estimate");
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .wrap(Wrap { trim: false })
+        .scroll((app.estimate_report_scroll_offset as u16, 0));
+    frame.render_widget(paragraph, area);
+}
+
+pub(crate) fn draw_proposal_diff(frame: &mut Frame, app: &App) {
+    let area = centered_rect(90, 90, frame.area());
+    frame.render_widget(Clear, area);
+    let block = Block::default()
+        .title(" Proposal / Uncommitted Diff (y: write proposal, u: undo, Esc/q: close) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+    let diff = app
+        .proposal_diff_content
+        .as_deref()
+        .unwrap_or("No diff loaded.");
+    let proposal = app
+        .proposal_text
+        .as_deref()
+        .unwrap_or("No proposal loaded.");
+    let text = format!("{diff}\n\nLatest proposal:\n{proposal}");
+    frame.render_widget(
+        Paragraph::new(text).block(block).wrap(Wrap { trim: false }),
+        area,
+    );
+}
+
 pub(crate) fn draw_modal_rename_source(frame: &mut Frame, app: &App) {
     let area = centered_rect(65, 25, frame.area());
     frame.render_widget(Clear, area);
@@ -395,6 +437,91 @@ pub(crate) fn draw_modal_note_section_picker(frame: &mut Frame, app: &App) {
     let list = List::new(items).block(block);
 
     frame.render_widget(list, area);
+}
+
+pub(crate) fn draw_modal_cite_section_picker(frame: &mut Frame, app: &App) {
+    let area = centered_rect(65, 45, frame.area());
+    frame.render_widget(Clear, area);
+
+    let items: Vec<ListItem> = app
+        .cite_picker_sections
+        .iter()
+        .enumerate()
+        .map(|(idx, sec)| {
+            let is_sel = idx == app.cite_picker_selected;
+            let style = if is_sel {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            let cursor = if is_sel { "► " } else { "  " };
+            ListItem::new(format!("{cursor}§ {sec}")).style(style)
+        })
+        .collect();
+
+    let title = if app.pending_cite_key.is_empty() {
+        " Select Target Section for Cite (j/k: Navigate, Enter: Confirm, Esc: Cancel) ".to_string()
+    } else {
+        format!(
+            " Select Target Section to Cite '{}' (j/k: Navigate, Enter: Confirm, Esc: Cancel) ",
+            app.pending_cite_key
+        )
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let list = List::new(items).block(block);
+
+    frame.render_widget(list, area);
+}
+
+pub(crate) fn draw_grounding_modal(frame: &mut Frame, app: &App) {
+    let area = centered_rect(85, 70, frame.area());
+    frame.render_widget(Clear, area);
+    let block = Block::default()
+        .title(" Grounding Sources (j/k: Navigate, Enter: Select, Esc: Close) ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    if app.grounding_hits.is_empty() {
+        frame.render_widget(
+            Paragraph::new("No sources support this draft section.")
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center)
+                .block(block),
+            area,
+        );
+        return;
+    }
+
+    let items = app
+        .grounding_hits
+        .iter()
+        .enumerate()
+        .map(|(idx, hit)| {
+            let prefix = if idx == app.grounding_selected_index {
+                "► "
+            } else {
+                "  "
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(Color::Yellow)),
+                Span::styled(&hit.title, Style::default().fg(Color::White)),
+                Span::styled(
+                    format!("  score={:.4}  id={}", hit.score, hit.source_id),
+                    Style::default().fg(Color::Cyan),
+                ),
+            ]))
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(List::new(items).block(block), area);
 }
 
 pub(crate) fn draw_confirm_delete_source(frame: &mut Frame, app: &App) {
@@ -612,4 +739,3 @@ pub(crate) fn draw_command_palette(frame: &mut Frame, app: &App) {
     state.select(Some(app.palette_selected_index));
     frame.render_stateful_widget(list, chunks[1], &mut state);
 }
-

@@ -220,12 +220,20 @@ mod tests {
         fs::write(bib_path.as_std_path(), initial_bib).unwrap();
 
         // 1. Take snapshot before deleting/modifying
-        let id = snapshot(&root, "Delete bib entry", &[Utf8PathBuf::from("references.bib")]).unwrap();
+        let id = snapshot(
+            &root,
+            "Delete bib entry",
+            &[Utf8PathBuf::from("references.bib")],
+        )
+        .unwrap();
         assert_eq!(id, 1);
 
         // 2. Perform mutation (overwrite / delete content)
         fs::write(bib_path.as_std_path(), "% empty\n").unwrap();
-        assert_eq!(fs::read_to_string(bib_path.as_std_path()).unwrap(), "% empty\n");
+        assert_eq!(
+            fs::read_to_string(bib_path.as_std_path()).unwrap(),
+            "% empty\n"
+        );
 
         // 3. Undo mutation
         let undone = undo(&root).unwrap().expect("should return generation");
@@ -256,7 +264,10 @@ mod tests {
         let id = snapshot(
             &root,
             "Multi-file edit",
-            &[Utf8PathBuf::from("references.bib"), Utf8PathBuf::from("paper_draft.tex")],
+            &[
+                Utf8PathBuf::from("references.bib"),
+                Utf8PathBuf::from("paper_draft.tex"),
+            ],
         )
         .unwrap();
         assert_eq!(id, 1);
@@ -268,8 +279,14 @@ mod tests {
         // Undo
         let undone = undo(&root).unwrap().unwrap();
         assert_eq!(undone.op, "Multi-file edit");
-        assert_eq!(fs::read_to_string(bib_path.as_std_path()).unwrap(), "bib content 1");
-        assert_eq!(fs::read_to_string(tex_path.as_std_path()).unwrap(), "tex content 1");
+        assert_eq!(
+            fs::read_to_string(bib_path.as_std_path()).unwrap(),
+            "bib content 1"
+        );
+        assert_eq!(
+            fs::read_to_string(tex_path.as_std_path()).unwrap(),
+            "tex content 1"
+        );
     }
 
     #[test]

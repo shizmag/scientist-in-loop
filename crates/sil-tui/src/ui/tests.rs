@@ -157,11 +157,13 @@ fn test_draw_modal_popups_rendering() {
         InputMode::ModalRenameSource,
         InputMode::ModalCaptureNote,
         InputMode::NoteSectionPicker,
+        InputMode::CiteSectionPicker,
         InputMode::ConfirmDeleteSource,
         InputMode::JobHistory,
         InputMode::ViewingSourceRefs,
         InputMode::HelpOverlay,
         InputMode::CommandPalette,
+        InputMode::ProposalDiff,
     ];
 
     for mode in modes {

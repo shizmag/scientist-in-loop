@@ -57,7 +57,10 @@ Architecture details and experimental setup.
 
     // 5. Restores ReadingSourceMd and updates status
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
-    assert!(app.status_message.contains("Note captured into section Introduction"));
+    assert!(
+        app.status_message
+            .contains("Note captured into section Introduction")
+    );
 
     // 6. Verify paper_draft.tex has idea block right under Introduction
     let updated_tex = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
@@ -162,7 +165,10 @@ Results text.
     // Confirm selection
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
     assert_eq!(app.input_mode, InputMode::ReadingSourceMd);
-    assert!(app.status_message.contains("Parked note from attention.pdf"));
+    assert!(
+        app.status_message
+            .contains("Parked note from attention.pdf")
+    );
 
     let updated_tex = std::fs::read_to_string(draft_path.as_std_path()).unwrap();
     assert!(updated_tex.contains(note));

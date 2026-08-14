@@ -73,10 +73,17 @@ Plan: `docs/plan-08-13/pr-plan.md`. ADR: `docs/adr/ADR-015-daily-command-center.
 - **Live Dashboard**: Replaced static mock strings in TUI Dashboard (tab 1) with real project truth: manuscript stage, LaTeX engine/main file, audit bib coverage and label status, real `# -- X -- #` draft TODO/idea blocks, and `journal_digest` feed.
 - **Digest Settings & Background Refresh**: Added global `digest_query` and `digest_refresh_hours` in `~/.config/sil/settings.yaml` and optional local `digest_query` override in `.sil/config.yaml`. TUI spawns a background worker (`JobKind::Digest`) when Dashboard tab is active and cache age ≥ interval (min 1 hour).
 - **Reader Verbs**: Reader key `b` upserts current source to `references.bib` via `sil_app::upsert_bib` (`draft: true`). Key `n` opens note modal and inserts a `# -- X -- #` idea block tagged `from-source` with `from: <filename>` via atomic write to `paper_draft.tex`.
-- **Digest Ingest**: Pressing `Enter` on a publication row in the Dashboard digest pane queues an async fetch (`sil_app::fetch_source` with `parse=false`) for DOI/URL sources.
+- **Digest Ingest (Stage 13 baseline)**: Pressing `Enter` on a publication row in the Dashboard digest pane originally queued an async fetch (`sil_app::fetch_source` with `parse=false`) for DOI/URL sources; Stage 14 supersedes this with composite fetch+parse while keeping reader auto-open off.
 - **Honest Surface**: No new `sil daily` CLI command (Dashboard *is* the daily view), no JSON twin, no OS daemon/cron.
 
+## Stage 14 — Scientist-Facing TUI & Visible Robustness (Wave 08-14) ✅
+Plan: `docs/plan-08-14/pr-plan.md`. ADR: `docs/adr/ADR-016-scientist-facing-tui.md`.
 
-
+- **Discoverability**: A command registry powers the `:` / `Ctrl-K` palette, aliases, mouse dispatch, contextual errors, and keyboard-reachable empty-state actions across the same five TUI tabs.
+- **Reading loop**: Source links and dashboard digest rows use composite fetch+parse without auto-opening the reader; reader notes have a section picker, reader citations insert into a selected draft section, and Sources rows show derived `parsed`, `in bib`, and `cited` badges.
+- **Visible robustness**: TUI mutations have a capped, git-independent `.sil/undo/` journal with `Ctrl+Z`; user-facing errors, persisted `.sil/jobs.json` history, disk-conflict banners, and PID-aware lock banners are surfaced in the TUI. `sil project doctor --repair-db` backs up and rebuilds a corrupt SQLite index from on-disk sources, while doctor checks provide fix hints.
+- **Onboarding and writing handshake**: No-project TUI startup offers a first-run wizard; `sil init --demo` creates an offline synthetic fixture; the TUI exposes estimate reports, draft builds with first-error jumps, a display-only grounding view, and an uncommitted proposal/diff review.
+- **Intentional limits**: The five-tab TUI remains terminal-only. There is no GUI, daemon, hard `flock`, auto-commit, or `sil daily` command. MCP remains six workflow-oriented tools.
+- **Residuals**: Split-pane source+draft, GitHub Releases/prebuilt binaries, experiment/`data/` dashboard, and Stage 12 search/rank surface drift remain out of scope. Digest uses one query and TUI-lifetime refresh; embed-cache PK is still `content_hash`; Windows atomic rename is unproven. Auto-open reader remains off. W4 is an uncommitted diff/proposal view only, and the lock is not NFS-safe.
 
 

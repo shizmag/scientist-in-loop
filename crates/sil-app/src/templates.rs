@@ -116,6 +116,7 @@ pub const GITIGNORE: &str = r#"# >>> sil-managed
 .sil/db.sqlite
 .sil/db.sqlite-wal
 .sil/db.sqlite-shm
+.sil/jobs.json
 
 # Ephemeral build artifacts and caches
 .sil/cache/

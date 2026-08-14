@@ -189,7 +189,8 @@ fn ci_workflow_exists_and_runs_tests() {
 fn doctor_repair_db_corrupt_database_recovery() {
     let (_tmp, project) = init_project("doc-repair-corrupt");
     let source_file = project.join("sources/article.md");
-    let source_content = "# Sample Article\n\nDeep learning methods.\n\nReferences\n1. Author 2024.";
+    let source_content =
+        "# Sample Article\n\nDeep learning methods.\n\nReferences\n1. Author 2024.";
     std::fs::write(&source_file, source_content).expect("write source article");
 
     // Corrupt db.sqlite with invalid binary payload
@@ -223,7 +224,10 @@ fn doctor_repair_db_corrupt_database_recovery() {
             break;
         }
     }
-    assert!(backup_found, "expected backup file db.sqlite.corrupt-* to exist");
+    assert!(
+        backup_found,
+        "expected backup file db.sqlite.corrupt-* to exist"
+    );
 
     // Verify sources/ file remains intact and untouched
     assert!(source_file.is_file());

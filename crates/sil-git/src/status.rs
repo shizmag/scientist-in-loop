@@ -64,6 +64,18 @@ pub fn status(root: &Utf8Path) -> Result<GitStatus, GitError> {
     })
 }
 
+/// Return the unified diff for the selected project files.
+///
+/// This is intentionally read-only and limits the command to the supplied paths.
+pub fn diff_for_paths(root: &Utf8Path, paths: &[&str]) -> Result<String, GitError> {
+    if paths.is_empty() {
+        return Ok(String::new());
+    }
+    let mut args = vec!["diff", "--no-ext-diff", "--no-color", "--"];
+    args.extend(paths.iter().copied());
+    run_git(root, &args)
+}
+
 /// Stage all and create a real commit (tests / explicit tools only).
 /// Production CLI never auto-commits; it only proposes.
 pub fn commit_all(root: &Utf8Path, proposal: &CommitProposal) -> Result<String, GitError> {

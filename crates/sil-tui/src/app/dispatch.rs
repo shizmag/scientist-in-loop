@@ -99,6 +99,83 @@ impl App {
                 self.confirm_lock_override = false;
                 self.append_selected_source_to_bib();
             }
+            CommandId::CiteIntoSection => {
+                if !self.check_mutation_lock("cite_section") {
+                    return;
+                }
+                self.confirm_lock_override = false;
+                if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
+                    self.status_message = "No active source document selected.".to_string();
+                    return;
+                }
+                let doc = self.sources[self.selected_source_index].clone();
+                let root = match self.project_root.as_ref() {
+                    Some(r) => r.clone(),
+                    None => {
+                        self.status_message = "Error: paper_draft.tex not found.".to_string();
+                        return;
+                    }
+                };
+                let draft_path = root.join("paper_draft.tex");
+                let bib_path = root.join("references.bib");
+                if !draft_path.is_file() {
+                    self.status_message = "Error: paper_draft.tex not found.".to_string();
+                    return;
+                }
+                let _ = sil_core::undo::snapshot(
+                    &root,
+                    "Cite source in draft section",
+                    &[bib_path.clone(), draft_path.clone()],
+                );
+                let local_bib = sil_core::suggest_from_source(&doc).bibtex;
+                let ctx = match sil_app::AppContext::from_root(&root) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        self.status_message = format!("Error writing references.bib: {e}");
+                        return;
+                    }
+                };
+                let upsert_res = match sil_app::upsert_bib(
+                    &ctx,
+                    sil_app::UpsertBib {
+                        entry: local_bib,
+                        draft: true,
+                    },
+                ) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        self.status_message = format!("Error writing references.bib: {e}");
+                        return;
+                    }
+                };
+                self.load_project_references_bib();
+                if doc.should_attempt_metadata_fetch() {
+                    self.queue_source_hydration(doc.clone());
+                }
+                let cite_key = upsert_res.cite_key;
+                let mut sections: Vec<String> = self
+                    .paper_sections
+                    .iter()
+                    .filter(|s| s.kind != "document")
+                    .map(|s| s.title.clone())
+                    .collect();
+                if sections.is_empty() {
+                    if let Some(first) = self.paper_sections.first() {
+                        sections.push(first.title.clone());
+                    } else {
+                        sections.push("(preamble / body)".to_string());
+                    }
+                }
+                self.pending_cite_key = cite_key;
+                self.cite_picker_sections = sections;
+                self.cite_picker_selected = 0;
+                self.cite_picker_previous_mode = self.input_mode;
+                self.input_mode = InputMode::CiteSectionPicker;
+                self.status_message = format!(
+                    "Select draft section to cite {} (Enter to confirm, Esc to cancel)",
+                    self.pending_cite_key
+                );
+            }
             CommandId::CaptureNote => {
                 if self.sources.is_empty() || self.selected_source_index >= self.sources.len() {
                     self.status_message = "No active source document selected.".to_string();
@@ -113,6 +190,43 @@ impl App {
                 self.status_message =
                     "Capture note for draft (Enter to save, Esc to cancel)".to_string();
             }
+            CommandId::GroundSection => {
+                let query = self
+                    .paper_sections
+                    .get(self.paper_section_index)
+                    .map(|section| section.body.chars().take(4_000).collect::<String>())
+                    .unwrap_or_else(|| self.paper_draft_content.chars().take(4_000).collect());
+                self.grounding_hits.clear();
+                self.grounding_selected_index = 0;
+                if let Some(root) = self.project_root.as_ref() {
+                    let paths = ProjectPaths::new(root);
+                    if let Ok(db) = sil_db::SilDb::open(&paths.db()) {
+                        let embedder = sil_db::OnnxEmbedder::new(None::<&std::path::Path>);
+                        if let Ok(hits) = db.search_hybrid(&embedder, &query, 20, true) {
+                            self.grounding_hits = hits
+                                .into_iter()
+                                .map(|hit| GroundingHit {
+                                    title: hit
+                                        .chunk
+                                        .heading_title
+                                        .unwrap_or_else(|| "Untitled source".to_string()),
+                                    score: hit.score,
+                                    source_id: hit.chunk.source_id.to_string(),
+                                })
+                                .collect();
+                        }
+                    }
+                }
+                self.input_mode = InputMode::GroundingModal;
+                self.status_message = if self.grounding_hits.is_empty() {
+                    "No grounding sources found.".to_string()
+                } else {
+                    format!(
+                        "Showing {} ranked grounding sources.",
+                        self.grounding_hits.len()
+                    )
+                };
+            }
             CommandId::RefreshDigest => {
                 let effective_query = sil_core::effective_digest_query(
                     &self.global_settings.digest_query,
@@ -120,7 +234,8 @@ impl App {
                 );
                 if effective_query.is_none() {
                     self.status_message =
-                        "No digest query configured. Set query in Settings tab (Tab 5).".to_string();
+                        "No digest query configured. Set query in Settings tab (Tab 5)."
+                            .to_string();
                     return;
                 }
                 self.queue_digest_refresh();
@@ -137,7 +252,9 @@ impl App {
                             let paths = ProjectPaths::new(root);
                             let draft_path = root.join("paper_draft.tex");
                             if draft_path.is_file() {
-                                if let Ok(content) = std::fs::read_to_string(draft_path.as_std_path()) {
+                                if let Ok(content) =
+                                    std::fs::read_to_string(draft_path.as_std_path())
+                                {
                                     let _ = sil_latex::write_draft_sections_from_file(
                                         &draft_path,
                                         &paths.draft_sections_dir(),
@@ -172,6 +289,47 @@ impl App {
                     "Repair SQLite database from sources/? (y/Enter to confirm, Esc to cancel)"
                         .to_string();
             }
+            CommandId::RunEstimate => self.run_estimate_job(),
+            CommandId::OpenLastReview => self.open_last_review(),
+            CommandId::BuildDraft => self.run_build_job(),
+            CommandId::ReviewChanges => self.open_proposal_diff(),
         }
+    }
+
+    fn open_proposal_diff(&mut self) {
+        let Some(root) = self.project_root.clone() else {
+            self.status_message = "No active project loaded".to_string();
+            return;
+        };
+        let status = match sil_git::status(&root) {
+            Ok(status) => status,
+            Err(e) => {
+                self.status_message = format!("Git status failed: {e}");
+                return;
+            }
+        };
+        let diff = sil_git::diff_for_paths(&root, &["paper_draft.tex", "references.bib"])
+            .unwrap_or_else(|e| format!("Unable to read diff: {e}"));
+        let proposal = sil_git::propose_from_status(&status, None, None, None)
+            .map(|p| p.display())
+            .unwrap_or_else(|e| format!("No proposal available: {e}"));
+        let diff_text = if diff.is_empty() {
+            "(no tracked diff)"
+        } else {
+            diff.as_str()
+        };
+        self.proposal_diff_content = Some(format!(
+            "Status:\n{}\n\nDiff:\n{}",
+            if status.clean {
+                "clean".to_string()
+            } else {
+                status.entries.join("\n")
+            },
+            diff_text
+        ));
+        self.proposal_text = Some(proposal);
+        self.input_mode = InputMode::ProposalDiff;
+        self.status_message =
+            "Review changes: y writes proposal, u undoes latest journal entry".to_string();
     }
 }

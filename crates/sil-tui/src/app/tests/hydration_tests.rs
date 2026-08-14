@@ -203,6 +203,7 @@ fn test_keymap_for_all_modes() {
         HelpMode::ModalRenameSource,
         HelpMode::ModalCaptureNote,
         HelpMode::NoteSectionPicker,
+        HelpMode::CiteSectionPicker,
         HelpMode::ConfirmDeleteSource,
         HelpMode::Editing,
         HelpMode::EditingPaper,
@@ -259,7 +260,10 @@ fn test_toggle_help_overlay_and_current_help_mode() {
 fn test_run_estimate_job() {
     let mut app = App::new(None);
     app.run_estimate_job();
-    assert_eq!(app.status_message, "Estimate error: Not inside a sil project");
+    assert_eq!(
+        app.status_message,
+        "Estimate error: Not inside a sil project"
+    );
     assert_eq!(
         app.last_user_error.as_ref().map(|e| e.code),
         Some("project.not_found")
@@ -870,7 +874,10 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
         app.status_message,
         "✓ Source fetched & parsed — Open from Sources or palette"
     );
-    assert!(app.reading_md_content.is_none(), "Must not auto-open reader on fetch+parse success");
+    assert!(
+        app.reading_md_content.is_none(),
+        "Must not auto-open reader on fetch+parse success"
+    );
     assert_eq!(app.input_mode, InputMode::Normal);
 
     // Send result with bib and successful parse
@@ -912,7 +919,10 @@ fn test_poll_background_fetch_success_with_and_without_bib() {
         app.status_message,
         "✓ Source fetched & parsed (added bibliography entry 'Vaswani2017') — Open from Sources or palette"
     );
-    assert!(app.reading_md_content.is_none(), "Must not auto-open reader");
+    assert!(
+        app.reading_md_content.is_none(),
+        "Must not auto-open reader"
+    );
 }
 
 #[test]
@@ -934,7 +944,9 @@ fn test_poll_background_fetch_download_ok_parse_failed() {
                 downloaded_path: root.join("sources/badparse.pdf"),
                 bib: None,
                 parsed: None,
-                parse_error: Some("parse error: failed to extract text from damaged PDF".to_string()),
+                parse_error: Some(
+                    "parse error: failed to extract text from damaged PDF".to_string(),
+                ),
             }),
             duration_ms: Some(80),
         })
@@ -944,11 +956,15 @@ fn test_poll_background_fetch_download_ok_parse_failed() {
 
     assert!(!app.in_flight_fetch_targets.contains("10.1000/badparse"));
     assert!(
-        app.status_message.contains("Source fetched but parse failed"),
+        app.status_message
+            .contains("Source fetched but parse failed"),
         "Status should report parse failure: {}",
         app.status_message
     );
-    assert!(app.reading_md_content.is_none(), "Must not auto-open reader on parse failure");
+    assert!(
+        app.reading_md_content.is_none(),
+        "Must not auto-open reader on parse failure"
+    );
 
     let err = app.last_user_error.as_ref().expect("last_user_error set");
     assert_eq!(err.code, "parse.failed");
@@ -958,7 +974,10 @@ fn test_poll_background_fetch_download_ok_parse_failed() {
     assert!(!outcome.ok);
     assert_eq!(outcome.kind, JobKind::Fetch);
     assert!(outcome.detail.contains("parse failed"));
-    assert!(matches!(outcome.retry_payload, Some(RetryPayload::Fetch { .. })));
+    assert!(matches!(
+        outcome.retry_payload,
+        Some(RetryPayload::Fetch { .. })
+    ));
 }
 
 #[test]
@@ -1054,7 +1073,8 @@ fn test_digest_enter_queues_fetch_and_updates_inflight() {
         "In-flight fetch targets must track the queued target"
     );
     assert!(
-        app.status_message.contains("Fetching Deep Learning Foundations"),
+        app.status_message
+            .contains("Fetching Deep Learning Foundations"),
         "Status should show fetching publication title: {}",
         app.status_message
     );
@@ -1220,10 +1240,16 @@ fn test_failed_job_maps_to_user_error_title_not_debug_dump() {
     );
     assert!(!app.status_message.contains("stack backtrace"));
 
-    let user_err = app.last_user_error.as_ref().expect("last_user_error must be set");
+    let user_err = app
+        .last_user_error
+        .as_ref()
+        .expect("last_user_error must be set");
     assert_eq!(user_err.code, "crossref.rate_limited");
     assert_eq!(user_err.title, "Literature service is busy");
-    assert_eq!(user_err.hint, "Retry in a few seconds. Palette: Retry last job");
+    assert_eq!(
+        user_err.hint,
+        "Retry in a few seconds. Palette: Retry last job"
+    );
     assert_eq!(user_err.retry, Some("retry-last-job"));
 
     // Outcome detail retains technical info
@@ -1253,7 +1279,10 @@ fn test_failed_job_maps_to_user_error_title_not_debug_dump() {
     let parse_err = app.last_user_error.as_ref().expect("last_user_error set");
     assert_eq!(parse_err.code, "parse.marker_missing");
     assert_eq!(parse_err.title, "PDF parser (Marker) missing");
-    assert_eq!(parse_err.hint, "Install marker or use text/markdown sources");
+    assert_eq!(
+        parse_err.hint,
+        "Install marker or use text/markdown sources"
+    );
     assert_eq!(parse_err.retry, None);
 
     // 3. Hydration single failure

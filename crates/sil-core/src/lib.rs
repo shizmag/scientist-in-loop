@@ -28,10 +28,10 @@ pub mod digest;
 pub mod health;
 /// Project TODO and idea tracking blocks.
 pub mod todo;
-/// Advisory workspace lock for agent/TUI coordination.
-pub mod workspace_lock;
 /// Undo journal for tracking and reverting file mutations.
 pub mod undo;
+/// Advisory workspace lock for agent/TUI coordination.
+pub mod workspace_lock;
 
 pub use atomic::{write_atomic, write_atomic_str};
 pub use bib::{

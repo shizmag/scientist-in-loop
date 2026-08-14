@@ -14,11 +14,13 @@ sil-parse = { workspace = true }
 sil-regex = { workspace = true }
 sil-latex = { workspace = true }
 sil-db = { workspace = true }
+sil-git = { workspace = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 camino = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
+serde_json = { workspace = true }
 anyhow = { workspace = true }
 dirs = { workspace = true }
 regex = { workspace = true }

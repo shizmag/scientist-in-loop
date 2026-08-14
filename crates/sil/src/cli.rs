@@ -31,6 +31,9 @@ pub enum Commands {
         /// Upgrade an existing project to the current sil template version
         #[arg(long)]
         update: bool,
+        /// Add a synthetic, fully offline demo fixture after initialization
+        #[arg(long)]
+        demo: bool,
     },
     /// Show project stage, git status, sources, and structure summary
     Status {

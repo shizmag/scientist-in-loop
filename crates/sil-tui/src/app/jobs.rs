@@ -2,6 +2,163 @@ use super::*;
 use sil_core::{ProjectPaths, ReferenceEntry, SourceDocument};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum PersistedJobStatus {
+    Running,
+    Ok,
+    Fail,
+    Stale,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct PersistedJob {
+    id: u64,
+    kind: String,
+    label: String,
+    status: PersistedJobStatus,
+    started: u64,
+    ended: Option<u64>,
+    error_code: Option<String>,
+}
+
+fn job_now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+impl App {
+    fn jobs_path(&self) -> Option<camino::Utf8PathBuf> {
+        self.project_root
+            .as_ref()
+            .map(|root| ProjectPaths::new(root).sil_dir().join("jobs.json"))
+    }
+
+    fn save_persisted_jobs(&self, jobs: &[PersistedJob]) {
+        let Some(path) = self.jobs_path() else { return };
+        if let Ok(text) = serde_json::to_string_pretty(jobs) {
+            let _ = sil_core::write_atomic_str(&path, &text);
+        }
+    }
+
+    fn read_persisted_jobs_raw(&self) -> Vec<PersistedJob> {
+        let Some(path) = self.jobs_path() else {
+            return Vec::new();
+        };
+        let text = match std::fs::read_to_string(path.as_std_path()) {
+            Ok(text) => text,
+            Err(_) => return Vec::new(),
+        };
+        serde_json::from_str::<Vec<PersistedJob>>(&text).unwrap_or_default()
+    }
+
+    fn read_persisted_jobs(&mut self) -> Vec<PersistedJob> {
+        let Some(path) = self.jobs_path() else {
+            return Vec::new();
+        };
+        let text = match std::fs::read_to_string(path.as_std_path()) {
+            Ok(text) => text,
+            Err(_) => return Vec::new(),
+        };
+        match serde_json::from_str::<Vec<PersistedJob>>(&text) {
+            Ok(mut jobs) => {
+                if jobs.len() > PERSISTED_JOB_CAP {
+                    jobs.drain(..jobs.len() - PERSISTED_JOB_CAP);
+                }
+                let mut changed = false;
+                for job in &mut jobs {
+                    if job.status == PersistedJobStatus::Running {
+                        job.status = PersistedJobStatus::Stale;
+                        job.ended = Some(job_now());
+                        changed = true;
+                    }
+                }
+                if changed {
+                    self.save_persisted_jobs(&jobs);
+                }
+                jobs
+            }
+            Err(error) => {
+                self.status_message = format!("Warning: invalid .sil/jobs.json ({error})");
+                self.last_user_error = Some(sil_core::UserError::new(
+                    "jobs.invalid_json",
+                    "Job history could not be loaded",
+                    error.to_string(),
+                    None,
+                ));
+                Vec::new()
+            }
+        }
+    }
+
+    pub(crate) fn load_persisted_jobs(&mut self) {
+        let jobs = self.read_persisted_jobs();
+        self.next_job_id = jobs
+            .iter()
+            .map(|job| job.id)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        self.recent_job_outcomes.clear();
+        for job in jobs {
+            let kind = match job.kind.as_str() {
+                "fetch" => JobKind::Fetch,
+                "parse" => JobKind::Parse,
+                "digest" => JobKind::Digest,
+                "estimate" => JobKind::Estimate,
+                "build" => JobKind::Build,
+                "hydrate" => JobKind::Hydrate,
+                "similarity" => JobKind::Similarity,
+                _ => continue,
+            };
+            let stale = job.status == PersistedJobStatus::Stale;
+            self.push_job_outcome_inner(
+                JobOutcome {
+                    id: job.id,
+                    kind,
+                    label: job.label.clone(),
+                    ok: job.status == PersistedJobStatus::Ok,
+                    detail: job.error_code.unwrap_or_else(|| {
+                        format!(
+                            "{} job {}",
+                            job.kind,
+                            if stale { "stale" } else { "completed" }
+                        )
+                    }),
+                    duration_ms: None,
+                    retry_payload: match kind {
+                        JobKind::Fetch => Some(RetryPayload::Fetch {
+                            target: job.label.clone(),
+                        }),
+                        JobKind::Similarity => Some(RetryPayload::Similarity),
+                        _ => None,
+                    },
+                },
+                false,
+            );
+        }
+    }
+
+    fn start_persisted_job(&mut self, kind: JobKind, label: &str) {
+        let mut jobs = self.read_persisted_jobs_raw();
+        jobs.push(PersistedJob {
+            id: self.alloc_job_id(),
+            kind: kind.label().to_string(),
+            label: label.to_string(),
+            status: PersistedJobStatus::Running,
+            started: job_now(),
+            ended: None,
+            error_code: None,
+        });
+        if jobs.len() > PERSISTED_JOB_CAP {
+            jobs.drain(..jobs.len() - PERSISTED_JOB_CAP);
+        }
+        self.save_persisted_jobs(&jobs);
+    }
+}
+
 pub(crate) fn extract_panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
     if let Some(s) = payload.downcast_ref::<&str>() {
         format!("worker panicked: {s}")
@@ -13,13 +170,89 @@ pub(crate) fn extract_panic_message(payload: Box<dyn std::any::Any + Send>) -> S
 }
 
 impl App {
+    /// Start the configured draft build outside the UI thread.
+    pub fn run_build_job(&mut self) {
+        let Some(root) = self.project_root.clone() else {
+            self.status_message = "No active project loaded".to_string();
+            return;
+        };
+        if self.in_flight_build {
+            self.status_message = "already building draft...".to_string();
+            return;
+        }
+        let Some(config) = self.loaded_config.clone() else {
+            self.status_message = "Build error: project configuration is unavailable".to_string();
+            return;
+        };
+        self.in_flight_build = true;
+        self.start_persisted_job(JobKind::Build, "draft build");
+        self.active_tab = ActiveTab::PaperDraft;
+        self.status_message = "⏳ Building draft PDF...".to_string();
+        let tx = self.build_tx.clone();
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                sil_latex::build(config.latex.engine, &config.latex.main, &root)
+                    .map_err(|e| e.to_string())
+            }));
+            let result = match result {
+                Ok(result) => result,
+                Err(p) => Err(extract_panic_message(p)),
+            };
+            let log = result.as_ref().err().cloned().unwrap_or_default();
+            let _ = tx.send(BuildJobResult {
+                result,
+                log,
+                duration_ms: Some(started.elapsed().as_millis() as u64),
+            });
+        });
+    }
+
+    pub fn poll_background_build(&mut self) {
+        while let Ok(res) = self.build_rx.try_recv() {
+            self.in_flight_build = false;
+            let id = self.alloc_job_id();
+            match res.result {
+                Ok(pdf) => {
+                    self.status_message = format!("✓ Built draft PDF: {pdf}");
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Build,
+                        label: "draft build".to_string(),
+                        ok: true,
+                        detail: format!("PDF: {pdf}"),
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+                Err(err) => {
+                    let user_err = sil_core::UserError::classify(&err);
+                    self.status_message = format!("⚠ Draft build failed: {}", user_err.title);
+                    self.last_user_error = Some(user_err);
+                    if let Some((file, line)) = parse_latex_error_location(&res.log) {
+                        self.jump_to_draft_line(&file, line);
+                    }
+                    self.push_job_outcome(JobOutcome {
+                        id,
+                        kind: JobKind::Build,
+                        label: "draft build".to_string(),
+                        ok: false,
+                        detail: err,
+                        duration_ms: res.duration_ms,
+                        retry_payload: None,
+                    });
+                }
+            }
+        }
+    }
+
     pub(crate) fn alloc_job_id(&mut self) -> u64 {
         let id = self.next_job_id;
         self.next_job_id = self.next_job_id.saturating_add(1);
         id
     }
 
-    pub(crate) fn push_job_outcome(&mut self, outcome: JobOutcome) {
+    fn push_job_outcome_inner(&mut self, outcome: JobOutcome, persist: bool) {
         if self.recent_job_outcomes.len() >= JOB_HISTORY_CAP {
             self.recent_job_outcomes.pop_front();
         }
@@ -29,6 +262,64 @@ impl App {
         {
             self.selected_job_history_index = self.recent_job_outcomes.len() - 1;
         }
+        if persist {
+            self.persist_completion();
+        }
+    }
+
+    pub(crate) fn push_job_outcome(&mut self, outcome: JobOutcome) {
+        self.push_job_outcome_inner(outcome, true);
+    }
+
+    fn persist_completion(&self) {
+        let Some(path) = self.jobs_path() else { return };
+        let Ok(text) = std::fs::read_to_string(path.as_std_path()) else {
+            return;
+        };
+        let Ok(mut jobs) = serde_json::from_str::<Vec<PersistedJob>>(&text) else {
+            return;
+        };
+        let outcome = self.recent_job_outcomes.back().unwrap();
+        let kind = outcome.kind.label();
+        if let Some(job) = jobs.iter_mut().rev().find(|job| {
+            job.status == PersistedJobStatus::Running
+                && job.kind == kind
+                && job.label == outcome.label
+        }) {
+            job.status = if outcome.ok {
+                PersistedJobStatus::Ok
+            } else {
+                PersistedJobStatus::Fail
+            };
+            job.ended = Some(job_now());
+            job.error_code = (!outcome.ok).then(|| {
+                sil_core::UserError::classify(&outcome.detail)
+                    .code
+                    .to_string()
+            });
+        } else {
+            jobs.push(PersistedJob {
+                id: outcome.id,
+                kind: kind.to_string(),
+                label: outcome.label.clone(),
+                status: if outcome.ok {
+                    PersistedJobStatus::Ok
+                } else {
+                    PersistedJobStatus::Fail
+                },
+                started: job_now(),
+                ended: Some(job_now()),
+                error_code: (!outcome.ok).then(|| {
+                    sil_core::UserError::classify(&outcome.detail)
+                        .code
+                        .to_string()
+                }),
+            });
+        }
+        if jobs.len() > PERSISTED_JOB_CAP {
+            jobs.drain(..jobs.len() - PERSISTED_JOB_CAP);
+        }
+        self.save_persisted_jobs(&jobs);
     }
 
     /// Effective RAG settings: local config override, else global.
@@ -64,6 +355,7 @@ impl App {
         }
 
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.start_persisted_job(JobKind::Hydrate, &label);
         self.hydrate_retry_payloads.insert(
             dedup_key.clone(),
             RetryPayload::HydrateRef {
@@ -134,6 +426,7 @@ impl App {
         }
 
         self.in_flight_hydration_keys.insert(dedup_key.clone());
+        self.start_persisted_job(JobKind::Hydrate, &label);
         self.hydrate_retry_payloads.insert(
             dedup_key.clone(),
             RetryPayload::HydrateSource { doc: doc.clone() },
@@ -186,6 +479,7 @@ impl App {
         }
 
         self.in_flight_parse_ids.insert(doc.id.clone());
+        self.start_persisted_job(JobKind::Parse, &label);
         self.parse_retry_payloads.insert(
             doc.id.clone(),
             RetryPayload::Parse {
@@ -260,6 +554,7 @@ impl App {
         let kind = classify_source_input(&target);
         let label = target.clone();
         self.in_flight_fetch_targets.insert(target.clone());
+        self.start_persisted_job(JobKind::Fetch, &label);
         self.status_message = format!("⏳ fetching… ({})", kind.label());
 
         let tx = self.fetch_tx.clone();
@@ -345,6 +640,7 @@ impl App {
         let db_path = paths.db();
 
         self.in_flight_similarity = true;
+        self.start_persisted_job(JobKind::Similarity, "draft–ref similarity");
         self.status_message = "⏳ Recomputing draft similarity…".to_string();
         let tx = self.similarity_tx.clone();
 
@@ -399,8 +695,10 @@ impl App {
                 }
                 Err(err_msg) => {
                     let user_err = sil_core::UserError::classify(&err_msg);
-                    self.status_message =
-                        format!("⚠ Failed parsing source '{}': {}", res.label, user_err.title);
+                    self.status_message = format!(
+                        "⚠ Failed parsing source '{}': {}",
+                        res.label, user_err.title
+                    );
                     self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
@@ -444,7 +742,8 @@ impl App {
                                 .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
                                 .exists()
                             {
-                                sources_dir.join(saved_path.file_name().unwrap_or(saved_path.as_str()))
+                                sources_dir
+                                    .join(saved_path.file_name().unwrap_or(saved_path.as_str()))
                             } else {
                                 root.join(saved_path)
                             };
@@ -466,10 +765,8 @@ impl App {
 
                     if let Some(ref parse_err) = succ.parse_error {
                         let user_err = sil_core::UserError::classify(parse_err);
-                        self.status_message = format!(
-                            "⚠ Source fetched but parse failed: {}",
-                            user_err.title
-                        );
+                        self.status_message =
+                            format!("⚠ Source fetched but parse failed: {}", user_err.title);
                         self.last_user_error = Some(user_err);
                         let id = self.alloc_job_id();
                         self.push_job_outcome(JobOutcome {
@@ -517,7 +814,8 @@ impl App {
                 }
                 Err(err_msg) => {
                     let user_err = sil_core::UserError::classify(&err_msg);
-                    self.status_message = format!("⚠ Fetch failed for '{}': {}", res.label, user_err.title);
+                    self.status_message =
+                        format!("⚠ Fetch failed for '{}': {}", res.label, user_err.title);
                     self.last_user_error = Some(user_err);
                     let id = self.alloc_job_id();
                     self.push_job_outcome(JobOutcome {
@@ -657,8 +955,24 @@ impl App {
                 self.enqueue_similarity_job();
             }
             None => {
-                self.status_message =
-                    "Selected job cannot be retried (success or no payload)".to_string();
+                let stale = self
+                    .recent_job_outcomes
+                    .get(index)
+                    .is_some_and(|outcome| outcome.detail.ends_with(" job stale"));
+                if stale
+                    && let Some(outcome) = self.recent_job_outcomes.get(index)
+                    && outcome.kind == JobKind::Parse
+                    && let Some(doc) = self.sources.iter().find(|doc| {
+                        doc.filename == outcome.label
+                            || doc.title.as_deref() == Some(outcome.label.as_str())
+                    })
+                {
+                    self.status_message = "Retrying parse…".to_string();
+                    self.queue_source_parse(doc.clone(), false);
+                } else {
+                    self.status_message =
+                        "Selected job cannot be retried (success or no payload)".to_string();
+                }
             }
         }
     }
@@ -669,6 +983,7 @@ impl App {
         self.poll_background_similarity();
         self.poll_background_estimate();
         self.poll_background_digest();
+        self.poll_background_build();
         self.check_auto_digest_refresh();
         if self.dirty && !self.disk_conflict_pending && !self.disk_conflict_dismissed {
             self.check_disk_conflicts();
@@ -687,7 +1002,8 @@ impl App {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error writing references.bib: {e}");
-                                self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
+                                self.last_user_error =
+                                    Some(sil_core::UserError::classify(&err_msg));
                                 let id = self.alloc_job_id();
                                 self.push_job_outcome(JobOutcome {
                                     id,
@@ -707,7 +1023,8 @@ impl App {
                             Ok(c) => c,
                             Err(e) => {
                                 let err_msg = format!("Error reading references.bib: {e}");
-                                self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
+                                self.last_user_error =
+                                    Some(sil_core::UserError::classify(&err_msg));
                                 let id = self.alloc_job_id();
                                 self.push_job_outcome(JobOutcome {
                                     id,
@@ -754,7 +1071,8 @@ impl App {
                                 }
                                 Err(e) => {
                                     let err_msg = format!("Error writing references.bib: {e}");
-                                    self.last_user_error = Some(sil_core::UserError::classify(&err_msg));
+                                    self.last_user_error =
+                                        Some(sil_core::UserError::classify(&err_msg));
                                     let id = self.alloc_job_id();
                                     self.push_job_outcome(JobOutcome {
                                         id,
@@ -834,8 +1152,10 @@ impl App {
                         .map(|h| (h.label.as_str(), h.detail.as_str()))
                         .unwrap_or(("source", "unknown error"));
                     let user_err = sil_core::UserError::classify(reason);
-                    self.status_message =
-                        format!("⚠ Metadata fetch failed for '{last_label}': {}", user_err.title);
+                    self.status_message = format!(
+                        "⚠ Metadata fetch failed for '{last_label}': {}",
+                        user_err.title
+                    );
                     self.last_user_error = Some(user_err);
                 } else {
                     self.status_message = format!(
@@ -867,6 +1187,7 @@ impl App {
         }
 
         self.in_flight_estimate = true;
+        self.start_persisted_job(JobKind::Estimate, "manuscript estimate");
         self.status_message = "⏳ Running L0 manuscript estimate...".to_string();
         let tx = self.estimate_tx.clone();
 
@@ -878,7 +1199,10 @@ impl App {
                     mode: sil_agent::EstimateMode::Quick,
                     structure: None,
                 };
-                sil_agent::run_heuristic_estimate(&input).map_err(|e| e.to_string())
+                let report =
+                    sil_agent::run_heuristic_estimate(&input).map_err(|e| e.to_string())?;
+                sil_agent::write_estimate_report(&root, &report).map_err(|e| e.to_string())?;
+                Ok(report)
             }));
 
             let result = match catch_res {
@@ -955,6 +1279,7 @@ impl App {
         };
 
         self.in_flight_digest = true;
+        self.start_persisted_job(JobKind::Digest, &format!("digest: {query}"));
         self.status_message = format!("⏳ Refreshing literature digest for '{query}'...");
 
         let tx = self.digest_tx.clone();
@@ -1016,8 +1341,10 @@ impl App {
                 }
                 Err(err_msg) => {
                     let user_err = sil_core::UserError::classify(&err_msg);
-                    self.status_message =
-                        format!("⚠ Digest refresh failed for '{}': {}", res.query, user_err.title);
+                    self.status_message = format!(
+                        "⚠ Digest refresh failed for '{}': {}",
+                        res.query, user_err.title
+                    );
                     self.last_user_error = Some(user_err);
                     self.push_job_outcome(JobOutcome {
                         id,
@@ -1072,6 +1399,90 @@ impl App {
     }
 }
 
+/// Extract the first TeX source location from compiler output.
+pub fn parse_latex_error_location(log: &str) -> Option<(String, usize)> {
+    for token in log.split_whitespace() {
+        let token = token.trim_matches(|c: char| "([{<\"'".contains(c));
+        let parts: Vec<_> = token.split(':').collect();
+        for index in 1..parts.len() {
+            let file = parts[..index].join(":");
+            let line = parts[index]
+                .trim_end_matches(|c: char| ")]}>\"',".contains(c))
+                .parse()
+                .ok();
+            if let Some(line) = line
+                && !file.is_empty()
+                && line > 0
+                && (file.ends_with(".tex") || file.contains('/'))
+            {
+                return Some((file, line));
+            }
+        }
+    }
+    None
+}
+
+impl App {
+    pub(crate) fn jump_to_draft_line(&mut self, file: &str, line: usize) {
+        let target = self.project_root.as_ref().map(|root| root.join(file));
+        let is_main = target.as_ref().is_some_and(|p| {
+            p == &sil_core::ProjectPaths::new(self.project_root.as_ref().unwrap()).paper_draft()
+        }) || file.ends_with("paper_draft.tex");
+        if !is_main {
+            return;
+        }
+        let max_line = self.paper_draft_content.lines().count().max(1);
+        let line = line.clamp(1, max_line);
+        self.active_tab = ActiveTab::PaperDraft;
+        self.paper_scroll_offset = line - 1;
+        if let Some((index, section)) = self
+            .paper_sections
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, section)| section.line_start <= line)
+        {
+            self.paper_section_index = index;
+            self.paper_scroll_offset =
+                (line - section.line_start).min(section.body.lines().count().saturating_sub(1));
+        }
+    }
+}
+
+impl App {
+    pub fn open_last_review(&mut self) {
+        let Some(root) = self.project_root.as_ref() else {
+            self.status_message = "No active project loaded".to_string();
+            return;
+        };
+        let reviews = sil_core::ProjectPaths::new(root).reviews_dir();
+        let mut candidates = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(reviews.as_std_path()) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let report = [path.join("report.md"), path.join("report.json")]
+                    .into_iter()
+                    .find(|p| p.is_file());
+                if let Some(report) = report {
+                    let modified = entry.metadata().and_then(|m| m.modified()).ok();
+                    candidates.push((modified, report));
+                }
+            }
+        }
+        candidates.sort_by_key(|a| a.0);
+        self.estimate_report_content = candidates
+            .last()
+            .and_then(|(_, path)| std::fs::read_to_string(path).ok())
+            .or_else(|| Some("no reviews yet — run Estimate".to_string()));
+        self.estimate_report_scroll_offset = 0;
+        self.input_mode = InputMode::EstimateReport;
+        self.status_message = "Viewing last estimate report. Press Esc to exit.".to_string();
+    }
+}
+
 /// Helper to parse ISO/SQLite UTC timestamp ("YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SSZ") into Unix epoch seconds.
 pub fn parse_utc_timestamp(s: &str) -> Option<u64> {
     let s = s.trim();
@@ -1121,4 +1532,73 @@ pub fn is_digest_cache_stale(
     let age_secs = now_epoch_secs.saturating_sub(fetched_secs);
     let refresh_secs = (refresh_hours.max(1) as u64) * 3600;
     age_secs >= refresh_secs
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    use camino::Utf8PathBuf;
+
+    fn app_with_jobs_file(contents: &str) -> (App, tempfile::TempDir) {
+        let dir = tempfile::tempdir().unwrap();
+        let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+        std::fs::create_dir_all(root.join(".sil")).unwrap();
+        std::fs::write(root.join(".sil/jobs.json"), contents).unwrap();
+        let mut app = App::new(None);
+        app.project_root = Some(root);
+        (app, dir)
+    }
+
+    #[test]
+    fn running_rows_become_stale_on_load() {
+        let (mut app, _dir) = app_with_jobs_file(
+            r#"[{"id":7,"kind":"fetch","label":"10.1000/test","status":"running","started":1,"ended":null,"error_code":null}]"#,
+        );
+        app.load_persisted_jobs();
+        assert_eq!(app.recent_job_outcomes.len(), 1);
+        assert!(!app.recent_job_outcomes[0].ok);
+        assert!(app.recent_job_outcomes[0].detail.ends_with("job stale"));
+        let saved = std::fs::read_to_string(app.jobs_path().unwrap()).unwrap();
+        assert!(saved.contains("\"status\": \"stale\""));
+    }
+
+    #[test]
+    fn successful_job_is_saved_as_ok() {
+        let (mut app, _dir) = app_with_jobs_file("[]");
+        app.start_persisted_job(JobKind::Fetch, "10.1000/test");
+        app.push_job_outcome(JobOutcome {
+            id: 1,
+            kind: JobKind::Fetch,
+            label: "10.1000/test".to_string(),
+            ok: true,
+            detail: "downloaded".to_string(),
+            duration_ms: None,
+            retry_payload: None,
+        });
+        let saved = std::fs::read_to_string(app.jobs_path().unwrap()).unwrap();
+        assert!(saved.contains("\"status\": \"ok\""));
+    }
+
+    #[test]
+    fn persisted_jobs_are_capped_at_fifty() {
+        let (mut app, _dir) = app_with_jobs_file("[]");
+        for id in 0..(PERSISTED_JOB_CAP + 5) {
+            app.start_persisted_job(JobKind::Fetch, &format!("target-{id}"));
+        }
+        let saved = std::fs::read_to_string(app.jobs_path().unwrap()).unwrap();
+        let jobs: Vec<PersistedJob> = serde_json::from_str(&saved).unwrap();
+        assert_eq!(jobs.len(), PERSISTED_JOB_CAP);
+    }
+
+    #[test]
+    fn corrupt_jobs_file_warns_and_stays_empty() {
+        let (mut app, _dir) = app_with_jobs_file("not json");
+        app.load_persisted_jobs();
+        assert!(app.recent_job_outcomes.is_empty());
+        assert!(app.status_message.contains("invalid .sil/jobs.json"));
+        assert_eq!(
+            app.last_user_error.as_ref().unwrap().code,
+            "jobs.invalid_json"
+        );
+    }
 }

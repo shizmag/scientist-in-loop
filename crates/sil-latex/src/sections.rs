@@ -1,5 +1,7 @@
 //! Deterministic LaTeX section splitter (no LLM).
 
+use crate::error::LatexError;
+
 /// A structural section extracted from a `.tex` file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TexSection {
@@ -55,6 +57,175 @@ pub fn split_tex_sections(source: &str) -> Vec<TexSection> {
     sections
 }
 
+/// Insert `\cite{cite_key}` into the specified section body.
+///
+/// If `cite_key` is already cited in that section body, returns `Ok(tex.to_string())` without duplicate.
+/// Otherwise inserts `~\cite{cite_key}` at the end of the section body before the next same-or-higher level
+/// heading, `\end{document}`, or EOF.
+///
+/// Returns `Err(LatexError::SectionNotFound)` if no section matching `section_title` exists.
+pub fn insert_cite_in_section(
+    tex: &str,
+    section_title: &str,
+    cite_key: &str,
+) -> Result<String, LatexError> {
+    let lines: Vec<&str> = tex.lines().collect();
+    let mut headings: Vec<(usize, String, String, u8)> = Vec::new();
+
+    for (idx, line) in lines.iter().enumerate() {
+        if let Some((kind, title, level)) = parse_heading_line(line) {
+            headings.push((idx, kind, title, level));
+        }
+    }
+
+    let (start_line, end_line) = if headings.is_empty() {
+        if section_title == "(preamble / body)"
+            || section_title == "document"
+            || section_title.is_empty()
+        {
+            let end_idx = lines
+                .iter()
+                .position(|l| l.trim().starts_with("\\end{document}"))
+                .unwrap_or(lines.len());
+            (0, end_idx)
+        } else {
+            return Err(LatexError::SectionNotFound(section_title.to_string()));
+        }
+    } else {
+        let target_idx = headings.iter().position(|(_, _, title, _)| {
+            title == section_title || title.trim() == section_title.trim()
+        });
+        let Some(target_i) = target_idx else {
+            return Err(LatexError::SectionNotFound(section_title.to_string()));
+        };
+        let (line_idx, _kind, _title, level) = &headings[target_i];
+        let start = *line_idx + 1;
+        let next_heading_line = headings
+            .iter()
+            .skip(target_i + 1)
+            .find(|(_, _, _, l)| *l <= *level)
+            .map(|(idx, _, _, _)| *idx)
+            .unwrap_or(lines.len());
+        let mut end = next_heading_line;
+        for (i, line) in lines.iter().enumerate().take(next_heading_line).skip(start) {
+            if line.trim().starts_with("\\end{document}") {
+                end = i;
+                break;
+            }
+        }
+        (start, end)
+    };
+
+    // Check if cite_key is already cited in start_line..end_line
+    for line in &lines[start_line..end_line] {
+        if line_contains_cite_key(line, cite_key) {
+            return Ok(tex.to_string());
+        }
+    }
+
+    // Find the last non-empty line in the section body that is not a comment line
+    let mut last_content_line_idx = None;
+    for i in (start_line..end_line).rev() {
+        let trimmed = lines[i].trim();
+        if !trimmed.is_empty() && !trimmed.starts_with('%') {
+            last_content_line_idx = Some(i);
+            break;
+        }
+    }
+
+    let mut new_lines = Vec::with_capacity(lines.len() + 1);
+
+    if let Some(idx) = last_content_line_idx {
+        for (i, line) in lines.iter().enumerate() {
+            if i == idx {
+                let trimmed = line.trim_end();
+                if trimmed.ends_with('~') || trimmed.ends_with(' ') {
+                    new_lines.push(format!("{trimmed}\\cite{{{cite_key}}}"));
+                } else {
+                    new_lines.push(format!("{trimmed}~\\cite{{{cite_key}}}"));
+                }
+            } else {
+                new_lines.push((*line).to_string());
+            }
+        }
+    } else {
+        // No non-comment content line in section body. Insert after start_line.
+        for (i, line) in lines.iter().enumerate() {
+            if i == start_line {
+                new_lines.push(format!("\\cite{{{cite_key}}}"));
+            }
+            new_lines.push((*line).to_string());
+        }
+        if start_line >= lines.len() {
+            new_lines.push(format!("\\cite{{{cite_key}}}"));
+        }
+    }
+
+    let mut result = new_lines.join("\n");
+    if tex.ends_with('\n') && !result.ends_with('\n') {
+        result.push('\n');
+    }
+    Ok(result)
+}
+
+fn strip_latex_comment(line: &str) -> &str {
+    let mut escaped = false;
+    for (i, c) in line.char_indices() {
+        if c == '\\' {
+            escaped = !escaped;
+        } else if c == '%' && !escaped {
+            return &line[..i];
+        } else {
+            escaped = false;
+        }
+    }
+    line
+}
+
+fn line_contains_cite_key(line: &str, cite_key: &str) -> bool {
+    let code = strip_latex_comment(line);
+    let mut cursor = code;
+    while let Some(pos) = cursor.find('\\') {
+        let after_backslash = &cursor[pos + 1..];
+        let is_cite_cmd = after_backslash.starts_with("cite")
+            || after_backslash.starts_with("nocite")
+            || after_backslash.starts_with("autocite")
+            || after_backslash.starts_with("parencite")
+            || after_backslash.starts_with("textcite");
+        if !is_cite_cmd {
+            cursor = after_backslash;
+            continue;
+        }
+        let mut idx = 0;
+        let bytes = after_backslash.as_bytes();
+        while idx < bytes.len() && (bytes[idx].is_ascii_alphabetic() || bytes[idx] == b'*') {
+            idx += 1;
+        }
+        let mut rest = after_backslash[idx..].trim_start();
+        while rest.starts_with('[') {
+            if let Some(bracket_end) = rest.find(']') {
+                rest = rest[bracket_end + 1..].trim_start();
+            } else {
+                break;
+            }
+        }
+        if rest.starts_with('{')
+            && let Some(brace_end) = rest.find('}')
+        {
+            let keys = &rest[1..brace_end];
+            for k in keys.split(',') {
+                if k.trim() == cite_key {
+                    return true;
+                }
+            }
+            cursor = &rest[brace_end + 1..];
+            continue;
+        }
+        cursor = after_backslash;
+    }
+    false
+}
+
 #[allow(clippy::question_mark)]
 fn parse_heading_line(line: &str) -> Option<(String, String, u8)> {
     let trimmed = line.trim();
@@ -65,6 +236,8 @@ fn parse_heading_line(line: &str) -> Option<(String, String, u8)> {
         ("subsection", r)
     } else if let Some(r) = rest.strip_prefix("section") {
         ("section", r)
+    } else if let Some(r) = rest.strip_prefix("chapter") {
+        ("chapter", r)
     } else {
         return None;
     };
@@ -78,7 +251,8 @@ fn parse_heading_line(line: &str) -> Option<(String, String, u8)> {
     };
     let title = extract_brace_group(after_cmd)?;
     let level = match cmd {
-        "section" => 1u8,
+        "chapter" => 0u8,
+        "section" => 1,
         "subsection" => 2,
         "subsubsection" => 3,
         _ => 1,
@@ -232,5 +406,118 @@ d
         let secs = split_tex_sections(src);
         assert!(secs.iter().any(|s| s.title == "Real"));
         assert!(!secs.iter().any(|s| s.title == "Fake"));
+    }
+
+    #[test]
+    fn test_insert_cite_in_section_chosen_section_only() {
+        let tex = r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Intro text here.
+
+\section{Methods}
+Methods text here.
+\end{document}
+"#;
+        let updated = insert_cite_in_section(tex, "Introduction", "vaswani2017").unwrap();
+        assert!(updated.contains("Intro text here.~\\cite{vaswani2017}"));
+        assert!(updated.contains("Methods text here."));
+        assert!(!updated.contains("Methods text here.~\\cite{vaswani2017}"));
+    }
+
+    #[test]
+    fn test_insert_cite_second_cite_in_same_section_is_noop() {
+        let tex = r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Intro text here.~\cite{vaswani2017}
+
+\section{Methods}
+Methods text here.
+\end{document}
+"#;
+        let updated = insert_cite_in_section(tex, "Introduction", "vaswani2017").unwrap();
+        assert_eq!(updated, tex);
+    }
+
+    #[test]
+    fn test_insert_cite_macro_variants_recognized_as_already_cited() {
+        let tex_citep = r#"\section{Intro}
+As shown in \citep[see][p. 12]{vaswani2017}, attention is all you need.
+"#;
+        let res1 = insert_cite_in_section(tex_citep, "Intro", "vaswani2017").unwrap();
+        assert_eq!(res1, tex_citep);
+
+        let tex_multi = r#"\section{Intro}
+Prior art \cite{devlin2018, vaswani2017, brown2020}.
+"#;
+        let res2 = insert_cite_in_section(tex_multi, "Intro", "vaswani2017").unwrap();
+        assert_eq!(res2, tex_multi);
+
+        let tex_autocite = r#"\section{Intro}
+Prior art \autocite{vaswani2017}.
+"#;
+        let res3 = insert_cite_in_section(tex_autocite, "Intro", "vaswani2017").unwrap();
+        assert_eq!(res3, tex_autocite);
+    }
+
+    #[test]
+    fn test_insert_cite_missing_section_returns_err() {
+        let tex = r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Intro text.
+\end{document}
+"#;
+        let err = insert_cite_in_section(tex, "NonExistent", "vaswani2017").unwrap_err();
+        match err {
+            LatexError::SectionNotFound(title) => assert_eq!(title, "NonExistent"),
+            other => panic!("Unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_insert_cite_multiple_sections_preserves_other_sections() {
+        let tex = r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+Intro text.
+
+\subsection{Background}
+Background details.
+
+\section{Results}
+Results text.
+\end{document}
+"#;
+        let updated = insert_cite_in_section(tex, "Background", "vaswani2017").unwrap();
+        assert!(updated.contains("Background details.~\\cite{vaswani2017}"));
+        assert!(updated.contains("Intro text.\n"));
+        assert!(updated.contains("Results text."));
+        assert!(!updated.contains("Results text.~\\cite{vaswani2017}"));
+    }
+
+    #[test]
+    fn test_insert_cite_empty_section_body() {
+        let tex = "\\section{Introduction}\n\n\\section{Methods}\nMethods text.\n";
+        let updated = insert_cite_in_section(tex, "Introduction", "vaswani2017").unwrap();
+        assert!(updated.contains("\\section{Introduction}\n\\cite{vaswani2017}"));
+        assert!(updated.contains("Methods text."));
+    }
+
+    #[test]
+    fn test_insert_cite_with_comment_at_end_of_section() {
+        let tex = r#"\section{Introduction}
+Introductory paragraph.
+
+% # -- X -- #
+% [TODO: note]
+% # -- X -- #
+
+\section{Methods}
+"#;
+        let updated = insert_cite_in_section(tex, "Introduction", "vaswani2017").unwrap();
+        assert!(updated.contains("Introductory paragraph.~\\cite{vaswani2017}"));
+        assert!(updated.contains("% # -- X -- #"));
     }
 }

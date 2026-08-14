@@ -2,6 +2,8 @@
 
 use sil_core::{JournalPublication, ReferenceEntry, SourceDocument};
 
+use super::commands::all_commands;
+
 /// Navigation tabs in the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
@@ -51,6 +53,8 @@ pub enum InputMode {
     ModalRenameSource,
     ModalCaptureNote,
     NoteSectionPicker,
+    CiteSectionPicker,
+    GroundingModal,
     ConfirmDeleteSource,
     ConfirmRepairDb,
     ViewingSourceRefs,
@@ -65,6 +69,8 @@ pub enum InputMode {
     WizardOpenPath,
     WizardCreateProject,
     WizardDoctorReport,
+    EstimateReport,
+    ProposalDiff,
 }
 
 /// Sorting key for references display in TUI.
@@ -85,6 +91,14 @@ pub enum SourceInputKind {
     Arxiv,
     Url,
     Filename,
+}
+
+/// Read-only ranked grounding result shown in the TUI modal.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GroundingHit {
+    pub title: String,
+    pub score: f32,
+    pub source_id: String,
 }
 
 impl SourceInputKind {
@@ -163,6 +177,8 @@ pub enum HelpMode {
     ModalRenameSource,
     ModalCaptureNote,
     NoteSectionPicker,
+    CiteSectionPicker,
+    GroundingModal,
     ConfirmDeleteSource,
     Editing,
     EditingPaper,
@@ -175,6 +191,8 @@ pub enum HelpMode {
     WizardOpenPath,
     WizardCreateProject,
     WizardDoctorReport,
+    EstimateReport,
+    ProposalDiff,
 }
 
 impl HelpMode {
@@ -195,6 +213,8 @@ impl HelpMode {
             HelpMode::ModalRenameSource => "Rename Source Title Modal",
             HelpMode::ModalCaptureNote => "Capture Note Modal",
             HelpMode::NoteSectionPicker => "Note Section Picker",
+            HelpMode::CiteSectionPicker => "Cite Section Picker",
+            HelpMode::GroundingModal => "Grounding Sources",
             HelpMode::ConfirmDeleteSource => "Confirm Delete Source Modal",
             HelpMode::Editing => "Field Text Editing Modal",
             HelpMode::EditingPaper => "Paper Section Editing Modal",
@@ -207,12 +227,110 @@ impl HelpMode {
             HelpMode::WizardOpenPath => "Open Directory / Project Path",
             HelpMode::WizardCreateProject => "Create New Project",
             HelpMode::WizardDoctorReport => "System Doctor Report",
+            HelpMode::EstimateReport => "Estimate Report",
+            HelpMode::ProposalDiff => "Proposal and Uncommitted Diff",
         }
     }
 }
 
 /// Pure function returning the (key, action) mapping for a given help context mode.
 pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
+    match mode {
+        HelpMode::Dashboard
+        | HelpMode::SourcesList
+        | HelpMode::ReadingSourceMd
+        | HelpMode::ReferencesLeft
+        | HelpMode::ReferencesRight
+        | HelpMode::PaperDraft
+        | HelpMode::Settings => registry_keymap(mode),
+        _ => legacy_keymap_for(mode),
+    }
+}
+
+fn registry_keymap(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
+    let tab = match mode {
+        HelpMode::Dashboard => ActiveTab::Dashboard,
+        HelpMode::SourcesList | HelpMode::ReadingSourceMd => ActiveTab::Sources,
+        HelpMode::ReferencesLeft | HelpMode::ReferencesRight => ActiveTab::References,
+        HelpMode::PaperDraft => ActiveTab::PaperDraft,
+        HelpMode::Settings => ActiveTab::Settings,
+        _ => unreachable!(),
+    };
+    let mut keymap = vec![
+        ("j / Down", "Navigate to the next item"),
+        ("k / Up", "Navigate to the previous item"),
+        (
+            "1 - 5",
+            "Switch directly to a tab (Dashboard, Sources, References, Draft, Settings)",
+        ),
+        ("Tab / Shift+Tab", "Cycle forward / backward through tabs"),
+    ];
+
+    for spec in all_commands() {
+        if spec.default_keys.is_empty() || (spec.tab.is_some() && spec.tab != Some(tab)) {
+            continue;
+        }
+        keymap.push((
+            command_help_key(mode, spec.id, spec.default_keys),
+            command_help_title(mode, spec.id, spec.title),
+        ));
+    }
+
+    match mode {
+        HelpMode::SourcesList => {
+            keymap.push(("Enter", "Read full source document in Markdown viewer"))
+        }
+        HelpMode::ReadingSourceMd => keymap.push(("j / k", "Scroll this source")),
+        HelpMode::ReferencesLeft | HelpMode::ReferencesRight => keymap.push((
+            "v / p / P",
+            "Contextual shortcuts: v sorts by venue, p adds a reference, and P promotes an entry",
+        )),
+        HelpMode::PaperDraft => keymap.push((
+            "v",
+            "Contextual shortcut: launch the external $EDITOR (in Sources, v opens refs)",
+        )),
+        _ => {}
+    }
+    if matches!(mode, HelpMode::SourcesList | HelpMode::ReadingSourceMd) {
+        keymap.push((
+            "v / p / P",
+            "Contextual shortcuts: v opens source refs, while p/P have reference-pane meanings",
+        ));
+    }
+    keymap
+}
+
+fn command_help_key(
+    mode: HelpMode,
+    id: super::commands::CommandId,
+    default_keys: &'static str,
+) -> &'static str {
+    match (mode, id) {
+        (HelpMode::SourcesList, super::commands::CommandId::ParseAll) => "e / E",
+        _ => default_keys,
+    }
+}
+
+fn command_help_title(
+    mode: HelpMode,
+    id: super::commands::CommandId,
+    title: &'static str,
+) -> &'static str {
+    match id {
+        super::commands::CommandId::CiteSource if mode == HelpMode::ReadingSourceMd => {
+            "Append this source to references.bib"
+        }
+        super::commands::CommandId::CiteIntoSection => {
+            "Cite Source into Draft Section: Insert \\cite into draft section"
+        }
+        super::commands::CommandId::CaptureNote if mode == HelpMode::ReadingSourceMd => {
+            "Park a note on paper_draft.tex (from: this source)"
+        }
+        _ => title,
+    }
+}
+
+fn legacy_keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
     match mode {
         HelpMode::Dashboard => vec![
             ("j / Down", "Select next literature digest paper"),
@@ -239,7 +357,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("j / Down", "Select next source document"),
             ("k / Up", "Select previous source document"),
             ("PageUp / PageDown", "Scroll source list by 5 items"),
-            ("Enter", "Read full source document in Markdown viewer (or add source if empty)"),
+            (
+                "Enter",
+                "Read full source document in Markdown viewer (or add source if empty)",
+            ),
             (
                 "e / E",
                 "Parse selected source ('e') / Parse all unparsed sources ('E' / Shift+E)",
@@ -275,6 +396,7 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("k / Up", "Scroll up 1 line"),
             ("PageUp / PageDown", "Scroll up / down 10 lines"),
             ("b", "Append this source to references.bib"),
+            ("c", "Insert \\cite into draft section"),
             ("n", "Park a note on paper_draft.tex (from: this source)"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("q / Esc", "Exit Markdown reader mode"),
@@ -462,6 +584,19 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
             ("Esc", "Cancel note capture"),
         ],
+        HelpMode::CiteSectionPicker => vec![
+            ("j / Down", "Navigate down to next section"),
+            ("k / Up", "Navigate up to previous section"),
+            ("Enter", "Confirm section and insert cite into draft"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+            ("Esc", "Cancel cite insertion"),
+        ],
+        HelpMode::GroundingModal => vec![
+            ("j / Down", "Navigate ranked grounding sources"),
+            ("k / Up", "Navigate ranked grounding sources"),
+            ("Enter", "Select source and switch to Sources (read-only)"),
+            ("Esc", "Close grounding modal"),
+        ],
         HelpMode::ConfirmDeleteSource => vec![
             ("y / Enter", "Confirm deletion of source document"),
             ("n / Esc", "Cancel deletion"),
@@ -521,7 +656,10 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("j / Down", "Select next wizard menu option"),
             ("k / Up", "Select previous wizard menu option"),
             ("Enter", "Activate selected menu option"),
-            ("1 - 4", "Quick select: 1: Recent, 2: Open Path, 3: Create, 4: Doctor"),
+            (
+                "1 - 4",
+                "Quick select: 1: Recent, 2: Open Path, 3: Create, 4: Doctor",
+            ),
             ("q / Esc", "Quit application"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
         ],
@@ -545,6 +683,18 @@ pub fn keymap_for(mode: HelpMode) -> Vec<(&'static str, &'static str)> {
             ("PageUp / PageDown", "Scroll by 5 checks"),
             ("Esc / q / Enter", "Return to wizard menu"),
             ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::EstimateReport => vec![
+            ("j / Down", "Scroll report down"),
+            ("k / Up", "Scroll report up"),
+            ("PageUp / PageDown", "Scroll by 10 lines"),
+            ("Esc / q", "Close report viewer"),
+            ("? / F1", "Toggle mode-aware keyboard help overlay"),
+        ],
+        HelpMode::ProposalDiff => vec![
+            ("y", "Write the proposal to .sil/last_proposal.txt"),
+            ("u", "Undo the latest TUI journal generation"),
+            ("Esc / q", "Close the proposal and diff viewer"),
         ],
     }
 }
@@ -672,6 +822,7 @@ pub(crate) fn resolve_onnx_from_dir(val: &str) -> String {
 
 /// Cap for the unified background job history ring buffer.
 pub const JOB_HISTORY_CAP: usize = 20;
+pub const PERSISTED_JOB_CAP: usize = 50;
 
 /// Kind of background job recorded in job history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -682,6 +833,7 @@ pub enum JobKind {
     Similarity,
     Estimate,
     Digest,
+    Build,
 }
 
 impl JobKind {
@@ -693,6 +845,7 @@ impl JobKind {
             JobKind::Similarity => "similarity",
             JobKind::Estimate => "estimate",
             JobKind::Digest => "digest",
+            JobKind::Build => "build",
         }
     }
 }
@@ -794,6 +947,14 @@ pub struct DigestJobResult {
     pub duration_ms: Option<u64>,
 }
 
+/// Result of a background LaTeX draft build job.
+#[derive(Debug)]
+pub struct BuildJobResult {
+    pub result: Result<camino::Utf8PathBuf, String>,
+    pub log: String,
+    pub duration_ms: Option<u64>,
+}
+
 /// State for the first-run wizard when no project root is specified.
 #[derive(Debug, Clone)]
 pub struct WizardState {
@@ -837,9 +998,10 @@ impl WizardState {
             .filter(|p| p.exists())
             .cloned()
             .collect();
-        if !self.recent_projects.is_empty() && self.selected_recent_index >= self.recent_projects.len() {
+        if !self.recent_projects.is_empty()
+            && self.selected_recent_index >= self.recent_projects.len()
+        {
             self.selected_recent_index = self.recent_projects.len() - 1;
         }
     }
 }
-

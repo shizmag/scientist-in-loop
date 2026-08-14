@@ -61,7 +61,9 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
     let json = args.json;
     let fix = args.fix;
 
-    if args.fix_rag && let Some(cache_dir) = dirs::cache_dir() {
+    if args.fix_rag
+        && let Some(cache_dir) = dirs::cache_dir()
+    {
         let base = cache_dir.join("sil/models");
         let embed_dir = base.join("bge-small-en-v1.5");
         let rerank_dir = base.join("ms-marco-MiniLM-L-6-v2");
@@ -176,7 +178,10 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
                 if db_open_ok {
                     None
                 } else {
-                    Some("Ensure .sil/db.sqlite is readable and not locked by another process".to_string())
+                    Some(
+                        "Ensure .sil/db.sqlite is readable and not locked by another process"
+                            .to_string(),
+                    )
                 },
             ));
             let (integrity_ok, integrity_detail) = match integrity_res {
@@ -375,7 +380,10 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
                         "manuscript health audit",
                         false,
                         format!("audit failed: {e}"),
-                        Some("Check paper_draft.tex and references.bib for syntax errors".to_string()),
+                        Some(
+                            "Check paper_draft.tex and references.bib for syntax errors"
+                                .to_string(),
+                        ),
                     ));
                 }
             }
@@ -385,7 +393,10 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
                 "sil project",
                 false,
                 format!("not inside a project: {e}"),
-                Some("Run `sil init` to initialize a project or open an existing project".to_string()),
+                Some(
+                    "Run `sil init` to initialize a project or open an existing project"
+                        .to_string(),
+                ),
             ));
             // Still report dense RAG even outside a project (uses global defaults).
             checks.push(dense_rag_check_from_settings(
@@ -530,4 +541,3 @@ fn dense_rag_check_from_settings(rag: &sil_core::RagSettings) -> Check {
         })),
     }
 }
-

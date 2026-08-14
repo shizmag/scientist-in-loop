@@ -16,5 +16,7 @@ pub use action_infer::{
 pub use error::GitError;
 pub use log::{LogEntry, log_entries};
 pub use propose::CommitProposal;
-pub use status::{GitStatus, commit_all, init_repo, path_has_changes, repo_root, status};
+pub use status::{
+    GitStatus, commit_all, diff_for_paths, init_repo, path_has_changes, repo_root, status,
+};
 pub use trailers::{SciAction, extract_from_message};

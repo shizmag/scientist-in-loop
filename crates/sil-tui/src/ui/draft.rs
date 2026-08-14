@@ -25,7 +25,12 @@ pub(crate) fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
         let wrapped = textwrap::wrap(empty_msg, avail_w);
         let lines: Vec<Line> = wrapped
             .into_iter()
-            .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::DarkGray))))
+            .map(|l| {
+                Line::from(Span::styled(
+                    l.to_string(),
+                    Style::default().fg(Color::DarkGray),
+                ))
+            })
             .collect();
         items.push(ListItem::new(lines));
     } else {
@@ -64,28 +69,27 @@ pub(crate) fn draw_paper_draft(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(left_list, chunks[0]);
 
     // Right Column: Section Content Viewer
-    let (sec_title, body_text) = if !app.paper_sections.is_empty()
-        && app.paper_section_index < app.paper_sections.len()
-    {
-        let sec = &app.paper_sections[app.paper_section_index];
-        (
-            format!(
-                " Section: {} (Press 'e': edit, 'v'/'o': $EDITOR, PgUp/PgDn: scroll) ",
-                sec.title
-            ),
-            sec.body.clone(),
-        )
-    } else if !app.paper_draft_content.is_empty() {
-        (
-            " paper_draft.tex (Full View — Press 'v'/'o' for $EDITOR) ".to_string(),
-            app.paper_draft_content.clone(),
-        )
-    } else {
-        (
-            " Section Content ".to_string(),
-            "Draft has no \\section yet — [o: Open in $EDITOR]".to_string(),
-        )
-    };
+    let (sec_title, body_text) =
+        if !app.paper_sections.is_empty() && app.paper_section_index < app.paper_sections.len() {
+            let sec = &app.paper_sections[app.paper_section_index];
+            (
+                format!(
+                    " Section: {} (Press 'e': edit, 'v'/'o': $EDITOR, PgUp/PgDn: scroll) ",
+                    sec.title
+                ),
+                sec.body.clone(),
+            )
+        } else if !app.paper_draft_content.is_empty() {
+            (
+                " paper_draft.tex (Full View — Press 'v'/'o' for $EDITOR) ".to_string(),
+                app.paper_draft_content.clone(),
+            )
+        } else {
+            (
+                " Section Content ".to_string(),
+                "Draft has no \\section yet — [o: Open in $EDITOR]".to_string(),
+            )
+        };
 
     let right_block = Block::default()
         .borders(Borders::ALL)

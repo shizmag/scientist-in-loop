@@ -16,6 +16,7 @@ pub use source_badges::SourceBadges;
 pub use types::*;
 
 use camino::Utf8PathBuf;
+use crossterm::event::MouseEvent;
 use sil_core::{
     AuthorDetails, Config, GlobalSettings, GrantDetails, LocalSettings, ProjectPaths,
     ReferenceEntry, SettingsCache, SourceDocument,
@@ -47,6 +48,9 @@ pub struct App {
     pub digest_tx: std::sync::mpsc::Sender<DigestJobResult>,
     pub digest_rx: std::sync::mpsc::Receiver<DigestJobResult>,
     pub in_flight_digest: bool,
+    pub build_tx: std::sync::mpsc::Sender<BuildJobResult>,
+    pub build_rx: std::sync::mpsc::Receiver<BuildJobResult>,
+    pub in_flight_build: bool,
     pub hydration_batch_succeeded: usize,
     pub hydration_batch_failed: usize,
     /// Unified job history ring (hydrate | fetch | parse | similarity). Cap [`JOB_HISTORY_CAP`].
@@ -103,6 +107,10 @@ pub struct App {
     pub selected_source_index: usize,
     pub source_scroll_offset: usize,
     pub reading_md_content: Option<String>,
+    pub estimate_report_content: Option<String>,
+    pub estimate_report_scroll_offset: usize,
+    pub proposal_diff_content: Option<String>,
+    pub proposal_text: Option<String>,
     pub selected_source_references: Vec<ReferenceEntry>,
     pub selected_viewing_ref_index: usize,
     pub viewing_ref_search_query: String,
@@ -114,6 +122,12 @@ pub struct App {
     pub pending_note_text: String,
     pub note_picker_selected: usize,
     pub note_picker_sections: Vec<Option<String>>,
+    pub pending_cite_key: String,
+    pub cite_picker_selected: usize,
+    pub cite_picker_sections: Vec<String>,
+    pub cite_picker_previous_mode: InputMode,
+    pub grounding_hits: Vec<GroundingHit>,
+    pub grounding_selected_index: usize,
 
     // Draft similarity state
     pub draft_ref_similarities: std::collections::HashMap<String, f32>,
@@ -152,6 +166,7 @@ pub struct App {
 
     // First-run wizard state
     pub wizard_state: WizardState,
+    pub(crate) last_mouse_click: Option<(u16, u16, std::time::Instant)>,
 }
 
 impl App {
@@ -176,6 +191,7 @@ impl App {
         let (similarity_tx, similarity_rx) = std::sync::mpsc::channel();
         let (estimate_tx, estimate_rx) = std::sync::mpsc::channel();
         let (digest_tx, digest_rx) = std::sync::mpsc::channel();
+        let (build_tx, build_rx) = std::sync::mpsc::channel();
 
         let is_no_project = project_root.is_none();
         let wizard_state = WizardState::new(&global_settings);
@@ -201,6 +217,9 @@ impl App {
             digest_tx,
             digest_rx,
             in_flight_digest: false,
+            build_tx,
+            build_rx,
+            in_flight_build: false,
             hydration_batch_succeeded: 0,
             hydration_batch_failed: 0,
             recent_job_outcomes: std::collections::VecDeque::with_capacity(JOB_HISTORY_CAP),
@@ -268,6 +287,10 @@ impl App {
             selected_source_index: 0,
             source_scroll_offset: 0,
             reading_md_content: None,
+            estimate_report_content: None,
+            estimate_report_scroll_offset: 0,
+            proposal_diff_content: None,
+            proposal_text: None,
             selected_source_references: Vec::new(),
             selected_viewing_ref_index: 0,
             viewing_ref_search_query: String::new(),
@@ -279,6 +302,12 @@ impl App {
             pending_note_text: String::new(),
             note_picker_selected: 0,
             note_picker_sections: Vec::new(),
+            pending_cite_key: String::new(),
+            cite_picker_selected: 0,
+            cite_picker_sections: Vec::new(),
+            cite_picker_previous_mode: InputMode::ReadingSourceMd,
+            grounding_hits: Vec::new(),
+            grounding_selected_index: 0,
 
             draft_ref_similarities: std::collections::HashMap::new(),
             draft_similarity_hash: None,
@@ -308,6 +337,7 @@ impl App {
             disk_conflict_dismissed: false,
 
             wizard_state,
+            last_mouse_click: None,
         };
 
         // Acquire initial advisory session lock if inside a project
@@ -339,7 +369,101 @@ impl App {
         app.load_all_source_references();
         app.refresh_dashboard();
         app.update_file_mtimes();
+        app.load_persisted_jobs();
         app
+    }
+
+    /// Handle a mouse click in the normal TUI layout.
+    pub(crate) fn handle_mouse(
+        &mut self,
+        event: MouseEvent,
+        terminal_width: u16,
+        terminal_height: u16,
+    ) {
+        use crossterm::event::{MouseButton, MouseEventKind};
+
+        if self.input_mode != InputMode::Normal
+            || !matches!(event.kind, MouseEventKind::Down(MouseButton::Left))
+        {
+            return;
+        }
+        if event.row == 1 {
+            let mut x = 1u16;
+            for tab in ActiveTab::ALL {
+                let width = tab.title().len() as u16;
+                if event.column >= x && event.column < x.saturating_add(width) {
+                    self.active_tab = tab;
+                    return;
+                }
+                x = x.saturating_add(width + 3);
+            }
+            return;
+        }
+
+        let index = match self.active_tab {
+            ActiveTab::Dashboard if event.column < terminal_width / 2 => {
+                let content_height = terminal_height.saturating_sub(6);
+                let digest_start = 3 + content_height / 2;
+                Some(event.row.saturating_sub(digest_start + 3) as usize)
+            }
+            ActiveTab::Sources if event.column < terminal_width * 40 / 100 => {
+                let banner_height = if self.sources.iter().any(|source| !source.parsed) {
+                    4
+                } else {
+                    0
+                };
+                Some(event.row.saturating_sub(4 + banner_height) as usize)
+            }
+            ActiveTab::References => {
+                self.active_ref_pane = if event.column < terminal_width / 2 {
+                    RefPane::LeftBib
+                } else {
+                    RefPane::RightSources
+                };
+                Some(event.row.saturating_sub(4) as usize)
+            }
+            ActiveTab::PaperDraft if event.column < terminal_width * 35 / 100 => {
+                Some(event.row.saturating_sub(4) as usize)
+            }
+            ActiveTab::Settings => Some(event.row.saturating_sub(4) as usize),
+            _ => None,
+        };
+        let Some(index) = index else { return };
+        let count = match self.active_tab {
+            ActiveTab::Dashboard => self.dashboard.digest_publications.len().min(8),
+            ActiveTab::Sources => self.sources.len(),
+            ActiveTab::References if self.active_ref_pane == RefPane::LeftBib => {
+                self.filtered_bib_entries().len()
+            }
+            ActiveTab::References => self.filtered_source_references().len(),
+            ActiveTab::Settings => self.setting_items().len(),
+            ActiveTab::PaperDraft => self.paper_sections.len(),
+        };
+        if index >= count {
+            return;
+        }
+
+        let now = std::time::Instant::now();
+        let double_click = self.last_mouse_click.is_some_and(|(x, y, at)| {
+            x == event.column && y == event.row && now.duration_since(at).as_millis() < 500
+        });
+        self.last_mouse_click = Some((event.column, event.row, now));
+        match self.active_tab {
+            ActiveTab::Dashboard => self.selected_digest_index = index,
+            ActiveTab::Sources => self.selected_source_index = index,
+            ActiveTab::References if self.active_ref_pane == RefPane::LeftBib => {
+                self.selected_bib_index = index
+            }
+            ActiveTab::References => self.selected_source_ref_index = index,
+            ActiveTab::Settings => self.selected_setting_index = index,
+            ActiveTab::PaperDraft => self.paper_section_index = index,
+        }
+        if double_click {
+            self.handle_key(crossterm::event::KeyEvent::new(
+                crossterm::event::KeyCode::Enter,
+                crossterm::event::KeyModifiers::empty(),
+            ));
+        }
     }
 
     /// Check whether another live process holds the workspace lock before executing a mutating command.
@@ -428,7 +552,10 @@ impl App {
                 spec.title.to_lowercase().contains(&query)
                     || spec.id.as_str().to_lowercase().contains(&query)
                     || spec.description.to_lowercase().contains(&query)
-                    || spec.aliases.iter().any(|a| a.to_lowercase().contains(&query))
+                    || spec
+                        .aliases
+                        .iter()
+                        .any(|a| a.to_lowercase().contains(&query))
             })
             .collect()
     }
@@ -505,7 +632,9 @@ impl App {
         if conflict {
             if self.dirty {
                 self.disk_conflict_pending = true;
-                let banner = "Disk changed externally: Reload (R) or Keep TUI (Ctrl+S again to overwrite)".to_string();
+                let banner =
+                    "Disk changed externally: Reload (R) or Keep TUI (Ctrl+S again to overwrite)"
+                        .to_string();
                 self.disk_conflict_banner = Some(banner);
                 self.last_user_error = Some(sil_core::UserError::new(
                     "conflict.disk_newer",
@@ -516,7 +645,8 @@ impl App {
                 true
             } else {
                 let file_str = conflict_file.as_deref().unwrap_or("Disk files");
-                self.status_message = format!("Disk changed externally ({file_str}) — press R to reload");
+                self.status_message =
+                    format!("Disk changed externally ({file_str}) — press R to reload");
                 false
             }
         } else {
@@ -579,7 +709,9 @@ impl App {
             self.last_user_error = Some(sil_core::UserError::new(
                 "project.not_found",
                 "Not a valid sil project",
-                format!("Directory '{resolved}' does not contain .sil/config.yaml or .sil directory"),
+                format!(
+                    "Directory '{resolved}' does not contain .sil/config.yaml or .sil directory"
+                ),
                 None,
             ));
             self.status_message = format!("Not a valid sil project: {resolved}");
@@ -625,11 +757,13 @@ impl App {
         self.load_all_source_references();
         self.refresh_dashboard();
         self.update_file_mtimes();
+        self.load_persisted_jobs();
 
         // Record in recents
         self.global_settings.touch_recent_project(resolved.clone());
         let _ = self.global_settings.save(None);
-        self.wizard_state.refresh_recent_projects(&self.global_settings);
+        self.wizard_state
+            .refresh_recent_projects(&self.global_settings);
 
         self.input_mode = InputMode::Normal;
         self.dirty = false;
@@ -681,7 +815,12 @@ impl App {
         self.wizard_state.doctor_checks = sil_app::doctor::run_host_checks();
         self.wizard_state.doctor_scroll_offset = 0;
         self.input_mode = InputMode::WizardDoctorReport;
-        let ok_count = self.wizard_state.doctor_checks.iter().filter(|c| c.ok).count();
+        let ok_count = self
+            .wizard_state
+            .doctor_checks
+            .iter()
+            .filter(|c| c.ok)
+            .count();
         let total = self.wizard_state.doctor_checks.len();
         self.status_message =
             format!("Host doctor finished: {ok_count}/{total} checks passed (Esc to back).");

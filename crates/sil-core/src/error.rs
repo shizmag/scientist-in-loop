@@ -421,7 +421,10 @@ mod tests {
         let e1 = UserError::classify("not a sil project (missing .sil/config.yaml)");
         assert_eq!(e1.code, "project.not_found");
         assert_eq!(e1.title, "Not inside a sil project");
-        assert_eq!(e1.hint, "Run `sil init` to initialize a project or open an existing project");
+        assert_eq!(
+            e1.hint,
+            "Run `sil init` to initialize a project or open an existing project"
+        );
         assert_eq!(e1.retry, None);
 
         let e2 = UserError::classify("missing .sil folder");
@@ -460,7 +463,8 @@ mod tests {
 
     #[test]
     fn test_user_error_fallback_sanitization() {
-        let fallback = UserError::classify("Error: some unknown low-level failure\nstack backtrace:\n0: foo");
+        let fallback =
+            UserError::classify("Error: some unknown low-level failure\nstack backtrace:\n0: foo");
         assert_eq!(fallback.code, "internal.error");
         assert_eq!(fallback.title, "some unknown low-level failure");
         assert_eq!(fallback.hint, "Check logs for technical details");

@@ -13,3 +13,4 @@ __pycache__/
 scratch/
 *.db-wal
 *.db-shm
+.sil/jobs.json

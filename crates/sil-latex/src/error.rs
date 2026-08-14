@@ -25,6 +25,9 @@ pub enum LatexError {
     /// Main file missing.
     #[error("main LaTeX file not found: {0}")]
     MainNotFound(String),
+    /// Section not found in manuscript.
+    #[error("section '{0}' not found")]
+    SectionNotFound(String),
     /// Filesystem I/O error for a path.
     #[error("I/O error at {path}: {source}")]
     Io {

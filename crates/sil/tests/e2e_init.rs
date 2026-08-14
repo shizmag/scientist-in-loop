@@ -117,6 +117,10 @@ fn init_gitignore_ignores_large_artifacts_keeps_sources_and_readmes() {
         "db should be ignored:\n{gitignore}"
     );
     assert!(
+        gitignore.contains(".sil/jobs.json"),
+        "persisted jobs should be ignored:\n{gitignore}"
+    );
+    assert!(
         gitignore.contains("figures/images/**") && gitignore.contains("figures/plots/**"),
         "figure binaries should be ignored:\n{gitignore}"
     );
@@ -274,6 +278,7 @@ fn init_update_refreshes_templates_preserves_user_files() {
     gi.push_str("\n# my local rule\n*.secret\n");
     // Simulate outdated managed block content
     gi = gi.replace(".sil/db.sqlite", ".sil/db.sqlite\n# old-marker-line");
+    gi = gi.replace(".sil/jobs.json\n", "");
     fs::write(project.join(".gitignore"), &gi).unwrap();
     // Remove a scaffold file to verify recreation
     fs::remove_file(project.join("agent/README.md")).unwrap();
@@ -316,6 +321,7 @@ fn init_update_refreshes_templates_preserves_user_files() {
         "custom rules must survive update:\n{gi}"
     );
     assert!(gi.contains(".sil/db.sqlite"));
+    assert!(gi.contains(".sil/jobs.json"));
     assert!(gi.contains("# >>> sil-managed"));
 
     // Second update is idempotent enough to succeed
@@ -391,4 +397,48 @@ fn init_in_cwd_when_name_omitted() {
     sil().current_dir(dir.path()).arg("init").assert().success();
     assert!(dir.path().join(".sil/config.yaml").exists());
     assert!(dir.path().join("sources").is_dir());
+}
+
+#[test]
+fn init_demo_creates_and_parses_offline_fixture() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("demo-paper");
+
+    sil()
+        .args(["init", "--demo", project.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("offline demo fixture"));
+
+    assert_file_contains(&project.join("sources/demo-attention.md"), "Demo Attention");
+    assert_file_contains(&project.join("paper_draft.tex"), "# -- X -- #");
+    assert_file_contains(&project.join("paper_draft.tex"), "\\cite{demo2024}");
+    assert_file_contains(&project.join("references.bib"), "@article{demo2024");
+
+    sil()
+        .current_dir(&project)
+        .args(["source", "list", "--json"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("demo-attention.md"))
+        .stdout(predicates::str::contains("parsed"));
+}
+
+#[test]
+fn init_without_demo_keeps_empty_stubs() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("plain-paper");
+
+    sil()
+        .args(["init", project.to_str().unwrap()])
+        .assert()
+        .success();
+
+    assert!(!project.join("sources/demo-attention.md").exists());
+    assert_file_contains(&project.join("references.bib"), "entries managed by sil");
+    assert!(
+        !fs::read_to_string(project.join("references.bib"))
+            .unwrap()
+            .contains("demo2024")
+    );
 }

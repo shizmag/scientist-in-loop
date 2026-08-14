@@ -30,7 +30,7 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
     let ui = make_ui(cli.plain);
     match cli.command {
-        Commands::Init { name, update } => commands::init(name, update, ui.as_ref()),
+        Commands::Init { name, update, demo } => commands::init(name, update, demo, ui.as_ref()),
         Commands::Status { json } => commands::status(json, ui.as_ref()),
         Commands::Source { action } => match action {
             SourceCmd::Fetch { target, no_parse } => {

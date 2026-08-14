@@ -87,7 +87,11 @@ fn test_undo_via_command_palette() {
     app.load_project_references_bib();
 
     app.delete_selected_bib_entry();
-    assert!(std::fs::read_to_string(bib_path.as_std_path()).unwrap().is_empty());
+    assert!(
+        std::fs::read_to_string(bib_path.as_std_path())
+            .unwrap()
+            .is_empty()
+    );
 
     // Open palette
     app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::empty()));

@@ -18,4 +18,3 @@ pub use doctor::{DatabaseRepairReport, SourceRepairOutcome, repair_sqlite_databa
 pub use error::AppError;
 pub use fetch::{FetchSource, FetchSourceResult, ParseSummary, fetch_source};
 pub use init::{init_project, update_project};
-

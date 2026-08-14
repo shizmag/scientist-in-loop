@@ -38,7 +38,9 @@ fn test_empty_sources_shows_fetch_copy() {
     let rendered = render_app_to_string(&mut app);
     let norm = normalize_whitespace(&rendered);
     assert!(
-        norm.contains("No sources found. Drop a PDF/MD in sources/ or Fetch by DOI/URL [a: Add Source]"),
+        norm.contains(
+            "No sources found. Drop a PDF/MD in sources/ or Fetch by DOI/URL [a: Add Source]"
+        ),
         "Rendered output should contain empty sources fetch copy. Output:\n{rendered}"
     );
 }

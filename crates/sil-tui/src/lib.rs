@@ -10,7 +10,7 @@ pub(crate) mod ui;
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyModifiers},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -25,6 +25,7 @@ pub fn run_tui(project_root: Option<Utf8PathBuf>) -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
+    let _ = execute!(stdout, EnableMouseCapture);
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -50,6 +51,7 @@ pub fn run_tui(project_root: Option<Utf8PathBuf>) -> Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
+    let _ = execute!(terminal.backend_mut(), DisableMouseCapture);
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
@@ -72,14 +74,23 @@ where
         }
 
         if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-                    break;
+            match event::read()? {
+                Event::Key(key) => {
+                    if key.modifiers.contains(KeyModifiers::CONTROL)
+                        && key.code == KeyCode::Char('c')
+                    {
+                        break;
+                    }
+                    app.handle_key(key);
                 }
-                app.handle_key(key);
-                if app.should_quit {
-                    break;
+                Event::Mouse(mouse) => {
+                    let size = terminal.size()?;
+                    app.handle_mouse(mouse, size.width, size.height);
                 }
+                _ => {}
+            }
+            if app.should_quit {
+                break;
             }
         }
     }
@@ -113,6 +124,7 @@ fn open_external_editor<B: ratatui::backend::Backend>(
         .unwrap_or_else(|_| detect_available_editor());
 
     disable_raw_mode()?;
+    let _ = execute!(io::stdout(), DisableMouseCapture);
     execute!(io::stdout(), LeaveAlternateScreen)?;
 
     let status = std::process::Command::new(&editor)
@@ -121,6 +133,7 @@ fn open_external_editor<B: ratatui::backend::Backend>(
 
     enable_raw_mode()?;
     execute!(io::stdout(), EnterAlternateScreen)?;
+    let _ = execute!(io::stdout(), EnableMouseCapture);
 
     match status {
         Ok(code) if code.success() => {

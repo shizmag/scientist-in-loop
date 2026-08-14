@@ -21,6 +21,30 @@ fn test_filter_parse_commands() {
 }
 
 #[test]
+fn test_palette_searches_registry_titles_and_aliases() {
+    let mut app = App::new(None);
+
+    app.palette_filter = "cite source into draft section".to_string();
+    assert!(
+        app.filtered_commands()
+            .iter()
+            .any(|spec| spec.id == CommandId::CiteIntoSection)
+    );
+
+    app.palette_filter = "draft-note".to_string();
+    assert!(
+        app.filtered_commands()
+            .iter()
+            .any(|spec| spec.id == CommandId::CaptureNote)
+    );
+}
+
+#[test]
+fn test_active_tab_registry_stays_at_five_tabs() {
+    assert_eq!(ActiveTab::ALL.len(), 5);
+}
+
+#[test]
 fn test_esc_restores_previous_mode() {
     let mut app = App::new(None);
     app.input_mode = InputMode::Normal;
@@ -152,7 +176,10 @@ fn test_palette_enter_runs_command() {
     app.palette_selected_index = 0;
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()));
 
-    assert!(app.should_quit, "Enter on Quit command should set should_quit");
+    assert!(
+        app.should_quit,
+        "Enter on Quit command should set should_quit"
+    );
 }
 
 #[test]
@@ -170,12 +197,18 @@ fn test_command_id_as_str_and_display() {
     assert_eq!(CommandId::CiteSource.as_str(), "cite_source");
     assert_eq!(CommandId::CaptureNote.as_str(), "capture_note");
     assert_eq!(CommandId::RefreshDigest.as_str(), "refresh_digest");
-    assert_eq!(CommandId::OpenExternalEditor.as_str(), "open_external_editor");
+    assert_eq!(
+        CommandId::OpenExternalEditor.as_str(),
+        "open_external_editor"
+    );
     assert_eq!(CommandId::RepairDb.as_str(), "repair_db");
 
     assert_eq!(format!("{}", CommandId::SaveAll), "save_all");
     assert_eq!(format!("{}", CommandId::RefreshDigest), "refresh_digest");
-    assert_eq!(format!("{}", CommandId::OpenExternalEditor), "open_external_editor");
+    assert_eq!(
+        format!("{}", CommandId::OpenExternalEditor),
+        "open_external_editor"
+    );
     assert_eq!(format!("{}", CommandId::RepairDb), "repair_db");
 }
 
@@ -184,11 +217,20 @@ fn test_command_spec_availability() {
     let app_without_root = App::new(None);
 
     let all = all_commands();
-    let parse_cmd = all.iter().find(|c| c.id == CommandId::ParseSelected).unwrap();
+    let parse_cmd = all
+        .iter()
+        .find(|c| c.id == CommandId::ParseSelected)
+        .unwrap();
     let quit_cmd = all.iter().find(|c| c.id == CommandId::Quit).unwrap();
     let reload_cmd = all.iter().find(|c| c.id == CommandId::Reload).unwrap();
-    let refresh_digest_cmd = all.iter().find(|c| c.id == CommandId::RefreshDigest).unwrap();
-    let editor_cmd = all.iter().find(|c| c.id == CommandId::OpenExternalEditor).unwrap();
+    let refresh_digest_cmd = all
+        .iter()
+        .find(|c| c.id == CommandId::RefreshDigest)
+        .unwrap();
+    let editor_cmd = all
+        .iter()
+        .find(|c| c.id == CommandId::OpenExternalEditor)
+        .unwrap();
     let repair_cmd = all.iter().find(|c| c.id == CommandId::RepairDb).unwrap();
 
     assert!(quit_cmd.is_available(&app_without_root).is_ok());

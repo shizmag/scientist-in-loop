@@ -1,5 +1,5 @@
 use crate::app::source_badges::{
-    derive_source_badges, extract_draft_cite_keys, BibEntry, SourceBadges, SourceRecord,
+    BibEntry, SourceBadges, SourceRecord, derive_source_badges, extract_draft_cite_keys,
 };
 use camino::Utf8PathBuf;
 
@@ -67,7 +67,8 @@ fn test_parsed_in_bib_cited_in_draft() {
         is_incomplete: false,
     };
     let bib_entries = vec![bib_entry];
-    let draft_tex = "\\section{Related Work}\nAs shown in \\cite{vaswani2017}, self-attention is effective.";
+    let draft_tex =
+        "\\section{Related Work}\nAs shown in \\cite{vaswani2017}, self-attention is effective.";
 
     let badges = SourceBadges::derive(&source, &bib_entries, draft_tex);
     assert_eq!(

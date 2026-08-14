@@ -111,8 +111,7 @@ pub(crate) fn draw_sources(frame: &mut Frame, app: &App, area: Rect) {
                 Style::default()
             };
 
-            let badges =
-                SourceBadges::derive(src, &bib_entries, &app.paper_draft_content);
+            let badges = SourceBadges::derive(src, &bib_entries, &app.paper_draft_content);
 
             let status_span = if app.in_flight_parse_ids.contains(&src.id) {
                 Span::styled(

@@ -22,7 +22,7 @@ pub use idea_parser::{
     format_idea_block, parse_idea_blocks, strip_idea_blocks, update_idea_block_status,
     update_or_insert_idea_block,
 };
-pub use sections::{TexSection, split_tex_sections};
+pub use sections::{TexSection, insert_cite_in_section, split_tex_sections};
 pub use split_write::{
     WrittenSection, section_filename, slugify_title, write_draft_sections,
     write_draft_sections_from_file,
