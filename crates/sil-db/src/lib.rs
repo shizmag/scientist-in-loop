@@ -1499,7 +1499,7 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
             normalized_venue: Some("neurips".into()),
             resolution_status: "ambiguous".into(),
             evidence_json: Some(r#"{"candidates":["conf.nips"]}"#.into()),
-            catalogue_version: Some("2026.08.15-seed".into()),
+            catalogue_version: Some("2026.08.15".into()),
             normalizer_version: Some(1),
         })
         .unwrap();

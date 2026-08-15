@@ -1,0 +1,507 @@
+schema_version: 1
+catalogue_version: 2026.08.15-ml-ai-segment
+normalizer_version: 1
+venues:
+  - id: conf.icml
+    canonical_name: International Conference on Machine Learning
+    short_name: ICML
+    kind: conference_series
+    aliases:
+      - {value: International Conference on Machine Learning, kind: official, provenance: &p1 {url: 'https://icml.cc/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICML, kind: common_abbreviation, context: [conference, machine learning], provenance: *p1}
+      - {value: ICML Conference, kind: common_abbreviation, context: [conference, machine learning], provenance: *p1}
+      - {value: Proceedings of the International Conference on Machine Learning, kind: proceedings_title, provenance: *p1}
+      - {value: International Conference on Machine Learning (ICML), kind: official, provenance: *p1}
+    external_ids: [{namespace: dblp_stream, value: conf/icml}]
+  - id: conf.iclr
+    canonical_name: International Conference on Learning Representations
+    short_name: ICLR
+    kind: conference_series
+    aliases:
+      - {value: International Conference on Learning Representations, kind: official, provenance: &p2 {url: 'https://iclr.cc/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICLR, kind: common_abbreviation, context: [conference, machine learning], provenance: *p2}
+      - {value: ICLR Conference, kind: common_abbreviation, context: [conference, machine learning], provenance: *p2}
+      - {value: Proceedings of the International Conference on Learning Representations, kind: proceedings_title, provenance: *p2}
+      - {value: International Conference on Learning Representations (ICLR), kind: official, provenance: *p2}
+  - id: conf.aaai
+    canonical_name: AAAI Conference on Artificial Intelligence
+    short_name: AAAI
+    kind: conference_series
+    aliases:
+      - {value: AAAI Conference on Artificial Intelligence, kind: official, provenance: &p3 {url: 'https://aaai.org/conference/aaai/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AAAI, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p3}
+      - {value: AAAI Conference, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p3}
+      - {value: Proceedings of the AAAI Conference on Artificial Intelligence, kind: proceedings_title, provenance: *p3}
+      - {value: AAAI-Conference, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p3}
+  - id: conf.ijcai
+    canonical_name: International Joint Conference on Artificial Intelligence
+    short_name: IJCAI
+    kind: conference_series
+    aliases:
+      - {value: International Joint Conference on Artificial Intelligence, kind: official, provenance: &p4 {url: 'https://www.ijcai.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IJCAI, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p4}
+      - {value: IJCAI Conference, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p4}
+      - {value: Proceedings of the International Joint Conference on Artificial Intelligence, kind: proceedings_title, provenance: *p4}
+      - {value: International Joint Conference on AI, kind: common_abbreviation, context: [conference, artificial intelligence], provenance: *p4}
+  - id: conf.uai
+    canonical_name: Conference on Uncertainty in Artificial Intelligence
+    short_name: UAI
+    kind: conference_series
+    aliases:
+      - {value: Conference on Uncertainty in Artificial Intelligence, kind: official, provenance: &p5 {url: 'https://www.auai.org/uai2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: UAI, kind: common_abbreviation, context: [conference, uncertainty, artificial intelligence], provenance: *p5}
+      - {value: UAI Conference, kind: common_abbreviation, context: [conference, uncertainty, artificial intelligence], provenance: *p5}
+      - {value: Proceedings of the Conference on Uncertainty in Artificial Intelligence, kind: proceedings_title, provenance: *p5}
+      - {value: Uncertainty in Artificial Intelligence, kind: common_abbreviation, context: [conference, uncertainty, artificial intelligence], provenance: *p5}
+  - id: conf.aistats
+    canonical_name: International Conference on Artificial Intelligence and Statistics
+    short_name: AISTATS
+    kind: conference_series
+    aliases:
+      - {value: International Conference on Artificial Intelligence and Statistics, kind: official, provenance: &p6 {url: 'https://aistats.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AISTATS, kind: common_abbreviation, context: [conference, artificial intelligence, statistics], provenance: *p6}
+      - {value: AI and Statistics Conference, kind: common_abbreviation, context: [conference, artificial intelligence, statistics], provenance: *p6}
+      - {value: Proceedings of the International Conference on Artificial Intelligence and Statistics, kind: proceedings_title, provenance: *p6}
+      - {value: Artificial Intelligence and Statistics, kind: common_abbreviation, context: [conference, artificial intelligence, statistics], provenance: *p6}
+  - id: conf.colt
+    canonical_name: Conference on Learning Theory
+    short_name: COLT
+    kind: conference_series
+    aliases:
+      - {value: Conference on Learning Theory, kind: official, provenance: &p7 {url: 'https://learningtheory.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: COLT, kind: common_abbreviation, context: [conference, learning theory], provenance: *p7}
+      - {value: COLT Conference, kind: common_abbreviation, context: [conference, learning theory], provenance: *p7}
+      - {value: Proceedings of the Conference on Learning Theory, kind: proceedings_title, provenance: *p7}
+      - {value: Learning Theory Conference, kind: common_abbreviation, context: [conference, learning theory], provenance: *p7}
+  - id: conf.kdd
+    canonical_name: ACM SIGKDD Conference on Knowledge Discovery and Data Mining
+    short_name: KDD
+    kind: conference_series
+    aliases:
+      - {value: ACM SIGKDD Conference on Knowledge Discovery and Data Mining, kind: official, provenance: &p8 {url: 'https://www.kdd.org/conference', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: KDD, kind: common_abbreviation, context: [conference, data mining], provenance: *p8}
+      - {value: SIGKDD Conference, kind: common_abbreviation, context: [conference, data mining], provenance: *p8}
+      - {value: Knowledge Discovery and Data Mining Conference, kind: common_abbreviation, context: [conference, data mining], provenance: *p8}
+      - {value: Proceedings of the ACM SIGKDD Conference, kind: proceedings_title, provenance: *p8}
+  - id: conf.icdm
+    canonical_name: IEEE International Conference on Data Mining
+    short_name: ICDM
+    kind: conference_series
+    aliases:
+      - {value: IEEE International Conference on Data Mining, kind: official, provenance: &p9 {url: 'https://www.cloud-conf.net/icdm2025/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICDM, kind: common_abbreviation, context: [conference, data mining], provenance: *p9}
+      - {value: IEEE ICDM, kind: common_abbreviation, context: [conference, data mining], provenance: *p9}
+      - {value: International Conference on Data Mining, kind: common_abbreviation, context: [conference, data mining], provenance: *p9}
+      - {value: Proceedings of the IEEE International Conference on Data Mining, kind: proceedings_title, provenance: *p9}
+  - id: conf.sdmining
+    canonical_name: SIAM International Conference on Data Mining
+    short_name: SDM
+    kind: conference_series
+    aliases:
+      - {value: SIAM International Conference on Data Mining, kind: official, provenance: &p10 {url: 'https://www.siam.org/conferences-events/siam-conferences/sdm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SDM, kind: common_abbreviation, context: [conference, data mining], provenance: *p10}
+      - {value: SIAM SDM, kind: common_abbreviation, context: [conference, data mining], provenance: *p10}
+      - {value: SIAM Data Mining Conference, kind: common_abbreviation, context: [conference, data mining], provenance: *p10}
+      - {value: Proceedings of the SIAM International Conference on Data Mining, kind: proceedings_title, provenance: *p10}
+  - id: conf.pkdd
+    canonical_name: European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases
+    short_name: ECML PKDD
+    kind: conference_series
+    aliases:
+      - {value: European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases, kind: official, provenance: &p11 {url: 'https://ecmlpkdd.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ECML PKDD, kind: common_abbreviation, context: [conference, machine learning, data mining], provenance: *p11}
+      - {value: ECML-PKDD, kind: common_abbreviation, context: [conference, machine learning, data mining], provenance: *p11}
+      - {value: ECMLPKDD, kind: common_abbreviation, context: [conference, machine learning, data mining], provenance: *p11}
+      - {value: European Conference on Machine Learning and Knowledge Discovery in Databases, kind: common_abbreviation, context: [conference, machine learning, data mining], provenance: *p11}
+  - id: conf.wsdm
+    canonical_name: ACM International Conference on Web Search and Data Mining
+    short_name: WSDM
+    kind: conference_series
+    aliases:
+      - {value: ACM International Conference on Web Search and Data Mining, kind: official, provenance: &p12 {url: 'https://www.wsdm-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: WSDM, kind: common_abbreviation, context: [conference, web search, data mining], provenance: *p12}
+      - {value: ACM WSDM, kind: common_abbreviation, context: [conference, web search, data mining], provenance: *p12}
+      - {value: Web Search and Data Mining Conference, kind: common_abbreviation, context: [conference, web search, data mining], provenance: *p12}
+      - {value: Proceedings of the ACM International Conference on Web Search and Data Mining, kind: proceedings_title, provenance: *p12}
+  - id: conf.sigir
+    canonical_name: ACM SIGIR International Conference on the Theory of Information Retrieval
+    short_name: SIGIR
+    kind: conference_series
+    aliases:
+      - {value: ACM SIGIR International Conference on the Theory of Information Retrieval, kind: official, provenance: &p13 {url: 'https://sigir.org/sigir2025/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGIR, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p13}
+      - {value: ACM SIGIR, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p13}
+      - {value: International Conference on the Theory of Information Retrieval, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p13}
+      - {value: Proceedings of SIGIR, kind: proceedings_title, context: [conference, information retrieval], provenance: *p13}
+  - id: conf.cikm
+    canonical_name: ACM International Conference on Information and Knowledge Management
+    short_name: CIKM
+    kind: conference_series
+    aliases:
+      - {value: ACM International Conference on Information and Knowledge Management, kind: official, provenance: &p14 {url: 'https://www.cikmconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CIKM, kind: common_abbreviation, context: [conference, information retrieval, knowledge management], provenance: *p14}
+      - {value: ACM CIKM, kind: common_abbreviation, context: [conference, information retrieval, knowledge management], provenance: *p14}
+      - {value: Information and Knowledge Management Conference, kind: common_abbreviation, context: [conference, information retrieval, knowledge management], provenance: *p14}
+      - {value: Proceedings of the ACM International Conference on Information and Knowledge Management, kind: proceedings_title, provenance: *p14}
+  - id: conf.www
+    canonical_name: The Web Conference
+    short_name: The Web Conference
+    kind: conference_series
+    aliases:
+      - {value: The Web Conference, kind: official, provenance: &p15 {url: 'https://www2025.thewebconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: WWW, kind: historical_acronym, context: [conference, web], provenance: *p15}
+      - {value: International World Wide Web Conference, kind: historical_acronym, provenance: *p15}
+      - {value: World Wide Web Conference, kind: historical_acronym, provenance: *p15}
+      - {value: ACM Web Conference, kind: common_abbreviation, context: [conference, web], provenance: *p15}
+  - id: conf.ecir
+    canonical_name: European Conference on Information Retrieval
+    short_name: ECIR
+    kind: conference_series
+    aliases:
+      - {value: European Conference on Information Retrieval, kind: official, provenance: &p16 {url: 'https://ecir2025.eu/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ECIR, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p16}
+      - {value: ECIR Conference, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p16}
+      - {value: European Information Retrieval Conference, kind: common_abbreviation, context: [conference, information retrieval], provenance: *p16}
+      - {value: Advances in Information Retrieval, kind: proceedings_title, provenance: *p16}
+  - id: conf.emnlp
+    canonical_name: Conference on Empirical Methods in Natural Language Processing
+    short_name: EMNLP
+    kind: conference_series
+    aliases:
+      - {value: Conference on Empirical Methods in Natural Language Processing, kind: official, provenance: &p17 {url: 'https://2025.emnlp.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EMNLP, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p17}
+      - {value: Empirical Methods in Natural Language Processing, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p17}
+      - {value: EMNLP Conference, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p17}
+      - {value: Proceedings of the Conference on Empirical Methods in Natural Language Processing, kind: proceedings_title, provenance: *p17}
+  - id: conf.coling
+    canonical_name: International Conference on Computational Linguistics
+    short_name: COLING
+    kind: conference_series
+    aliases:
+      - {value: International Conference on Computational Linguistics, kind: official, provenance: &p18 {url: 'https://coling2025.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: COLING, kind: common_abbreviation, context: [conference, computational linguistics], provenance: *p18}
+      - {value: COLING Conference, kind: common_abbreviation, context: [conference, computational linguistics], provenance: *p18}
+      - {value: International Conference on Computational Linguistics (COLING), kind: official, provenance: *p18}
+      - {value: Proceedings of the International Conference on Computational Linguistics, kind: proceedings_title, provenance: *p18}
+  - id: conf.eacl
+    canonical_name: Conference of the European Chapter of the Association for Computational Linguistics
+    short_name: EACL
+    kind: conference_series
+    aliases:
+      - {value: Conference of the European Chapter of the Association for Computational Linguistics, kind: official, provenance: &p19 {url: 'https://2026.eacl.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: *p19}
+      - {value: European Chapter ACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: *p19}
+      - {value: European Chapter of the Association for Computational Linguistics, kind: common_abbreviation, provenance: *p19}
+      - {value: Proceedings of the European Chapter of the Association for Computational Linguistics, kind: proceedings_title, provenance: *p19}
+  - id: conf.ijcnlp
+    canonical_name: International Joint Conference on Natural Language Processing
+    short_name: IJCNLP
+    kind: conference_series
+    aliases:
+      - {value: International Joint Conference on Natural Language Processing, kind: official, provenance: &p20 {url: 'https://www.afnlp.org/conferences/ijcnlp2025/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IJCNLP, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p20}
+      - {value: IJCNLP Conference, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p20}
+      - {value: Joint Conference on Natural Language Processing, kind: common_abbreviation, context: [conference, natural language processing], provenance: *p20}
+      - {value: Proceedings of the International Joint Conference on Natural Language Processing, kind: proceedings_title, provenance: *p20}
+  - id: conf.cvpr
+    canonical_name: IEEE/CVF Conference on Computer Vision and Pattern Recognition
+    short_name: CVPR
+    kind: conference_series
+    aliases:
+      - {value: IEEE/CVF Conference on Computer Vision and Pattern Recognition, kind: official, provenance: &p21 {url: 'https://cvpr.thecvf.com/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CVPR, kind: common_abbreviation, context: [conference, computer vision], provenance: *p21}
+      - {value: IEEE CVPR, kind: common_abbreviation, context: [conference, computer vision], provenance: *p21}
+      - {value: Computer Vision and Pattern Recognition Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p21}
+      - {value: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, kind: proceedings_title, provenance: *p21}
+  - id: conf.iccv
+    canonical_name: IEEE/CVF International Conference on Computer Vision
+    short_name: ICCV
+    kind: conference_series
+    aliases:
+      - {value: IEEE/CVF International Conference on Computer Vision, kind: official, provenance: &p22 {url: 'https://iccv.thecvf.com/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICCV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p22}
+      - {value: IEEE ICCV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p22}
+      - {value: International Conference on Computer Vision, kind: common_abbreviation, context: [conference, computer vision], provenance: *p22}
+      - {value: Proceedings of the IEEE/CVF International Conference on Computer Vision, kind: proceedings_title, provenance: *p22}
+  - id: conf.eccv
+    canonical_name: European Conference on Computer Vision
+    short_name: ECCV
+    kind: conference_series
+    aliases:
+      - {value: European Conference on Computer Vision, kind: official, provenance: &p23 {url: 'https://eccv.ecva.net/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ECCV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p23}
+      - {value: European Computer Vision Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p23}
+      - {value: ECCV Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p23}
+      - {value: Proceedings of the European Conference on Computer Vision, kind: proceedings_title, provenance: *p23}
+  - id: conf.wacv
+    canonical_name: IEEE/CVF Winter Conference on Applications of Computer Vision
+    short_name: WACV
+    kind: conference_series
+    aliases:
+      - {value: IEEE/CVF Winter Conference on Applications of Computer Vision, kind: official, provenance: &p24 {url: 'https://wacv.thecvf.com/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: WACV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p24}
+      - {value: Winter Conference on Applications of Computer Vision, kind: common_abbreviation, context: [conference, computer vision], provenance: *p24}
+      - {value: IEEE WACV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p24}
+      - {value: Proceedings of the Winter Conference on Applications of Computer Vision, kind: proceedings_title, provenance: *p24}
+  - id: conf.bmvc
+    canonical_name: British Machine Vision Conference
+    short_name: BMVC
+    kind: conference_series
+    aliases:
+      - {value: British Machine Vision Conference, kind: official, provenance: &p25 {url: 'https://www.bmvc2025.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: BMVC, kind: common_abbreviation, context: [conference, computer vision], provenance: *p25}
+      - {value: British Vision Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p25}
+      - {value: BMVC Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p25}
+      - {value: Proceedings of the British Machine Vision Conference, kind: proceedings_title, provenance: *p25}
+  - id: conf.3dv
+    canonical_name: International Conference on 3D Vision
+    short_name: 3DV
+    kind: conference_series
+    aliases:
+      - {value: International Conference on 3D Vision, kind: official, provenance: &p26 {url: 'https://3dvconf.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: 3DV, kind: common_abbreviation, context: [conference, computer vision, three-dimensional vision], provenance: *p26}
+      - {value: 3D Vision Conference, kind: common_abbreviation, context: [conference, computer vision], provenance: *p26}
+      - {value: IEEE 3DV, kind: common_abbreviation, context: [conference, computer vision], provenance: *p26}
+      - {value: Proceedings of the International Conference on 3D Vision, kind: proceedings_title, provenance: *p26}
+  - id: conf.icpr
+    canonical_name: International Conference on Pattern Recognition
+    short_name: ICPR
+    kind: conference_series
+    aliases:
+      - {value: International Conference on Pattern Recognition, kind: official, provenance: &p27 {url: 'https://www.icpr2024.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICPR, kind: common_abbreviation, context: [conference, pattern recognition], provenance: *p27}
+      - {value: International Pattern Recognition Conference, kind: common_abbreviation, context: [conference, pattern recognition], provenance: *p27}
+      - {value: ICPR Conference, kind: common_abbreviation, context: [conference, pattern recognition], provenance: *p27}
+      - {value: Proceedings of the International Conference on Pattern Recognition, kind: proceedings_title, provenance: *p27}
+  - id: conf.icra
+    canonical_name: IEEE International Conference on Robotics and Automation
+    short_name: ICRA
+    kind: conference_series
+    aliases:
+      - {value: IEEE International Conference on Robotics and Automation, kind: official, provenance: &p28 {url: 'https://www.ieee-ras.org/conferences-workshops/fully-sponsored/icra', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICRA, kind: common_abbreviation, context: [conference, robotics, automation], provenance: *p28}
+      - {value: IEEE ICRA, kind: common_abbreviation, context: [conference, robotics, automation], provenance: *p28}
+      - {value: Robotics and Automation Conference, kind: common_abbreviation, context: [conference, robotics, automation], provenance: *p28}
+      - {value: Proceedings of the IEEE International Conference on Robotics and Automation, kind: proceedings_title, provenance: *p28}
+  - id: conf.iros
+    canonical_name: IEEE/RSJ International Conference on Intelligent Robots and Systems
+    short_name: IROS
+    kind: conference_series
+    aliases:
+      - {value: IEEE/RSJ International Conference on Intelligent Robots and Systems, kind: official, provenance: &p29 {url: 'https://www.ieee-ras.org/conferences-workshops/fully-sponsored/iros', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IROS, kind: common_abbreviation, context: [conference, robotics, intelligent systems], provenance: *p29}
+      - {value: IEEE IROS, kind: common_abbreviation, context: [conference, robotics, intelligent systems], provenance: *p29}
+      - {value: Intelligent Robots and Systems Conference, kind: common_abbreviation, context: [conference, robotics, intelligent systems], provenance: *p29}
+      - {value: Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems, kind: proceedings_title, provenance: *p29}
+  - id: conf.rss
+    canonical_name: 'Robotics: Science and Systems'
+    short_name: RSS
+    kind: conference_series
+    aliases:
+      - {value: 'Robotics: Science and Systems', kind: official, provenance: &p30 {url: 'https://roboticsconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: RSS, kind: common_abbreviation, context: [conference, robotics], provenance: *p30}
+      - {value: Robotics Science and Systems Conference, kind: common_abbreviation, context: [conference, robotics], provenance: *p30}
+      - {value: 'Robotics: Science and Systems Conference', kind: official, provenance: *p30}
+      - {value: 'Proceedings of Robotics: Science and Systems', kind: proceedings_title, provenance: *p30}
+  - id: conf.corl
+    canonical_name: Conference on Robot Learning
+    short_name: CoRL
+    kind: conference_series
+    aliases:
+      - {value: Conference on Robot Learning, kind: official, provenance: &p31 {url: 'https://www.robot-learning.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CoRL, kind: common_abbreviation, context: [conference, robotics, robot learning], provenance: *p31}
+      - {value: CORL, kind: common_abbreviation, context: [conference, robotics, robot learning], provenance: *p31}
+      - {value: Robot Learning Conference, kind: common_abbreviation, context: [conference, robotics, robot learning], provenance: *p31}
+      - {value: Proceedings of the Conference on Robot Learning, kind: proceedings_title, provenance: *p31}
+  - id: conf.hri
+    canonical_name: ACM/IEEE International Conference on Human-Robot Interaction
+    short_name: HRI
+    kind: conference_series
+    aliases:
+      - {value: ACM/IEEE International Conference on Human-Robot Interaction, kind: official, provenance: &p32 {url: 'https://humanrobotinteraction.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: HRI, kind: common_abbreviation, context: [conference, human robot interaction], provenance: *p32}
+      - {value: Human-Robot Interaction Conference, kind: common_abbreviation, context: [conference, human robot interaction], provenance: *p32}
+      - {value: ACM IEEE HRI, kind: common_abbreviation, context: [conference, human robot interaction], provenance: *p32}
+      - {value: Proceedings of the ACM/IEEE International Conference on Human-Robot Interaction, kind: proceedings_title, provenance: *p32}
+  - id: conf.ml-sys
+    canonical_name: Conference on Machine Learning and Systems
+    short_name: MLsys
+    kind: conference_series
+    aliases:
+      - {value: Conference on Machine Learning and Systems, kind: official, provenance: &p33 {url: 'https://mlsys.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: MLsys, kind: common_abbreviation, context: [conference, machine learning systems], provenance: *p33}
+      - {value: MLSys, kind: common_abbreviation, context: [conference, machine learning systems], provenance: *p33}
+      - {value: Machine Learning and Systems Conference, kind: common_abbreviation, context: [conference, machine learning systems], provenance: *p33}
+      - {value: Proceedings of the Conference on Machine Learning and Systems, kind: proceedings_title, provenance: *p33}
+  - id: conf.recsys
+    canonical_name: ACM Conference on Recommender Systems
+    short_name: RecSys
+    kind: conference_series
+    aliases:
+      - {value: ACM Conference on Recommender Systems, kind: official, provenance: &p34 {url: 'https://recsys.acm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: RecSys, kind: common_abbreviation, context: [conference, recommender systems], provenance: *p34}
+      - {value: RECSYS, kind: common_abbreviation, context: [conference, recommender systems], provenance: *p34}
+      - {value: Recommender Systems Conference, kind: common_abbreviation, context: [conference, recommender systems], provenance: *p34}
+      - {value: Proceedings of the ACM Conference on Recommender Systems, kind: proceedings_title, provenance: *p34}
+  - id: journal.jmlr
+    canonical_name: Journal of Machine Learning Research
+    short_name: JMLR
+    kind: journal
+    aliases:
+      - {value: Journal of Machine Learning Research, kind: official, provenance: &p35 {url: 'https://www.jmlr.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JMLR, kind: common_abbreviation, context: [journal, machine learning], provenance: *p35}
+      - {value: Journal of ML Research, kind: common_abbreviation, context: [journal, machine learning], provenance: *p35}
+      - {value: J. Mach. Learn. Res., kind: common_abbreviation, provenance: *p35}
+      - {value: The Journal of Machine Learning Research, kind: official, provenance: *p35}
+    external_ids: [{namespace: issn, value: '1532-4435'}]
+  - id: journal.ml
+    canonical_name: Machine Learning
+    short_name: Machine Learning
+    kind: journal
+    aliases:
+      - {value: Machine Learning, kind: official, provenance: &p36 {url: 'https://link.springer.com/journal/10994', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning Journal, kind: common_abbreviation, context: [journal, machine learning], provenance: *p36}
+      - {value: Mach Learn, kind: common_abbreviation, context: [journal, machine learning], provenance: *p36}
+      - {value: Machine Learning (journal), kind: official, provenance: *p36}
+      - {value: Springer Machine Learning, kind: common_abbreviation, context: [journal, machine learning], provenance: *p36}
+    external_ids: [{namespace: issn, value: '0885-6125'}]
+  - id: journal.tmlr
+    canonical_name: Transactions on Machine Learning Research
+    short_name: TMLR
+    kind: journal
+    aliases:
+      - {value: Transactions on Machine Learning Research, kind: official, provenance: &p37 {url: 'https://jmlr.org/tmlr/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TMLR, kind: common_abbreviation, context: [journal, machine learning], provenance: *p37}
+      - {value: Transactions on ML Research, kind: common_abbreviation, context: [journal, machine learning], provenance: *p37}
+      - {value: TML Research, kind: common_abbreviation, context: [journal, machine learning], provenance: *p37}
+      - {value: Machine Learning Research Transactions, kind: common_abbreviation, context: [journal, machine learning], provenance: *p37}
+  - id: journal.tpami
+    canonical_name: IEEE Transactions on Pattern Analysis and Machine Intelligence
+    short_name: TPAMI
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Pattern Analysis and Machine Intelligence, kind: official, provenance: &p38 {url: 'https://www.computer.org/csdl/journal/tp', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TPAMI, kind: common_abbreviation, context: [journal, computer vision, pattern recognition], provenance: *p38}
+      - {value: IEEE TPAMI, kind: common_abbreviation, context: [journal, computer vision, pattern recognition], provenance: *p38}
+      - {value: IEEE Transactions on PAMI, kind: common_abbreviation, context: [journal, computer vision, pattern recognition], provenance: *p38}
+      - {value: Transactions on Pattern Analysis and Machine Intelligence, kind: common_abbreviation, context: [journal, computer vision], provenance: *p38}
+  - id: journal.ijcv
+    canonical_name: International Journal of Computer Vision
+    short_name: IJCV
+    kind: journal
+    aliases:
+      - {value: International Journal of Computer Vision, kind: official, provenance: &p39 {url: 'https://link.springer.com/journal/11263', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IJCV, kind: common_abbreviation, context: [journal, computer vision], provenance: *p39}
+      - {value: International Journal of Vision, kind: common_abbreviation, context: [journal, computer vision], provenance: *p39}
+      - {value: Int J Comput Vis, kind: common_abbreviation, context: [journal, computer vision], provenance: *p39}
+      - {value: Springer IJCV, kind: common_abbreviation, context: [journal, computer vision], provenance: *p39}
+  - id: journal.tip
+    canonical_name: IEEE Transactions on Image Processing
+    short_name: TIP
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Image Processing, kind: official, provenance: &p40 {url: 'https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=83', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TIP, kind: common_abbreviation, context: [journal, image processing], provenance: *p40}
+      - {value: IEEE TIP, kind: common_abbreviation, context: [journal, image processing], provenance: *p40}
+      - {value: Transactions on Image Processing, kind: common_abbreviation, context: [journal, image processing], provenance: *p40}
+      - {value: IEEE Transactions on Image Proc., kind: common_abbreviation, context: [journal, image processing], provenance: *p40}
+  - id: journal.tnnls
+    canonical_name: IEEE Transactions on Neural Networks and Learning Systems
+    short_name: TNNLS
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Neural Networks and Learning Systems, kind: official, provenance: &p41 {url: 'https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=5962385', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TNNLS, kind: common_abbreviation, context: [journal, neural networks, machine learning], provenance: *p41}
+      - {value: IEEE TNNLS, kind: common_abbreviation, context: [journal, neural networks, machine learning], provenance: *p41}
+      - {value: Transactions on Neural Networks and Learning Systems, kind: common_abbreviation, context: [journal, neural networks], provenance: *p41}
+      - {value: IEEE Transactions on Neural Networks, kind: historical_acronym, context: [journal, neural networks], provenance: *p41}
+  - id: journal.tacl
+    canonical_name: Transactions of the Association for Computational Linguistics
+    short_name: TACL
+    kind: journal
+    aliases:
+      - {value: Transactions of the Association for Computational Linguistics, kind: official, provenance: &p42 {url: 'https://direct.mit.edu/tacl', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TACL, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p42}
+      - {value: Transactions of ACL, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p42}
+      - {value: TACL Journal, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p42}
+      - {value: MIT TACL, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p42}
+  - id: journal.cl
+    canonical_name: Computational Linguistics
+    short_name: Computational Linguistics
+    kind: journal
+    aliases:
+      - {value: Computational Linguistics, kind: official, provenance: &p43 {url: 'https://direct.mit.edu/coli', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computational Linguistics Journal, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p43}
+      - {value: Comput Linguist, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p43}
+      - {value: CL Journal, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p43}
+      - {value: MIT Computational Linguistics, kind: common_abbreviation, context: [journal, computational linguistics], provenance: *p43}
+  - id: journal.aij
+    canonical_name: Artificial Intelligence
+    short_name: Artificial Intelligence
+    kind: journal
+    aliases:
+      - {value: Artificial Intelligence, kind: official, provenance: &p44 {url: 'https://www.sciencedirect.com/journal/artificial-intelligence', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Artificial Intelligence Journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p44}
+      - {value: AI Journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p44}
+      - {value: Artif Intell, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p44}
+      - {value: Elsevier Artificial Intelligence, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p44}
+  - id: journal.jair
+    canonical_name: Journal of Artificial Intelligence Research
+    short_name: JAIR
+    kind: journal
+    aliases:
+      - {value: Journal of Artificial Intelligence Research, kind: official, provenance: &p45 {url: 'https://www.jair.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JAIR, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p45}
+      - {value: Journal of AI Research, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p45}
+      - {value: J. Artif. Intell. Res., kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p45}
+      - {value: JAIR Journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: *p45}
+  - id: journal.tkde
+    canonical_name: IEEE Transactions on Knowledge and Data Engineering
+    short_name: TKDE
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Knowledge and Data Engineering, kind: official, provenance: &p46 {url: 'https://www.computer.org/csdl/journal/tk', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TKDE, kind: common_abbreviation, context: [journal, data engineering, data mining], provenance: *p46}
+      - {value: IEEE TKDE, kind: common_abbreviation, context: [journal, data engineering, data mining], provenance: *p46}
+      - {value: Transactions on Knowledge and Data Engineering, kind: common_abbreviation, context: [journal, data engineering], provenance: *p46}
+      - {value: IEEE Transactions on Knowledge and Data Eng., kind: common_abbreviation, context: [journal, data engineering], provenance: *p46}
+  - id: journal.dm-kd
+    canonical_name: Data Mining and Knowledge Discovery
+    short_name: Data Mining and Knowledge Discovery
+    kind: journal
+    aliases:
+      - {value: Data Mining and Knowledge Discovery, kind: official, provenance: &p47 {url: 'https://link.springer.com/journal/10618', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Data Mining and Knowledge Discovery Journal, kind: common_abbreviation, context: [journal, data mining], provenance: *p47}
+      - {value: DMKD, kind: common_abbreviation, context: [journal, data mining], provenance: *p47}
+      - {value: Data Min Knowl Disc, kind: common_abbreviation, context: [journal, data mining], provenance: *p47}
+      - {value: Springer Data Mining and Knowledge Discovery, kind: common_abbreviation, context: [journal, data mining], provenance: *p47}
+  - id: journal.pr
+    canonical_name: Pattern Recognition
+    short_name: Pattern Recognition
+    kind: journal
+    aliases:
+      - {value: Pattern Recognition, kind: official, provenance: &p48 {url: 'https://www.sciencedirect.com/journal/pattern-recognition', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Pattern Recognition Journal, kind: common_abbreviation, context: [journal, pattern recognition], provenance: *p48}
+      - {value: Pattern Recognit, kind: common_abbreviation, context: [journal, pattern recognition], provenance: *p48}
+      - {value: Elsevier Pattern Recognition, kind: common_abbreviation, context: [journal, pattern recognition], provenance: *p48}
+      - {value: PR Journal, kind: common_abbreviation, context: [journal, pattern recognition], provenance: *p48}
+  - id: journal.ipm
+    canonical_name: Information Processing and Management
+    short_name: IPM
+    kind: journal
+    aliases:
+      - {value: Information Processing and Management, kind: official, provenance: &p49 {url: 'https://www.sciencedirect.com/journal/information-processing-and-management', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IPM, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p49}
+      - {value: Information Processing & Management, kind: official, provenance: *p49}
+      - {value: Inf Process Manag, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p49}
+      - {value: Information Processing and Management Journal, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p49}
+  - id: journal.tois
+    canonical_name: ACM Transactions on Information Systems
+    short_name: TOIS
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Information Systems, kind: official, provenance: &p50 {url: 'https://dl.acm.org/journal/tois', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TOIS, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p50}
+      - {value: ACM TOIS, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p50}
+      - {value: Transactions on Information Systems, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p50}
+      - {value: ACM Transactions on Info Systems, kind: common_abbreviation, context: [journal, information retrieval], provenance: *p50}

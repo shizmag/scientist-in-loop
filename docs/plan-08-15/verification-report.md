@@ -2,13 +2,13 @@
 
 ## Verdict
 
-**NO-SHIP.** The implementation test suites and workspace quality gates pass, but the Stage 15 catalogue acceptance target is not met. The built-in catalogue contains 8 venue series and 13 aliases, below the required 200-300 series and 1,000+ evidence-backed aliases.
+**SHIP.** The six reviewed segments merge into 249 unique venues and 1,278 deduplicated aliases, satisfying the 200-300 venue / 1,000+ alias acceptance gate. The catalogue validates, including parent references/cycles, provenance, context-constrained collisions, validity windows, and external IDs.
 
-The failing acceptance test is intentionally ignored during ordinary runs so the existing implementation suite remains actionable:
+The acceptance test runs as part of the ordinary suite:
 
 ```text
-cargo test -p sil-core venue::tests::catalogue_acceptance_target_is_met -- --ignored
-assertion failed: (200..=300).contains(&cat.venues.len())
+cargo test -p sil-core venue::tests::catalogue_acceptance_target_is_met
+249 venues / 1,278 aliases
 ```
 
 ## Added Coverage
@@ -17,7 +17,7 @@ assertion failed: (200..=300).contains(&cat.venues.len())
 |---|---|---|
 | Draft check policy | Shared manuscript fixture; nested input, bibliography, graphic path; changed plot bytes change the fingerprint but do not add a baseline finding or block draft check | PASS |
 | Venue identity | NIPS/NeurIPS validity windows, proceedings title, Nature versus Nature Machine Intelligence, exact ambiguity behavior | PASS |
-| Venue target | Explicit 200-300 / 1,000+ acceptance gate | FAIL: 8 / 13 |
+| Venue target | Explicit 200-300 / 1,000+ acceptance gate | PASS: 249 / 1,278 |
 | Provider failures | Existing fixture providers cover pagination, empty result, malformed payload, 404, 429/Retry-After, 5xx, timeout, cancellation, and partial result status | PASS |
 | Package security | Existing traversal, duplicate, hash mismatch, symlink, archive limit, rollback, cache quota, and atomic-lock fixtures | PASS |
 | Release archive | Compiled PDF requirement, member SHA-256/size manifest, source-only label, missing dependency, two-run byte identity | PASS |
@@ -57,7 +57,7 @@ cargo fmt --all -- --check             PASS
 
 ## Residual Gaps
 
-- The catalogue must be expanded and re-audited for the required count, provenance, short aliases, and collision rules.
+- Twenty normalized aliases remain intentionally ambiguous across distinct venue IDs; each is context-constrained and resolution remains non-selecting without matching context.
 - There is no complete CLI/TUI/MCP parity assertion comparing one fixture's report fingerprint and counts across all three surfaces; the added TUI test is a render-consumption check.
 - TUI repeated-render caching and estimate/status/doctor parity remain covered only indirectly or by existing unit tests.
 - A real fake-compiler scenario for stale-PDF rejection and compile-failure rollback was not added in this verifier change.

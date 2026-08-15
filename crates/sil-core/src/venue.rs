@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use unicode_normalization::UnicodeNormalization;
 
 pub const CATALOGUE_SCHEMA_VERSION: u32 = 1;
-pub const CATALOGUE_VERSION: &str = "2026.08.15-seed";
+pub const CATALOGUE_VERSION: &str = "2026.08.15";
 pub const NORMALIZER_VERSION: u32 = 1;
 
 /// Load the reviewed seed catalogue shipped with the crate.
@@ -603,7 +603,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stage 15 acceptance gate: seed catalogue must reach 200-300 venues and 1,000 aliases"]
     fn catalogue_acceptance_target_is_met() {
         let cat = builtin_catalogue().unwrap();
         let aliases = cat

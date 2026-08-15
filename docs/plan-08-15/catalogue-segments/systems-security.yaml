@@ -1,0 +1,565 @@
+schema_version: 1
+catalogue_version: 2026.08.15-systems-security
+normalizer_version: 1
+venues:
+  - id: conf.sosp
+    canonical_name: ACM Symposium on Operating Systems Principles
+    short_name: SOSP
+    kind: conference_series
+    aliases:
+      - {value: SOSP, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://sigops.org/s/conferences/sosp.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on Operating Systems Principles, kind: official, provenance: {url: 'https://sigops.org/s/conferences/sosp.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Operating Systems Principles, kind: proceedings_title, provenance: {url: 'https://sigops.org/s/conferences/sosp.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SOSP, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://sigops.org/s/conferences/sosp.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Operating Systems Principles Symposium, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://sigops.org/s/conferences/sosp.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/sosp}]
+  - id: conf.osdi
+    canonical_name: USENIX Symposium on Operating Systems Design and Implementation
+    short_name: OSDI
+    kind: conference_series
+    aliases:
+      - {value: OSDI, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://www.usenix.org/conferences/byname/operations', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Symposium on Operating Systems Design and Implementation, kind: official, provenance: {url: 'https://www.usenix.org/conferences/byname/operations', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Operating Systems Design and Implementation, kind: proceedings_title, provenance: {url: 'https://www.usenix.org/conferences/byname/operations', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX OSDI, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://www.usenix.org/conferences/byname/operations', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Operating Systems Design and Implementation Symposium, kind: common_abbreviation, context: [conference, operating systems], provenance: {url: 'https://www.usenix.org/conferences/byname/operations', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/osdi}]
+  - id: conf.usenix-atc
+    canonical_name: USENIX Annual Technical Conference
+    short_name: USENIX ATC
+    kind: conference_series
+    aliases:
+      - {value: USENIX ATC, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/atc', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Annual Technical Conference, kind: official, provenance: {url: 'https://www.usenix.org/conferences/byname/atc', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Technical Conference, kind: proceedings_title, context: [conference, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/atc', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Annual Tech, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/atc', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Technical Conference, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/atc', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/usenix}]
+  - id: conf.eurosys
+    canonical_name: European Conference on Computer Systems
+    short_name: EuroSys
+    kind: conference_series
+    aliases:
+      - {value: EuroSys, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.eurosys.org/conferences', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Conference on Computer Systems, kind: official, provenance: {url: 'https://www.eurosys.org/conferences', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EuroSys Conference, kind: proceedings_title, context: [conference, systems], provenance: {url: 'https://www.eurosys.org/conferences', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Conference on Systems, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.eurosys.org/conferences', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM EuroSys, kind: common_abbreviation, context: [conference, systems], provenance: {url: 'https://www.eurosys.org/conferences', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/eurosys}]
+  - id: conf.asplos
+    canonical_name: Architectural Support for Programming Languages and Operating Systems
+    short_name: ASPLOS
+    kind: conference_series
+    aliases:
+      - {value: ASPLOS, kind: common_abbreviation, context: [conference, architecture, systems], provenance: {url: 'https://www.asplos-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Architectural Support for Programming Languages and Operating Systems, kind: official, provenance: {url: 'https://www.asplos-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM ASPLOS, kind: common_abbreviation, context: [conference, architecture, systems], provenance: {url: 'https://www.asplos-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Architecture Support for Programming Languages and Operating Systems, kind: proceedings_title, context: [conference, architecture, systems], provenance: {url: 'https://www.asplos-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ASPLOS Conference, kind: proceedings_title, context: [conference, architecture, systems], provenance: {url: 'https://www.asplos-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/asplos}]
+  - id: conf.fast
+    canonical_name: USENIX Conference on File and Storage Technologies
+    short_name: FAST
+    kind: conference_series
+    aliases:
+      - {value: FAST, kind: common_abbreviation, context: [conference, storage, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/fast', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Conference on File and Storage Technologies, kind: official, provenance: {url: 'https://www.usenix.org/conferences/byname/fast', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Conference on File and Storage Technologies, kind: proceedings_title, context: [conference, storage, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/fast', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX FAST, kind: common_abbreviation, context: [conference, storage, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/fast', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: File and Storage Technologies, kind: common_abbreviation, context: [conference, storage, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/fast', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/fast}]
+  - id: conf.pldi
+    canonical_name: ACM SIGPLAN Conference on Programming Language Design and Implementation
+    short_name: PLDI
+    kind: conference_series
+    aliases:
+      - {value: PLDI, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://pldi.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGPLAN Conference on Programming Language Design and Implementation, kind: official, provenance: {url: 'https://pldi.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Programming Language Design and Implementation, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://pldi.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGPLAN PLDI, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://pldi.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: PLDI Conference, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://pldi.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/pldi}]
+  - id: conf.popl
+    canonical_name: ACM SIGPLAN Symposium on Principles of Programming Languages
+    short_name: POPL
+    kind: conference_series
+    aliases:
+      - {value: POPL, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://popl.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGPLAN Symposium on Principles of Programming Languages, kind: official, provenance: {url: 'https://popl.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Principles of Programming Languages, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://popl.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGPLAN POPL, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://popl.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: POPL Symposium, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://popl.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/popl}]
+  - id: conf.icfp
+    canonical_name: ACM SIGPLAN International Conference on Functional Programming
+    short_name: ICFP
+    kind: conference_series
+    aliases:
+      - {value: ICFP, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://icfp.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGPLAN International Conference on Functional Programming, kind: official, provenance: {url: 'https://icfp.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Functional Programming, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://icfp.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGPLAN ICFP, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://icfp.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICFP Conference, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://icfp.sigplan.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icfp}]
+  - id: conf.oopsla
+    canonical_name: ACM SIGPLAN Conference on Object-Oriented Programming Systems Languages and Applications
+    short_name: OOPSLA
+    kind: conference_series
+    aliases:
+      - {value: OOPSLA, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://2026.splashcon.org/track/OOPSLA', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGPLAN Conference on Object-Oriented Programming Systems Languages and Applications, kind: official, provenance: {url: 'https://2026.splashcon.org/track/OOPSLA', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Object-Oriented Programming Systems Languages and Applications, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://2026.splashcon.org/track/OOPSLA', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGPLAN OOPSLA, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://2026.splashcon.org/track/OOPSLA', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: OOPSLA Conference, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://2026.splashcon.org/track/OOPSLA', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/oopsla}]
+  - id: conf.ecoop
+    canonical_name: European Conference on Object-Oriented Programming
+    short_name: ECOOP
+    kind: conference_series
+    aliases:
+      - {value: ECOOP, kind: common_abbreviation, context: [conference, programming languages], provenance: {url: 'https://2026.ecoop.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Conference on Object-Oriented Programming, kind: official, provenance: {url: 'https://2026.ecoop.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Conference on OO Programming, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://2026.ecoop.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Conference on Object Oriented Programming, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://2026.ecoop.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ECOOP Conference, kind: proceedings_title, context: [conference, programming languages], provenance: {url: 'https://2026.ecoop.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/ecoop}]
+  - id: conf.lics
+    canonical_name: ACM IEEE Symposium on Logic in Computer Science
+    short_name: LICS
+    kind: conference_series
+    aliases:
+      - {value: LICS, kind: common_abbreviation, context: [conference, logic, programming languages], provenance: {url: 'https://lics.siglog.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM IEEE Symposium on Logic in Computer Science, kind: official, provenance: {url: 'https://lics.siglog.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Logic in Computer Science, kind: proceedings_title, context: [conference, logic, programming languages], provenance: {url: 'https://lics.siglog.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE LICS, kind: common_abbreviation, context: [conference, logic, programming languages], provenance: {url: 'https://lics.siglog.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Logic in Computer Science Symposium, kind: proceedings_title, context: [conference, logic, programming languages], provenance: {url: 'https://lics.siglog.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/lics}]
+  - id: conf.cav
+    canonical_name: International Conference on Computer Aided Verification
+    short_name: CAV
+    kind: conference_series
+    aliases:
+      - {value: CAV, kind: common_abbreviation, context: [conference, verification, programming languages], provenance: {url: 'https://cavconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Computer Aided Verification, kind: official, provenance: {url: 'https://cavconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Computer-Aided Verification, kind: proceedings_title, provenance: {url: 'https://cavconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Aided Verification Conference, kind: proceedings_title, context: [conference, verification], provenance: {url: 'https://cavconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer-Aided Verification, kind: common_abbreviation, context: [conference, verification], provenance: {url: 'https://cavconference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/cav}]
+  - id: conf.sigmod
+    canonical_name: ACM SIGMOD International Conference on Management of Data
+    short_name: SIGMOD
+    kind: conference_series
+    aliases:
+      - {value: SIGMOD, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGMOD International Conference on Management of Data, kind: official, provenance: {url: 'https://sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Management of Data, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGMOD Conference, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGMOD Conference, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/sigmod}]
+  - id: conf.vldb
+    canonical_name: International Conference on Very Large Data Bases
+    short_name: VLDB
+    kind: conference_series
+    aliases:
+      - {value: VLDB, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://vldb.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Very Large Data Bases, kind: official, provenance: {url: 'https://vldb.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Very Large Data Bases Conference, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://vldb.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: VLDB Conference, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://vldb.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: VLDB Endowment Conference, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://vldb.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/vldb}]
+  - id: conf.icde
+    canonical_name: IEEE International Conference on Data Engineering
+    short_name: ICDE
+    kind: conference_series
+    aliases:
+      - {value: ICDE, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Data Engineering, kind: official, provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Data Engineering, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ICDE, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Data Engineering Conference, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icde}]
+  - id: conf.pods
+    canonical_name: ACM Symposium on Principles of Database Systems
+    short_name: PODS
+    kind: conference_series
+    aliases:
+      - {value: PODS, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://pods.sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on Principles of Database Systems, kind: official, provenance: {url: 'https://pods.sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Principles of Database Systems, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://pods.sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGMOD PODS, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://pods.sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Principles of Database Systems Symposium, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://pods.sigmod.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/pods}]
+  - id: conf.edbt
+    canonical_name: International Conference on Extending Database Technology
+    short_name: EDBT
+    kind: conference_series
+    aliases:
+      - {value: EDBT, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://edbt.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Extending Database Technology, kind: official, provenance: {url: 'https://edbt.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Extending Database Technology Conference, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://edbt.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EDBT Conference, kind: proceedings_title, context: [conference, databases], provenance: {url: 'https://edbt.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Database Technology Conference, kind: common_abbreviation, context: [conference, databases], provenance: {url: 'https://edbt.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/edbt}]
+  - id: conf.nsdi
+    canonical_name: USENIX Symposium on Networked Systems Design and Implementation
+    short_name: NSDI
+    kind: conference_series
+    aliases:
+      - {value: NSDI, kind: common_abbreviation, context: [conference, networks, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/nsdi', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Symposium on Networked Systems Design and Implementation, kind: official, provenance: {url: 'https://www.usenix.org/conferences/byname/nsdi', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Networked Systems Design and Implementation, kind: proceedings_title, context: [conference, networks, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/nsdi', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX NSDI, kind: common_abbreviation, context: [conference, networks, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/nsdi', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Networked Systems Design and Implementation, kind: common_abbreviation, context: [conference, networks, systems], provenance: {url: 'https://www.usenix.org/conferences/byname/nsdi', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/nsdi}]
+  - id: conf.sigcomm
+    canonical_name: ACM SIGCOMM Conference
+    short_name: SIGCOMM
+    kind: conference_series
+    aliases:
+      - {value: SIGCOMM, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGCOMM Conference, kind: official, provenance: {url: 'https://conferences.sigcomm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Conference on Applications Technologies Architectures and Protocols for Computer Communication, kind: proceedings_title, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGCOMM, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGCOMM Conference, kind: proceedings_title, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/sigcomm}]
+  - id: conf.imc
+    canonical_name: ACM Internet Measurement Conference
+    short_name: IMC
+    kind: conference_series
+    aliases:
+      - {value: IMC, kind: common_abbreviation, context: [conference, networks, internet measurement], provenance: {url: 'https://conferences.sigcomm.org/imc.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Internet Measurement Conference, kind: official, provenance: {url: 'https://conferences.sigcomm.org/imc.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Internet Measurement Conference, kind: proceedings_title, context: [conference, networks, internet measurement], provenance: {url: 'https://conferences.sigcomm.org/imc.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM IMC, kind: common_abbreviation, context: [conference, networks, internet measurement], provenance: {url: 'https://conferences.sigcomm.org/imc.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Internet Measurement Conference ACM, kind: proceedings_title, context: [conference, networks, internet measurement], provenance: {url: 'https://conferences.sigcomm.org/imc.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/imc}]
+  - id: conf.conext
+    canonical_name: ACM International Conference on emerging Networking EXperiments and Technologies
+    short_name: CoNEXT
+    kind: conference_series
+    aliases:
+      - {value: CoNEXT, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/co-next.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM CoNEXT, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/co-next.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on emerging Networking EXperiments and Technologies, kind: official, provenance: {url: 'https://conferences.sigcomm.org/co-next.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on emerging Networking EXperiments and Technologies, kind: proceedings_title, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/co-next.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CoNEXT Conference, kind: proceedings_title, context: [conference, networks], provenance: {url: 'https://conferences.sigcomm.org/co-next.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/conext}]
+  - id: conf.infocom
+    canonical_name: IEEE International Conference on Computer Communications
+    short_name: INFOCOM
+    kind: conference_series
+    aliases:
+      - {value: INFOCOM, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://www.ieee-infocom.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Computer Communications, kind: official, provenance: {url: 'https://www.ieee-infocom.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Computer Communications, kind: proceedings_title, context: [conference, networks], provenance: {url: 'https://www.ieee-infocom.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE INFOCOM, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://www.ieee-infocom.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Communications Conference, kind: common_abbreviation, context: [conference, networks], provenance: {url: 'https://www.ieee-infocom.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/infocom}]
+  - id: conf.mobicom
+    canonical_name: ACM International Conference on Mobile Computing and Networking
+    short_name: MobiCom
+    kind: conference_series
+    aliases:
+      - {value: MobiCom, kind: common_abbreviation, context: [conference, mobile, networks], provenance: {url: 'https://www.sigmobile.org/mobicom/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on Mobile Computing and Networking, kind: official, provenance: {url: 'https://www.sigmobile.org/mobicom/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Mobile Computing and Networking, kind: proceedings_title, context: [conference, mobile, networks], provenance: {url: 'https://www.sigmobile.org/mobicom/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM MobiCom, kind: common_abbreviation, context: [conference, mobile, networks], provenance: {url: 'https://www.sigmobile.org/mobicom/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Mobile Computing and Networking Conference, kind: common_abbreviation, context: [conference, mobile, networks], provenance: {url: 'https://www.sigmobile.org/mobicom/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/mobicom}]
+  - id: conf.mobisys
+    canonical_name: ACM International Conference on Mobile Systems Applications and Services
+    short_name: MobiSys
+    kind: conference_series
+    aliases:
+      - {value: MobiSys, kind: common_abbreviation, context: [conference, mobile, systems], provenance: {url: 'https://www.sigmobile.org/mobisys/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on Mobile Systems Applications and Services, kind: official, provenance: {url: 'https://www.sigmobile.org/mobisys/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Mobile Systems Applications and Services, kind: proceedings_title, context: [conference, mobile, systems], provenance: {url: 'https://www.sigmobile.org/mobisys/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM MobiSys, kind: common_abbreviation, context: [conference, mobile, systems], provenance: {url: 'https://www.sigmobile.org/mobisys/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Mobile Systems Applications and Services, kind: common_abbreviation, context: [conference, mobile, systems], provenance: {url: 'https://www.sigmobile.org/mobisys/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/mobisys}]
+  - id: conf.podc
+    canonical_name: ACM Symposium on Principles of Distributed Computing
+    short_name: PODC
+    kind: conference_series
+    aliases:
+      - {value: PODC, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://www.podc.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on Principles of Distributed Computing, kind: official, provenance: {url: 'https://www.podc.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Principles of Distributed Computing, kind: proceedings_title, context: [conference, distributed systems], provenance: {url: 'https://www.podc.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM PODC, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://www.podc.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Principles of Distributed Computing Symposium, kind: proceedings_title, context: [conference, distributed systems], provenance: {url: 'https://www.podc.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/podc}]
+  - id: conf.icdcs
+    canonical_name: IEEE International Conference on Distributed Computing Systems
+    short_name: ICDCS
+    kind: conference_series
+    aliases:
+      - {value: ICDCS, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Distributed Computing Systems, kind: official, provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Distributed Computing Systems, kind: proceedings_title, context: [conference, distributed systems], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ICDCS, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Distributed Computing Systems Conference, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://www.computer.org/conferences/calendar', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icdcs}]
+  - id: conf.middleware
+    canonical_name: ACM International Middleware Conference
+    short_name: Middleware
+    kind: conference_series
+    aliases:
+      - {value: Middleware, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://middleware-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Middleware Conference, kind: official, provenance: {url: 'https://middleware-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Middleware Conference, kind: proceedings_title, context: [conference, distributed systems], provenance: {url: 'https://middleware-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Middleware, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: 'https://middleware-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Middleware Conference, kind: proceedings_title, context: [conference, distributed systems], provenance: {url: 'https://middleware-conference.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/middleware}]
+  - id: conf.dsn
+    canonical_name: IEEE International Conference on Dependable Systems and Networks
+    short_name: DSN
+    kind: conference_series
+    aliases:
+      - {value: DSN, kind: common_abbreviation, context: [conference, dependable systems, networks], provenance: {url: 'https://dsn2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Dependable Systems and Networks, kind: official, provenance: {url: 'https://dsn2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Dependable Systems and Networks, kind: proceedings_title, context: [conference, dependable systems, networks], provenance: {url: 'https://dsn2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE DSN, kind: common_abbreviation, context: [conference, dependable systems, networks], provenance: {url: 'https://dsn2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Dependable Systems and Networks Conference, kind: common_abbreviation, context: [conference, dependable systems, networks], provenance: {url: 'https://dsn2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/dsn}]
+  - id: conf.sp
+    canonical_name: IEEE Symposium on Security and Privacy
+    short_name: IEEE S&P
+    kind: conference_series
+    aliases:
+      - {value: IEEE S&P, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.ieee-security.org/TC/SP-Index.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Symposium on Security and Privacy, kind: official, provenance: {url: 'https://www.ieee-security.org/TC/SP-Index.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Symposium on Security and Privacy, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.ieee-security.org/TC/SP-Index.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Symposium on Security Privacy, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.ieee-security.org/TC/SP-Index.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Security and Privacy Symposium, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.ieee-security.org/TC/SP-Index.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/sp}]
+  - id: conf.ccs
+    canonical_name: ACM Conference on Computer and Communications Security
+    short_name: CCS
+    kind: conference_series
+    aliases:
+      - {value: CCS, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.sigsac.org/ccs.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Conference on Computer and Communications Security, kind: official, provenance: {url: 'https://www.sigsac.org/ccs.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer and Communications Security Conference, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.sigsac.org/ccs.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM CCS, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.sigsac.org/ccs.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGSAC CCS, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.sigsac.org/ccs.html', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/ccs}]
+  - id: conf.usenix-security
+    canonical_name: USENIX Security Symposium
+    short_name: USENIX Security
+    kind: conference_series
+    aliases:
+      - {value: USENIX Security Symposium Proceedings, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.usenix.org/conferences/byname/security', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Security Symposium, kind: official, provenance: {url: 'https://www.usenix.org/conferences/byname/security', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Security Conference, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.usenix.org/conferences/byname/security', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Security, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.usenix.org/conferences/byname/security', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Security Symposium USENIX, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.usenix.org/conferences/byname/security', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/uss}]
+  - id: conf.ndss
+    canonical_name: Network and Distributed System Security Symposium
+    short_name: NDSS
+    kind: conference_series
+    aliases:
+      - {value: NDSS, kind: common_abbreviation, context: [conference, security, networks], provenance: {url: 'https://www.ndss-symposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Network and Distributed System Security Symposium, kind: official, provenance: {url: 'https://www.ndss-symposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Network and Distributed Systems Security Symposium, kind: proceedings_title, context: [conference, security, networks], provenance: {url: 'https://www.ndss-symposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: NDSS Symposium, kind: proceedings_title, context: [conference, security, networks], provenance: {url: 'https://www.ndss-symposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Network and Distributed System Security, kind: common_abbreviation, context: [conference, security, networks], provenance: {url: 'https://www.ndss-symposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/ndss}]
+  - id: conf.raid
+    canonical_name: International Symposium on Research in Attacks Intrusions and Defenses
+    short_name: RAID
+    kind: conference_series
+    aliases:
+      - {value: RAID, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://raid2025.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Symposium on Research in Attacks Intrusions and Defenses, kind: official, provenance: {url: 'https://raid2025.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Symposium on Research in Attacks Intrusions and Defences, kind: proceedings_title, provenance: {url: 'https://raid2025.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: RAID Symposium, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://raid2025.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Research in Attacks Intrusions and Defenses, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://raid2025.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/raid}]
+  - id: conf.acsac
+    canonical_name: Annual Computer Security Applications Conference
+    short_name: ACSAC
+    kind: conference_series
+    aliases:
+      - {value: ACSAC, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.acsac.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Computer Security Applications Conference, kind: official, provenance: {url: 'https://www.acsac.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Security Applications Conference, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.acsac.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Computer Security Applications, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://www.acsac.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACSAC Conference, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://www.acsac.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/acsac}]
+  - id: conf.esorics
+    canonical_name: European Symposium on Research in Computer Security
+    short_name: ESORICS
+    kind: conference_series
+    aliases:
+      - {value: ESORICS, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://esorics2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Symposium on Research in Computer Security, kind: official, provenance: {url: 'https://esorics2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Symposium for Research in Computer Security, kind: proceedings_title, provenance: {url: 'https://esorics2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ESORICS Symposium, kind: proceedings_title, context: [conference, security], provenance: {url: 'https://esorics2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Research in Computer Security ESORICS, kind: common_abbreviation, context: [conference, security], provenance: {url: 'https://esorics2026.github.io/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/esorics}]
+  - id: conf.pets
+    canonical_name: Privacy Enhancing Technologies Symposium
+    short_name: PETS
+    kind: conference_series
+    aliases:
+      - {value: PETS, kind: common_abbreviation, context: [conference, privacy, security], provenance: {url: 'https://petsymposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Privacy Enhancing Technologies Symposium, kind: official, provenance: {url: 'https://petsymposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Privacy Enhancing Technologies, kind: proceedings_title, context: [conference, privacy, security], provenance: {url: 'https://petsymposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Privacy Enhancing Technologies Symposium PETS, kind: proceedings_title, context: [conference, privacy, security], provenance: {url: 'https://petsymposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: PET Symposium, kind: common_abbreviation, context: [conference, privacy, security], provenance: {url: 'https://petsymposium.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/pets}]
+  - id: conf.icse
+    canonical_name: IEEE ACM International Conference on Software Engineering
+    short_name: ICSE
+    kind: conference_series
+    aliases:
+      - {value: ICSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/icse-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ACM International Conference on Software Engineering, kind: official, provenance: {url: 'https://conf.researchr.org/home/icse-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Software Engineering, kind: proceedings_title, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/icse-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ICSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/icse-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM ICSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/icse-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icse}]
+  - id: conf.fse
+    canonical_name: ACM International Conference on the Foundations of Software Engineering
+    short_name: FSE
+    kind: conference_series
+    aliases:
+      - {value: FSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://2026.esec-fse.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on the Foundations of Software Engineering, kind: official, provenance: {url: 'https://2026.esec-fse.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Foundations of Software Engineering, kind: proceedings_title, context: [conference, software engineering], provenance: {url: 'https://2026.esec-fse.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ESEC FSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://2026.esec-fse.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM FSE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://2026.esec-fse.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/sigsoft}]
+  - id: conf.ase
+    canonical_name: IEEE ACM International Conference on Automated Software Engineering
+    short_name: ASE
+    kind: conference_series
+    aliases:
+      - {value: ASE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/ase-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ACM International Conference on Automated Software Engineering, kind: official, provenance: {url: 'https://conf.researchr.org/home/ase-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Automated Software Engineering, kind: proceedings_title, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/ase-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ASE, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/ase-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Automated Software Engineering Conference, kind: common_abbreviation, context: [conference, software engineering], provenance: {url: 'https://conf.researchr.org/home/ase-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/ase}]
+  - id: conf.issta
+    canonical_name: ACM International Symposium on Software Testing and Analysis
+    short_name: ISSTA
+    kind: conference_series
+    aliases:
+      - {value: ISSTA, kind: common_abbreviation, context: [conference, software engineering, testing], provenance: {url: 'https://conf.researchr.org/home/issta-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Symposium on Software Testing and Analysis, kind: official, provenance: {url: 'https://conf.researchr.org/home/issta-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Symposium on Software Testing and Analysis, kind: proceedings_title, context: [conference, software engineering, testing], provenance: {url: 'https://conf.researchr.org/home/issta-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM ISSTA, kind: common_abbreviation, context: [conference, software engineering, testing], provenance: {url: 'https://conf.researchr.org/home/issta-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Software Testing and Analysis Symposium, kind: common_abbreviation, context: [conference, software engineering, testing], provenance: {url: 'https://conf.researchr.org/home/issta-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/issta}]
+  - id: conf.msr
+    canonical_name: IEEE International Conference on Mining Software Repositories
+    short_name: MSR
+    kind: conference_series
+    aliases:
+      - {value: MSR, kind: common_abbreviation, context: [conference, software engineering, mining], provenance: {url: 'https://2026.msrconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Mining Software Repositories, kind: official, provenance: {url: 'https://2026.msrconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Mining Software Repositories, kind: proceedings_title, context: [conference, software engineering, mining], provenance: {url: 'https://2026.msrconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE MSR, kind: common_abbreviation, context: [conference, software engineering, mining], provenance: {url: 'https://2026.msrconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Mining Software Repositories Conference, kind: common_abbreviation, context: [conference, software engineering, mining], provenance: {url: 'https://2026.msrconf.org/', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/msr}]
+  - id: conf.re
+    canonical_name: IEEE International Requirements Engineering Conference
+    short_name: RE
+    kind: conference_series
+    aliases:
+      - {value: RE, kind: common_abbreviation, context: [conference, software engineering, requirements], provenance: {url: 'https://conf.researchr.org/home/RE-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Requirements Engineering Conference, kind: official, provenance: {url: 'https://conf.researchr.org/home/RE-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Requirements Engineering Conference, kind: proceedings_title, context: [conference, software engineering, requirements], provenance: {url: 'https://conf.researchr.org/home/RE-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE RE Conference, kind: common_abbreviation, context: [conference, software engineering, requirements], provenance: {url: 'https://conf.researchr.org/home/RE-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Requirements Engineering Conference, kind: proceedings_title, context: [conference, software engineering, requirements], provenance: {url: 'https://conf.researchr.org/home/RE-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/re}]
+  - id: conf.icpc
+    canonical_name: IEEE International Conference on Program Comprehension
+    short_name: ICPC
+    kind: conference_series
+    aliases:
+      - {value: ICPC, kind: common_abbreviation, context: [conference, software engineering, program comprehension], provenance: {url: 'https://conf.researchr.org/home/icpc-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Program Comprehension, kind: official, provenance: {url: 'https://conf.researchr.org/home/icpc-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Program Comprehension, kind: proceedings_title, context: [conference, software engineering, program comprehension], provenance: {url: 'https://conf.researchr.org/home/icpc-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ICPC, kind: common_abbreviation, context: [conference, software engineering, program comprehension], provenance: {url: 'https://conf.researchr.org/home/icpc-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Program Comprehension Conference, kind: common_abbreviation, context: [conference, software engineering, program comprehension], provenance: {url: 'https://conf.researchr.org/home/icpc-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icpc}]
+  - id: conf.icsme
+    canonical_name: IEEE International Conference on Software Maintenance and Evolution
+    short_name: ICSME
+    kind: conference_series
+    aliases:
+      - {value: ICSME, kind: common_abbreviation, context: [conference, software engineering, maintenance], provenance: {url: 'https://conf.researchr.org/home/icsme-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE International Conference on Software Maintenance and Evolution, kind: official, provenance: {url: 'https://conf.researchr.org/home/icsme-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Software Maintenance and Evolution, kind: proceedings_title, context: [conference, software engineering, maintenance], provenance: {url: 'https://conf.researchr.org/home/icsme-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE ICSME, kind: common_abbreviation, context: [conference, software engineering, maintenance], provenance: {url: 'https://conf.researchr.org/home/icsme-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Software Maintenance and Evolution Conference, kind: common_abbreviation, context: [conference, software engineering, maintenance], provenance: {url: 'https://conf.researchr.org/home/icsme-2026', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: dblp_stream, value: conf/icsm}]
+  - id: journal.tse
+    canonical_name: IEEE Transactions on Software Engineering
+    short_name: IEEE TSE
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Software Engineering, kind: official, provenance: {url: 'https://www.computer.org/csdl/journal/ts', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Software Engineering, kind: proceedings_title, provenance: {url: 'https://www.computer.org/csdl/journal/ts', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE TSE, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://www.computer.org/csdl/journal/ts', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TSE, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://www.computer.org/csdl/journal/ts', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Software Engineering Transactions, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://www.computer.org/csdl/journal/ts', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0098-5589}]
+  - id: journal.tosem
+    canonical_name: ACM Transactions on Software Engineering and Methodology
+    short_name: ACM TOSEM
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Software Engineering and Methodology, kind: official, provenance: {url: 'https://dl.acm.org/journal/tosem', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Software Engineering and Methodology, kind: proceedings_title, provenance: {url: 'https://dl.acm.org/journal/tosem', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM TOSEM, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://dl.acm.org/journal/tosem', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TOSEM, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://dl.acm.org/journal/tosem', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Software Engineering and Methodology, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: 'https://dl.acm.org/journal/tosem', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 1049-331X}]
+  - id: journal.toplas
+    canonical_name: ACM Transactions on Programming Languages and Systems
+    short_name: ACM TOPLAS
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Programming Languages and Systems, kind: official, provenance: {url: 'https://dl.acm.org/journal/toplas', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Programming Languages and Systems, kind: proceedings_title, provenance: {url: 'https://dl.acm.org/journal/toplas', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM TOPLAS, kind: common_abbreviation, context: [journal, programming languages], provenance: {url: 'https://dl.acm.org/journal/toplas', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TOPLAS, kind: common_abbreviation, context: [journal, programming languages], provenance: {url: 'https://dl.acm.org/journal/toplas', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Programming Languages and Systems Transactions, kind: common_abbreviation, context: [journal, programming languages], provenance: {url: 'https://dl.acm.org/journal/toplas', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0164-0925}]
+  - id: journal.tods
+    canonical_name: ACM Transactions on Database Systems
+    short_name: ACM TODS
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Database Systems, kind: official, provenance: {url: 'https://dl.acm.org/journal/tods', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Database Systems, kind: proceedings_title, provenance: {url: 'https://dl.acm.org/journal/tods', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM TODS, kind: common_abbreviation, context: [journal, databases], provenance: {url: 'https://dl.acm.org/journal/tods', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TODS, kind: common_abbreviation, context: [journal, databases], provenance: {url: 'https://dl.acm.org/journal/tods', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Database Systems Transactions, kind: common_abbreviation, context: [journal, databases], provenance: {url: 'https://dl.acm.org/journal/tods', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0362-5915}]
+  - id: journal.jacm
+    canonical_name: Journal of the ACM
+    short_name: JACM
+    kind: journal
+    aliases:
+      - {value: Journal of the ACM, kind: official, provenance: {url: 'https://dl.acm.org/journal/jacm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JACM, kind: common_abbreviation, context: [journal, computer science], provenance: {url: 'https://dl.acm.org/journal/jacm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal ACM, kind: common_abbreviation, context: [journal, computer science], provenance: {url: 'https://dl.acm.org/journal/jacm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Journal, kind: common_abbreviation, context: [journal, computer science], provenance: {url: 'https://dl.acm.org/journal/jacm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of the Association for Computing Machinery, kind: proceedings_title, provenance: {url: 'https://dl.acm.org/journal/jacm', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0004-5411}]
+  - id: journal.tocs
+    canonical_name: ACM Transactions on Computer Systems
+    short_name: ACM TOCS
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Computer Systems, kind: official, provenance: {url: 'https://dl.acm.org/journal/tocs', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Computer Systems, kind: proceedings_title, provenance: {url: 'https://dl.acm.org/journal/tocs', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM TOCS, kind: common_abbreviation, context: [journal, operating systems, systems], provenance: {url: 'https://dl.acm.org/journal/tocs', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TOCS, kind: common_abbreviation, context: [journal, operating systems, systems], provenance: {url: 'https://dl.acm.org/journal/tocs', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Systems Transactions, kind: common_abbreviation, context: [journal, operating systems, systems], provenance: {url: 'https://dl.acm.org/journal/tocs', evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0734-2071}]

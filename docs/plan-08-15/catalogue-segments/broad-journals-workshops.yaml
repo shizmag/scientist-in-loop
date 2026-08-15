@@ -1,0 +1,493 @@
+# Stage 15 catalogue segment: broad journals, workshops, multidisciplinary and applied computing.
+# Merge key: venue id. This fragment intentionally carries no prestige collection.
+# Every alias below was reviewed against the venue or publisher page on 2026-08-15.
+venues:
+  - id: conf.acl
+    canonical_name: Annual Meeting of the Association for Computational Linguistics
+    short_name: ACL
+    kind: conference_series
+    aliases:
+      - {value: ACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://www.aclweb.org/portal/events", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Meeting of the Association for Computational Linguistics, kind: official, provenance: {url: "https://aclanthology.org/venues/acl/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Association for Computational Linguistics Annual Meeting, kind: proceedings_title, context: [conference, computational linguistics], provenance: {url: "https://aclanthology.org/venues/acl/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACL Annual Meeting, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://www.aclweb.org/portal/events", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACL conference, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://www.aclweb.org/portal/events", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.naacl
+    canonical_name: Annual Conference of the North American Chapter of the Association for Computational Linguistics
+    short_name: NAACL
+    kind: conference_series
+    aliases:
+      - {value: NAACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://naacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: North American Chapter of the Association for Computational Linguistics, kind: official, provenance: {url: "https://naacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Conference of the North American Chapter of the Association for Computational Linguistics, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/naacl/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: NAACL-HLT, kind: common_abbreviation, context: [conference, natural language processing], provenance: {url: "https://naacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: NAACL conference, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://naacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.findings-acl
+    canonical_name: Findings of the Association for Computational Linguistics
+    short_name: Findings of ACL
+    kind: conference_series
+    parent: {id: conf.acl, relation: associated_series}
+    aliases:
+      - {value: Findings of ACL, kind: proceedings_title, context: [computational linguistics, proceedings], provenance: {url: "https://aclanthology.org/venues/findings/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Findings of the Association for Computational Linguistics, kind: official, provenance: {url: "https://aclanthology.org/venues/findings/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Findings ACL, kind: common_abbreviation, context: [computational linguistics, proceedings], provenance: {url: "https://aclanthology.org/venues/findings/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACL Findings, kind: common_abbreviation, context: [computational linguistics, proceedings], provenance: {url: "https://aclanthology.org/venues/findings/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Findings proceedings, kind: proceedings_title, context: [Association for Computational Linguistics], provenance: {url: "https://aclanthology.org/venues/findings/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.emnlp
+    canonical_name: Conference on Empirical Methods in Natural Language Processing
+    short_name: EMNLP
+    kind: conference_series
+    aliases:
+      - {value: EMNLP, kind: common_abbreviation, context: [conference, natural language processing], provenance: {url: "https://aclanthology.org/venues/emnlp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Empirical Methods in Natural Language Processing, kind: official, provenance: {url: "https://aclanthology.org/venues/emnlp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Conference on Empirical Methods in Natural Language Processing, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/emnlp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EMNLP conference, kind: common_abbreviation, context: [conference, natural language processing], provenance: {url: "https://aclweb.org/anthology/venues/emnlp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Empirical Methods conference, kind: common_abbreviation, context: [natural language processing], provenance: {url: "https://aclanthology.org/venues/emnlp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.eacl
+    canonical_name: Conference of the European Chapter of the Association for Computational Linguistics
+    short_name: EACL
+    kind: conference_series
+    aliases:
+      - {value: EACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://aclanthology.org/venues/eacl/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European Chapter of the Association for Computational Linguistics, kind: official, provenance: {url: "https://eacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Conference of the European Chapter of the Association for Computational Linguistics, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/eacl/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: EACL conference, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://eacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: European ACL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://eacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.coling
+    canonical_name: International Conference on Computational Linguistics
+    short_name: COLING
+    kind: conference_series
+    aliases:
+      - {value: COLING, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://coling2025.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Computational Linguistics, kind: official, provenance: {url: "https://aclanthology.org/venues/coling/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: COLING conference, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://aclanthology.org/venues/coling/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computational Linguistics conference, kind: common_abbreviation, context: [conference], provenance: {url: "https://aclanthology.org/venues/coling/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Computational Linguistics proceedings, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/coling/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.conll
+    canonical_name: SIGNLL Conference on Computational Natural Language Learning
+    short_name: CoNLL
+    kind: conference_series
+    aliases:
+      - {value: CoNLL, kind: common_abbreviation, context: [conference, natural language processing], provenance: {url: "https://aclanthology.org/venues/conll/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Conference on Computational Natural Language Learning, kind: official, provenance: {url: "https://aclanthology.org/venues/conll/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGNLL Conference on Computational Natural Language Learning, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/conll/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CoNLL conference, kind: common_abbreviation, context: [conference, natural language processing], provenance: {url: "https://aclanthology.org/venues/conll/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGNLL CoNLL, kind: common_abbreviation, context: [conference, computational linguistics], provenance: {url: "https://www.signll.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.sigdial
+    canonical_name: Annual Meeting of the Special Interest Group on Discourse and Dialogue
+    short_name: SIGdial
+    kind: conference_series
+    aliases:
+      - {value: SIGdial, kind: common_abbreviation, context: [conference, dialogue systems], provenance: {url: "https://www.sigdial.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGdial Meeting, kind: common_abbreviation, context: [conference, dialogue systems], provenance: {url: "https://www.sigdial.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Special Interest Group on Discourse and Dialogue, kind: official, provenance: {url: "https://www.sigdial.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Annual Meeting of the Special Interest Group on Discourse and Dialogue, kind: proceedings_title, provenance: {url: "https://aclanthology.org/venues/sigdial/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGDIAL conference, kind: common_abbreviation, context: [conference, dialogue systems], provenance: {url: "https://aclanthology.org/venues/sigdial/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.icml
+    canonical_name: International Conference on Machine Learning
+    short_name: ICML
+    kind: conference_series
+    aliases:
+      - {value: ICML, kind: common_abbreviation, context: [conference, machine learning], provenance: {url: "https://icml.cc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Machine Learning, kind: official, provenance: {url: "https://icml.cc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ICML conference, kind: common_abbreviation, context: [conference, machine learning], provenance: {url: "https://icml.cc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Machine Learning proceedings, kind: proceedings_title, provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning conference, kind: common_abbreviation, context: [conference], provenance: {url: "https://icml.cc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.uai
+    canonical_name: Conference on Uncertainty in Artificial Intelligence
+    short_name: UAI
+    kind: conference_series
+    aliases:
+      - {value: UAI, kind: common_abbreviation, context: [conference, artificial intelligence, uncertainty], provenance: {url: "https://www.auai.org/uai/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Conference on Uncertainty in Artificial Intelligence, kind: official, provenance: {url: "https://www.auai.org/uai/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: UAI conference, kind: common_abbreviation, context: [conference, artificial intelligence, uncertainty], provenance: {url: "https://www.auai.org/uai/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Uncertainty in Artificial Intelligence proceedings, kind: proceedings_title, provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AUAI conference, kind: common_abbreviation, context: [conference, uncertainty], provenance: {url: "https://www.auai.org/uai/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.aistats
+    canonical_name: International Conference on Artificial Intelligence and Statistics
+    short_name: AISTATS
+    kind: conference_series
+    aliases:
+      - {value: AISTATS, kind: common_abbreviation, context: [conference, artificial intelligence, statistics], provenance: {url: "https://aistats.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Conference on Artificial Intelligence and Statistics, kind: official, provenance: {url: "https://aistats.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AI and Statistics conference, kind: common_abbreviation, context: [conference, statistics], provenance: {url: "https://aistats.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AISTATS conference, kind: common_abbreviation, context: [conference, artificial intelligence, statistics], provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Artificial Intelligence and Statistics proceedings, kind: proceedings_title, provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.jmlr-workshop
+    canonical_name: JMLR Workshop and Conference Proceedings
+    short_name: JMLR W&CP
+    kind: workshop_series
+    aliases:
+      - {value: JMLR Workshop and Conference Proceedings, kind: official, provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JMLR W&CP, kind: common_abbreviation, context: [machine learning, proceedings], provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Workshop and Conference Proceedings, kind: proceedings_title, context: [JMLR, machine learning], provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Proceedings of Machine Learning Research, kind: proceedings_title, provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: PMLR proceedings, kind: common_abbreviation, context: [machine learning proceedings], provenance: {url: "https://proceedings.mlr.press/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.kdd
+    canonical_name: ACM SIGKDD Conference on Knowledge Discovery and Data Mining
+    short_name: KDD
+    kind: conference_series
+    aliases:
+      - {value: KDD, kind: common_abbreviation, context: [conference, data mining], provenance: {url: "https://www.kdd.org/conference", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGKDD Conference on Knowledge Discovery and Data Mining, kind: official, provenance: {url: "https://www.kdd.org/conference", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Knowledge Discovery and Data Mining conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/kdd", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SIGKDD, kind: common_abbreviation, context: [conference, data mining], provenance: {url: "https://www.kdd.org/conference", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: KDD conference, kind: common_abbreviation, context: [conference, data mining], provenance: {url: "https://www.kdd.org/conference", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.wsdm
+    canonical_name: ACM International Conference on Web Search and Data Mining
+    short_name: WSDM
+    kind: conference_series
+    aliases:
+      - {value: WSDM, kind: common_abbreviation, context: [conference, web search, data mining], provenance: {url: "https://www.wsdm-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on Web Search and Data Mining, kind: official, provenance: {url: "https://www.wsdm-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Web Search and Data Mining conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/wsdm", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM WSDM, kind: common_abbreviation, context: [conference, web search], provenance: {url: "https://www.wsdm-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: WSDM conference, kind: common_abbreviation, context: [conference, web search, data mining], provenance: {url: "https://www.wsdm-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.recsys
+    canonical_name: ACM Conference on Recommender Systems
+    short_name: RecSys
+    kind: conference_series
+    aliases:
+      - {value: RecSys, kind: common_abbreviation, context: [conference, recommender systems], provenance: {url: "https://recsys.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Conference on Recommender Systems, kind: official, provenance: {url: "https://recsys.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Recommender Systems conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/recsys", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM RecSys, kind: common_abbreviation, context: [conference, recommender systems], provenance: {url: "https://recsys.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: RecSys conference, kind: common_abbreviation, context: [conference, recommender systems], provenance: {url: "https://recsys.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.sigir
+    canonical_name: ACM SIGIR Conference on Research and Development in Information Retrieval
+    short_name: SIGIR
+    kind: conference_series
+    aliases:
+      - {value: SIGIR, kind: common_abbreviation, context: [conference, information retrieval], provenance: {url: "https://sigir.org/sigir2025/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGIR Conference on Research and Development in Information Retrieval, kind: official, provenance: {url: "https://sigir.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Research and Development in Information Retrieval, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/sigir", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SIGIR, kind: common_abbreviation, context: [conference, information retrieval], provenance: {url: "https://sigir.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information Retrieval conference, kind: common_abbreviation, context: [conference], provenance: {url: "https://sigir.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.cikm
+    canonical_name: ACM International Conference on Information and Knowledge Management
+    short_name: CIKM
+    kind: conference_series
+    aliases:
+      - {value: CIKM, kind: common_abbreviation, context: [conference, information management], provenance: {url: "https://www.cikmconference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Conference on Information and Knowledge Management, kind: official, provenance: {url: "https://www.cikmconference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information and Knowledge Management conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/cikm", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM CIKM, kind: common_abbreviation, context: [conference, information management], provenance: {url: "https://www.cikmconference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CIKM conference, kind: common_abbreviation, context: [conference, information management], provenance: {url: "https://www.cikmconference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.chi
+    canonical_name: ACM Conference on Human Factors in Computing Systems
+    short_name: CHI
+    kind: conference_series
+    aliases:
+      - {value: CHI, kind: common_abbreviation, context: [conference, human-computer interaction], provenance: {url: "https://www.acm.org/conferences/chi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Conference on Human Factors in Computing Systems, kind: official, provenance: {url: "https://www.acm.org/conferences/chi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Human Factors in Computing Systems conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/chi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM CHI, kind: common_abbreviation, context: [conference, human-computer interaction], provenance: {url: "https://www.acm.org/conferences/chi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CHI conference, kind: common_abbreviation, context: [conference, human-computer interaction], provenance: {url: "https://www.acm.org/conferences/chi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.uist
+    canonical_name: ACM Symposium on User Interface Software and Technology
+    short_name: UIST
+    kind: conference_series
+    aliases:
+      - {value: UIST, kind: common_abbreviation, context: [symposium, user interfaces], provenance: {url: "https://uist.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on User Interface Software and Technology, kind: official, provenance: {url: "https://uist.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: User Interface Software and Technology symposium, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/uist", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM UIST, kind: common_abbreviation, context: [symposium, user interfaces], provenance: {url: "https://uist.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: UIST symposium, kind: common_abbreviation, context: [user interfaces], provenance: {url: "https://uist.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.ubicomp
+    canonical_name: ACM International Joint Conference on Pervasive and Ubiquitous Computing
+    short_name: UbiComp
+    kind: conference_series
+    aliases:
+      - {value: UbiComp, kind: common_abbreviation, context: [conference, ubiquitous computing], provenance: {url: "https://ubicomp.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Joint Conference on Pervasive and Ubiquitous Computing, kind: official, provenance: {url: "https://ubicomp.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Pervasive and Ubiquitous Computing conference, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/ubicomp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM UbiComp, kind: common_abbreviation, context: [conference, ubiquitous computing], provenance: {url: "https://ubicomp.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Ubiquitous Computing conference, kind: common_abbreviation, context: [conference], provenance: {url: "https://ubicomp.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.mobihoc
+    canonical_name: ACM International Symposium on Mobile Ad Hoc Networking and Computing
+    short_name: MobiHoc
+    kind: conference_series
+    aliases:
+      - {value: MobiHoc, kind: common_abbreviation, context: [symposium, mobile networking], provenance: {url: "https://www.sigmobile.org/mobihoc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Symposium on Mobile Ad Hoc Networking and Computing, kind: official, provenance: {url: "https://www.sigmobile.org/mobihoc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Mobile Ad Hoc Networking and Computing symposium, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/mobihoc", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM MobiHoc, kind: common_abbreviation, context: [symposium, mobile networking], provenance: {url: "https://www.sigmobile.org/mobihoc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Mobile Ad Hoc Networks symposium, kind: common_abbreviation, context: [mobile networking], provenance: {url: "https://www.sigmobile.org/mobihoc/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.socc
+    canonical_name: ACM Symposium on Cloud Computing
+    short_name: SoCC
+    kind: conference_series
+    aliases:
+      - {value: SoCC, kind: common_abbreviation, context: [symposium, cloud computing], provenance: {url: "https://acmsocc.github.io/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on Cloud Computing, kind: official, provenance: {url: "https://acmsocc.github.io/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Cloud Computing symposium, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/socc", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SoCC, kind: common_abbreviation, context: [symposium, cloud computing], provenance: {url: "https://acmsocc.github.io/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SoCC symposium, kind: common_abbreviation, context: [cloud computing], provenance: {url: "https://acmsocc.github.io/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.middleware
+    canonical_name: ACM International Middleware Conference
+    short_name: Middleware
+    kind: conference_series
+    aliases:
+      - {value: Middleware, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: "https://2025.middleware-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM International Middleware Conference, kind: official, provenance: {url: "https://2025.middleware-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Middleware conference, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Middleware, kind: common_abbreviation, context: [conference, distributed systems], provenance: {url: "https://2025.middleware-conference.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Middleware Conference proceedings, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.osdi
+    canonical_name: USENIX Symposium on Operating Systems Design and Implementation
+    short_name: OSDI
+    kind: conference_series
+    aliases:
+      - {value: OSDI, kind: common_abbreviation, context: [symposium, operating systems], provenance: {url: "https://www.usenix.org/conferences/byname/Osdi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX Symposium on Operating Systems Design and Implementation, kind: official, provenance: {url: "https://www.usenix.org/conferences/byname/Osdi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Operating Systems Design and Implementation symposium, kind: proceedings_title, provenance: {url: "https://www.usenix.org/conferences/byname/Osdi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: USENIX OSDI, kind: common_abbreviation, context: [symposium, operating systems], provenance: {url: "https://www.usenix.org/conferences/byname/Osdi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: OSDI symposium, kind: common_abbreviation, context: [operating systems], provenance: {url: "https://www.usenix.org/conferences/byname/Osdi", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.sosp
+    canonical_name: ACM Symposium on Operating Systems Principles
+    short_name: SOSP
+    kind: conference_series
+    aliases:
+      - {value: SOSP, kind: common_abbreviation, context: [symposium, operating systems], provenance: {url: "https://sigops.org/sosp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Symposium on Operating Systems Principles, kind: official, provenance: {url: "https://sigops.org/sosp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Operating Systems Principles symposium, kind: proceedings_title, provenance: {url: "https://dl.acm.org/conference/sosp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM SOSP, kind: common_abbreviation, context: [symposium, operating systems], provenance: {url: "https://sigops.org/sosp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: SOSP symposium, kind: common_abbreviation, context: [operating systems], provenance: {url: "https://sigops.org/sosp/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: conf.socc-workshop
+    canonical_name: ACM/IFIP International Middleware Workshops
+    short_name: Middleware Workshops
+    kind: workshop_series
+    parent: {id: conf.middleware, relation: associated_series}
+    aliases:
+      - {value: Middleware Workshops, kind: workshop_name, context: [distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM/IFIP Middleware Workshops, kind: workshop_name, context: [distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Middleware Workshops, kind: workshop_name, context: [distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Middleware workshop, kind: workshop_name, context: [distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Middleware associated workshops, kind: workshop_name, context: [distributed systems], provenance: {url: "https://dl.acm.org/conference/middleware", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.nature
+    canonical_name: Nature
+    short_name: Nature
+    kind: journal
+    aliases:
+      - {value: Nature, kind: official, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/nature/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature journal, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/nature/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature Publishing Group journal, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/nature/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature research journal, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/nature/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature magazine, kind: common_abbreviation, context: [scientific journal], provenance: {url: "https://www.nature.com/nature/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0028-0836}]
+  - id: journal.nature-machine-intelligence
+    canonical_name: Nature Machine Intelligence
+    short_name: Nature Machine Intelligence
+    kind: journal
+    parent: {id: journal.nature, relation: publisher_family}
+    aliases:
+      - {value: Nature Machine Intelligence, kind: official, provenance: {url: "https://www.nature.com/natmachintell/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature Mach Intell, kind: common_abbreviation, context: [journal, machine intelligence], provenance: {url: "https://www.nature.com/natmachintell/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: NMI, kind: common_abbreviation, context: [journal, machine intelligence], provenance: {url: "https://www.nature.com/natmachintell/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature MI, kind: common_abbreviation, context: [journal, machine intelligence], provenance: {url: "https://www.nature.com/natmachintell/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature machine-intelligence journal, kind: common_abbreviation, context: [journal, machine intelligence], provenance: {url: "https://www.nature.com/natmachintell/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.nature-communications
+    canonical_name: Nature Communications
+    short_name: Nature Communications
+    kind: journal
+    parent: {id: journal.nature, relation: publisher_family}
+    aliases:
+      - {value: Nature Communications, kind: official, provenance: {url: "https://www.nature.com/ncomms/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nat Commun, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/ncomms/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature Comm, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/ncomms/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: NCOMMS, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/ncomms/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature Communications journal, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/ncomms/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.scientific-reports
+    canonical_name: Scientific Reports
+    short_name: Scientific Reports
+    kind: journal
+    aliases:
+      - {value: Scientific Reports, kind: official, provenance: {url: "https://www.nature.com/srep/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Sci Rep, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/srep/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Scientific Reports journal, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/srep/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Scientific Reports Nature, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/srep/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Nature Scientific Reports, kind: common_abbreviation, context: [journal, multidisciplinary science], provenance: {url: "https://www.nature.com/srep/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 2045-2322}]
+  - id: journal.jmlr
+    canonical_name: Journal of Machine Learning Research
+    short_name: JMLR
+    kind: journal
+    aliases:
+      - {value: JMLR, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://www.jmlr.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of Machine Learning Research, kind: official, provenance: {url: "https://www.jmlr.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of Machine Learning Research journal, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://www.jmlr.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning Research journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.jmlr.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JMLR journal, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://www.jmlr.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 1532-4435}]
+  - id: journal.tmlr
+    canonical_name: Transactions on Machine Learning Research
+    short_name: TMLR
+    kind: journal
+    aliases:
+      - {value: TMLR, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://jmlr.org/tmlr/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Machine Learning Research, kind: official, provenance: {url: "https://jmlr.org/tmlr/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on ML Research, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://jmlr.org/tmlr/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TMLR journal, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://jmlr.org/tmlr/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning Research Transactions, kind: common_abbreviation, context: [journal], provenance: {url: "https://jmlr.org/tmlr/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 2835-8856}]
+  - id: journal.jair
+    canonical_name: Journal of Artificial Intelligence Research
+    short_name: JAIR
+    kind: journal
+    aliases:
+      - {value: JAIR, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: {url: "https://www.jair.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of Artificial Intelligence Research, kind: official, provenance: {url: "https://www.jair.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of AI Research, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: {url: "https://www.jair.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: JAIR journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: {url: "https://www.jair.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Artificial Intelligence Research journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.jair.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.aij
+    canonical_name: Artificial Intelligence
+    short_name: Artificial Intelligence
+    kind: journal
+    aliases:
+      - {value: Artificial Intelligence, kind: official, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/artificial-intelligence", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Artificial Intelligence journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/artificial-intelligence", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AI journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: {url: "https://www.sciencedirect.com/journal/artificial-intelligence", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Artificial Intelligence Elsevier, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/artificial-intelligence", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: AI research journal, kind: common_abbreviation, context: [journal, artificial intelligence], provenance: {url: "https://www.sciencedirect.com/journal/artificial-intelligence", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.ml
+    canonical_name: Machine Learning
+    short_name: Machine Learning
+    kind: journal
+    aliases:
+      - {value: Machine Learning, kind: official, context: [journal], provenance: {url: "https://link.springer.com/journal/10994", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://link.springer.com/journal/10994", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ML journal, kind: common_abbreviation, context: [journal, machine learning], provenance: {url: "https://link.springer.com/journal/10994", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Machine Learning Springer, kind: common_abbreviation, context: [journal], provenance: {url: "https://link.springer.com/journal/10994", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Journal of Machine Learning Springer, kind: common_abbreviation, context: [journal], provenance: {url: "https://link.springer.com/journal/10994", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.tpami
+    canonical_name: IEEE Transactions on Pattern Analysis and Machine Intelligence
+    short_name: IEEE TPAMI
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Pattern Analysis and Machine Intelligence, kind: official, provenance: {url: "https://www.computer.org/csdl/journal/tp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE TPAMI, kind: common_abbreviation, context: [journal, computer vision, machine learning], provenance: {url: "https://www.computer.org/csdl/journal/tp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TPAMI, kind: common_abbreviation, context: [journal, pattern analysis], provenance: {url: "https://www.computer.org/csdl/journal/tp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Pattern Analysis and Machine Intelligence, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.computer.org/csdl/journal/tp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Transactions on PAMI, kind: common_abbreviation, context: [journal, computer vision], provenance: {url: "https://www.computer.org/csdl/journal/tp", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.ijcv
+    canonical_name: International Journal of Computer Vision
+    short_name: IJCV
+    kind: journal
+    aliases:
+      - {value: IJCV, kind: common_abbreviation, context: [journal, computer vision], provenance: {url: "https://link.springer.com/journal/11263", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Journal of Computer Vision, kind: official, provenance: {url: "https://link.springer.com/journal/11263", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: International Journal of Computer Vision journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://link.springer.com/journal/11263", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Int J Comput Vis, kind: common_abbreviation, context: [journal, computer vision], provenance: {url: "https://link.springer.com/journal/11263", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Vision journal IJCV, kind: common_abbreviation, context: [journal], provenance: {url: "https://link.springer.com/journal/11263", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.tacl
+    canonical_name: Transactions of the Association for Computational Linguistics
+    short_name: TACL
+    kind: journal
+    aliases:
+      - {value: TACL, kind: common_abbreviation, context: [journal, computational linguistics], provenance: {url: "https://transacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions of the Association for Computational Linguistics, kind: official, provenance: {url: "https://transacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions of ACL, kind: common_abbreviation, context: [journal, computational linguistics], provenance: {url: "https://transacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TACL journal, kind: common_abbreviation, context: [journal, computational linguistics], provenance: {url: "https://transacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACL Transactions, kind: common_abbreviation, context: [journal, computational linguistics], provenance: {url: "https://transacl.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.computational-linguistics
+    canonical_name: Computational Linguistics
+    short_name: Computational Linguistics
+    kind: journal
+    aliases:
+      - {value: Computational Linguistics, kind: official, context: [journal], provenance: {url: "https://direct.mit.edu/coli", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computational Linguistics journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://direct.mit.edu/coli", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CL journal, kind: common_abbreviation, context: [journal, computational linguistics], provenance: {url: "https://direct.mit.edu/coli", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computational Linguistics MIT Press, kind: common_abbreviation, context: [journal], provenance: {url: "https://direct.mit.edu/coli", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computational Linguistics periodical, kind: common_abbreviation, context: [journal], provenance: {url: "https://direct.mit.edu/coli", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.acm-csur
+    canonical_name: ACM Computing Surveys
+    short_name: ACM Computing Surveys
+    kind: journal
+    aliases:
+      - {value: ACM Computing Surveys, kind: official, provenance: {url: "https://dl.acm.org/journal/csur", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CSUR, kind: common_abbreviation, context: [journal, computing surveys], provenance: {url: "https://dl.acm.org/journal/csur", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM CSUR, kind: common_abbreviation, context: [journal, computing surveys], provenance: {url: "https://dl.acm.org/journal/csur", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computing Surveys journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://dl.acm.org/journal/csur", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM survey journal, kind: common_abbreviation, context: [journal, computing], provenance: {url: "https://dl.acm.org/journal/csur", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.acm-tois
+    canonical_name: ACM Transactions on Information Systems
+    short_name: ACM TOIS
+    kind: journal
+    aliases:
+      - {value: ACM Transactions on Information Systems, kind: official, provenance: {url: "https://dl.acm.org/journal/tois", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TOIS, kind: common_abbreviation, context: [journal, information systems], provenance: {url: "https://dl.acm.org/journal/tois", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM TOIS, kind: common_abbreviation, context: [journal, information systems], provenance: {url: "https://dl.acm.org/journal/tois", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Information Systems, kind: common_abbreviation, context: [journal], provenance: {url: "https://dl.acm.org/journal/tois", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information Systems Transactions ACM, kind: common_abbreviation, context: [journal], provenance: {url: "https://dl.acm.org/journal/tois", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.ieee-tkde
+    canonical_name: IEEE Transactions on Knowledge and Data Engineering
+    short_name: IEEE TKDE
+    kind: journal
+    aliases:
+      - {value: IEEE Transactions on Knowledge and Data Engineering, kind: official, provenance: {url: "https://www.computer.org/csdl/journal/tk", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: TKDE, kind: common_abbreviation, context: [journal, data engineering], provenance: {url: "https://www.computer.org/csdl/journal/tk", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE TKDE, kind: common_abbreviation, context: [journal, data engineering], provenance: {url: "https://www.computer.org/csdl/journal/tk", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Transactions on Knowledge and Data Engineering, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.computer.org/csdl/journal/tk", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Knowledge and Data Engineering journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.computer.org/csdl/journal/tk", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.information-processing-management
+    canonical_name: Information Processing and Management
+    short_name: Information Processing and Management
+    kind: journal
+    aliases:
+      - {value: Information Processing and Management, kind: official, provenance: {url: "https://www.sciencedirect.com/journal/information-processing-and-management", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information Processing & Management, kind: common_abbreviation, context: [journal, information retrieval], provenance: {url: "https://www.sciencedirect.com/journal/information-processing-and-management", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IPM journal, kind: common_abbreviation, context: [journal, information science], provenance: {url: "https://www.sciencedirect.com/journal/information-processing-and-management", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information Processing and Management journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/information-processing-and-management", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Information Processing Management Elsevier, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/information-processing-and-management", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.pattern-recognition
+    canonical_name: Pattern Recognition
+    short_name: Pattern Recognition
+    kind: journal
+    aliases:
+      - {value: Pattern Recognition, kind: official, context: [journal, computer vision], provenance: {url: "https://www.sciencedirect.com/journal/pattern-recognition", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Pattern Recognition journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/pattern-recognition", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Pattern Recognit, kind: common_abbreviation, context: [journal, pattern analysis], provenance: {url: "https://www.sciencedirect.com/journal/pattern-recognition", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Pattern Recognition Elsevier, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/pattern-recognition", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: PR journal computer vision, kind: common_abbreviation, context: [journal, computer vision], provenance: {url: "https://www.sciencedirect.com/journal/pattern-recognition", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.expert-systems-applications
+    canonical_name: Expert Systems with Applications
+    short_name: Expert Systems with Applications
+    kind: journal
+    aliases:
+      - {value: Expert Systems with Applications, kind: official, provenance: {url: "https://www.sciencedirect.com/journal/expert-systems-with-applications", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Expert Systems with Applications journal, kind: common_abbreviation, context: [journal, applied artificial intelligence], provenance: {url: "https://www.sciencedirect.com/journal/expert-systems-with-applications", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ESWA, kind: common_abbreviation, context: [journal, expert systems], provenance: {url: "https://www.sciencedirect.com/journal/expert-systems-with-applications", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Expert Systems journal, kind: common_abbreviation, context: [journal, applied computing], provenance: {url: "https://www.sciencedirect.com/journal/expert-systems-with-applications", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Applications of Expert Systems, kind: common_abbreviation, context: [journal, applied artificial intelligence], provenance: {url: "https://www.sciencedirect.com/journal/expert-systems-with-applications", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.ieee-software
+    canonical_name: IEEE Software
+    short_name: IEEE Software
+    kind: journal
+    aliases:
+      - {value: IEEE Software, kind: official, provenance: {url: "https://www.computer.org/csdl/magazine/so", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Softw, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: "https://www.computer.org/csdl/magazine/so", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Software magazine IEEE, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: "https://www.computer.org/csdl/magazine/so", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE Software journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.computer.org/csdl/magazine/so", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: IEEE computer software journal, kind: common_abbreviation, context: [journal, software engineering], provenance: {url: "https://www.computer.org/csdl/magazine/so", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+  - id: journal.cacm
+    canonical_name: Communications of the ACM
+    short_name: Communications of the ACM
+    kind: journal
+    aliases:
+      - {value: Communications of the ACM, kind: official, provenance: {url: "https://cacm.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: CACM, kind: common_abbreviation, context: [journal, computing], provenance: {url: "https://cacm.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Commun ACM, kind: common_abbreviation, context: [journal, computing], provenance: {url: "https://cacm.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Communications ACM, kind: common_abbreviation, context: [journal, computing], provenance: {url: "https://cacm.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: ACM Communications, kind: common_abbreviation, context: [journal, computing], provenance: {url: "https://cacm.acm.org/", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+    external_ids: [{namespace: issn, value: 0001-0782}]
+  - id: journal.future-generation-computer-systems
+    canonical_name: Future Generation Computer Systems
+    short_name: FGCS
+    kind: journal
+    aliases:
+      - {value: Future Generation Computer Systems, kind: official, provenance: {url: "https://www.sciencedirect.com/journal/future-generation-computer-systems", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: FGCS, kind: common_abbreviation, context: [journal, distributed systems, cloud computing], provenance: {url: "https://www.sciencedirect.com/journal/future-generation-computer-systems", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Future Generation Computer Systems journal, kind: common_abbreviation, context: [journal], provenance: {url: "https://www.sciencedirect.com/journal/future-generation-computer-systems", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Future Generation Computing Systems, kind: common_abbreviation, context: [journal, applied computing], provenance: {url: "https://www.sciencedirect.com/journal/future-generation-computer-systems", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
+      - {value: Computer Systems Future Generation, kind: common_abbreviation, context: [journal, distributed systems], provenance: {url: "https://www.sciencedirect.com/journal/future-generation-computer-systems", evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}}
