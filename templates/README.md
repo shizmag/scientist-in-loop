@@ -14,27 +14,32 @@ This directory is managed by [`sil`](https://github.com/scientist-in-loop/scient
 | `paper_draft.tex` | Working manuscript (source of truth) |
 | `paper.tex` | Cleaned manuscript (promoted later) |
 | `references.bib` | Bibliography |
-| `.sil/` | Config, structure map, SQLite DB, skills |
-| `.sil/draft_sections/` | Per-section split of the draft for agents (`sil split`) |
+| `.sil/` | Config, structure map, rebuildable SQLite DB, checks, locks, and staged builds |
+| `.sil/draft_sections/` | Per-section split of the draft for agents (`sil paper split`) |
+| `agent/skills/managed/` | Verified managed skill-pack projections |
+| `agent/skills/local/` | User-authored skills, never overwritten by updates |
 | `.sil/improvement/` | Improvement proposals as `suggestion_n` (tracked) |
 
 ## Quick commands
 
 ```bash
 sil status [--json]     # project overview
-sil parse               # parse unparsed PDFs in sources/
+sil source parse        # parse unparsed PDFs in sources/
 sil source list         # parsed vs unparsed sources
-sil search "query"      # full-text search over parsed sources
-sil context             # agent/human context dump
-sil split               # refresh .sil/draft_sections/ from paper_draft.tex
-sil propose             # Sci-Action commit proposal (never auto-commits)
-sil promote             # copy draft → paper.tex + propose
-sil structure set …     # update section completion
-sil cite <source|q>     # suggest BibTeX / \cite{…}
-sil template list|apply # collect draft into ML/AI template (neurips, icml, iclr, ieee, arxiv)
-sil doctor              # layout + dependency checks
-sil build [--release]   # compile LaTeX (--release applies configured target template)
-sil log                 # Sci-Action annotated git history
+sil source search "query" # full-text search over parsed sources
+sil project context       # agent/human context dump
+sil paper split            # refresh .sil/draft_sections/ from paper_draft.tex
+sil git propose            # Sci-Action proposal (never auto-commits)
+sil paper promote          # copy draft -> paper.tex + propose
+sil paper structure set … # update section completion
+sil source cite <source|q> # suggest BibTeX / \cite{…}
+sil paper check            # deterministic current-state invariants
+sil paper template install ./pack --approve
+sil paper template verify <manifest-id>
+sil paper template stage <manifest-id>
+sil paper build [--source-only] # compile or explicitly publish sources
+sil project mcp --project <path> --quiet
+sil mcp install|status|uninstall
 sil init --update       # refresh skills / managed .gitignore after upgrading sil
 ```
 

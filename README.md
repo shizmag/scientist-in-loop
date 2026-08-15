@@ -5,11 +5,11 @@
 Humans and LLM agents work under the same strict conventions:
 
 - **Git** is the single source of history  
-- **SQLite + FTS5** is the memory for parsed sources  
+- **SQLite + FTS5** is rebuildable local memory for parsed sources and discovery snapshots
 - **`structure.yaml`** is the formal syntactic map of the paper  
 - **`paper_draft.tex`** is the working document (later promoted to `paper.tex`)  
 - **Settings & Co-Author Cache** (Global in `~/.config/sil/`, Local in `.sil/config.yaml`) managed via Ratatui TUI (`sil settings`)
-- **Skills** in `agent/skills/` are loaded dynamically according to clear rules  
+- **Versioned skill packs** are locked under `.sil/skills.lock`; managed and local skills are separate
 
 After `sil init`, you can hand a goal to an agent and it will understand the layout, rules, and current state.
 
@@ -50,7 +50,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | **uv packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `uv sync` (pypdf); `uv sync --extra marker` for Marker quality |
 | **xberg** (Rust Crate) | Structured PDF Metadata & Citation Extraction | Extracts `title`, `authors`, and `citations` via LLM/NER schema. Models cached under `~/.cache/sil/models/xberg` |
 | **C toolchain** | Building `sil` (bundled SQLite) | Xcode CLT (macOS), `build-essential` (Debian/Ubuntu), MinGW or MSVC (Windows) |
-| **LaTeX engine** | `sil build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
+| **LaTeX engine** | `sil paper build` / `sil paper check --build` | Default config uses **tectonic**; also supports `latexmk`, `pdflatex`, `xelatex`, `lualatex` |
 
 | Feature | Works without extra install? |
 |---------|------------------------------|
@@ -58,7 +58,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 | `sil settings` / `sil tui` | Terminal TUI built into `sil` (powered by Ratatui & Crossterm) |
 | `sil parse` | Uses **xberg** for structured metadata/citations and **Python 3** / **marker-pdf** for Markdown text |
 | `sil source fetch` | Needs **Python 3** (stdlib networking) & CrossRef/arXiv APIs for official BibTeX resolution |
-| `sil build` | Needs a **LaTeX engine** on `PATH` |ATH` |
+| `sil paper build` | Needs a **LaTeX engine** on `PATH` |
 
 
 ### Install script (macOS / Linux / Windows)
@@ -149,8 +149,13 @@ sil project context --paper --agent --skill-paper
 # Build the manuscript (requires configured LaTeX engine)
 sil paper build
 
-# Format into conference/journal templates (NeurIPS, ICML, ICLR, IEEE, arXiv)
-sil paper template apply -t neurips
+# Check current workspace invariants
+sil paper check
+
+# Install and stage a user-supplied, licensed template pack
+sil paper template install ./template-pack --approve
+sil paper template verify venues/example-2026
+sil paper template stage venues/example-2026
 
 # Sci-Action annotated history
 sil git log
@@ -188,10 +193,12 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil source list [--json]` | List sources with format tags (`[pdf/parsed/on-disk]`, `[md/parsed/on-disk]`), metadata, and visibility |
 | `sil source remove <id>` | Drop a source from the DB so it can be reparsed |
 | `sil source cite <source\|query>` | Suggest BibTeX + `\cite{…}` incorporating stored authors, year, venue, and DOI (optional `--append` to `references.bib`) |
-| `sil source digest [query]` | Fetch top peer-reviewed journal publications digest via native Rust Crossref query builder |
+| `sil source digest [query]` | Legacy single-query Crossref digest; discovery runs preserve provider provenance |
 | `sil source doctor [id]` | Heal parsed sources: re-extract reference entries and hydrate missing metadata via DOI |
-| `sil paper build [release]` | Compile `config.latex.main` with `config.latex.engine` (`release` mode applies target template, strips `#-- X --#` draft notes, and generates an autonomous journal submission `.zip` archive) |
-| `sil paper template list\|apply` | Collect draft prose into ML/AI templates (`neurips`, `icml`, `iclr`, `ieee`, `arxiv`, `standard`) |
+| `sil paper check [--profile submission|--strict]` | Evaluate current-state manuscript invariants; no implicit baseline or scientific-result comparison |
+| `sil paper build [--source-only]` | Compile or explicitly publish source dependencies; compilation requires a newly produced PDF when requested |
+| `sil paper template list\|install\|verify\|stage\|remove` | Manage manifest-based local template packs without rewriting the workspace manuscript |
+| `sil paper template apply` | Compatibility path for legacy template names; it does not install official venue files |
 | `sil paper split` | Write agent-readable section files under `.sil/draft_sections/` (does not edit `paper_draft.tex`) |
 | `sil paper promote [--force]` | Copy `paper_draft.tex` → `paper.tex` and propose `promote-to-final` |
 | `sil paper structure list\|set` | Inspect or update section completion in `structure.yaml` |
@@ -202,7 +209,10 @@ Python helpers (`python/`) are managed with **uv** from the repo root (`pyprojec
 | `sil paper pack [-o bundle.zip]` | Generate reproducible manuscript ZIP package containing draft, structure, BibTeX, review reports, and `REPRO.md` |
 | `sil project context [flags]` | Structured context dump for humans/agents |
 | `sil project doctor [--json] [--fix] [--repair-db]` | Project layout, host dependencies, and manuscript health audit with actionable hints; `--fix` repairs bibliography entries and `--repair-db` backs up/rebuilds a corrupt SQLite index from on-disk sources |
-| `sil project mcp [--quiet]` | Start stdio Model Context Protocol (MCP) JSON-RPC server for AI assistants (Antigravity, Claude Desktop, Cursor) |
+| `sil paper template update` | Install an approved newer local template revision after verification |
+| `sil project mcp [--project PATH] [--quiet]` | Start the SDK-backed stdio MCP server with an explicit project root; direct CWD fallback is reported |
+| `sil mcp install|status|uninstall` | Safely manage the sil-owned entry for supported hosts with backup and atomic updates |
+| `sil project skills list|install|verify|check|diff|approve-update|remove|rollback` | Manage locked skill packs and report full, partial, or unsupported host capability |
 | `sil git log` | Git log filtered/annotated by `Sci-Action` trailers |
 | `sil git propose [--action …]` | Print a Sci-Action commit proposal from dirty paths or an explicit action (never commits) |
 | `sil tui dashboard` / `sil tui settings` | Interactive five-tab Ratatui TUI for the command center, sources, draft, references, and settings |
@@ -216,6 +226,30 @@ Sci-Action: fetch-source
 ```
 
 `sil` **never** auto-commits.
+
+### Stage 15 workflows
+
+`sil paper check` is the deterministic workspace gate. Use the default draft
+profile for current-state errors, `--profile submission` for explicit
+submission blocking policy, `--strict` for all actionable warnings, and
+`--json` for the complete structured report. `--online` is opt-in; provider
+unavailability is not a manuscript truth claim.
+
+Discovery preserves raw provider data and venue strings, records canonical
+identity evidence and ambiguity, and places results in an explicit candidate
+workflow. Collections are selected, versioned sets, not a universal ranking.
+
+Template and skill installation is explicit and lock-backed. Existing
+`apply -t neurips`-style names remain a compatibility route for old projects;
+they are not official/current bundled venue packages. New workflows should
+install a local manifest, approve it, verify it, and then stage it.
+
+Visualize Article generates prompts for external image providers and does not
+render figures itself. ARS is optional CC-BY-NC external content and is never
+silently vendored; host support can be partial or unsupported. External
+experiment execution and symlink management are deliberately not implemented
+because the concrete provenance, safety, and lifecycle contract is not yet
+approved.
 
 ---
 
@@ -387,13 +421,13 @@ my-paper/
 │   ├── config.yaml          # project paths, latex engine, local settings (co-authors, grants)
 │   ├── structure.yaml
 │   ├── structure.example.yaml
-│   ├── db.sqlite
-│   ├── draft_sections/      # agent section cache from `sil split`
+│   ├── db.sqlite             # rebuildable local index
+│   ├── checks/               # ignored check reports
+│   ├── build/                # ignored staged build trees
+│   ├── template.lock         # exact template package selections
+│   ├── skills.lock           # exact skill package selections
+│   ├── draft_sections/       # agent section cache from `sil paper split`
 │   ├── improvement/         # suggestion_n improvement proposals (tracked)
-│   └── skills/
-│       ├── SYSTEM.md
-│       ├── paper.md
-│       └── agent-code.md
 ├── paper_draft.tex          # source of truth for prose
 ├── paper.tex
 ├── references.bib
@@ -405,7 +439,9 @@ my-paper/
 │   │   └── README.md
 │   └── images/              # external images
 │       └── README.md
-├── agent/                   # agent-written helper code
+├── agent/
+│   ├── skills/managed/       # installed, verified pack projections
+│   ├── skills/local/         # user-authored skills, never overwritten
 │   └── README.md
 └── README.md
 ```
@@ -417,7 +453,8 @@ my-paper/
 - **`figures/plots/`** — plots from code; list script + figure ref in the README.  
 - **`figures/images/`** — external images; document origin and license.  
 - **`agent/`** — helper scripts the agent writes; document purpose and how to run.  
-- **`.sil/draft_sections/`** — deterministic per-section split of `paper_draft.tex` for agents (`sil split`); do not edit as source of truth.  
+- **`.sil/draft_sections/`** — deterministic per-section split of `paper_draft.tex` for agents (`sil paper split`); do not edit as source of truth.
+- **`.sil/template.lock` / `.sil/skills.lock`** — portable exact package selections; SQLite and caches are derived state.
 - **`.sil/improvement/`** — versioned improvement proposals as `suggestion_n` (not gitignored).  
 
 ### Default `.gitignore`
@@ -445,9 +482,9 @@ sil init --update
 
 | Always refreshed | Created only if missing | Never overwritten if present |
 |------------------|-------------------------|------------------------------|
-| `agent/skills/*` | Folder READMEs, layout dirs | `.sil/config.yaml` |
+| sil-managed skill projections | Folder READMEs, layout dirs | `.sil/config.yaml` and local skills |
 | `.sil/structure.example.yaml` | Paper stubs, `references.bib` | `.sil/structure.yaml` |
-| sil-managed `.gitignore` block | Project `README.md` | `paper_draft.tex`, `paper.tex` |
+| sil-managed `.gitignore` block | Project `README.md` | `paper_draft.tex`, `paper.tex`, local skills, lock files |
 | | SQLite DB / git repo (ensured) | Custom gitignore rules outside the managed block |
 
 Proposes a commit with `Sci-Action: update` (never auto-committed).
@@ -456,7 +493,7 @@ Proposes a commit with `Sci-Action: update` (never auto-committed).
 
 ## How agents should interact
 
-1. Read `agent/skills/SYSTEM.md` first (always loaded by `sil context`).  
+1. Read the managed or local `agent/skills/` system skill first (always loaded by `sil context`).
 2. Run `sil context` for a fresh snapshot (structure, config, Sci-Action history, sources).  
 3. Load additional skills when relevant:  
    - **`paper.md`** — tasks touching `structure.yaml`, `paper_draft.tex`, `paper.tex`, or section completion.  
@@ -545,8 +582,9 @@ cargo run -p sil -- --help
 | Rich BibTeX generation (`sil cite`) | Done |
 | Marker via Python helper (stubbable for tests) | Done |
 | Commit proposals + `sil log` Sci-Action trailers | Done |
-| `sil build` / `sil source fetch` / `sil context` + skills | Done |
-| `sil template list\|apply` ML/AI manuscript templating | Done |
+| `sil paper build` / `sil source fetch` / `sil project context` + skills | Done |
+| `sil paper template` package lifecycle + legacy apply compatibility | Done |
+| Stage 15 check, discovery, package, MCP, and skill trust boundaries | Verification-gated; see `docs/plan-08-15/verification-report.md` |
 | Colored output + progress (disabled in tests) | Done |
 | Auto-commit | **Never** (by design) |
 | Engines beyond Marker | Out of scope for MVP |

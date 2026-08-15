@@ -1,6 +1,6 @@
 //! Schema migrations and FTS5 setup.
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::DbError;
 
@@ -211,7 +211,169 @@ pub fn migrate(conn: &Connection) -> Result<(), DbError> {
     migrate_todo_ideas_columns(conn)?;
     migrate_sources_columns(conn)?;
     migrate_source_references_columns(conn)?;
+    migrate_discovery(conn)?;
 
+    Ok(())
+}
+
+/// Add the versioned discovery schema without changing legacy source/digest data.
+fn migrate_discovery(conn: &Connection) -> Result<(), DbError> {
+    let versions_table: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_versions')",
+        [],
+        |row| row.get(0),
+    )?;
+    let current_version: Option<i64> = if versions_table {
+        conn.query_row(
+            "SELECT version FROM schema_versions WHERE name='discovery'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()?
+    } else {
+        None
+    };
+    if current_version == Some(1) {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS candidate_rankings (
+                run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+                candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+                algorithm_version TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                components_json TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (run_id, candidate_id, algorithm_version)
+            );
+            CREATE INDEX IF NOT EXISTS candidate_rankings_run_idx ON candidate_rankings(run_id, score DESC);
+            "#,
+        )?;
+        return Ok(());
+    }
+
+    let tx = conn.unchecked_transaction()?;
+    tx.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS schema_versions (
+            name TEXT PRIMARY KEY NOT NULL,
+            version INTEGER NOT NULL
+        );
+        INSERT INTO schema_versions (name, version) VALUES ('discovery', 1)
+            ON CONFLICT(name) DO NOTHING;
+
+        CREATE TABLE IF NOT EXISTS discovery_runs (
+            id TEXT PRIMARY KEY NOT NULL,
+            query TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('running', 'complete', 'partial', 'failed')),
+            cursor_json TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            finished_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS provider_requests (
+            id TEXT PRIMARY KEY NOT NULL,
+            run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+            provider TEXT NOT NULL,
+            request_json TEXT NOT NULL,
+            cursor TEXT,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS provider_records (
+            id TEXT PRIMARY KEY NOT NULL,
+            run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+            request_id TEXT NOT NULL REFERENCES provider_requests(id) ON DELETE CASCADE,
+            provider TEXT NOT NULL,
+            provider_record_id TEXT NOT NULL,
+            raw_payload TEXT NOT NULL,
+            raw_payload_hash TEXT NOT NULL,
+            status TEXT NOT NULL,
+            retrieved_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(provider, provider_record_id, request_id)
+        );
+        CREATE TABLE IF NOT EXISTS works (
+            id TEXT PRIMARY KEY NOT NULL,
+            title TEXT NOT NULL,
+            abstract_text TEXT,
+            authors_json TEXT,
+            year INTEGER,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS work_identifiers (
+            work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            namespace TEXT NOT NULL,
+            value TEXT NOT NULL,
+            observed_by TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY(namespace, value)
+        );
+        CREATE TABLE IF NOT EXISTS work_versions (
+            id TEXT PRIMARY KEY NOT NULL,
+            work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            version_kind TEXT NOT NULL,
+            title TEXT,
+            published_at TEXT,
+            url TEXT,
+            open_access INTEGER CHECK (open_access IN (0, 1) OR open_access IS NULL),
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS work_venues (
+            id TEXT PRIMARY KEY NOT NULL,
+            version_id TEXT NOT NULL REFERENCES work_versions(id) ON DELETE CASCADE,
+            venue_id TEXT,
+            raw_venue TEXT NOT NULL,
+            normalized_venue TEXT,
+            resolution_status TEXT NOT NULL CHECK (resolution_status IN ('resolved', 'ambiguous', 'unknown')),
+            evidence_json TEXT,
+            catalogue_version TEXT,
+            normalizer_version INTEGER,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS candidates (
+            id TEXT PRIMARY KEY NOT NULL,
+            run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+            version_id TEXT NOT NULL REFERENCES work_versions(id) ON DELETE RESTRICT,
+            provider_record_id TEXT REFERENCES provider_records(id) ON DELETE SET NULL,
+            resolution TEXT NOT NULL DEFAULT 'new' CHECK (resolution IN ('new', 'pending', 'accepted', 'rejected', 'unknown')),
+            disposition TEXT NOT NULL DEFAULT 'new' CHECK (disposition IN ('new', 'pending', 'accepted', 'rejected', 'unknown')),
+            acquisition TEXT NOT NULL DEFAULT 'new' CHECK (acquisition IN ('new', 'pending', 'accepted', 'rejected', 'unknown')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS candidate_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+            dimension TEXT NOT NULL CHECK (dimension IN ('resolution', 'disposition', 'acquisition')),
+            from_state TEXT NOT NULL,
+            to_state TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            CHECK (from_state <> to_state)
+        );
+        CREATE TABLE IF NOT EXISTS candidate_rankings (
+            run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+            candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+            algorithm_version TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            components_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (run_id, candidate_id, algorithm_version)
+        );
+
+        CREATE INDEX IF NOT EXISTS provider_requests_run_idx ON provider_requests(run_id, created_at);
+        CREATE INDEX IF NOT EXISTS provider_records_run_idx ON provider_records(run_id, provider);
+        CREATE INDEX IF NOT EXISTS provider_records_request_idx ON provider_records(request_id);
+        CREATE INDEX IF NOT EXISTS work_versions_work_idx ON work_versions(work_id);
+        CREATE INDEX IF NOT EXISTS work_venues_version_idx ON work_venues(version_id);
+        CREATE INDEX IF NOT EXISTS work_venues_canonical_idx ON work_venues(venue_id);
+        CREATE INDEX IF NOT EXISTS candidates_run_idx ON candidates(run_id, created_at);
+        CREATE INDEX IF NOT EXISTS candidates_version_idx ON candidates(version_id);
+        CREATE INDEX IF NOT EXISTS candidate_events_candidate_idx ON candidate_events(candidate_id, id);
+        CREATE INDEX IF NOT EXISTS candidate_rankings_run_idx ON candidate_rankings(run_id, score DESC);
+        "#,
+    )?;
+    tx.commit()?;
     Ok(())
 }
 

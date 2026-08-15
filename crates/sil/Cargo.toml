@@ -23,6 +23,8 @@ dirs = { workspace = true }
 dialoguer = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+sha2 = { workspace = true }
 sil-agent = { workspace = true }
 sil-app = { workspace = true }
 sil-core = { workspace = true }
@@ -35,6 +37,7 @@ sil-template = { workspace = true }
 sil-tui = { workspace = true }
 sil-mcp = { workspace = true }
 termimad = { workspace = true }
+tempfile = { workspace = true }
 crossterm = { workspace = true }
 zip = { workspace = true }
 tokio = { workspace = true }

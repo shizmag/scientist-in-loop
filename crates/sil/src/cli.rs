@@ -70,6 +70,9 @@ pub enum Commands {
     Mcp {
         #[command(subcommand)]
         action: Option<McpCmd>,
+        /// Explicit project root for the MCP server.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
         /// Quiet mode (suppress log output on stderr)
         #[arg(short, long)]
         quiet: bool,
@@ -161,6 +164,30 @@ pub enum SourceCmd {
 /// `sil paper` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum PaperCmd {
+    /// Run deterministic manuscript checks without building by default
+    Check {
+        /// Check profile: draft or submission.
+        #[arg(long, default_value = "draft", value_parser = ["draft", "submission"])]
+        profile: String,
+        /// Promote all actionable warnings to blocking findings.
+        #[arg(long)]
+        strict: bool,
+        /// Request explicitly online bibliography checks.
+        #[arg(long)]
+        online: bool,
+        /// Compile and require a newly produced PDF.
+        #[arg(long)]
+        build: bool,
+        /// Print the complete machine-readable report.
+        #[arg(long)]
+        json: bool,
+        /// Include observations in compact text output.
+        #[arg(long)]
+        verbose: bool,
+        /// Do not cap compact findings.
+        #[arg(long)]
+        all: bool,
+    },
     /// Compile the LaTeX main file from config
     Build {
         /// Target build mode ("release" or "draft")
@@ -168,6 +195,9 @@ pub enum PaperCmd {
         /// Format with target template from config before compiling (legacy flag)
         #[arg(long, hide = true)]
         release: bool,
+        /// Publish source and reachable dependencies without compiling.
+        #[arg(long)]
+        source_only: bool,
     },
     /// Split paper_draft.tex into agent-readable files under .sil/draft_sections/
     Split,
@@ -273,13 +303,58 @@ pub enum ProjectCmd {
         #[arg(long)]
         task: Option<String>,
     },
+    /// Manage versioned skill packs and local skill projections
+    Skills {
+        #[command(subcommand)]
+        action: SkillCmd,
+    },
     /// Start Model Context Protocol (MCP) stdio server
     Mcp {
         #[command(subcommand)]
         action: Option<McpCmd>,
+        /// Explicit project root for the MCP server.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
         /// Quiet mode (suppress log output on stderr)
         #[arg(short, long)]
         quiet: bool,
+    },
+}
+
+/// `sil project skills` subcommands.
+#[derive(Debug, Subcommand)]
+pub enum SkillCmd {
+    /// List installed managed entrypoints.
+    List,
+    /// Show an installed pack manifest.
+    Show { id: String },
+    /// Install a local skill pack after explicit approval.
+    Install {
+        source: camino::Utf8PathBuf,
+        #[arg(long)]
+        approve: bool,
+    },
+    /// Verify an installed pack and its managed projection.
+    Verify { id: String },
+    /// Preview an update without changing files.
+    CheckUpdate { source: camino::Utf8PathBuf },
+    /// Show the proposed file diff.
+    Diff { source: camino::Utf8PathBuf },
+    /// Apply an approved update.
+    ApproveUpdate { source: camino::Utf8PathBuf },
+    /// Remove an installed pack.
+    Remove { id: String },
+    /// Restore the latest rollback snapshot.
+    Rollback { id: String },
+    /// Report host compatibility and capability status.
+    Check {
+        id: String,
+        #[arg(long, default_value = "local")]
+        host: String,
+        #[arg(long)]
+        network: bool,
+        #[arg(long)]
+        process: bool,
     },
 }
 
@@ -292,6 +367,26 @@ pub enum McpCmd {
         #[arg(long, short)]
         client: Option<String>,
         /// Custom config file path (used with --client custom or standalone)
+        #[arg(long, short)]
+        path: Option<PathBuf>,
+        /// Explicit sil project root embedded in the client command.
+        #[arg(long, value_name = "PATH")]
+        project: Option<PathBuf>,
+        /// Request an optional post-write hook (currently unsupported unless explicitly implemented).
+        #[arg(long)]
+        hook: bool,
+    },
+    /// Report whether the owned sil MCP entry is installed.
+    Status {
+        #[arg(long, short)]
+        client: Option<String>,
+        #[arg(long, short)]
+        path: Option<PathBuf>,
+    },
+    /// Remove only the sil-owned MCP entry.
+    Uninstall {
+        #[arg(long, short)]
+        client: Option<String>,
         #[arg(long, short)]
         path: Option<PathBuf>,
     },
@@ -342,6 +437,30 @@ pub enum TuiCmd {
 pub enum TemplateCmd {
     /// List supported target templates
     List,
+    /// Show an installed template manifest
+    Show { id: String },
+    /// Install a local template pack after explicit approval
+    Install {
+        source: camino::Utf8PathBuf,
+        #[arg(long)]
+        approve: bool,
+    },
+    /// Verify an installed template pack and its cache
+    Verify { id: String },
+    /// Install a newer local revision of a template pack
+    Update {
+        source: camino::Utf8PathBuf,
+        #[arg(long)]
+        approve: bool,
+    },
+    /// Remove an installed template pack
+    Remove { id: String },
+    /// Stage an installed template without changing workspace manuscript files
+    Stage {
+        id: String,
+        #[arg(long)]
+        output: Option<camino::Utf8PathBuf>,
+    },
     /// Apply target template to manuscript
     Apply {
         /// Target template (neurips, icml, iclr, ieee, arxiv, standard)

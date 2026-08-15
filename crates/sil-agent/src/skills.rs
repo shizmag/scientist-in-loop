@@ -33,6 +33,8 @@ pub struct SkillSelection {
     pub agent_code: bool,
     /// Load review.md (manuscript estimate / peer-review skill).
     pub review: bool,
+    /// Load the optional Visualize Article prompt skill.
+    pub visualize_article: bool,
 }
 
 impl SkillSelection {
@@ -43,6 +45,7 @@ impl SkillSelection {
             paper: false,
             agent_code: false,
             review: false,
+            visualize_article: false,
         }
     }
 
@@ -79,6 +82,13 @@ impl SkillSelection {
             s.review = true;
             s.paper = true;
         }
+        if t.contains("figure")
+            || t.contains("visualiz")
+            || t.contains("diagram")
+            || t.contains("architecture")
+        {
+            s.visualize_article = true;
+        }
         s
     }
 
@@ -101,12 +111,29 @@ impl SkillSelection {
             if n.contains("review") || n.contains("estimate") {
                 self.review = true;
             }
+            if n.contains("visualize") || n.contains("figure") || n.contains("diagram") {
+                self.visualize_article = true;
+            }
         }
     }
 }
 
 /// Load skill file contents from the project.
 pub fn load_skill(root: &Utf8Path, name: &str) -> Result<String, ContextError> {
+    let registry = crate::SkillRegistry::new(root);
+    if let Ok(entries) = registry.list()
+        && let Some(entry) = entries
+            .iter()
+            .find(|entry| entry.entrypoint == name || entry.path.ends_with(name))
+    {
+        return fs::read_to_string(entry.path.as_str())
+            .map_err(|e| ContextError::Io(format!("{}: {e}", entry.path)));
+    }
+    let local = root.join("agent/skills/local").join(name);
+    if local.is_file() {
+        return fs::read_to_string(local.as_str())
+            .map_err(|e| ContextError::Io(format!("{local}: {e}")));
+    }
     let path = root.join(rel::SKILLS).join(name);
     fs::read_to_string(path.as_str()).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -185,6 +212,17 @@ mod tests {
         assert!(s.paper);
         let s2 = SkillSelection::from_task("peer review critique");
         assert!(s2.review);
+    }
+
+    #[test]
+    fn visualize_article_triggers_route() {
+        assert!(SkillSelection::from_task("design a figure architecture").visualize_article);
+        let mut selection = SkillSelection::always();
+        selection.merge_flags(&ContextFlags {
+            skills: vec!["visualize-article".into()],
+            ..Default::default()
+        });
+        assert!(selection.visualize_article);
     }
 
     #[test]

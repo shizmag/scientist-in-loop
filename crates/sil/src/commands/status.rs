@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use serde::Serialize;
-use sil_core::{SilUi, Structure, paths::rel};
+use sil_core::{CheckReport, SilUi, Structure, paths::rel};
 use sil_db::SilDb;
 use sil_git::{path_has_changes, status as git_status};
 
@@ -19,6 +19,15 @@ struct StatusJson {
     structure: StructureJson,
     git: GitJson,
     draft_dirty: bool,
+    check: Option<CheckJson>,
+}
+
+#[derive(Debug, Serialize)]
+struct CheckJson {
+    fingerprint: String,
+    errors: usize,
+    warnings: usize,
+    observations: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -61,6 +70,7 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     let git = git_status(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
     let draft_dirty = path_has_changes(&root, rel::PAPER_DRAFT).unwrap_or(false);
     let summary = structure.completion_summary();
+    let check = sil_app::load_cached_report(&root)?;
 
     if json {
         let payload = StatusJson {
@@ -96,6 +106,7 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
                 uncommitted: git.entries.len(),
             },
             draft_dirty,
+            check: check.as_ref().map(check_json),
         };
         println!("{}", serde_json::to_string_pretty(&payload)?);
         return Ok(());
@@ -160,4 +171,13 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     }
     ui.println("");
     Ok(())
+}
+
+fn check_json(report: &CheckReport) -> CheckJson {
+    CheckJson {
+        fingerprint: report.r#static.input_fingerprint.clone(),
+        errors: report.r#static.summary.errors,
+        warnings: report.r#static.summary.warnings,
+        observations: report.r#static.summary.observations,
+    }
 }

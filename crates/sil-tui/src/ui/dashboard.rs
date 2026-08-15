@@ -35,6 +35,10 @@ pub struct DashboardModel {
     pub digest_publications: Vec<JournalPublication>,
     pub unparsed_sources_count: usize,
     pub open_todos_count: usize,
+    pub check_fingerprint: Option<String>,
+    pub check_errors: usize,
+    pub check_warnings: usize,
+    pub check_observations: usize,
 }
 
 impl DashboardModel {
@@ -63,31 +67,74 @@ impl DashboardModel {
         let mut health_audited = false;
         let mut cited_bib_count = 0;
         let mut total_bib_count = app.bib_file_entries.len();
-        let mut unreferenced_labels_count = 0;
-        let mut undefined_refs_count = 0;
+        let mut unreferenced_labels_count = app
+            .check_report
+            .as_ref()
+            .map(|r| {
+                r.r#static
+                    .findings
+                    .iter()
+                    .filter(|f| f.code.contains("unreferenced"))
+                    .count()
+            })
+            .unwrap_or(0);
+        let mut undefined_refs_count = app
+            .check_report
+            .as_ref()
+            .map(|r| {
+                r.r#static
+                    .findings
+                    .iter()
+                    .filter(|f| f.code.contains("undefined_reference"))
+                    .count()
+            })
+            .unwrap_or(0);
 
-        if let Some(ref root) = app.project_root {
+        if app.check_report.is_none()
+            && let Some(root) = app.project_root.as_ref()
+        {
             let draft_path = root.join(&main_file);
             let bib_path = root.join("references.bib");
-            let bib_opt = if bib_path.is_file() {
-                Some(bib_path.as_path())
-            } else {
-                None
-            };
-            if let Ok(report) = sil_latex::audit_manuscript(&draft_path, bib_opt) {
-                health_audited = true;
-                let (cited, total) = report.bib_citation_ratio();
-                cited_bib_count = cited;
-                total_bib_count = total;
+            if let Ok(report) = sil_latex::audit_manuscript(
+                &draft_path,
+                bib_path.is_file().then_some(bib_path.as_path()),
+            ) {
+                cited_bib_count = report.bib_citation_ratio().0;
+                total_bib_count = report.bib_citation_ratio().1;
                 unreferenced_labels_count = report.unreferenced_labels_count;
                 undefined_refs_count = report
                     .diagnostics
                     .iter()
                     .filter(|d| d.category == "undefined_reference")
                     .count();
+                health_audited = true;
             }
         }
 
+        let (check_fingerprint, check_errors, check_warnings, check_observations) =
+            if let Some(report) = app.check_report.as_ref() {
+                health_audited = true;
+                cited_bib_count = report
+                    .r#static
+                    .metrics
+                    .get("bib_cited")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as usize;
+                total_bib_count = report
+                    .r#static
+                    .metrics
+                    .get("bib_keys")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(total_bib_count as u64) as usize;
+                (
+                    Some(report.r#static.input_fingerprint.clone()),
+                    report.r#static.summary.errors,
+                    report.r#static.summary.warnings,
+                    report.r#static.summary.observations,
+                )
+            } else {
+                (None, 0, 0, 0)
+            };
         let tex_content = if !app.paper_draft_content.is_empty() {
             app.paper_draft_content.clone()
         } else if let Some(ref root) = app.project_root {
@@ -121,7 +168,10 @@ impl DashboardModel {
         }
 
         let unparsed_sources_count = app.sources.iter().filter(|s| !s.parsed).count();
-        let open_todos_count = ideas.len();
+        let open_todos_count = sil_latex::parse_idea_blocks(&tex_content)
+            .into_iter()
+            .filter(|b| b.status != "resolved")
+            .count();
 
         Self {
             stage,
@@ -136,6 +186,10 @@ impl DashboardModel {
             digest_publications,
             unparsed_sources_count,
             open_todos_count,
+            check_fingerprint,
+            check_errors,
+            check_warnings,
+            check_observations,
         }
     }
 }

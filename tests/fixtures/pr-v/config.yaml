@@ -1,0 +1,15 @@
+project:
+  title: Offline Verification Fixture
+  stage: draft
+paths:
+  sources: ./sources
+  data: ./data
+  figures: ./figures
+  agent: ./agent
+latex:
+  engine: tectonic
+  main: paper_draft.tex
+  template: standard
+parsing:
+  engine: marker
+  mode: balance

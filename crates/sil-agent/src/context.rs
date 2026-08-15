@@ -76,6 +76,17 @@ pub fn generate_context(input: &ContextInput<'_>) -> Result<String, ContextError
             Err(e) => return Err(e),
         }
     }
+    if input.skills.visualize_article {
+        match load_skill(input.root, "SKILL.md") {
+            Ok(s) => {
+                out.push_str("## Skill: visualize-article/SKILL.md\n\n");
+                out.push_str(&s);
+                out.push_str("\n\n");
+            }
+            Err(ContextError::MissingSkill(_)) => {}
+            Err(e) => return Err(e),
+        }
+    }
 
     out.push_str("## structure.yaml\n\n```yaml\n");
     out.push_str(input.structure_yaml.trim_end());

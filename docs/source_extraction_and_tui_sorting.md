@@ -33,7 +33,9 @@ To comply with external provider policies (Crossref, OpenAlex, ArXiv):
 
 ### 5. Native-First Journal Digest CLI Behavior (PR-C3)
 - `sil source digest [query]` executes a native Rust Crossref query builder in `sil-parse::journal_digest`.
-- Operates zero-dependency without invoking Python scripts, resolving top peer-reviewed journal publications directly via REST API with polite rate-limiting.
+- Operates without invoking Python scripts for the legacy single-query digest. It
+  is not a universal top-journal or venue-prestige ranking; Stage 15 discovery
+  records query-scoped provider snapshots and explicit venue evidence.
 
 ### 5. Pure Rust / Fast Parser Fallback
 Heavy Python marker dependencies are decoupled from core reference/author extraction, allowing `sil source doctor` to run reliably and rapidly from scratch across all environments.

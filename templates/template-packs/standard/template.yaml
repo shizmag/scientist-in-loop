@@ -1,0 +1,27 @@
+api_version: sil.dev/template/v1
+kind: TemplatePack
+metadata:
+  id: scientist-in-loop/standard
+  version: 1.0.0
+  license: MIT
+  repository: https://github.com/scientist-in-loop/scientist-in-loop
+source:
+  revision: local-standard-1
+  sha256: 0000000000000000000000000000000000000000000000000000000000000000
+redistribution:
+  bundled_with_sil: allowed
+  local_cache: allowed
+  release_archive: allowed
+  evidence: https://opensource.org/license/mit
+files:
+  - path: main.tex
+    sha256: 6ab23f05fc9e0d3fa043b79fe9fdd3ee5e018f5961613553ac65dc24a9edc30f
+entrypoint: main.tex
+adapter:
+  id: latex-anchor-v1
+  content_anchor: SIL_MANUSCRIPT_CONTENT
+build:
+  engines: [tectonic, latexmk]
+  expected_pdf: main.pdf
+constraints:
+  anonymous: false

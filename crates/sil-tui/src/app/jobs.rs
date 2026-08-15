@@ -1194,10 +1194,12 @@ impl App {
         std::thread::spawn(move || {
             let started = std::time::Instant::now();
             let catch_res = catch_unwind(AssertUnwindSafe(|| {
+                let cached_check = sil_app::load_cached_report(&root).ok().flatten();
                 let input = sil_agent::EstimateInput {
                     root: root.as_path(),
                     mode: sil_agent::EstimateMode::Quick,
                     structure: None,
+                    check_report: cached_check.as_ref(),
                 };
                 let report =
                     sil_agent::run_heuristic_estimate(&input).map_err(|e| e.to_string())?;

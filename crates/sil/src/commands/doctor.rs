@@ -89,6 +89,7 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
 
     let mut checks = Vec::new();
     let mut project_root = None;
+    let mut manuscript_report = None;
 
     // Always: git, python, uv (optional), cargo (optional), latex engines, marker (optional)
     checks.extend(run_host_checks());
@@ -96,6 +97,15 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
     match load_project() {
         Ok((root, config, paths)) => {
             project_root = Some(root.to_string());
+            manuscript_report = sil_app::run_manuscript_check(
+                &root,
+                sil_app::ManuscriptCheckOptions {
+                    profile: sil_core::CheckProfile::Draft,
+                    build: false,
+                    online: false,
+                },
+            )
+            .ok();
             checks.push(Check::simple("sil project", true, format!("root={root}")));
             let cfg_ok = paths.config().is_file();
             checks.push(Check::with_hint(
@@ -411,6 +421,7 @@ pub fn run(args: DoctorArgs, ui: &dyn SilUi) -> Result<()> {
         project: project_root,
         ok: checks.iter().filter(|c| !is_soft(&c.name)).all(|c| c.ok),
         checks,
+        check: manuscript_report,
     };
 
     if json {

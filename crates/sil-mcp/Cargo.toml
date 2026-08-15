@@ -23,7 +23,7 @@ anyhow.workspace = true
 camino.workspace = true
 
 tokio = { version = "1", features = ["full"] }
+rmcp.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-

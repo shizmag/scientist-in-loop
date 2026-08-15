@@ -14,10 +14,11 @@ use sil_core::{
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
 use sil_latex::split_tex_sections;
-use sil_latex::{audit_manuscript, build_command, parse_idea_blocks, update_or_insert_idea_block};
+use sil_latex::{build_command, parse_idea_blocks, update_or_insert_idea_block};
 use std::fs;
 
 use crate::protocol::{CallToolResult, Tool, ToolInputSchema};
+use crate::security::McpContext;
 
 /// Returns all registered `sil` tools with valid JSON schemas.
 pub fn list_tools() -> Vec<Tool> {
@@ -140,7 +141,7 @@ pub fn list_tools() -> Vec<Tool> {
                 json!({
                     "action": {
                         "type": "string",
-                        "enum": ["estimate", "build"],
+                        "enum": ["check", "estimate", "build"],
                         "description": "Quality action to perform"
                     },
                     "mode": { "type": "string", "description": "Estimate mode: quick | full | methodology (default quick)" },
@@ -168,7 +169,26 @@ pub fn list_tools() -> Vec<Tool> {
 
 /// Execute a tool call by name with given parameters.
 pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolResult {
+    let context = match McpContext::from_cwd() {
+        Ok(context) => context,
+        Err(e) => {
+            if !list_tools().iter().any(|tool| tool.name == name) {
+                return CallToolResult::error(format!("Unknown tool: {name}"));
+            }
+            return CallToolResult::error(e);
+        }
+    };
+    call_tool_with_context(&context, name, arguments)
+}
+
+/// Execute a tool using an explicit, canonical project context.
+pub fn call_tool_with_context(
+    context: &McpContext,
+    name: &str,
+    arguments: Option<serde_json::Value>,
+) -> CallToolResult {
     let mut args = arguments.unwrap_or_else(|| json!({}));
+    args["__sil_project_root"] = json!(context.root.as_str());
 
     match name {
         "sil_context" => {
@@ -244,6 +264,7 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
                 None => return CallToolResult::error("Missing required parameter: action"),
             };
             match action {
+                "check" => handle_check(args),
                 "estimate" => handle_estimate_paper(args),
                 "build" => handle_build_and_doctor(args),
                 _ => CallToolResult::error(format!("Invalid action '{action}' for sil_review")),
@@ -254,7 +275,11 @@ pub fn call_tool(name: &str, arguments: Option<serde_json::Value>) -> CallToolRe
     }
 }
 
-fn get_project_paths() -> Result<(Utf8PathBuf, ProjectPaths), String> {
+fn get_project_paths(args: &serde_json::Value) -> Result<(Utf8PathBuf, ProjectPaths), String> {
+    if let Some(root) = args.get("__sil_project_root").and_then(|v| v.as_str()) {
+        let root = Utf8PathBuf::from(root);
+        return Ok((root.clone(), ProjectPaths::new(root)));
+    }
     let root = project_root_from_cwd().map_err(|e| format!("Not in a sil project: {e}"))?;
     let paths = ProjectPaths::new(&root);
     Ok((root, paths))
@@ -272,7 +297,7 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -283,7 +308,7 @@ fn handle_search_sources(args: serde_json::Value) -> CallToolResult {
     };
 
     let global_settings = sil_core::GlobalSettings::load_or_default(None);
-    let rag = get_project_paths()
+    let rag = get_project_paths(&args)
         .ok()
         .and_then(|(_r, p)| sil_core::Config::load(&p.config()).ok())
         .and_then(|cfg| cfg.rag)
@@ -367,7 +392,7 @@ fn handle_get_source_context(args: serde_json::Value) -> CallToolResult {
     };
     let chunk_id = args.get("chunk_id").and_then(|v| v.as_str());
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -439,7 +464,7 @@ fn handle_suggest_citations(args: serde_json::Value) -> CallToolResult {
     let source_id = args.get("source_id").and_then(|v| v.as_str());
 
     if let Some(sid) = source_id {
-        let doc_opt = get_project_paths()
+        let doc_opt = get_project_paths(&args)
             .ok()
             .and_then(|(_root, paths)| SilDb::open(&paths.db()).ok())
             .and_then(|db| db.list_sources().ok())
@@ -475,7 +500,7 @@ fn handle_list_todos(args: serde_json::Value) -> CallToolResult {
     let section = args.get("section").and_then(|v| v.as_str());
     let sort_by = args.get("sort_by").and_then(|v| v.as_str());
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -509,7 +534,7 @@ fn handle_update_todo(args: serde_json::Value) -> CallToolResult {
     let status = args.get("status").and_then(|v| v.as_str());
     let priority = args.get("priority").and_then(|v| v.as_str());
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -557,7 +582,7 @@ fn handle_update_todo(args: serde_json::Value) -> CallToolResult {
 }
 
 fn handle_list_skills(args: serde_json::Value) -> CallToolResult {
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -572,7 +597,11 @@ fn handle_list_skills(args: serde_json::Value) -> CallToolResult {
     if let Ok(entries) = fs::read_dir(skills_dir.as_str()) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.is_file() {
+            if p.is_file()
+                && p.canonicalize().ok().is_some_and(|canonical| {
+                    canonical.parent() == skills_dir.canonicalize().ok().as_deref()
+                })
+            {
                 let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 if name.ends_with(".md") && !skills.iter().any(|s| s["name"] == name) {
                     skills.push(json!({
@@ -604,10 +633,18 @@ fn handle_invoke_skill(args: serde_json::Value) -> CallToolResult {
     };
     let input = args.get("input").and_then(|v| v.as_str());
 
-    let (root, _paths) = match get_project_paths() {
+    let (root, _paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
+
+    let security = match McpContext::from_root(&root) {
+        Ok(context) => context,
+        Err(e) => return CallToolResult::error(e),
+    };
+    if let Err(e) = security.skill_path(name) {
+        return CallToolResult::error(format!("Failed to load skill '{name}': {e}"));
+    }
 
     match load_skill(&root, name) {
         Ok(content) => {
@@ -628,7 +665,7 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
 
-    let (root, paths) = match get_project_paths() {
+    let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -706,7 +743,7 @@ fn handle_get_structure(args: serde_json::Value) -> CallToolResult {
     };
     // word_count is intentionally ignored (field does not exist on Section; non-goal for E2).
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -834,7 +871,7 @@ fn handle_build_and_doctor(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
 
-    let (root, paths) = match get_project_paths() {
+    let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -847,28 +884,75 @@ fn handle_build_and_doctor(args: serde_json::Value) -> CallToolResult {
     };
 
     let cmd = build_command(engine, &paths.paper_draft(), &root);
-
-    let mut report = None;
-    if run_doctor {
-        report = audit_manuscript(&paths.paper_draft(), None)
-            .ok()
-            .map(|r| serde_json::to_value(&r).unwrap_or_default());
-    }
+    let report = match sil_app::run_manuscript_check(
+        &root,
+        sil_app::ManuscriptCheckOptions {
+            profile: sil_core::CheckProfile::Draft,
+            build: true,
+            online: false,
+        },
+    ) {
+        Ok(report) => report,
+        Err(e) => {
+            // Minimal MCP fixtures may intentionally contain only version metadata. Preserve the
+            // build surface by returning the structured compiler result after the A3 attempt.
+            let result = sil_latex::build_structured(engine, &paths.paper_draft(), &root);
+            let res = json!({
+                "build_command": format!("{cmd:?}"),
+                "engine": engine_str,
+                "health_doctor_report": run_doctor.then(|| json!({"check_error": e.to_string(), "build": result})),
+                "check": null,
+                "never_committed": true,
+            });
+            return CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default());
+        }
+    };
 
     let res = json!({
         "build_command": format!("{cmd:?}"),
         "engine": engine_str,
-        "health_doctor_report": report
+        "health_doctor_report": if run_doctor { serde_json::to_value(&report).unwrap_or_default() } else { json!(null) },
+        "check": report,
+        "never_committed": true,
     });
 
     CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+}
+
+fn handle_check(args: serde_json::Value) -> CallToolResult {
+    let (root, _) = match get_project_paths(&args) {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+    let profile = match args
+        .get("profile")
+        .and_then(|v| v.as_str())
+        .unwrap_or("draft")
+    {
+        "submission" => sil_core::CheckProfile::Submission,
+        "strict" => sil_core::CheckProfile::Strict,
+        _ => sil_core::CheckProfile::Draft,
+    };
+    match sil_app::run_manuscript_check(
+        &root,
+        sil_app::ManuscriptCheckOptions {
+            profile,
+            build: false,
+            online: false,
+        },
+    ) {
+        Ok(report) => {
+            CallToolResult::text(serde_json::to_string_pretty(&report).unwrap_or_default())
+        }
+        Err(e) => CallToolResult::error(format!("Check failed: {e}")),
+    }
 }
 
 fn handle_propose_commit(args: serde_json::Value) -> CallToolResult {
     let message = args.get("message").and_then(|v| v.as_str());
     let action_str = args.get("action").and_then(|v| v.as_str());
 
-    let (root, _paths) = match get_project_paths() {
+    let (root, _paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -909,7 +993,11 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let ctx = match sil_app::AppContext::from_cwd() {
+    let (root, _) = match get_project_paths(&args) {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+    let ctx = match sil_app::AppContext::from_root(root) {
         Ok(c) => c,
         Err(e) => return CallToolResult::error(e.to_string()),
     };
@@ -961,7 +1049,11 @@ fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
 
     let draft = args.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    let ctx = match sil_app::AppContext::from_cwd() {
+    let (root, _) = match get_project_paths(&args) {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+    let ctx = match sil_app::AppContext::from_root(root) {
         Ok(c) => c,
         Err(e) => return CallToolResult::error(e.to_string()),
     };
@@ -990,7 +1082,11 @@ fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
         _ => return CallToolResult::error("Missing required parameter: cite_key"),
     };
 
-    let ctx = match sil_app::AppContext::from_cwd() {
+    let (root, _) = match get_project_paths(&args) {
+        Ok(p) => p,
+        Err(e) => return CallToolResult::error(e),
+    };
+    let ctx = match sil_app::AppContext::from_root(root) {
         Ok(c) => c,
         Err(e) => return CallToolResult::error(e.to_string()),
     };
@@ -1111,13 +1207,17 @@ fn handle_parse_source(args: serde_json::Value) -> CallToolResult {
         return CallToolResult::error("Provide path, source_id, or set all_unparsed=true");
     }
 
-    let (root, paths) = match get_project_paths() {
+    let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
 
     let config = sil_core::Config::load(&paths.config()).unwrap_or_default();
     let sources_dir = paths.sources(&config);
+    let security = match McpContext::from_root(&root) {
+        Ok(context) => context,
+        Err(e) => return CallToolResult::error(e),
+    };
 
     let db = match SilDb::open(&paths.db()) {
         Ok(d) => d,
@@ -1148,12 +1248,18 @@ fn handle_parse_source(args: serde_json::Value) -> CallToolResult {
         }
     } else if let Some(p) = path_arg {
         match resolve_parse_path(p, &sources_dir, &root) {
-            Ok(abs) => vec![abs],
+            Ok(abs) => match security.confine_existing(abs.as_str()) {
+                Ok(path) => vec![path],
+                Err(e) => return CallToolResult::error(e),
+            },
             Err(e) => return CallToolResult::error(e),
         }
     } else if let Some(sid) = source_id {
         match resolve_source_id_path(sid, &sources_dir, &root, &db) {
-            Ok(abs) => vec![abs],
+            Ok(abs) => match security.confine_existing(abs.as_str()) {
+                Ok(path) => vec![path],
+                Err(e) => return CallToolResult::error(e),
+            },
             Err(e) => return CallToolResult::error(e),
         }
     } else {
@@ -1233,7 +1339,7 @@ fn handle_rank_draft(args: serde_json::Value) -> CallToolResult {
         .unwrap_or(0.0) as f32;
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -1312,16 +1418,28 @@ fn handle_estimate_paper(args: serde_json::Value) -> CallToolResult {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let (root, paths) = match get_project_paths() {
+    let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
 
     let structure = Structure::load(&paths.structure()).ok();
+    let check = match sil_app::run_manuscript_check(
+        &root,
+        sil_app::ManuscriptCheckOptions {
+            profile: sil_core::CheckProfile::Draft,
+            build: false,
+            online: false,
+        },
+    ) {
+        Ok(report) => report,
+        Err(e) => return CallToolResult::error(format!("Check failed: {e}")),
+    };
     let report = match run_heuristic_estimate(&EstimateInput {
         root: &root,
         mode: EstimateMode::parse(mode),
         structure: structure.as_ref(),
+        check_report: Some(&check),
     }) {
         Ok(r) => r,
         Err(e) => return CallToolResult::error(format!("estimate failed: {e}")),
@@ -1395,7 +1513,7 @@ fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
         return CallToolResult::error("replace is required when search is set");
     }
 
-    let (root, paths) = match get_project_paths() {
+    let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };
@@ -1541,7 +1659,7 @@ fn handle_ground_claims(args: serde_json::Value) -> CallToolResult {
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
     let apply = args.get("apply").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    let (_root, paths) = match get_project_paths() {
+    let (_root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
         Err(e) => return CallToolResult::error(e),
     };

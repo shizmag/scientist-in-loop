@@ -4,11 +4,13 @@ use serde_json::json;
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 
 use crate::protocol::{JsonRpcRequest, JsonRpcResponse, Tool};
-use crate::tools::{call_tool, list_tools};
+use crate::security::McpContext;
+use crate::tools::{call_tool_with_context, list_tools};
 
 /// MCP Server instance.
 pub struct McpServer {
     tools: Vec<Tool>,
+    context: Option<McpContext>,
 }
 
 impl Default for McpServer {
@@ -22,6 +24,15 @@ impl McpServer {
     pub fn new() -> Self {
         Self {
             tools: list_tools(),
+            context: None,
+        }
+    }
+
+    /// Create a server bound to an explicit project context.
+    pub fn with_context(context: McpContext) -> Self {
+        Self {
+            tools: list_tools(),
+            context: Some(context),
         }
     }
 
@@ -99,7 +110,10 @@ impl McpServer {
                 let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
                 let arguments = params.get("arguments").cloned();
 
-                let tool_result = call_tool(tool_name, arguments);
+                let tool_result = match &self.context {
+                    Some(context) => call_tool_with_context(context, tool_name, arguments),
+                    None => crate::tools::call_tool(tool_name, arguments),
+                };
                 let result_json = serde_json::to_value(&tool_result).unwrap_or_default();
                 Some(JsonRpcResponse::success(id, result_json))
             }
@@ -141,6 +155,55 @@ mod tests {
         assert_eq!(result["serverInfo"]["name"], "sil-mcp");
         assert_eq!(result["serverInfo"]["version"], env!("CARGO_PKG_VERSION"));
         assert!(result["capabilities"]["tools"].is_object());
+    }
+
+    #[tokio::test]
+    async fn explicit_context_does_not_use_cwd_for_tool_calls() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = camino::Utf8PathBuf::from_path_buf(dir.path().join("project")).unwrap();
+        std::fs::create_dir_all(root.join(".sil")).unwrap();
+        std::fs::create_dir_all(root.join("agent/skills")).unwrap();
+        std::fs::write(root.join(".sil/config.yaml"), "version: 1\n").unwrap();
+        std::fs::write(root.join("agent/skills/SYSTEM.md"), "system").unwrap();
+        let context = crate::McpContext::from_root(&root).unwrap();
+        let server = McpServer::with_context(context);
+        let response = server
+            .handle_request_line(
+                r#"{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"sil_context","arguments":{"list_skills":true}}}"#,
+            )
+            .await
+            .unwrap();
+        assert!(response.error.is_none());
+        let result: CallToolResult = serde_json::from_value(response.result.unwrap()).unwrap();
+        assert!(result.is_error.is_none());
+        assert!(matches!(&result.content[0], Content::Text { text } if text.contains("SYSTEM.md")));
+    }
+
+    #[tokio::test]
+    async fn protocol_parity_fixture_covers_six_tool_families() {
+        let _env = crate::tools::tests::TestEnv::new();
+        let server = McpServer::new();
+        let calls = [
+            ("sil_context", r#"{}"#),
+            ("sil_sources", r#"{"action":"bad"}"#),
+            ("sil_cite", r#"{"action":"bad"}"#),
+            ("sil_draft", r#"{"action":"bad"}"#),
+            ("sil_review", r#"{"action":"bad"}"#),
+            ("sil_propose", r#"{}"#),
+        ];
+        for (id, (name, arguments)) in calls.iter().enumerate() {
+            let request = format!(
+                r#"{{"jsonrpc":"2.0","id":{},"method":"tools/call","params":{{"name":"{}","arguments":{}}}}}"#,
+                id + 1,
+                name,
+                arguments
+            );
+            let response = server.handle_request_line(&request).await.unwrap();
+            assert_eq!(response.id, Some(json!(id + 1)));
+            assert!(response.error.is_none());
+            let result: CallToolResult = serde_json::from_value(response.result.unwrap()).unwrap();
+            assert_eq!(result.content.len(), 1);
+        }
     }
 
     #[tokio::test]

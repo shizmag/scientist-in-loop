@@ -1,0 +1,15 @@
+scientist-in-loop
+
+The repository and first-party source are distributed under the MIT License;
+see LICENSE. Cargo dependencies remain under their respective upstream
+licenses and are not relicensed by this notice.
+
+The checked-in Visualize Article skill pack is first-party MIT content. It
+generates prompts for external image providers and does not include or call an
+image provider. See
+`crates/sil-agent/packs/visualize-article/NOTICE`.
+
+Academic Research Skills (ARS) is not bundled or redistributed here. The
+optional adapter refers users to the upstream project under CC-BY-NC-4.0 and
+requires attribution, license acknowledgement, and a user-supplied checkout.
+See `docs/THIRD-PARTY-LICENSES.md`.

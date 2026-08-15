@@ -12,6 +12,9 @@ pub struct DoctorReport {
     pub ok: bool,
     /// Detailed results of all checks.
     pub checks: Vec<Check>,
+    /// Canonical manuscript check report, kept separate from host checks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub check: Option<sil_core::CheckReport>,
 }
 
 /// A single doctor diagnostic check.

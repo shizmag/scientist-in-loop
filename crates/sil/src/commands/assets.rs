@@ -12,6 +12,8 @@ struct AssetReport {
     inputs: Vec<AssetInfo>,
     total_count: usize,
     all_found: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    check_fingerprint: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -24,6 +26,8 @@ struct AssetInfo {
 /// Run assets inspection command.
 pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, _config, paths) = load_project()?;
+    let check_fingerprint =
+        sil_app::load_cached_report(&root)?.map(|report| report.r#static.input_fingerprint);
     let draft_path = paths.paper_draft();
 
     let content = if draft_path.exists() {
@@ -74,6 +78,7 @@ pub fn run(json: bool, ui: &dyn SilUi) -> Result<()> {
         inputs,
         total_count,
         all_found,
+        check_fingerprint,
     };
 
     if json {

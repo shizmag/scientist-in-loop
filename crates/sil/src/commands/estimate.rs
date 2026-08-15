@@ -14,11 +14,20 @@ pub fn run(mode: &str, json: bool, write: bool, ui: &dyn SilUi) -> Result<()> {
     let (root, _config, paths) = load_project()?;
     let structure = sil_core::Structure::load(&paths.structure()).ok();
     let mode = EstimateMode::parse(mode);
+    let check = sil_app::run_manuscript_check(
+        &root,
+        sil_app::ManuscriptCheckOptions {
+            profile: sil_core::CheckProfile::Draft,
+            build: false,
+            online: false,
+        },
+    )?;
 
     let report = run_heuristic_estimate(&EstimateInput {
         root: &root,
         mode,
         structure: structure.as_ref(),
+        check_report: Some(&check),
     })?;
 
     if write {

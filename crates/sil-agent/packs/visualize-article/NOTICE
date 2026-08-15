@@ -1,0 +1,6 @@
+Scientist-in-loop Visualize Article skill pack
+
+Copyright (c) 2026 scientist-in-loop contributors
+SPDX-License-Identifier: MIT
+
+This first-party pack generates prompts for external image providers. It does not include or call an image provider.

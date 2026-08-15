@@ -6,6 +6,8 @@
 
 /// Bibliography & BibTeX utilities.
 pub mod bib;
+/// Deterministic check report contracts and profile policy.
+pub mod check;
 mod config;
 mod error;
 /// Project path constants and helpers.
@@ -30,6 +32,8 @@ pub mod health;
 pub mod todo;
 /// Undo journal for tracking and reverting file mutations.
 pub mod undo;
+/// Canonical venue identities, aliases, and catalogue validation.
+pub mod venue;
 /// Advisory workspace lock for agent/TUI coordination.
 pub mod workspace_lock;
 
@@ -41,6 +45,11 @@ pub use bib::{
     rewrite_bib_cite_key, slug_cite_key, strip_tui_added_bib_entries, suggest_from_filename_title,
     suggest_from_query, suggest_from_reference_entry, suggest_from_source,
     unmark_tui_added_bib_entry, upsert_bib_entry, upsert_bib_entry_with_options,
+};
+pub use check::{
+    CheckFinding, CheckProfile, CheckReport, CheckRunMetadata, CheckStaticReport, CheckSummary,
+    DEFAULT_FINDING_LIMIT, FindingClass, input_fingerprint, serialized_input_fingerprint,
+    sort_and_deduplicate,
 };
 pub use config::{Config, LatexConfig, ParsingConfig, PathsConfig, ProjectConfig};
 pub use digest::JournalPublication;
@@ -63,6 +72,11 @@ pub use terminal::{NullUi, ProgressHandle, SilUi, SpinnerHandle, StdUi};
 pub use todo::{IdeaBlock, TodoIdea};
 pub use types::{LatexEngine, PaperKind, SilProject};
 pub use undo::{UndoFileSnapshot, UndoGeneration, UndoJournal, snapshot, undo};
+pub use venue::{
+    AliasKind, Catalogue, CatalogueIssue, Collection, ExternalId, Normalizer, Provenance,
+    Resolution, ResolutionEvidence, ResolutionStatus, Venue, VenueAlias, VenueEdition, VenueId,
+    VenueKind, VenueParent, VenueTrack, builtin_catalogue,
+};
 pub use workspace_lock::{
     TakeLock, TakeLockResult, WorkspaceLock, clear_lock, is_busy, lock_path, lock_to_yaml,
     parse_lock_yaml, pid_is_alive, read_lock, take_or_stale, try_acquire_lock,

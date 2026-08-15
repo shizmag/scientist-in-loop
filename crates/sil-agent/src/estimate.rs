@@ -167,6 +167,12 @@ pub struct EstimateReport {
     pub word_count: usize,
     /// Draft content hash (first 16 hex of FNV-like).
     pub draft_hash: String,
+    /// Fingerprint of the shared manuscript check used by this estimate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_fingerprint: Option<String>,
+    /// Shared check counts used by this estimate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_summary: Option<sil_core::CheckSummary>,
 }
 
 /// Input for L0 estimate.
@@ -177,6 +183,8 @@ pub struct EstimateInput<'a> {
     pub mode: EstimateMode,
     /// Optional structure.
     pub structure: Option<&'a Structure>,
+    /// Canonical report from the shared check usecase, when available.
+    pub check_report: Option<&'a sil_core::CheckReport>,
 }
 
 const ATTRIBUTION: &str = "Inspired by Academic Research Skills academic-paper-reviewer (CC-BY-NC 4.0); sil-native L0 heuristic implementation.";
@@ -212,6 +220,7 @@ pub fn run_heuristic_estimate(input: &EstimateInput<'_>) -> Result<EstimateRepor
     let todo_count = health.todo_ideas_count;
     let missing_cites = health.missing_citations_count;
     let word_count = health.word_count;
+    let check_summary = input.check_report.map(|r| r.r#static.summary.clone());
 
     let mut dims = EstimateDimensions {
         significance: 70,
@@ -416,6 +425,10 @@ pub fn run_heuristic_estimate(input: &EstimateInput<'_>) -> Result<EstimateRepor
         attribution: ATTRIBUTION.into(),
         word_count,
         draft_hash,
+        check_fingerprint: input
+            .check_report
+            .map(|r| r.r#static.input_fingerprint.clone()),
+        check_summary,
     })
 }
 
@@ -576,6 +589,7 @@ Some text with \cite{missing}.
             root: &root,
             mode: EstimateMode::Full,
             structure: None,
+            check_report: None,
         })
         .unwrap();
         assert!(report.read_only);
@@ -600,6 +614,7 @@ Some text with \cite{missing}.
             root: &root,
             mode: EstimateMode::Quick,
             structure: None,
+            check_report: None,
         })
         .unwrap();
         let out = write_estimate_report(&root, &report).unwrap();
@@ -634,6 +649,7 @@ Some text with \cite{missing}.
             root: &root,
             mode: EstimateMode::Quick,
             structure: Some(&st),
+            check_report: None,
         })
         .unwrap();
         assert!(report.overall_score > 50);

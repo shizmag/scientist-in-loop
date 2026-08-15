@@ -1,0 +1,91 @@
+schema_version: 1
+catalogue_version: 2026.08.15-seed
+normalizer_version: 1
+venues:
+  - id: conf.neurips
+    canonical_name: Conference on Neural Information Processing Systems
+    short_name: NeurIPS
+    kind: conference_series
+    aliases:
+      - value: NeurIPS
+        kind: official
+        valid_from: 2018
+        provenance: {url: https://neurips.cc/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+      - value: NIPS
+        kind: historical_acronym
+        valid_to: 2017
+        context: [conference]
+        provenance: {url: https://neurips.cc/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+      - value: Advances in Neural Information Processing Systems
+        kind: proceedings_title
+        provenance: {url: https://neurips.cc/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+    external_ids: [{namespace: dblp_stream, value: conf/nips}]
+  - id: conf.acl
+    canonical_name: Annual Meeting of the Association for Computational Linguistics
+    short_name: ACL
+    kind: conference_series
+    aliases:
+      - value: ACL
+        kind: common_abbreviation
+        context: [conference, computational linguistics]
+        provenance: {url: https://www.aclweb.org/portal/events, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+      - value: Annual Meeting of the Association for Computational Linguistics
+        kind: official
+        provenance: {url: https://www.aclweb.org/portal/events, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: conf.naacl
+    canonical_name: Annual Conference of the North American Chapter of the Association for Computational Linguistics
+    short_name: NAACL
+    kind: conference_series
+    aliases:
+      - value: NAACL
+        kind: common_abbreviation
+        context: [conference, computational linguistics]
+        provenance: {url: https://naacl.org/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: conf.findings-acl
+    canonical_name: Findings of the Association for Computational Linguistics
+    short_name: Findings of ACL
+    kind: conference_series
+    parent: {id: conf.acl, relation: associated_series}
+    aliases:
+      - value: Findings of ACL
+        kind: proceedings_title
+        provenance: {url: https://aclanthology.org/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+      - value: Findings of the Association for Computational Linguistics
+        kind: official
+        provenance: {url: https://aclanthology.org/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: journal.nature
+    canonical_name: Nature
+    short_name: Nature
+    kind: journal
+    aliases:
+      - value: Nature
+        kind: official
+        provenance: {url: https://www.nature.com/nature/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: journal.nature-machine-intelligence
+    canonical_name: Nature Machine Intelligence
+    short_name: Nature Machine Intelligence
+    kind: journal
+    aliases:
+      - value: Nature Machine Intelligence
+        kind: official
+        provenance: {url: https://www.nature.com/natmachintell/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: platform.openreview
+    canonical_name: OpenReview
+    short_name: OpenReview
+    kind: hosting_platform
+    aliases:
+      - value: OpenReview
+        kind: platform_name
+        provenance: {url: https://openreview.net/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+  - id: repository.arxiv
+    canonical_name: arXiv
+    short_name: arXiv
+    kind: repository
+    aliases:
+      - value: arXiv
+        kind: official
+        provenance: {url: https://arxiv.org/, evidence_type: official, curated_by: sil-catalogue, reviewed_at: 2026-08-15}
+      - value: CoRR
+        kind: common_abbreviation
+        context: [repository, preprint]
+        provenance: {url: https://dblp.org/, evidence_type: independent, curated_by: sil-catalogue, reviewed_at: 2026-08-15}

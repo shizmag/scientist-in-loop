@@ -11,6 +11,7 @@ use sil_git::{CommitProposal, init_repo};
 use sil_latex::write_draft_sections_from_file;
 
 use crate::templates;
+use sil_agent::SkillRegistry;
 
 /// Create a new sil project at `target`.
 pub fn init_project(target: &Utf8Path, ui: &dyn SilUi) -> Result<()> {
@@ -219,26 +220,17 @@ fn ensure_layout(target: &Utf8Path) -> Result<()> {
 }
 
 fn write_skills(target: &Utf8Path) -> Result<()> {
-    write(target, rel::SKILL_SYSTEM, templates::SKILL_SYSTEM)?;
-    write(target, rel::SKILL_PAPER, templates::SKILL_PAPER)?;
-    write(target, rel::SKILL_AGENT_CODE, templates::SKILL_AGENT_CODE)?;
-    write(target, rel::SKILL_REVIEW, templates::SKILL_REVIEW)?;
-    write(
-        target,
-        "agent/skills/review/rubrics.md",
-        templates::SKILL_REVIEW_RUBRICS,
-    )?;
-    write(
-        target,
-        "agent/skills/review/personas.md",
-        templates::SKILL_REVIEW_PERSONAS,
-    )?;
-    write(
-        target,
-        "agent/skills/review/report_template.md",
-        templates::SKILL_REVIEW_REPORT,
-    )?;
-    Ok(())
+    SkillRegistry::new(target)
+        .migrate_legacy(&[
+            ("SYSTEM.md", templates::SKILL_SYSTEM),
+            ("paper.md", templates::SKILL_PAPER),
+            ("agent-code.md", templates::SKILL_AGENT_CODE),
+            ("review.md", templates::SKILL_REVIEW),
+            ("review/rubrics.md", templates::SKILL_REVIEW_RUBRICS),
+            ("review/personas.md", templates::SKILL_REVIEW_PERSONAS),
+            ("review/report_template.md", templates::SKILL_REVIEW_REPORT),
+        ])
+        .map_err(|e| anyhow::anyhow!("skill migration: {e}"))
 }
 
 /// Split paper_draft.tex into `.sil/draft_sections/`. Returns section count.

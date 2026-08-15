@@ -1,7 +1,7 @@
 # Implementation stages
 
-All stages below are complete. `cargo test --workspace` and
-`cargo clippy --workspace --all-targets -- -D warnings` are green.
+Stages 0-14 are complete. Stage 15 is documented below and is complete only
+when `docs/plan-08-15/verification-report.md` records a **SHIP** verdict.
 
 ## Stage 0 — Workspace skeleton ✅
 Multi-crate layout, domain types in `sil-core`, `sil --help` command surface,
@@ -86,4 +86,39 @@ Plan: `docs/plan-08-14/pr-plan.md`. ADR: `docs/adr/ADR-016-scientist-facing-tui.
 - **Intentional limits**: The five-tab TUI remains terminal-only. There is no GUI, daemon, hard `flock`, auto-commit, or `sil daily` command. MCP remains six workflow-oriented tools.
 - **Residuals**: Split-pane source+draft, GitHub Releases/prebuilt binaries, experiment/`data/` dashboard, and Stage 12 search/rank surface drift remain out of scope. Digest uses one query and TUI-lifetime refresh; embed-cache PK is still `content_hash`; Windows atomic rename is unproven. Auto-open reader remains off. W4 is an uncommitted diff/proposal view only, and the lock is not NFS-safe.
 
+## Stage 15 — Deterministic Scientific Workspace (verification-gated)
+
+Plan: `docs/plan-08-15/pr-plan.md`. Verification: `docs/plan-08-15/verification-report.md`.
+The Stage 15 implementation is a deterministic workspace spine with optional
+AI operators; it does not claim scientific truth or experiment reproducibility.
+
+- **Checks**: `sil paper check` evaluates current-state invariants with quiet
+  draft, explicit submission, strict, JSON, verbose, and opt-in online modes.
+  It does not compare against an implicit baseline or fail because values,
+  plots, hashes, word counts, or estimates changed.
+- **Discovery**: Venue identity uses versioned canonical IDs, aliases, raw
+  values, explicit ambiguity, and reviewed collections. Provider requests and
+  raw records are persisted as snapshots; ranking is deterministic and is not a
+  universal prestige or quality claim.
+- **Packages and templates**: Template and skill packs use manifests, hashes,
+  locks, project-local projections, explicit approval, verification, updates,
+  rollback/removal, and staged template builds. Legacy `apply` names remain a
+  compatibility path and are not official bundled venue files.
+- **MCP and skills**: MCP supports explicit project roots, typed SDK-backed
+  protocol handling, resources/prompts/tools, and owned installer lifecycle
+  operations. Skill registries separate managed packs from local skills and
+  report full, partial, or unsupported host capabilities.
+- **Licensing**: The repository is MIT. The checked-in Visualize Article pack
+  is first-party MIT prompt generation and discloses external image providers.
+  ARS is an optional user-supplied CC-BY-NC adapter; it is not vendored and
+  partial host support is not represented as full ARS equivalence.
+- **Explicit non-goals**: External experiment execution, cloning/running
+  experiment code, and symlink management are not implemented. The use case is
+  intentionally deferred until a concrete provenance and execution contract
+  is approved.
+
+Residuals include CWD discovery for direct interactive MCP invocation,
+unsupported host hooks, no universal venue ranking, no bundled official venue
+templates, host/toolchain-dependent compilation, and no external experiment
+runner or symlink manager. See the verification report for the tested claims.
 

@@ -1,0 +1,7 @@
+schema_version: 1
+packages:
+  - package_id: fixture/skill
+    version: 1.0.0
+    kind: skill_pack
+    revision: fixture-revision
+    sha256: 0000000000000000000000000000000000000000000000000000000000000000

@@ -28,6 +28,15 @@ fn test_draw_dashboard_rendering() {
 }
 
 #[test]
+fn test_draws_shared_pr_v_manuscript_fixture() {
+    let mut app = App::new(None);
+    app.active_tab = ActiveTab::PaperDraft;
+    app.reading_md_content =
+        Some(include_str!("../../../../tests/fixtures/pr-v/paper_draft.tex").into());
+    render_to_terminal(&mut app);
+}
+
+#[test]
 fn test_draw_sources_rendering_empty_and_populated() {
     let mut app = App::new(None);
     app.active_tab = ActiveTab::Sources;

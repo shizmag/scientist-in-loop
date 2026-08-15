@@ -2,6 +2,7 @@
 
 mod assets;
 mod build;
+mod check;
 mod cite;
 mod context;
 mod digest;
@@ -17,6 +18,7 @@ mod propose;
 mod recent;
 mod search;
 mod settings_cmd;
+mod skills;
 mod source;
 mod split;
 mod status;
@@ -26,6 +28,7 @@ mod todo;
 
 pub use assets::run as assets;
 pub use build::run as build;
+pub use check::{CheckArgs, run as check};
 pub use cite::run as cite;
 pub use context::run as context;
 pub use digest::run as digest;
@@ -41,6 +44,7 @@ pub use propose::run as propose;
 pub use recent::run as recent;
 pub use search::run as search;
 pub use settings_cmd::run as settings;
+pub use skills::run as skills;
 pub use source::{
     doctor as source_doctor, fetch as source_fetch, list as source_list,
     rank_draft as source_rank_draft, read as source_read, remove as source_remove,

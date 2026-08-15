@@ -6,6 +6,8 @@
 pub mod arxiv;
 /// Crossref API metadata lookup and publication digest queries.
 pub mod crossref;
+/// Injectable provider transport and discovery adapters.
+pub mod discovery;
 /// DOI checking and BibTeX retrieval via content negotiation.
 pub mod doi;
 /// Error types for external API interactions.
@@ -22,6 +24,7 @@ mod tests;
 
 pub use arxiv::*;
 pub use crossref::*;
+pub use discovery::*;
 pub use doi::*;
 pub use error::ApiError;
 pub use openreview::*;

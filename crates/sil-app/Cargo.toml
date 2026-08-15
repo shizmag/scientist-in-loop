@@ -8,17 +8,21 @@ publish = false
 
 [dependencies]
 sil-core = { workspace = true }
+sil-api = { workspace = true }
 sil-db = { workspace = true }
 sil-git = { workspace = true }
 sil-latex = { workspace = true }
 sil-parse = { workspace = true }
 sil-regex = { workspace = true }
+sil-package = { workspace = true }
+sil-agent = { workspace = true }
 thiserror = { workspace = true }
 camino = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+sha2 = { workspace = true }
 dirs = { workspace = true }
 
 [dev-dependencies]

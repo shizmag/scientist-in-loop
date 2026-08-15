@@ -5,7 +5,9 @@
 mod context;
 mod error;
 pub mod estimate;
+pub mod external;
 mod paper;
+mod registry;
 mod skills;
 
 pub use context::{ContextInput, generate_context, load_project_texts, sources_summary};
@@ -16,4 +18,9 @@ pub use estimate::{
     write_estimate_report,
 };
 pub use paper::{format_subsections_markdown, paper_subsections};
+pub use registry::{
+    CapabilityReport, CapabilityStatus, EntrypointCapabilityReport, ExternalDataFlow,
+    HostCapabilities, InstalledSkill, SkillCapabilities, SkillDiff, SkillEntrypoint, SkillMetadata,
+    SkillPackManifest, SkillRegistry, SkillRegistryError,
+};
 pub use skills::{ContextFlags, SkillSelection, load_skill};

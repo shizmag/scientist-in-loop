@@ -1,0 +1,36 @@
+api_version: sil.dev/skill/v1
+kind: SkillPack
+metadata:
+  id: scientist-in-loop/visualize-article
+  version: 1.0.0
+  license: MIT
+  license_evidence: https://spdx.org/licenses/MIT.html
+  external_data_flow:
+    destination: external_image_provider
+    data_classes: [manuscript, figures]
+    consent_required: true
+    disclosure: Sends user-approved manuscript and figure details to an external image provider only when the host obtains consent.
+source:
+  url: https://github.com/scientist-in-loop/scientist-in-loop
+  revision: visualize-article-v1.0.0
+  sha256: 9f0f5ef1f5c5f47ac3555c6d8329d9b4c0bdf69ad7b5d1cfb1a5ecf3d3e3f6a1
+compatibility:
+  sil: ">=1,<2"
+  hosts: []
+entrypoints:
+  - id: visualize-article
+    type: skill
+    path: SKILL.md
+    triggers: [figure, figures, visualization, visualise, visualize, diagram, pipeline, architecture]
+    resources: [NOTICE]
+    host_requirements: [resources]
+capabilities:
+  read: [manuscript, figures]
+  write: []
+  network: external_image_provider
+  process: false
+files:
+  - path: SKILL.md
+    sha256: 9c1bdba0a9c8ca3d5840def697d688c0e4b6ed541ba7c92044be2491e8a03d9f
+  - path: NOTICE
+    sha256: bb6e374809549d36efe93dbacefede58ae86c94575cb0479ba875cfe1b5d4c6e

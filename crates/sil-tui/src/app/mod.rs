@@ -72,6 +72,8 @@ pub struct App {
     pub cache: SettingsCache,
     pub project_root: Option<Utf8PathBuf>,
     pub loaded_config: Option<Config>,
+    /// Cached canonical manuscript check used by dashboard surfaces.
+    pub check_report: Option<sil_core::CheckReport>,
 
     pub selected_global_field: usize,
     pub selected_local_field: usize,
@@ -195,6 +197,22 @@ impl App {
 
         let is_no_project = project_root.is_none();
         let wizard_state = WizardState::new(&global_settings);
+        let cached_check_report = project_root
+            .as_ref()
+            .and_then(|root| sil_app::load_cached_report(root).ok().flatten())
+            .or_else(|| {
+                project_root.as_ref().and_then(|root| {
+                    sil_app::run_manuscript_check(
+                        root,
+                        sil_app::ManuscriptCheckOptions {
+                            profile: sil_core::CheckProfile::Draft,
+                            build: false,
+                            online: false,
+                        },
+                    )
+                    .ok()
+                })
+            });
 
         let mut app = Self {
             hydration_tx,
@@ -227,6 +245,7 @@ impl App {
             selected_job_history_index: 0,
             project_root,
             loaded_config,
+            check_report: cached_check_report,
             global_settings,
             cache,
             local_settings,
@@ -540,6 +559,14 @@ impl App {
         self.clamp_digest_selection();
     }
 
+    /// Reload the persisted report after an explicit project reload.
+    pub fn reload_check_report(&mut self) {
+        self.check_report = self
+            .project_root
+            .as_ref()
+            .and_then(|root| sil_app::load_cached_report(root).ok().flatten());
+    }
+
     /// Return commands matching current `palette_filter` string.
     pub fn filtered_commands(&self) -> Vec<&'static CommandSpec> {
         let query = self.palette_filter.trim().to_lowercase();
@@ -630,6 +657,7 @@ impl App {
         }
 
         if conflict {
+            self.check_report = None;
             if self.dirty {
                 self.disk_conflict_pending = true;
                 let banner =
@@ -672,6 +700,7 @@ impl App {
         }
         self.reload_paper_draft();
         self.reload_sources();
+        self.reload_check_report();
         self.load_project_references_bib();
         self.load_all_source_references();
         self.refresh_dashboard();

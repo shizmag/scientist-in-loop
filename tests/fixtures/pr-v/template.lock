@@ -1,0 +1,7 @@
+schema_version: 1
+packages:
+  - package_id: fixture/template
+    version: 1.0.0
+    kind: template_pack
+    revision: fixture-revision
+    sha256: 0000000000000000000000000000000000000000000000000000000000000000

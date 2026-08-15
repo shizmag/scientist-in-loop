@@ -56,7 +56,31 @@ fn run() -> Result<()> {
             }
         },
         Commands::Paper { action } => match action {
-            PaperCmd::Build { target, release } => commands::build(target, release, ui.as_ref()),
+            PaperCmd::Check {
+                profile,
+                strict,
+                online,
+                build,
+                json,
+                verbose,
+                all,
+            } => commands::check(
+                commands::CheckArgs {
+                    profile,
+                    strict,
+                    online,
+                    build,
+                    json,
+                    verbose,
+                    all,
+                },
+                ui.as_ref(),
+            ),
+            PaperCmd::Build {
+                target,
+                release,
+                source_only,
+            } => commands::build(target, release, source_only, ui.as_ref()),
             PaperCmd::Split => commands::split(ui.as_ref()),
             PaperCmd::Promote { force } => commands::promote(force, ui.as_ref()),
             PaperCmd::Todo { json } => commands::todo(json, ui.as_ref()),
@@ -113,7 +137,19 @@ fn run() -> Result<()> {
                 task.as_deref(),
                 ui.as_ref(),
             ),
-            ProjectCmd::Mcp { action, quiet } => commands::mcp(action, quiet),
+            ProjectCmd::Skills { action } => commands::skills(action, ui.as_ref()),
+            ProjectCmd::Mcp {
+                action,
+                project,
+                quiet,
+            } => commands::mcp(
+                action,
+                quiet,
+                project
+                    .map(camino::Utf8PathBuf::from_path_buf)
+                    .transpose()
+                    .map_err(|_| anyhow::anyhow!("project path is not valid UTF-8"))?,
+            ),
         },
         Commands::Git { action } => match action {
             GitCmd::Log {
@@ -133,6 +169,17 @@ fn run() -> Result<()> {
             ),
         },
         Commands::Tui { action: _ } => commands::settings(),
-        Commands::Mcp { action, quiet } => commands::mcp(action, quiet),
+        Commands::Mcp {
+            action,
+            project,
+            quiet,
+        } => commands::mcp(
+            action,
+            quiet,
+            project
+                .map(camino::Utf8PathBuf::from_path_buf)
+                .transpose()
+                .map_err(|_| anyhow::anyhow!("project path is not valid UTF-8"))?,
+        ),
     }
 }

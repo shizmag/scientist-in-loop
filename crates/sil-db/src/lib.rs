@@ -5,6 +5,8 @@
 /// BibTeX references and DOI verifications storage.
 pub mod bib_references;
 pub mod chunks;
+/// Discovery runs, provider evidence, canonical works, and candidates.
+pub mod discovery;
 pub mod embed_cache;
 /// Database and embedding error types.
 pub mod error;
@@ -24,6 +26,10 @@ pub use chunks::{
     ChunkSearchHit, ChunkType, SourceChunk, blob_to_embedding, chunk_markdown, cosine_similarity,
     embedding_to_blob,
 };
+pub use discovery::{
+    Candidate, CandidateEvent, CandidateState, DiscoveryRun, ProviderRecord, ProviderRequest, Work,
+    WorkIdentifier, WorkVenue, WorkVersion,
+};
 pub use error::DbError;
 pub use onnx::{DEFAULT_EMBEDDING_DIM, OnnxEmbedder, OnnxReranker, RagBackend, RagFallbackReason};
 pub use search::{SearchHit, search_hyde};
@@ -40,12 +46,24 @@ pub struct SilDb {
 fn apply_pragmas(conn: &Connection) -> Result<(), DbError> {
     conn.execute_batch(
         r#"
-        PRAGMA journal_mode = WAL;
         PRAGMA busy_timeout = 5000;
         PRAGMA foreign_keys = ON;
         PRAGMA synchronous = NORMAL;
         "#,
     )?;
+    let journal_mode =
+        match conn.query_row::<String, _, _>("PRAGMA journal_mode", [], |row| row.get(0)) {
+            Ok(mode) => mode,
+            Err(rusqlite::Error::SqliteFailure(err, _))
+                if err.code == rusqlite::ErrorCode::DatabaseBusy =>
+            {
+                return Ok(());
+            }
+            Err(err) => return Err(err.into()),
+        };
+    if !journal_mode.eq_ignore_ascii_case("wal") {
+        conn.query_row::<String, _, _>("PRAGMA journal_mode = WAL", [], |row| row.get(0))?;
+    }
     Ok(())
 }
 
@@ -84,6 +102,92 @@ impl SilDb {
     /// Apply schema migrations.
     pub fn migrate(&self) -> Result<(), DbError> {
         schema::migrate(&self.conn)
+    }
+
+    /// Store a discovery run.
+    pub fn create_discovery_run(&self, run: &DiscoveryRun) -> Result<(), DbError> {
+        discovery::create_run(&self.conn, run)
+    }
+
+    /// Update the durable status and cursor of a discovery run.
+    pub fn update_discovery_run(
+        &self,
+        id: &str,
+        status: &str,
+        cursor_json: Option<&str>,
+    ) -> Result<(), DbError> {
+        discovery::update_run(&self.conn, id, status, cursor_json)
+    }
+
+    /// Store one versioned, inspectable candidate ranking.
+    pub fn insert_candidate_ranking(
+        &self,
+        run_id: &str,
+        candidate_id: &str,
+        algorithm_version: &str,
+        score: i64,
+        components_json: &str,
+    ) -> Result<(), DbError> {
+        discovery::insert_candidate_ranking(
+            &self.conn,
+            run_id,
+            candidate_id,
+            algorithm_version,
+            score,
+            components_json,
+        )
+    }
+
+    /// Store immutable provider request metadata.
+    pub fn insert_provider_request(&self, request: &ProviderRequest) -> Result<(), DbError> {
+        discovery::insert_provider_request(&self.conn, request)
+    }
+
+    /// Store an immutable provider response record and its raw evidence.
+    pub fn insert_provider_record(&self, record: &ProviderRecord) -> Result<(), DbError> {
+        discovery::insert_provider_record(&self.conn, record)
+    }
+
+    /// Upsert canonical work metadata.
+    pub fn upsert_work(&self, work: &Work) -> Result<(), DbError> {
+        discovery::upsert_work(&self.conn, work)
+    }
+
+    /// Store a work identifier.
+    pub fn insert_work_identifier(&self, identifier: &WorkIdentifier) -> Result<(), DbError> {
+        discovery::insert_work_identifier(&self.conn, identifier)
+    }
+
+    /// Store a distinct publication version.
+    pub fn insert_work_version(&self, version: &WorkVersion) -> Result<(), DbError> {
+        discovery::insert_work_version(&self.conn, version)
+    }
+
+    /// Store raw and resolved venue evidence for a version.
+    pub fn insert_work_venue(&self, venue: &WorkVenue) -> Result<(), DbError> {
+        discovery::insert_work_venue(&self.conn, venue)
+    }
+
+    /// Store a candidate with its three independent initial states.
+    pub fn insert_candidate(&self, candidate: &Candidate) -> Result<(), DbError> {
+        discovery::insert_candidate(&self.conn, candidate)
+    }
+
+    /// Apply and audit one candidate state transition.
+    pub fn transition_candidate(
+        &self,
+        id: &str,
+        dimension: &str,
+        to: CandidateState,
+        actor: &str,
+        reason: &str,
+    ) -> Result<(), DbError> {
+        discovery::transition_candidate(&self.conn, id, dimension, to, actor, reason)
+    }
+
+    /// Read append-only candidate events.
+    pub fn candidate_events(&self, candidate_id: &str) -> Result<Vec<CandidateEvent>, DbError> {
+        discovery::candidate_events(&self.conn, candidate_id)
     }
 
     /// Number of sources in the database.
@@ -312,7 +416,9 @@ impl SilDb {
             "SELECT doi, title, authors, journal, year, abstract_text, citation_count, url FROM journal_digest ORDER BY year DESC",
         )?;
         let rows = stmt.query_map([], |row| {
-            let doi: Option<String> = row.get(0)?;
+            let doi: Option<String> = row
+                .get::<_, Option<String>>(0)?
+                .filter(|value| value.starts_with("10.") && value.contains('/'));
             Ok(sil_core::JournalPublication {
                 doi,
                 title: row.get(1)?,
@@ -1297,5 +1403,231 @@ Reciprocal Rank Fusion combines BM25 keyword rankings with dense vector embeddin
             .query_row("PRAGMA journal_mode;", [], |r| r.get(0))
             .unwrap();
         assert_eq!(journal_mode.to_lowercase(), "memory");
+    }
+
+    #[test]
+    fn discovery_schema_is_idempotent_and_legacy_digest_survives() {
+        let db = SilDb::open_in_memory().unwrap();
+        db.conn
+            .execute(
+                "INSERT INTO journal_digest (doi, title, authors, journal, abstract_text, url) VALUES ('title-only-key', 'A title', 'An author', 'A journal', 'An abstract', 'https://example.test')",
+                [],
+            )
+            .unwrap();
+        db.migrate().unwrap();
+
+        let version: i64 = db
+            .conn
+            .query_row(
+                "SELECT version FROM schema_versions WHERE name='discovery'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version, 1);
+        assert_eq!(db.list_journal_publications().unwrap()[0].doi, None);
+        db.migrate().unwrap();
+        assert_eq!(db.integrity_check().unwrap(), "ok");
+    }
+
+    #[test]
+    fn discovery_preserves_provider_and_venue_evidence_and_is_run_scoped() {
+        let db = SilDb::open_in_memory().unwrap();
+        let run = DiscoveryRun {
+            id: "run-a".into(),
+            query: "attention".into(),
+            status: "complete".into(),
+            cursor_json: Some(r#"{"next":"c2"}"#.into()),
+            created_at: "2026-08-15T00:00:00Z".into(),
+        };
+        db.create_discovery_run(&run).unwrap();
+        db.create_discovery_run(&DiscoveryRun {
+            id: "run-b".into(),
+            ..run.clone()
+        })
+        .unwrap();
+        db.insert_provider_request(&ProviderRequest {
+            id: "req-a".into(),
+            run_id: run.id.clone(),
+            provider: "fixture".into(),
+            request_json: r#"{"url":"https://example.test"}"#.into(),
+            cursor: Some("c1".into()),
+            status: "ok".into(),
+        })
+        .unwrap();
+        db.insert_provider_record(&ProviderRecord {
+            id: "record-a".into(),
+            run_id: run.id.clone(),
+            request_id: "req-a".into(),
+            provider: "fixture".into(),
+            provider_record_id: "paper-1".into(),
+            raw_payload: r#"{"title":"Raw"}"#.into(),
+            raw_payload_hash: "sha256:abc".into(),
+            status: "ok".into(),
+        })
+        .unwrap();
+        db.upsert_work(&Work {
+            id: "work-a".into(),
+            title: "Canonical title".into(),
+            abstract_text: None,
+            authors_json: None,
+            year: Some(2026),
+        })
+        .unwrap();
+        db.insert_work_identifier(&WorkIdentifier {
+            work_id: "work-a".into(),
+            namespace: "doi".into(),
+            value: "10.1000/example".into(),
+            observed_by: Some("fixture".into()),
+        })
+        .unwrap();
+        db.insert_work_version(&WorkVersion {
+            id: "version-a".into(),
+            work_id: "work-a".into(),
+            version_kind: "conference".into(),
+            title: Some("Version title".into()),
+            published_at: Some("2026-06-01".into()),
+            url: None,
+            open_access: Some(true),
+        })
+        .unwrap();
+        db.insert_work_venue(&WorkVenue {
+            id: "venue-a".into(),
+            version_id: "version-a".into(),
+            venue_id: None,
+            raw_venue: "NeurIPS".into(),
+            normalized_venue: Some("neurips".into()),
+            resolution_status: "ambiguous".into(),
+            evidence_json: Some(r#"{"candidates":["conf.nips"]}"#.into()),
+            catalogue_version: Some("2026.08.15-seed".into()),
+            normalizer_version: Some(1),
+        })
+        .unwrap();
+
+        let raw: String = db
+            .conn
+            .query_row(
+                "SELECT raw_payload FROM provider_records WHERE id='record-a'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let evidence: String = db
+            .conn
+            .query_row(
+                "SELECT evidence_json FROM work_venues WHERE id='venue-a'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(raw.contains("Raw"));
+        assert!(evidence.contains("conf.nips"));
+        assert_eq!(
+            db.conn
+                .query_row::<i64, _, _>(
+                    "SELECT COUNT(*) FROM provider_records WHERE run_id='run-b'",
+                    [],
+                    |r| r.get(0)
+                )
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn candidate_transitions_are_orthogonal_and_append_only() {
+        let db = SilDb::open_in_memory().unwrap();
+        db.create_discovery_run(&DiscoveryRun {
+            id: "run".into(),
+            query: "q".into(),
+            status: "running".into(),
+            cursor_json: None,
+            created_at: "now".into(),
+        })
+        .unwrap();
+        db.upsert_work(&Work {
+            id: "work".into(),
+            title: "t".into(),
+            abstract_text: None,
+            authors_json: None,
+            year: None,
+        })
+        .unwrap();
+        db.insert_work_version(&WorkVersion {
+            id: "version".into(),
+            work_id: "work".into(),
+            version_kind: "preprint".into(),
+            title: None,
+            published_at: None,
+            url: None,
+            open_access: None,
+        })
+        .unwrap();
+        db.insert_candidate(&Candidate {
+            id: "candidate".into(),
+            run_id: "run".into(),
+            version_id: "version".into(),
+            provider_record_id: None,
+            resolution: CandidateState::New,
+            disposition: CandidateState::New,
+            acquisition: CandidateState::New,
+        })
+        .unwrap();
+
+        db.transition_candidate(
+            "candidate",
+            "resolution",
+            CandidateState::Pending,
+            "system",
+            "queued",
+        )
+        .unwrap();
+        db.transition_candidate(
+            "candidate",
+            "resolution",
+            CandidateState::Accepted,
+            "resolver",
+            "exact DOI",
+        )
+        .unwrap();
+        db.transition_candidate(
+            "candidate",
+            "disposition",
+            CandidateState::Accepted,
+            "human",
+            "shortlist",
+        )
+        .unwrap();
+        assert!(
+            db.transition_candidate(
+                "candidate",
+                "resolution",
+                CandidateState::Rejected,
+                "human",
+                "invalid reversal"
+            )
+            .is_err()
+        );
+        let events = db.candidate_events("candidate").unwrap();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].dimension, "resolution");
+        assert_eq!(events[2].dimension, "disposition");
+    }
+
+    #[test]
+    fn failed_discovery_migration_rolls_back() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute("CREATE TABLE schema_versions (wrong TEXT PRIMARY KEY)", [])
+            .unwrap();
+        assert!(schema::migrate(&conn).is_err());
+        assert!(
+            conn.query_row::<i64, _, _>(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='discovery_runs'",
+                [],
+                |r| r.get(0)
+            )
+            .unwrap()
+                == 0
+        );
     }
 }
