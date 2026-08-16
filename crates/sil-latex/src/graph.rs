@@ -650,7 +650,7 @@ fn resolve_graphic(s: &State<'_>, file: &Path, dirs: &[PathBuf], arg: &str) -> O
     candidates.push(file.parent().unwrap_or(file).join(arg));
     candidates.push(s.root.join(arg));
     for ext in &s.options.graphic_extensions {
-        if !Path::new(arg).extension().is_some() {
+        if Path::new(arg).extension().is_none() {
             for p in candidates.clone() {
                 candidates.push(p.with_extension(ext));
             }

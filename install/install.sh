@@ -298,6 +298,22 @@ pkgs_for_build_tools() {
   esac
 }
 
+pkgs_for_cmake() {
+  case "${PKG}" in
+    brew) echo "cmake" ;;
+    apt) echo "cmake" ;;
+    dnf|yum) echo "cmake" ;;
+    pacman) echo "cmake" ;;
+    msys2) echo "mingw-w64-x86_64-cmake" ;;
+    zypper) echo "cmake" ;;
+    apk) echo "cmake" ;;
+    choco) echo "cmake" ;;
+    scoop) echo "cmake" ;;
+    winget) echo "Kitware.CMake" ;;
+    *) echo "cmake" ;;
+  esac
+}
+
 pkgs_for_tectonic() {
   case "${PKG}" in
     brew) echo "tectonic" ;;
@@ -465,6 +481,29 @@ ensure_build_tools() {
       fi
       ;;
   esac
+}
+
+# ---------------------------------------------------------------------------
+# Dependency: CMake (required for xberg / Leptonica & Tesseract native builds)
+# ---------------------------------------------------------------------------
+ensure_cmake() {
+  if have cmake; then
+    ok "cmake $(cmake --version 2>/dev/null | head -1)"
+    return 0
+  fi
+  if [[ "${CHECK_ONLY}" == "1" ]]; then
+    warn "cmake: missing (required to compile xberg / native C/C++ dependencies)"
+    return 1
+  fi
+  info "cmake is required (compiles xberg/tesseract native sources)"
+  # shellcheck disable=SC2046
+  pkg_install "cmake" $(pkgs_for_cmake) || true
+  if have cmake; then
+    ok "cmake installed"
+    return 0
+  fi
+  err "cmake still not on PATH. Install CMake manually: https://cmake.org/download/"
+  return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -743,6 +782,7 @@ print_summary() {
   info "Dependency summary"
   local status=0
   if have git; then ok "git"; else warn "git MISSING"; status=1; fi
+  if have cmake; then ok "cmake"; else warn "cmake MISSING"; status=1; fi
   if have rustc && have cargo; then ok "rust/cargo"; else warn "rust/cargo MISSING"; status=1; fi
   if resolve_uv >/dev/null 2>&1; then ok "uv"; else warn "uv MISSING"; status=1; fi
   if resolve_python >/dev/null 2>&1; then ok "python3"; else warn "python3 MISSING"; status=1; fi
@@ -777,6 +817,7 @@ main() {
 
   ensure_git || failed=1
   ensure_build_tools || true
+  ensure_cmake || failed=1
   ensure_rust || failed=1
   ensure_python || failed=1
   ensure_uv || true

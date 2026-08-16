@@ -45,6 +45,7 @@ Scientific writing with AI assistants often devolves into ad-hoc folders, lost p
 |------------|--------------|--------|
 | **Rust** (stable `cargo` / `rustc`) | Compile / install `sil` | Edition **2024** — use a recent stable toolchain via [rustup](https://rustup.rs) |
 | **Git** | `init`, `status`, `log`, commit proposals | Must be on `PATH` as `git` |
+| **CMake** | Building `sil` (`xberg` / native libs) | Required for Leptonica/Tesseract C++ compilation (`brew install cmake`, `apt install cmake`) |
 | **Python 3** | `sil parse`, `sil source fetch` | Helpers under `python/`; override with `SIL_PYTHON` |
 | **[uv](https://docs.astral.sh/uv/)** | Project Python env | Root `pyproject.toml` + `uv.lock`; install via [astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
 | **uv packages** (`pypdf`, optional **marker-pdf**) | PDF text extraction | `uv sync` (pypdf); `uv sync --extra marker` for Marker quality |
@@ -69,7 +70,7 @@ A single shell installer lives in `install/`. It detects the OS, installs missin
 # From the repository root
 chmod +x install/install.sh
 
-# Core: git, Rust, uv, Python env (pypdf), C tools → cargo install sil
+# Core: git, CMake, Rust, uv, Python env (pypdf), C tools → cargo install sil
 ./install/install.sh
 
 # Also install Marker (large, via uv) and a LaTeX engine for sil build
@@ -100,8 +101,8 @@ Manual alternative (if you already have the toolchain):
 
 ```bash
 # System packages (examples)
-# macOS:  brew install git python uv tectonic
-# Debian: sudo apt install git python3 curl build-essential
+# macOS:  brew install git cmake python uv tectonic
+# Debian: sudo apt install git cmake python3 curl build-essential
 # Install uv: https://docs.astral.sh/uv/getting-started/installation/
 # Then, from the repository root:
 uv sync                      # pypdf into .venv

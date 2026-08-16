@@ -2824,12 +2824,14 @@ sections:
 
         unsafe {
             std::env::set_var("SIL_DOWNLOAD_SCRIPT", mock_script_path.as_str());
+            std::env::set_var("SIL_PARSE_SCRIPT", "/nonexistent/parse_script.py");
         }
 
         let res = handle_fetch_source(json!({ "target": "10.1000/182" }));
 
         unsafe {
             std::env::remove_var("SIL_DOWNLOAD_SCRIPT");
+            std::env::remove_var("SIL_PARSE_SCRIPT");
         }
 
         assert!(res.is_error.is_none() || res.is_error == Some(false));
