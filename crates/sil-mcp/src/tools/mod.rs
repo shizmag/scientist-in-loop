@@ -4,12 +4,13 @@ use camino::Utf8PathBuf;
 use serde_json::json;
 use sil_agent::{
     ContextFlags, ContextInput, EstimateInput, EstimateMode, SkillSelection,
-    estimate_proposal_message, generate_context, load_skill, run_heuristic_estimate,
-    sources_summary, write_estimate_report,
+    estimate_proposal_message, generate_context, generate_context_envelope, generate_context_json,
+    load_skill, run_heuristic_estimate, sources_summary, write_estimate_report,
 };
 use sil_core::{
-    IdeaBlock, ProjectPaths, SciAction, SectionCompletion, Structure, WorkspaceLock,
-    project_root_from_cwd, suggest_from_query, suggest_from_source, write_lock,
+    IdeaBlock, McpActionResult, McpErrorCode, PreconditionResult, ProjectPaths, SciAction,
+    SectionCompletion, Structure, VerificationResult, WorkspaceLock, project_root_from_cwd,
+    suggest_from_query, suggest_from_source, validate_bibtex, write_lock,
 };
 use sil_db::SilDb;
 use sil_git::{proposal_for_action, propose_from_status, status};
@@ -41,7 +42,10 @@ pub fn list_tools() -> Vec<Tool> {
                     "priority": { "type": "string", "description": "Filter TODOs by priority: high, medium, low" },
                     "section": { "type": "string", "description": "Filter TODOs by section ID" },
                     "sort_by": { "type": "string", "description": "Sort TODOs: priority or line_start" },
-                    "action": { "type": "string", "description": "Optional explicit sub-action: skills | todos | structure" }
+                    "action": { "type": "string", "description": "Optional explicit sub-action: skills | todos | structure" },
+                    "json": { "type": "boolean", "description": "Output structured AgentState JSON (default false)" },
+                    "compact": { "type": "boolean", "description": "Output single-line compact JSON when json=true (default false)" },
+                    "envelope": { "type": "boolean", "description": "Output AgentContextEnvelope with execution metadata when json=true (default false)" }
                 }),
                 vec![],
             ),
@@ -217,7 +221,13 @@ pub fn call_tool_with_context(
         "sil_sources" => {
             let action = match args.get("action").and_then(|v| v.as_str()) {
                 Some(a) => a,
-                None => return CallToolResult::error("Missing required parameter: action"),
+                None => {
+                    return CallToolResult::action_error(
+                        "sil_sources",
+                        McpErrorCode::MissingInput,
+                        "Missing required parameter: action",
+                    );
+                }
             };
             match action {
                 "search" => handle_search_sources(args),
@@ -225,26 +235,46 @@ pub fn call_tool_with_context(
                 "fetch" => handle_fetch_source(args),
                 "parse" => handle_parse_source(args),
                 "rank" => handle_rank_draft(args),
-                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_sources")),
+                _ => CallToolResult::action_error(
+                    "sil_sources",
+                    McpErrorCode::InvalidInput,
+                    format!("Invalid action '{action}' for sil_sources"),
+                ),
             }
         }
         "sil_cite" => {
             let action = match args.get("action").and_then(|v| v.as_str()) {
                 Some(a) => a,
-                None => return CallToolResult::error("Missing required parameter: action"),
+                None => {
+                    return CallToolResult::action_error(
+                        "sil_cite",
+                        McpErrorCode::MissingInput,
+                        "Missing required parameter: action",
+                    );
+                }
             };
             match action {
                 "suggest" => handle_suggest_citations(args),
                 "ground" => handle_ground_claims(args),
                 "upsert" => handle_upsert_bib(args),
                 "promote" => handle_promote_bib(args),
-                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_cite")),
+                _ => CallToolResult::action_error(
+                    "sil_cite",
+                    McpErrorCode::InvalidInput,
+                    format!("Invalid action '{action}' for sil_cite"),
+                ),
             }
         }
         "sil_draft" => {
             let action = match args.get("action").and_then(|v| v.as_str()) {
                 Some(a) => a,
-                None => return CallToolResult::error("Missing required parameter: action"),
+                None => {
+                    return CallToolResult::action_error(
+                        "sil_draft",
+                        McpErrorCode::MissingInput,
+                        "Missing required parameter: action",
+                    );
+                }
             };
             match action {
                 "edit" => handle_edit_section(args),
@@ -255,23 +285,41 @@ pub fn call_tool_with_context(
                     }
                     handle_get_structure(args)
                 }
-                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_draft")),
+                _ => CallToolResult::action_error(
+                    "sil_draft",
+                    McpErrorCode::InvalidInput,
+                    format!("Invalid action '{action}' for sil_draft"),
+                ),
             }
         }
         "sil_review" => {
             let action = match args.get("action").and_then(|v| v.as_str()) {
                 Some(a) => a,
-                None => return CallToolResult::error("Missing required parameter: action"),
+                None => {
+                    return CallToolResult::action_error(
+                        "sil_review",
+                        McpErrorCode::MissingInput,
+                        "Missing required parameter: action",
+                    );
+                }
             };
             match action {
                 "check" => handle_check(args),
                 "estimate" => handle_estimate_paper(args),
                 "build" => handle_build_and_doctor(args),
-                _ => CallToolResult::error(format!("Invalid action '{action}' for sil_review")),
+                _ => CallToolResult::action_error(
+                    "sil_review",
+                    McpErrorCode::InvalidInput,
+                    format!("Invalid action '{action}' for sil_review"),
+                ),
             }
         }
         "sil_propose" => handle_propose_commit(args),
-        _ => CallToolResult::error(format!("Unknown tool: {name}")),
+        _ => CallToolResult::action_error(
+            name,
+            McpErrorCode::InvalidInput,
+            format!("Unknown tool: {name}"),
+        ),
     }
 }
 
@@ -663,7 +711,7 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
     let include_paper = args
         .get("include_paper")
         .and_then(|v| v.as_bool())
-        .unwrap_or(true);
+        .unwrap_or(false);
 
     let (root, paths) = match get_project_paths(&args) {
         Ok(p) => p,
@@ -700,9 +748,42 @@ fn handle_get_workspace_context(args: serde_json::Value) -> CallToolResult {
         skills,
     };
 
-    match generate_context(&input) {
-        Ok(ctx) => CallToolResult::text(ctx),
-        Err(e) => CallToolResult::error(format!("Failed to generate context: {e}")),
+    let json_mode = args.get("json").and_then(|v| v.as_bool()).unwrap_or(false);
+    let compact = args
+        .get("compact")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let envelope = args
+        .get("envelope")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if json_mode {
+        if envelope {
+            match generate_context_envelope(&input) {
+                Ok(env) => {
+                    let text = if compact {
+                        serde_json::to_string(&env).unwrap_or_default()
+                    } else {
+                        serde_json::to_string_pretty(&env).unwrap_or_default()
+                    };
+                    CallToolResult::text(text)
+                }
+                Err(e) => {
+                    CallToolResult::error(format!("Failed to generate context envelope: {e}"))
+                }
+            }
+        } else {
+            match generate_context_json(&input, compact) {
+                Ok(json_str) => CallToolResult::text(json_str),
+                Err(e) => CallToolResult::error(format!("Failed to generate context JSON: {e}")),
+            }
+        }
+    } else {
+        match generate_context(&input) {
+            Ok(ctx) => CallToolResult::text(ctx),
+            Err(e) => CallToolResult::error(format!("Failed to generate context: {e}")),
+        }
     }
 }
 
@@ -1044,24 +1125,91 @@ fn handle_fetch_source(args: serde_json::Value) -> CallToolResult {
 fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
     let entry = match args.get("entry").and_then(|v| v.as_str()) {
         Some(e) => e.to_string(),
-        None => return CallToolResult::error("Missing required parameter: entry"),
+        None => {
+            return CallToolResult::action_error(
+                "cite.upsert",
+                McpErrorCode::MissingInput,
+                "Missing required parameter: entry",
+            );
+        }
     };
 
     let draft = args.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
+    let dry_run = args
+        .get("dry_run")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    // Validate BibTeX format as precondition
+    if let Err(e) = validate_bibtex(&entry) {
+        let mut act = McpActionResult::error(
+            "cite.upsert",
+            McpErrorCode::PreconditionFailed,
+            format!("Invalid BibTeX entry: {e}"),
+        );
+        act.preconditions.push(PreconditionResult::failed(
+            "valid_bibtex",
+            format!("BibTeX parsing failed: {e}"),
+        ));
+        return CallToolResult::action_result(act);
+    }
 
     let (root, _) = match get_project_paths(&args) {
         Ok(p) => p,
-        Err(e) => return CallToolResult::error(e),
+        Err(e) => {
+            return CallToolResult::action_error("cite.upsert", McpErrorCode::NotInProject, e);
+        }
     };
-    let ctx = match sil_app::AppContext::from_root(root) {
+    let ctx = match sil_app::AppContext::from_root(&root) {
         Ok(c) => c,
-        Err(e) => return CallToolResult::error(e.to_string()),
+        Err(e) => {
+            return CallToolResult::action_error(
+                "cite.upsert",
+                McpErrorCode::NotInProject,
+                e.to_string(),
+            );
+        }
     };
+
+    if dry_run {
+        let mut act = McpActionResult::success(
+            "cite.upsert",
+            "DRY RUN: BibTeX entry validated successfully",
+        );
+        act.preconditions
+            .push(PreconditionResult::ok("valid_bibtex"));
+        act.payload = Some(json!({
+            "dry_run": true,
+            "entry_valid": true,
+            "draft": draft,
+        }));
+        return CallToolResult::action_result(act);
+    }
 
     let res = match sil_app::upsert_bib(&ctx, sil_app::UpsertBib { entry, draft }) {
         Ok(r) => r,
-        Err(e) => return CallToolResult::error(e.to_string()),
+        Err(e) => {
+            return CallToolResult::action_error(
+                "cite.upsert",
+                McpErrorCode::InternalFailure,
+                e.to_string(),
+            );
+        }
     };
+
+    let mut act = McpActionResult::success(
+        "cite.upsert",
+        format!("Upserted BibTeX entry '{}' in references.bib", res.cite_key),
+    )
+    .with_changed_path(res.path.as_str())
+    .with_created_or_updated_id(res.cite_key.clone())
+    .with_verification(VerificationResult::passed(
+        "bib_updated",
+        "references.bib updated",
+    ));
+
+    act.preconditions
+        .push(PreconditionResult::ok("valid_bibtex"));
 
     let val = json!({
         "wrote": true,
@@ -1072,29 +1220,88 @@ fn handle_upsert_bib(args: serde_json::Value) -> CallToolResult {
         "proposal": res.proposal.message(),
         "never_committed": true,
     });
+    act.payload = Some(val);
 
-    CallToolResult::text(serde_json::to_string_pretty(&val).unwrap_or_default())
+    CallToolResult::action_result(act)
 }
 
 fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
     let cite_key = match args.get("cite_key").and_then(|v| v.as_str()) {
         Some(k) if !k.trim().is_empty() => k.trim().to_string(),
-        _ => return CallToolResult::error("Missing required parameter: cite_key"),
+        _ => {
+            return CallToolResult::action_error(
+                "cite.promote",
+                McpErrorCode::MissingInput,
+                "Missing required parameter: cite_key",
+            );
+        }
     };
+
+    let dry_run = args
+        .get("dry_run")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let (root, _) = match get_project_paths(&args) {
         Ok(p) => p,
-        Err(e) => return CallToolResult::error(e),
+        Err(e) => {
+            return CallToolResult::action_error("cite.promote", McpErrorCode::NotInProject, e);
+        }
     };
-    let ctx = match sil_app::AppContext::from_root(root) {
+    let ctx = match sil_app::AppContext::from_root(&root) {
         Ok(c) => c,
-        Err(e) => return CallToolResult::error(e.to_string()),
+        Err(e) => {
+            return CallToolResult::action_error(
+                "cite.promote",
+                McpErrorCode::NotInProject,
+                e.to_string(),
+            );
+        }
     };
 
-    let res = match sil_app::promote_bib(&ctx, sil_app::PromoteBib { target: cite_key }) {
+    if dry_run {
+        let mut act = McpActionResult::success(
+            "cite.promote",
+            format!("DRY RUN: Checked promotion for cite key '{cite_key}'"),
+        );
+        act.preconditions
+            .push(PreconditionResult::ok("cite_key_provided"));
+        act.payload = Some(json!({
+            "dry_run": true,
+            "cite_key": cite_key,
+        }));
+        return CallToolResult::action_result(act);
+    }
+
+    let res = match sil_app::promote_bib(
+        &ctx,
+        sil_app::PromoteBib {
+            target: cite_key.clone(),
+        },
+    ) {
         Ok(r) => r,
-        Err(e) => return CallToolResult::error(e.to_string()),
+        Err(e) => {
+            let code = match &e {
+                sil_app::AppError::NotFound(_) => McpErrorCode::NotFound,
+                _ => McpErrorCode::InternalFailure,
+            };
+            return CallToolResult::action_error("cite.promote", code, e.to_string());
+        }
     };
+
+    let mut act = McpActionResult::success(
+        "cite.promote",
+        format!("Promoted BibTeX entry '{}' in references.bib", res.cite_key),
+    )
+    .with_changed_path(res.path.as_str())
+    .with_created_or_updated_id(res.cite_key.clone())
+    .with_verification(VerificationResult::passed(
+        "bib_promoted",
+        "draft markers stripped from references.bib",
+    ));
+
+    act.preconditions
+        .push(PreconditionResult::ok("cite_key_found"));
 
     let val = json!({
         "wrote": true,
@@ -1104,8 +1311,9 @@ fn handle_promote_bib(args: serde_json::Value) -> CallToolResult {
         "proposal": res.proposal.message(),
         "never_committed": true,
     });
+    act.payload = Some(val);
 
-    CallToolResult::text(serde_json::to_string_pretty(&val).unwrap_or_default())
+    CallToolResult::action_result(act)
 }
 
 /// Resolve a filesystem path for parse: absolute, relative to cwd, or under sources/.
@@ -1608,8 +1816,33 @@ fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
         updated.push('\n');
     }
 
+    let dry_run = args
+        .get("dry_run")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if dry_run {
+        let mut act = McpActionResult::success(
+            "draft.edit",
+            format!("DRY RUN: Checked edit for section '{}'", target.title),
+        );
+        act.preconditions
+            .push(PreconditionResult::ok("target_section_found"));
+        act.payload = Some(json!({
+            "dry_run": true,
+            "section_title": target.title,
+            "draft_hash_before": current_hash,
+            "draft_hash_after": draft_short_hash(&updated),
+        }));
+        return CallToolResult::action_result(act);
+    }
+
     if let Err(e) = sil_core::write_atomic_str(&draft_path, &updated) {
-        return CallToolResult::error(format!("write draft: {e}"));
+        return CallToolResult::action_error(
+            "draft.edit",
+            McpErrorCode::InternalFailure,
+            format!("write draft: {e}"),
+        );
     }
 
     let proposal = proposal_for_action(
@@ -1621,7 +1854,7 @@ fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
         )),
     );
 
-    let res = json!({
+    let val = json!({
         "wrote": true,
         "section_title": target.title,
         "path": draft_path.to_string(),
@@ -1631,7 +1864,22 @@ fn handle_edit_section(args: serde_json::Value) -> CallToolResult {
         "never_committed": true,
         "project_root": root.to_string(),
     });
-    CallToolResult::text(serde_json::to_string_pretty(&res).unwrap_or_default())
+
+    let mut act = McpActionResult::success(
+        "draft.edit",
+        format!("Updated section '{}' in draft", target.title),
+    )
+    .with_changed_path(draft_path.as_str())
+    .with_verification(VerificationResult::passed(
+        "draft_updated",
+        "paper_draft.tex updated",
+    ));
+
+    act.preconditions
+        .push(PreconditionResult::ok("target_section_found"));
+    act.payload = Some(val);
+
+    CallToolResult::action_result(act)
 }
 
 fn parse_heading_level(line: &str) -> Option<(String, String, u8)> {
@@ -2954,11 +3202,17 @@ sections:
         let _env = TestEnv::new();
         let empty = handle_upsert_bib(json!({ "entry": "   " }));
         assert_eq!(empty.is_error, Some(true));
-        assert!(extract_text(&empty).contains("empty"));
+        assert!(
+            extract_text(&empty).contains("empty")
+                || extract_text(&empty).contains("Missing required parameter")
+        );
 
         let bad = handle_upsert_bib(json!({ "entry": "not bibtex at all" }));
         assert_eq!(bad.is_error, Some(true));
-        assert!(extract_text(&bad).contains("not valid BibTeX"));
+        assert!(
+            extract_text(&bad).contains("Invalid BibTeX")
+                || extract_text(&bad).contains("not valid BibTeX")
+        );
     }
 
     #[test]
@@ -2975,7 +3229,8 @@ sections:
 }"#;
         let res = handle_upsert_bib(json!({ "entry": entry }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        let act = res.as_action_result().expect("valid McpActionResult");
+        let val = act.payload.expect("payload");
         assert_eq!(val["wrote"], true);
         assert_eq!(val["cite_key"], "smith2024");
         assert_eq!(val["replaced"], false);
@@ -3005,7 +3260,8 @@ sections:
             "@article{draftkey,\n  title = {Draft Only},\n  author = {X},\n  year = {2020}\n}";
         let res = handle_upsert_bib(json!({ "entry": entry, "draft": true }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        let act = res.as_action_result().expect("valid McpActionResult");
+        let val = act.payload.expect("payload");
         assert_eq!(val["draft"], true);
         assert_eq!(val["cite_key"], "draftkey");
 
@@ -3031,7 +3287,8 @@ sections:
             "preserve_cite_key": true
         }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        let act = res.as_action_result().expect("valid McpActionResult");
+        let val = act.payload.expect("payload");
         assert_eq!(val["replaced"], true);
         assert_eq!(val["cite_key"], "oldkey");
 
@@ -3058,7 +3315,8 @@ sections:
             "preserve_cite_key": false
         }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        let act = res.as_action_result().expect("valid McpActionResult");
+        let val = act.payload.expect("payload");
         assert_eq!(val["replaced"], true);
         assert_eq!(val["cite_key"], "oldkey");
 
@@ -3082,7 +3340,8 @@ sections:
 
         let res = handle_promote_bib(json!({ "cite_key": "promotekey" }));
         assert!(res.is_error.is_none() || res.is_error == Some(false));
-        let val: serde_json::Value = serde_json::from_str(extract_text(&res)).unwrap();
+        let act = res.as_action_result().expect("valid McpActionResult");
+        let val = act.payload.expect("payload");
         assert_eq!(val["wrote"], true);
         assert_eq!(val["cite_key"], "promotekey");
         assert_eq!(val["replaced"], true);
