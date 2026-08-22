@@ -34,17 +34,47 @@ pub struct SkillPackManifest {
 }
 
 /// Skill pack identity and license declaration.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct SkillMetadata {
     /// Stable package identifier.
     pub id: String,
+    /// Optional human-readable package or skill name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     /// Semver package version.
     pub version: String,
+    /// Optional human-readable title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Optional human-readable description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// SPDX license identifier or explicit name.
     pub license: String,
     /// Optional license evidence URL or local path.
     #[serde(default)]
     pub license_evidence: String,
+    /// Triggers used for matching tasks.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub triggers: Vec<String>,
+    /// Required toolchain and host capabilities (e.g. "tectonic", "latexmk", "marker", "python", "git", "network").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required_capabilities: Vec<String>,
+    /// Expected input artifacts or files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inputs: Vec<String>,
+    /// Expected output artifacts or files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs: Vec<String>,
+    /// Permissions needed by the skill.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub permissions: Vec<String>,
+    /// Verification command or action.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification: Option<String>,
+    /// Conflicting skill IDs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conflicts: Vec<String>,
     /// Disclosure and acknowledgement metadata for external data flows.
     #[serde(default)]
     pub external_data_flow: Option<ExternalDataFlow>,
@@ -64,23 +94,50 @@ pub struct ExternalDataFlow {
 }
 
 /// One named skill entrypoint.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct SkillEntrypoint {
     /// Stable entrypoint identifier.
     pub id: String,
+    /// Optional human-readable entrypoint name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     /// Entrypoint kind, normally `skill`.
     #[serde(rename = "type")]
     pub entrypoint_type: String,
     /// Markdown or other host-readable entrypoint path.
     pub path: String,
+    /// Optional human-readable title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Optional human-readable description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// Trigger metadata used by routing clients.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub triggers: Vec<String>,
+    /// Required capabilities for this entrypoint.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required_capabilities: Vec<String>,
+    /// Expected input artifacts or files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inputs: Vec<String>,
+    /// Expected output artifacts or files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs: Vec<String>,
+    /// Permissions required.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub permissions: Vec<String>,
+    /// Verification command or action.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification: Option<String>,
+    /// Conflicting skill IDs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conflicts: Vec<String>,
     /// Declared support files/resources.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub resources: Vec<String>,
     /// Optional host features needed by this entrypoint.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub host_requirements: Vec<String>,
 }
 
@@ -134,6 +191,113 @@ pub struct HostCapabilities {
     /// Host identifier used for compatibility matching.
     #[serde(default)]
     pub host: String,
+    /// Toolchain and binary capabilities (e.g. "tectonic", "latexmk", "marker", "python", "git").
+    #[serde(default)]
+    pub tools: BTreeSet<String>,
+}
+
+impl HostCapabilities {
+    /// Create full permissive capabilities for testing or standard environment.
+    pub fn all_available() -> Self {
+        let mut tools = BTreeSet::new();
+        tools.insert("tectonic".into());
+        tools.insert("latexmk".into());
+        tools.insert("marker".into());
+        tools.insert("python".into());
+        tools.insert("git".into());
+        Self {
+            read: [
+                "manuscript".into(),
+                "figures".into(),
+                "workspace".into(),
+                "agent".into(),
+            ]
+            .into(),
+            write: [
+                "manuscript".into(),
+                "figures".into(),
+                "workspace".into(),
+                "agent".into(),
+            ]
+            .into(),
+            network: true,
+            process: true,
+            subagents: true,
+            hooks: true,
+            commands: true,
+            scripts: true,
+            resources: true,
+            host: "all".into(),
+            tools,
+        }
+    }
+
+    /// Add a tool to the host capabilities.
+    pub fn with_tool(mut self, tool: impl Into<String>) -> Self {
+        self.tools.insert(tool.into());
+        self
+    }
+
+    /// Check whether this host supports a given capability or requirement name.
+    pub fn supports(&self, requirement: &str) -> bool {
+        let req = requirement.trim().to_ascii_lowercase();
+        match req.as_str() {
+            "subagents" => self.subagents,
+            "hooks" => self.hooks,
+            "commands" => self.commands,
+            "scripts" => self.scripts,
+            "resources" => self.resources,
+            "network" => self.network,
+            "process" => self.process,
+            "git" => self.tools.contains("git") || self.process,
+            "python" => self.tools.contains("python") || self.process,
+            "tectonic" => self.tools.contains("tectonic"),
+            "latexmk" => self.tools.contains("latexmk"),
+            "marker" => self.tools.contains("marker"),
+            other => {
+                if !self.host.is_empty() && self.host.eq_ignore_ascii_case(other) {
+                    true
+                } else if self.tools.contains(other) {
+                    true
+                } else if let Some(r) = other.strip_prefix("read:") {
+                    self.read.contains(r)
+                } else if let Some(w) = other.strip_prefix("write:") {
+                    self.write.contains(w)
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
+impl From<&sil_core::agent::CapabilitySummary> for HostCapabilities {
+    fn from(c: &sil_core::agent::CapabilitySummary) -> Self {
+        let mut tools = BTreeSet::new();
+        if c.latex_available {
+            tools.insert("tectonic".into());
+            tools.insert("latexmk".into());
+        }
+        if c.parser_available {
+            tools.insert("marker".into());
+        }
+        if c.git_available {
+            tools.insert("git".into());
+        }
+        tools.insert("python".into());
+        Self {
+            network: c.online_search_available || c.llm_provider_available,
+            process: true,
+            subagents: true,
+            hooks: true,
+            commands: true,
+            scripts: true,
+            resources: true,
+            host: "standard".into(),
+            tools,
+            ..Default::default()
+        }
+    }
 }
 
 /// Result of checking one pack against a host.
@@ -297,6 +461,109 @@ impl SkillPackManifest {
             capabilities: capability_names(&self.capabilities),
         }
     }
+
+    /// Convert manifest entrypoints into declarative `SkillDefinition`s.
+    pub fn to_skill_definitions(
+        &self,
+        projection_base: Option<&Utf8Path>,
+    ) -> Vec<crate::skills::SkillDefinition> {
+        let mut out = Vec::new();
+        for entry in &self.entrypoints {
+            let path = if let Some(base) = projection_base {
+                base.join(&entry.path).to_string()
+            } else {
+                entry.path.clone()
+            };
+            let mut triggers = self.metadata.triggers.clone();
+            for t in &entry.triggers {
+                if !triggers.contains(t) {
+                    triggers.push(t.clone());
+                }
+            }
+            let mut required_caps = self.metadata.required_capabilities.clone();
+            for c in &entry.required_capabilities {
+                if !required_caps.contains(c) {
+                    required_caps.push(c.clone());
+                }
+            }
+            for c in &entry.host_requirements {
+                if !required_caps.contains(c) {
+                    required_caps.push(c.clone());
+                }
+            }
+            if self.capabilities.network.is_some()
+                && !required_caps.contains(&"network".to_string())
+            {
+                required_caps.push("network".to_string());
+            }
+            if self.capabilities.process && !required_caps.contains(&"process".to_string()) {
+                required_caps.push("process".to_string());
+            }
+
+            let mut inputs = self.metadata.inputs.clone();
+            for i in &entry.inputs {
+                if !inputs.contains(i) {
+                    inputs.push(i.clone());
+                }
+            }
+            let mut outputs = self.metadata.outputs.clone();
+            for o in &entry.outputs {
+                if !outputs.contains(o) {
+                    outputs.push(o.clone());
+                }
+            }
+            let mut permissions = self.metadata.permissions.clone();
+            for p in &entry.permissions {
+                if !permissions.contains(p) {
+                    permissions.push(p.clone());
+                }
+            }
+            for p in capability_names(&self.capabilities) {
+                if !permissions.contains(&p) {
+                    permissions.push(p);
+                }
+            }
+            let mut conflicts = self.metadata.conflicts.clone();
+            for c in &entry.conflicts {
+                if !conflicts.contains(c) {
+                    conflicts.push(c.clone());
+                }
+            }
+
+            out.push(crate::skills::SkillDefinition {
+                id: entry.id.clone(),
+                name: entry.name.clone().unwrap_or_else(|| {
+                    self.metadata
+                        .name
+                        .clone()
+                        .unwrap_or_else(|| entry.id.clone())
+                }),
+                version: self.metadata.version.clone(),
+                title: entry.title.clone().unwrap_or_else(|| {
+                    self.metadata
+                        .title
+                        .clone()
+                        .unwrap_or_else(|| entry.id.clone())
+                }),
+                description: entry
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| self.metadata.description.clone().unwrap_or_default()),
+                path,
+                triggers,
+                required_capabilities: required_caps,
+                inputs,
+                outputs,
+                permissions,
+                verification: entry
+                    .verification
+                    .clone()
+                    .or_else(|| self.metadata.verification.clone()),
+                conflicts,
+            });
+        }
+        out
+    }
 }
 
 fn capability_names(c: &SkillCapabilities) -> BTreeSet<String> {
@@ -322,6 +589,10 @@ impl SkillRegistry {
     /// Open a registry rooted at a project directory.
     pub fn new(root: impl Into<Utf8PathBuf>) -> Self {
         Self { root: root.into() }
+    }
+    /// Return the project root.
+    pub fn root(&self) -> &Utf8Path {
+        &self.root
     }
     /// Directory for managed projections.
     pub fn managed_dir(&self) -> Utf8PathBuf {
@@ -567,6 +838,7 @@ impl SkillRegistry {
                 license: "MIT".into(),
                 license_evidence: "https://spdx.org/licenses/MIT.html".into(),
                 external_data_flow: None,
+                ..Default::default()
             },
             source: PackageSource {
                 url: "builtin://scientist-in-loop".into(),
@@ -591,8 +863,7 @@ impl SkillRegistry {
                     entrypoint_type: "skill".into(),
                     path: (*path).into(),
                     triggers: Vec::new(),
-                    resources: Vec::new(),
-                    host_requirements: Vec::new(),
+                    ..Default::default()
                 })
                 .collect(),
             capabilities: SkillCapabilities::default(),
@@ -793,7 +1064,8 @@ fn capability_status(m: &SkillPackManifest, h: &HostCapabilities) -> CapabilityS
         entry
             .host_requirements
             .iter()
-            .any(|requirement| !host_supports(h, requirement))
+            .chain(entry.required_capabilities.iter())
+            .any(|requirement| !h.supports(requirement))
     });
     if hard || host_missing {
         CapabilityStatus::Unsupported
@@ -805,14 +1077,7 @@ fn capability_status(m: &SkillPackManifest, h: &HostCapabilities) -> CapabilityS
 }
 
 fn host_supports(host: &HostCapabilities, requirement: &str) -> bool {
-    match requirement {
-        "subagents" => host.subagents,
-        "hooks" => host.hooks,
-        "commands" => host.commands,
-        "scripts" => host.scripts,
-        "resources" => host.resources,
-        other => host.host == other,
-    }
+    host.supports(requirement)
 }
 fn diff_manifests(
     registry: &SkillRegistry,
@@ -904,6 +1169,7 @@ mod tests {
                 license: "MIT".into(),
                 license_evidence: "https://spdx.org/licenses/MIT.html".into(),
                 external_data_flow: None,
+                ..Default::default()
             },
             source: PackageSource {
                 url: "file://fixture".into(),
@@ -919,8 +1185,7 @@ mod tests {
                 entrypoint_type: "skill".into(),
                 path: "main.md".into(),
                 triggers: vec!["nested".into()],
-                resources: vec!["resources/nested/data.txt".into()],
-                host_requirements: Vec::new(),
+                ..Default::default()
             }],
             capabilities: SkillCapabilities {
                 read: vec!["manuscript".into()],
@@ -1022,5 +1287,91 @@ mod tests {
         assert!(skill.contains("external") || manifest.contains("external_data_flow"));
         assert!(!skill.contains("CC-BY-NC"));
         assert!(!manifest.contains("CC-BY-NC"));
+    }
+
+    #[test]
+    fn to_skill_definitions_and_capability_checks() {
+        let manifest_yaml = r#"
+api_version: sil.dev/skill/v1
+kind: skill-pack
+metadata:
+  id: custom/pack
+  name: custom-pack
+  version: 1.5.0
+  title: Custom Analysis Pack
+  description: Performs deep statistical analysis and plotting.
+  license: MIT
+  license_evidence: https://spdx.org/licenses/MIT.html
+  triggers:
+    - analysis
+    - statistics
+  required_capabilities:
+    - python
+    - git
+  inputs:
+    - data/raw.csv
+  outputs:
+    - results/summary.json
+  permissions:
+    - read:data
+    - write:results
+  verification: verify_stats
+  conflicts:
+    - legacy/pack
+entrypoints:
+  - id: analyze
+    type: skill
+    path: analyze.md
+    title: Run Statistical Analysis
+    triggers:
+      - regression
+    required_capabilities:
+      - R
+files:
+  - path: analyze.md
+    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+capabilities:
+  read:
+    - data
+  write:
+    - results
+  network: external_api
+  process: true
+"#;
+        let manifest: SkillPackManifest = serde_yaml::from_str(manifest_yaml).unwrap();
+        manifest.validate().unwrap();
+
+        let defs = manifest.to_skill_definitions(None);
+        assert_eq!(defs.len(), 1);
+        let def = &defs[0];
+        assert_eq!(def.id, "analyze");
+        assert_eq!(def.name, "custom-pack");
+        assert_eq!(def.version, "1.5.0");
+        assert_eq!(def.title, "Run Statistical Analysis");
+        assert!(def.triggers.contains(&"analysis".to_string()));
+        assert!(def.triggers.contains(&"regression".to_string()));
+        assert!(def.required_capabilities.contains(&"python".to_string()));
+        assert!(def.required_capabilities.contains(&"git".to_string()));
+        assert!(def.required_capabilities.contains(&"R".to_string()));
+        assert!(def.required_capabilities.contains(&"network".to_string()));
+        assert!(def.required_capabilities.contains(&"process".to_string()));
+        assert!(def.inputs.contains(&"data/raw.csv".to_string()));
+        assert!(def.outputs.contains(&"results/summary.json".to_string()));
+        assert!(def.conflicts.contains(&"legacy/pack".to_string()));
+        assert_eq!(def.verification.as_deref(), Some("verify_stats"));
+
+        let host = HostCapabilities {
+            tools: ["python".into(), "git".into()].into(),
+            network: true,
+            process: true,
+            ..Default::default()
+        };
+
+        // Host is missing R
+        assert!(!host.supports("R"));
+        assert!(host.supports("python"));
+        assert!(host.supports("git"));
+        assert!(host.supports("network"));
+        assert!(host.supports("process"));
     }
 }

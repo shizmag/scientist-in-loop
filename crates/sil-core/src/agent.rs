@@ -363,6 +363,9 @@ pub struct SelectedSkillItem {
     /// Explanation for why the skill was selected, rejected, or unsupported.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Project-relative managed or local skill path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
     /// Capabilities required by this skill.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub required_capabilities: Vec<String>,
@@ -371,15 +374,69 @@ pub struct SelectedSkillItem {
     pub conflicts: Vec<String>,
 }
 
+impl SelectedSkillItem {
+    /// Create a new SelectedSkillItem.
+    pub fn new(id: impl Into<String>, status: SkillStatus) -> Self {
+        Self {
+            id: id.into(),
+            version: None,
+            status,
+            reason: None,
+            path: None,
+            required_capabilities: Vec::new(),
+            conflicts: Vec::new(),
+        }
+    }
+
+    /// Set version.
+    pub fn with_version(mut self, version: impl Into<String>) -> Self {
+        self.version = Some(version.into());
+        self
+    }
+
+    /// Set reason.
+    pub fn with_reason(mut self, reason: impl Into<String>) -> Self {
+        self.reason = Some(reason.into());
+        self
+    }
+
+    /// Set path.
+    pub fn with_path(mut self, path: impl Into<String>) -> Self {
+        self.path = Some(path.into());
+        self
+    }
+
+    /// Set required capabilities.
+    pub fn with_required_capabilities(mut self, caps: Vec<String>) -> Self {
+        self.required_capabilities = caps;
+        self
+    }
+
+    /// Set conflicts.
+    pub fn with_conflicts(mut self, conflicts: Vec<String>) -> Self {
+        self.conflicts = conflicts;
+        self
+    }
+}
+
 /// Summary of selected and available agent skills.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct SkillSelectionSummary {
     /// Active skill IDs loaded into context.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub active_skill_ids: Vec<String>,
+    /// Available skill IDs in workspace or registry.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub available_skill_ids: Vec<String>,
     /// All evaluated skills with status and selection reasons.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub selected_skills: Vec<SelectedSkillItem>,
+    /// Any conflicting skills detected.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conflicts: Vec<String>,
+    /// Missing requirements across evaluated skills.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub missing_requirements: Vec<String>,
     /// Version of the skill registry or pack schema.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub registry_version: Option<String>,
@@ -835,6 +892,9 @@ pub fn sanitize_agent_state(state: &mut AgentState, project_root: Option<&str>) 
         if let Some(r) = &mut skill.reason {
             *r = redact_secrets(r);
         }
+        if let Some(p) = &mut skill.path {
+            *p = normalize_path(p, project_root);
+        }
     }
 
     if let Some(lock) = &mut state.jobs.workspace_lock {
@@ -976,14 +1036,18 @@ mod tests {
             },
             skills: SkillSelectionSummary {
                 active_skill_ids: vec!["SYSTEM".to_string(), "paper".to_string()],
+                available_skill_ids: vec!["SYSTEM".to_string(), "paper".to_string()],
                 selected_skills: vec![SelectedSkillItem {
                     id: "SYSTEM".to_string(),
                     version: Some("1.0.0".to_string()),
                     status: SkillStatus::Selected,
                     reason: Some("Mandatory system instructions".to_string()),
+                    path: Some("agent/skills/SYSTEM.md".to_string()),
                     required_capabilities: vec![],
                     conflicts: vec![],
                 }],
+                conflicts: vec![],
+                missing_requirements: vec![],
                 registry_version: Some("1.0.0".to_string()),
             },
             capabilities: CapabilitySummary {

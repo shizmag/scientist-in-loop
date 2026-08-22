@@ -10,7 +10,10 @@ mod paper;
 mod registry;
 mod skills;
 
-pub use context::{ContextInput, generate_context, load_project_texts, sources_summary};
+pub use context::{
+    ContextInput, build_agent_state, generate_context, generate_context_envelope,
+    generate_context_json, load_project_texts, sources_summary,
+};
 pub use error::ContextError;
 pub use estimate::{
     EstimateDecision, EstimateDimensions, EstimateFinding, EstimateInput, EstimateMode,
@@ -23,4 +26,7 @@ pub use registry::{
     HostCapabilities, InstalledSkill, SkillCapabilities, SkillDiff, SkillEntrypoint, SkillMetadata,
     SkillPackManifest, SkillRegistry, SkillRegistryError,
 };
-pub use skills::{ContextFlags, SkillSelection, load_skill};
+pub use skills::{
+    ContextFlags, SelectedSkillItem, SkillDefinition, SkillRouter, SkillScore, SkillSelection,
+    SkillSelectionSummary, SkillStatus, load_skill,
+};

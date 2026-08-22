@@ -17,7 +17,7 @@ pub mod templates;
 
 pub use bib::{PromoteBib, PromoteBibResult, UpsertBib, UpsertBibResult, promote_bib, upsert_bib};
 pub use check::{ManuscriptCheckOptions, load_cached_report, run_manuscript_check};
-pub use context::AppContext;
+pub use context::{AppContext, get_agent_state, get_context_envelope};
 pub use discovery::{
     CandidateForRanking, DiscoveryOptions, DiscoveryResult, IdentityDecision, IdentityRelation,
     RankedCandidate, RankingComponents, discover_candidates, identify, rank_and_store,

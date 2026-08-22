@@ -3,13 +3,20 @@
 use std::fs;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use sil_core::{Config, ProjectPaths, SilError, Structure, paths::rel};
+use sil_core::{
+    AGENT_STATE_SCHEMA_VERSION, AgentContextEnvelope, AgentExecutionMetadata, AgentFinding,
+    AgentState, AgentStateKind, AvailableAction, CapabilitySummary, Config, FindingClass,
+    HealthSummary, InputSnapshot, JobSummary, LiteratureSummary, LockSummary,
+    ManuscriptHealthReport, PaperKind, ProjectIdentity, ProjectPaths, SilError, Stage, Structure,
+    StructureSummary, WorkItemSummary, input_fingerprint, paths::rel, sanitize_agent_state,
+};
 use sil_db::SilDb;
 use sil_git::LogEntry;
 
 use crate::error::ContextError;
 use crate::paper::{format_subsections_markdown, paper_subsections};
-use crate::skills::{ContextFlags, SkillSelection, load_skill};
+use crate::registry::SkillRegistry;
+use crate::skills::{ContextFlags, SkillRouter, SkillSelection, load_skill};
 
 /// Inputs for building a full context document.
 pub struct ContextInput<'a> {
@@ -29,6 +36,538 @@ pub struct ContextInput<'a> {
     pub flags: &'a ContextFlags,
     /// Optional skill selection override.
     pub skills: SkillSelection,
+}
+
+/// Build a canonical, deterministic `AgentState` snapshot from context inputs.
+pub fn build_agent_state(input: &ContextInput<'_>) -> Result<AgentState, ContextError> {
+    let (mut config_title, mut config_stage, mut latex_engine, mut latex_template, mut latex_main) = {
+        let default_cfg = Config::default();
+        (
+            default_cfg.project.title,
+            default_cfg.project.stage,
+            default_cfg.latex.engine,
+            default_cfg.latex.template,
+            default_cfg.latex.main,
+        )
+    };
+
+    if let Ok(cfg) = Config::from_yaml(input.config_yaml) {
+        config_title = cfg.project.title;
+        config_stage = cfg.project.stage;
+        latex_engine = cfg.latex.engine;
+        latex_template = cfg.latex.template;
+        latex_main = cfg.latex.main;
+    } else if let Ok(val) = serde_yaml::from_str::<serde_yaml::Value>(input.config_yaml) {
+        if let Some(t) = val
+            .get("project")
+            .and_then(|p| p.get("title"))
+            .and_then(|t| t.as_str())
+        {
+            config_title = t.to_string();
+        }
+        if let Some(s) = val
+            .get("project")
+            .and_then(|p| p.get("stage"))
+            .and_then(|s| s.as_str())
+        {
+            if let Ok(st) = serde_yaml::from_str(s) {
+                config_stage = st;
+            }
+        }
+        if let Some(e) = val
+            .get("latex")
+            .and_then(|l| l.get("engine"))
+            .and_then(|e| e.as_str())
+        {
+            if let Ok(eng) = serde_yaml::from_str(e) {
+                latex_engine = eng;
+            }
+        }
+        if let Some(tpl) = val
+            .get("latex")
+            .and_then(|l| l.get("template"))
+            .and_then(|t| t.as_str())
+        {
+            latex_template = tpl.to_string();
+        }
+        if let Some(m) = val
+            .get("latex")
+            .and_then(|l| l.get("main"))
+            .and_then(|m| m.as_str())
+        {
+            latex_main = Utf8PathBuf::from(m);
+        }
+    }
+
+    let paths = ProjectPaths::new(input.root);
+
+    // 1. Project identity
+    let title = if !config_title.is_empty() {
+        config_title
+    } else if let Some(st) = input.structure {
+        st.title.clone()
+    } else if let Ok(st) = Structure::from_yaml(input.structure_yaml)
+        && !st.title.is_empty()
+    {
+        st.title.clone()
+    } else {
+        String::new()
+    };
+
+    let paper_kind = if config_stage == Stage::Final {
+        PaperKind::Final
+    } else {
+        PaperKind::Draft
+    };
+
+    let project = ProjectIdentity {
+        title,
+        stage: config_stage,
+        paper_kind,
+        latex_engine,
+        template: if latex_template.is_empty() {
+            None
+        } else {
+            Some(latex_template)
+        },
+        relative_root: ".".to_string(),
+    };
+
+    // 2. Input snapshot & fingerprints
+    let config_fingerprint = if !input.config_yaml.is_empty() {
+        Some(input_fingerprint(input.config_yaml.as_bytes()))
+    } else {
+        None
+    };
+
+    let structure_fingerprint = if !input.structure_yaml.is_empty() {
+        Some(input_fingerprint(input.structure_yaml.as_bytes()))
+    } else {
+        None
+    };
+
+    let draft_path = input.root.join(&latex_main);
+    let draft_fingerprint = if draft_path.is_file() {
+        fs::read(draft_path.as_str())
+            .ok()
+            .map(|b| input_fingerprint(&b))
+    } else {
+        None
+    };
+
+    let bib_path = input.root.join(rel::REFERENCES);
+    let bib_fingerprint = if bib_path.is_file() {
+        fs::read(bib_path.as_str())
+            .ok()
+            .map(|b| input_fingerprint(&b))
+    } else {
+        None
+    };
+
+    let mut files_present = Vec::new();
+    for candidate in [
+        ".sil/config.yaml",
+        "config.yaml",
+        ".sil/structure.yaml",
+        "structure.yaml",
+        "paper_draft.tex",
+        "paper.tex",
+        "references.bib",
+        ".sil/skills.lock",
+        ".sil/template.lock",
+        ".sil/workspace.lock",
+    ] {
+        if input.root.join(candidate).is_file() {
+            files_present.push(candidate.to_string());
+        }
+    }
+    let main_str = latex_main.as_str();
+    if !files_present.iter().any(|f| f == main_str) && draft_path.is_file() {
+        files_present.push(main_str.to_string());
+    }
+    files_present.sort();
+    files_present.dedup();
+
+    let db_path = paths.db();
+    let (sources_count, parsed_sources_count) = if db_path.is_file() {
+        if let Ok(db) = SilDb::open(&db_path) {
+            let sc = db.source_count().unwrap_or(0);
+            let pc = db.parsed_count().unwrap_or(0);
+            (sc, pc)
+        } else {
+            (0, 0)
+        }
+    } else {
+        (0, 0)
+    };
+
+    let skill_lock_present =
+        input.root.join(".sil/skills.lock").is_file() || input.root.join("skill.lock").is_file();
+    let template_lock_present = input.root.join(".sil/template.lock").is_file()
+        || input.root.join("template.lock").is_file();
+
+    let inputs = InputSnapshot {
+        config_fingerprint,
+        structure_fingerprint,
+        draft_fingerprint,
+        bib_fingerprint,
+        files_present,
+        sources_count,
+        parsed_sources_count,
+        skill_lock_present,
+        template_lock_present,
+    };
+
+    // 3. Health summary and warnings
+    let bib_opt = if bib_path.is_file() {
+        Some(bib_path.as_path())
+    } else {
+        None
+    };
+
+    let health_report = if draft_path.is_file() {
+        sil_latex::audit_manuscript(&draft_path, bib_opt).unwrap_or_default()
+    } else {
+        ManuscriptHealthReport::default()
+    };
+
+    let health = HealthSummary::from(&health_report);
+
+    let mut warnings = Vec::new();
+    for diag in &health_report.diagnostics {
+        let class = match diag.level {
+            sil_core::DiagnosticLevel::Error => FindingClass::InvariantError,
+            sil_core::DiagnosticLevel::Warning => FindingClass::ActionableWarning,
+            sil_core::DiagnosticLevel::Info => FindingClass::Observation,
+        };
+        warnings.push(AgentFinding {
+            code: format!("latex.{}", diag.category),
+            class,
+            message: diag.message.clone(),
+            path: Some(latex_main.to_string()),
+            line: diag.line,
+            hint: None,
+        });
+    }
+
+    // 4. Structure summary
+    let structure = if let Some(st) = input.structure {
+        StructureSummary::from(st)
+    } else if let Ok(st) = Structure::from_yaml(input.structure_yaml) {
+        StructureSummary::from(&st)
+    } else if let Ok(val) = serde_yaml::from_str::<serde_yaml::Value>(input.structure_yaml) {
+        let title = val
+            .get("title")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string();
+        StructureSummary {
+            title,
+            ..Default::default()
+        }
+    } else {
+        StructureSummary::default()
+    };
+
+    // 5. Work items
+    let mut work_items = Vec::new();
+    if draft_path.is_file() {
+        if let Ok(tex) = fs::read_to_string(draft_path.as_str()) {
+            let idea_blocks = sil_latex::parse_idea_blocks(&tex);
+            for (idx, idea) in idea_blocks.into_iter().enumerate() {
+                let kind = if idea
+                    .content
+                    .trim_start()
+                    .to_ascii_lowercase()
+                    .starts_with("idea")
+                {
+                    "idea".to_string()
+                } else {
+                    "todo".to_string()
+                };
+                work_items.push(WorkItemSummary {
+                    id: format!("todo.{}", idx + 1),
+                    kind,
+                    section_id: idea.section_id,
+                    line_start: Some(idea.line_start),
+                    line_end: Some(idea.line_end),
+                    content: idea.content,
+                    resolved: false,
+                });
+            }
+        }
+    }
+
+    // 6. Literature summary
+    let unparsed_sources = sources_count.saturating_sub(parsed_sources_count);
+    let total_bib_keys = health.total_bib_keys_count;
+    let cited_bib_keys = health.cited_bib_keys_count;
+    let unmentioned_bib_keys = total_bib_keys.saturating_sub(cited_bib_keys);
+
+    let literature = LiteratureSummary {
+        total_sources: sources_count,
+        parsed_sources: parsed_sources_count,
+        unparsed_sources,
+        total_bib_keys,
+        cited_bib_keys,
+        unmentioned_bib_keys,
+        recent_candidates_count: 0,
+    };
+
+    // 7. Skills selection summary
+    let mut flags = input.flags.clone();
+    if input.skills.paper {
+        flags.paper = true;
+    }
+    if input.skills.agent_code {
+        flags.agent = true;
+    }
+    if input.skills.review {
+        flags.skills.push("review.md".into());
+    }
+    if input.skills.visualize_article {
+        flags.skills.push("visualize-article".into());
+    }
+    for dynamic in &input.skills.dynamic_skills {
+        flags.skills.push(dynamic.clone());
+    }
+    let mut router = SkillRouter::new();
+    let registry = SkillRegistry::new(input.root);
+    let _ = router.load_from_registry(&registry);
+    let (_, skills) = router.route(None, Some(&flags), None, Some(input.root));
+
+    // 8. Capability summary
+    let capabilities = CapabilitySummary {
+        latex_available: true,
+        parser_available: true,
+        git_available: input.root.join(".git").exists(),
+        online_search_available: false,
+        llm_provider_available: true,
+        supported_actions: vec![
+            "check".to_string(),
+            "compile".to_string(),
+            "upsert_bib".to_string(),
+            "parse_source".to_string(),
+            "edit_draft".to_string(),
+            "promote".to_string(),
+        ],
+    };
+
+    // 9. Job summary & workspace lock
+    let workspace_lock = match sil_core::workspace_lock::read_lock(&paths) {
+        Ok(Some(lock)) => {
+            let is_alive = lock
+                .pid
+                .map(sil_core::workspace_lock::pid_is_alive)
+                .unwrap_or(true);
+            Some(LockSummary {
+                locked: is_alive,
+                holder: Some(lock.holder),
+                pid: lock.pid,
+                reason: Some(lock.op),
+                stale: !is_alive,
+            })
+        }
+        Ok(None) => Some(LockSummary {
+            locked: false,
+            holder: None,
+            pid: None,
+            reason: None,
+            stale: false,
+        }),
+        Err(_) => None,
+    };
+
+    let jobs = JobSummary {
+        pending_jobs_count: 0,
+        running_jobs_count: if workspace_lock.as_ref().map(|l| l.locked).unwrap_or(false) {
+            1
+        } else {
+            0
+        },
+        failed_jobs_count: 0,
+        active_job_id: None,
+        workspace_lock,
+    };
+
+    // 10. Available actions
+    let actions = vec![
+        AvailableAction {
+            id: "check".to_string(),
+            description: "Run deterministic manuscript checks without building".to_string(),
+            reason: "Validate syntax, citations, and structure invariants".to_string(),
+            safe: true,
+            mutating: false,
+            required_inputs: Vec::new(),
+        },
+        AvailableAction {
+            id: "compile".to_string(),
+            description: "Compile manuscript using configured LaTeX engine".to_string(),
+            reason: "Generate PDF artifact from LaTeX source".to_string(),
+            safe: true,
+            mutating: false,
+            required_inputs: Vec::new(),
+        },
+        AvailableAction {
+            id: "upsert_bib".to_string(),
+            description: "Add or update BibTeX entries in references.bib".to_string(),
+            reason: "Incorporate missing citations or literature references".to_string(),
+            safe: false,
+            mutating: true,
+            required_inputs: vec!["bibtex".to_string()],
+        },
+        AvailableAction {
+            id: "parse_source".to_string(),
+            description: "Parse PDF literature sources into SQLite and full text".to_string(),
+            reason: "Extract markdown and references from downloaded sources".to_string(),
+            safe: false,
+            mutating: true,
+            required_inputs: vec!["source_id".to_string()],
+        },
+        AvailableAction {
+            id: "edit_draft".to_string(),
+            description: "Modify manuscript draft sections".to_string(),
+            reason: "Update manuscript prose, resolve TODOs, and implement sections".to_string(),
+            safe: false,
+            mutating: true,
+            required_inputs: vec!["section_id".to_string(), "content".to_string()],
+        },
+        AvailableAction {
+            id: "promote".to_string(),
+            description: "Promote draft manuscript to final publication version".to_string(),
+            reason: "Transition paper from draft stage to final artifact".to_string(),
+            safe: false,
+            mutating: true,
+            required_inputs: Vec::new(),
+        },
+    ];
+
+    // 11. State classification
+    let state_kind = if jobs
+        .workspace_lock
+        .as_ref()
+        .map(|l| l.locked && !l.stale)
+        .unwrap_or(false)
+    {
+        AgentStateKind::Blocked
+    } else if health.has_errors {
+        AgentStateKind::Blocked
+    } else if !draft_path.is_file() {
+        AgentStateKind::NeedsInput
+    } else {
+        AgentStateKind::Ready
+    };
+
+    let mut state = AgentState {
+        schema_version: AGENT_STATE_SCHEMA_VERSION.to_string(),
+        state: state_kind,
+        project,
+        inputs,
+        health,
+        structure,
+        work_items,
+        literature,
+        skills,
+        capabilities,
+        jobs,
+        actions,
+        warnings,
+    };
+
+    sanitize_agent_state(&mut state, Some(input.root.as_str()));
+
+    Ok(state)
+}
+
+/// Generate the full context as deterministic JSON string.
+pub fn generate_context_json(
+    input: &ContextInput<'_>,
+    compact: bool,
+) -> Result<String, ContextError> {
+    let state = build_agent_state(input)?;
+    if compact {
+        serde_json::to_string(&state).map_err(|e| ContextError::Message(e.to_string()))
+    } else {
+        serde_json::to_string_pretty(&state).map_err(|e| ContextError::Message(e.to_string()))
+    }
+}
+
+/// Generate the full context envelope packaging deterministic state with execution metadata.
+pub fn generate_context_envelope(
+    input: &ContextInput<'_>,
+) -> Result<AgentContextEnvelope, ContextError> {
+    let start = std::time::Instant::now();
+    let state = build_agent_state(input)?;
+    let duration_ms = start.elapsed().as_millis() as u64;
+    let execution = AgentExecutionMetadata {
+        checked_at: now_iso8601(),
+        duration_ms,
+        job_id: state.jobs.active_job_id.clone(),
+        host_info: Some(std::env::consts::OS.to_string()),
+    };
+    Ok(AgentContextEnvelope {
+        state,
+        execution: Some(execution),
+    })
+}
+
+fn now_iso8601() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format_epoch_iso8601(secs)
+}
+
+fn format_epoch_iso8601(secs: u64) -> String {
+    let sec = secs % 60;
+    let mins = (secs / 60) % 60;
+    let hours = (secs / 3600) % 24;
+    let mut days = (secs / 86400) as i64;
+
+    let mut year = 1970;
+    loop {
+        let leap = is_leap_year(year);
+        let days_in_year = if leap { 366 } else { 365 };
+        if days < days_in_year {
+            break;
+        }
+        days -= days_in_year;
+        year += 1;
+    }
+
+    let leap = is_leap_year(year);
+    let days_in_months = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+
+    let mut month = 1;
+    for &dim in &days_in_months {
+        if days < dim {
+            break;
+        }
+        days -= dim;
+        month += 1;
+    }
+    let day = days + 1;
+
+    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{sec:02}Z")
+}
+
+fn is_leap_year(year: i64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
 
 /// Generate the full context markdown string.
@@ -239,6 +778,7 @@ pub fn load_project_texts(
 mod tests {
     use super::*;
     use crate::skills::SkillSelection;
+    use sil_core::LatexEngine;
 
     #[test]
     fn generate_minimal_context() {
@@ -586,5 +1126,229 @@ Some method text.
         assert!(ctx.contains("Active Ideas & TODO blocks"));
         assert!(ctx.contains("Compare model A vs model B"));
         assert!(ctx.contains("Methods"));
+    }
+
+    #[test]
+    fn test_build_agent_state_complete() {
+        let (_d, root) = fixture_root_with_system();
+        let draft_path = root.join("paper_draft.tex");
+        fs::write(
+            &draft_path,
+            r#"\documentclass{article}
+\begin{document}
+\section{Introduction}
+We cite \cite{Vaswani2017} and refer to Figure~\ref{fig:arch}.
+\label{fig:arch}
+
+% # -- X -- #
+% Idea: Add ablation studies
+% # -- X -- #
+\end{document}
+"#,
+        )
+        .unwrap();
+
+        let bib_path = root.join("references.bib");
+        fs::write(
+            &bib_path,
+            "@article{Vaswani2017, title={Attention is all you need}}\n",
+        )
+        .unwrap();
+
+        let flags = ContextFlags {
+            paper: true,
+            agent: false,
+            skill_paper: true,
+            ..Default::default()
+        };
+        let mut skills = SkillSelection::always();
+        skills.merge_flags(&flags);
+
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "project:\n  title: Test Manuscript\n  stage: draft\nlatex:\n  engine: tectonic\n  main: paper_draft.tex\n  template: standard\n",
+            structure_yaml: "title: Test Manuscript\nsections:\n  - id: sec.intro\n    title: Introduction\n    level: 1\n    completion: draft\n",
+            structure: None,
+            sources_summary: "Sources in database: 0 (parsed: 0)\n",
+            log_entries: &[],
+            flags: &flags,
+            skills,
+        };
+
+        let state = build_agent_state(&input).unwrap();
+        assert_eq!(state.schema_version, AGENT_STATE_SCHEMA_VERSION);
+        assert_eq!(state.state, AgentStateKind::Ready);
+        assert_eq!(state.project.title, "Test Manuscript");
+        assert_eq!(state.project.stage, Stage::Draft);
+        assert_eq!(state.project.paper_kind, PaperKind::Draft);
+        assert_eq!(state.project.latex_engine, LatexEngine::Tectonic);
+        assert_eq!(state.project.template.as_deref(), Some("standard"));
+        assert_eq!(state.project.relative_root, ".");
+
+        assert!(state.inputs.config_fingerprint.is_some());
+        assert!(state.inputs.structure_fingerprint.is_some());
+        assert!(state.inputs.draft_fingerprint.is_some());
+        assert!(state.inputs.bib_fingerprint.is_some());
+        assert!(
+            state
+                .inputs
+                .files_present
+                .contains(&"paper_draft.tex".to_string())
+        );
+        assert!(
+            state
+                .inputs
+                .files_present
+                .contains(&"references.bib".to_string())
+        );
+
+        assert_eq!(state.health.total_bib_keys_count, 1);
+        assert_eq!(state.health.cited_bib_keys_count, 1);
+        assert_eq!(state.health.missing_citations_count, 0);
+        assert_eq!(state.health.todo_ideas_count, 1);
+
+        assert_eq!(state.structure.total_sections, 1);
+        assert_eq!(state.structure.in_progress_sections, 1);
+
+        assert_eq!(state.work_items.len(), 1);
+        assert_eq!(state.work_items[0].kind, "idea");
+        assert!(state.work_items[0].content.contains("ablation studies"));
+
+        assert_eq!(state.literature.total_bib_keys, 1);
+        assert_eq!(state.literature.cited_bib_keys, 1);
+
+        assert!(
+            state
+                .skills
+                .active_skill_ids
+                .contains(&"SYSTEM".to_string())
+        );
+        assert!(state.skills.active_skill_ids.contains(&"paper".to_string()));
+
+        assert!(state.capabilities.latex_available);
+        assert!(!state.actions.is_empty());
+        assert!(state.actions.iter().any(|a| a.id == "check"));
+        assert!(state.actions.iter().any(|a| a.id == "compile"));
+    }
+
+    #[test]
+    fn test_generate_context_json_roundtrip() {
+        let (_d, root) = fixture_root_with_system();
+        let flags = ContextFlags::default();
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "project:\n  stage: draft\n",
+            structure_yaml: "title: T\nsections: []\n",
+            structure: None,
+            sources_summary: "Sources in database: 0 (parsed: 0)\n",
+            log_entries: &[],
+            flags: &flags,
+            skills: SkillSelection::always(),
+        };
+
+        let pretty_json = generate_context_json(&input, false).unwrap();
+        let compact_json = generate_context_json(&input, true).unwrap();
+
+        assert!(pretty_json.contains('\n'));
+        assert!(!compact_json.contains('\n'));
+
+        let de_pretty: AgentState = serde_json::from_str(&pretty_json).unwrap();
+        let de_compact: AgentState = serde_json::from_str(&compact_json).unwrap();
+        assert_eq!(de_pretty, de_compact);
+        assert_eq!(de_pretty.schema_version, AGENT_STATE_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn test_generate_context_envelope() {
+        let (_d, root) = fixture_root_with_system();
+        let flags = ContextFlags::default();
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "project:\n  stage: draft\n",
+            structure_yaml: "title: T\nsections: []\n",
+            structure: None,
+            sources_summary: "Sources in database: 0 (parsed: 0)\n",
+            log_entries: &[],
+            flags: &flags,
+            skills: SkillSelection::always(),
+        };
+
+        let envelope = generate_context_envelope(&input).unwrap();
+        assert_eq!(envelope.state.schema_version, AGENT_STATE_SCHEMA_VERSION);
+        let exec = envelope.execution.unwrap();
+        assert!(!exec.checked_at.is_empty());
+        assert!(exec.checked_at.contains('T') && exec.checked_at.ends_with('Z'));
+        assert!(exec.host_info.is_some());
+    }
+
+    #[test]
+    fn test_deterministic_fingerprint_parity() {
+        let (_d, root) = fixture_root_with_system();
+        let flags = ContextFlags::default();
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "project:\n  stage: draft\n",
+            structure_yaml: "title: T\nsections: []\n",
+            structure: None,
+            sources_summary: "Sources in database: 0 (parsed: 0)\n",
+            log_entries: &[],
+            flags: &flags,
+            skills: SkillSelection::always(),
+        };
+
+        let state1 = build_agent_state(&input).unwrap();
+        let state2 = build_agent_state(&input).unwrap();
+        assert_eq!(state1.stable_fingerprint(), state2.stable_fingerprint());
+    }
+
+    #[test]
+    fn test_secret_scrubbing_in_agent_state() {
+        let (_d, root) = fixture_root_with_system();
+        let draft_path = root.join("paper_draft.tex");
+        fs::write(
+            &draft_path,
+            r#"\documentclass{article}
+\begin{document}
+\section{Intro with sk-proj-1234567890abcdef1234567890}
+% # -- X -- #
+% Idea: password=supersecretpass123
+% # -- X -- #
+\end{document}
+"#,
+        )
+        .unwrap();
+
+        let flags = ContextFlags {
+            paper: true,
+            ..Default::default()
+        };
+        let input = ContextInput {
+            root: &root,
+            config_yaml: "project:\n  title: Paper with Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\n  stage: draft\n",
+            structure_yaml: "title: \"Struct with api_key: sk-123456789012345678901234\"\nsections: []\n",
+            structure: None,
+            sources_summary: "Sources in database: 0 (parsed: 0)\n",
+            log_entries: &[],
+            flags: &flags,
+            skills: SkillSelection::always(),
+        };
+
+        let state = build_agent_state(&input).unwrap();
+        assert!(
+            !state
+                .project
+                .title
+                .contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")
+        );
+        assert!(state.project.title.contains("[REDACTED]"));
+        assert!(
+            !state
+                .structure
+                .title
+                .contains("sk-123456789012345678901234")
+        );
+        assert!(state.structure.title.contains("[REDACTED]"));
+        assert!(!state.work_items[0].content.contains("supersecretpass123"));
+        assert!(state.work_items[0].content.contains("[REDACTED]"));
     }
 }

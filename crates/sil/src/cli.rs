@@ -284,6 +284,15 @@ pub enum ProjectCmd {
     },
     /// Generate structured context for a human or agent
     Context {
+        /// Machine-readable JSON output
+        #[arg(long)]
+        json: bool,
+        /// Compact single-line JSON output (used with --json)
+        #[arg(long)]
+        compact: bool,
+        /// Output full context envelope with volatile execution metadata (used with --json)
+        #[arg(long)]
+        envelope: bool,
         /// Include paper_draft.tex split into subsections
         #[arg(long)]
         paper: bool,

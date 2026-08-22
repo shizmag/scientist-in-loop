@@ -351,14 +351,18 @@ fn test_sanitize_agent_state_full_pass() {
         literature: LiteratureSummary::default(),
         skills: SkillSelectionSummary {
             active_skill_ids: vec!["paper".to_string()],
+            available_skill_ids: vec!["paper".to_string()],
             selected_skills: vec![SelectedSkillItem {
                 id: "paper".to_string(),
                 version: Some("1.0.0".to_string()),
                 status: SkillStatus::Selected,
                 reason: Some("Selected for api_key=topsecret".to_string()),
+                path: Some("agent/skills/paper.md".to_string()),
                 required_capabilities: vec![],
                 conflicts: vec![],
             }],
+            conflicts: vec![],
+            missing_requirements: vec![],
             registry_version: None,
         },
         capabilities: CapabilitySummary::default(),
