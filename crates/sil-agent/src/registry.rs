@@ -1293,7 +1293,7 @@ mod tests {
     fn to_skill_definitions_and_capability_checks() {
         let manifest_yaml = r#"
 api_version: sil.dev/skill/v1
-kind: skill-pack
+kind: SkillPack
 metadata:
   id: custom/pack
   name: custom-pack
@@ -1318,6 +1318,18 @@ metadata:
   verification: verify_stats
   conflicts:
     - legacy/pack
+  external_data_flow:
+    destination: external_api
+    data_classes: [data]
+    consent_required: true
+    disclosure: External API data processing.
+source:
+  url: https://github.com/scientist-in-loop/custom-pack
+  revision: main
+  sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+compatibility:
+  sil: ">=1,<2"
+  hosts: []
 entrypoints:
   - id: analyze
     type: skill

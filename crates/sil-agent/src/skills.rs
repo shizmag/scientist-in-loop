@@ -865,6 +865,7 @@ pub fn load_skill(root: &Utf8Path, name: &str) -> Result<String, ContextError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use camino::Utf8PathBuf;
 
     #[test]
     fn skill_selection_from_task() {
