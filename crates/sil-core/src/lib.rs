@@ -60,7 +60,7 @@ pub use bib::{
     mark_tui_added_bib_entry, normalize_arxiv_id, parse_bib_blocks, pretty_format_bibtex,
     rewrite_bib_cite_key, slug_cite_key, strip_tui_added_bib_entries, suggest_from_filename_title,
     suggest_from_query, suggest_from_reference_entry, suggest_from_source,
-    unmark_tui_added_bib_entry, upsert_bib_entry, upsert_bib_entry_with_options,
+    unmark_tui_added_bib_entry, upsert_bib_entry, upsert_bib_entry_with_options, validate_bibtex,
 };
 pub use check::{
     CheckFinding, CheckProfile, CheckReport, CheckRunMetadata, CheckStaticReport, CheckSummary,

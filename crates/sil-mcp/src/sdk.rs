@@ -293,11 +293,30 @@ fn validate_action_arguments(
     let action = args
         .and_then(|value| value.get("action"))
         .and_then(serde_json::Value::as_str);
+    if name == "sil_sources" && action == Some("parse") {
+        let has_path = args
+            .and_then(|v| v.get("path"))
+            .is_some_and(|v| !v.is_null());
+        let has_sid = args
+            .and_then(|v| v.get("source_id"))
+            .is_some_and(|v| !v.is_null());
+        let has_all = args
+            .and_then(|v| v.get("all_unparsed"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if !has_path && !has_sid && !has_all {
+            return Some(CallToolResult::action_error(
+                "sources.parse",
+                sil_core::McpErrorCode::MissingInput,
+                "Provide path, source_id, or set all_unparsed=true",
+            ));
+        }
+        return None;
+    }
     let required = match (name, action) {
         ("sil_sources", Some("search")) => Some("query"),
         ("sil_sources", Some("get")) => Some("source_id"),
         ("sil_sources", Some("fetch")) => Some("target"),
-        ("sil_sources", Some("parse")) => Some("path"),
         ("sil_cite", Some("suggest")) => Some("query"),
         ("sil_cite", Some("ground")) => Some("claim"),
         ("sil_cite", Some("upsert")) => Some("entry"),
@@ -308,7 +327,17 @@ fn validate_action_arguments(
         let present = args
             .and_then(|value| value.get(field))
             .is_some_and(|value| !value.is_null());
-        (!present).then(|| CallToolResult::error(format!("Missing required parameter: {field}")))
+        let op = match action {
+            Some(act) => format!("{name}.{act}"),
+            None => name.to_string(),
+        };
+        (!present).then(|| {
+            CallToolResult::action_error(
+                op,
+                sil_core::McpErrorCode::MissingInput,
+                format!("Missing required parameter: {field}"),
+            )
+        })
     })
 }
 

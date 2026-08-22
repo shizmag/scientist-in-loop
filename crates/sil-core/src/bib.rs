@@ -477,6 +477,26 @@ pub fn extract_bib_entry_info(entry_str: &str) -> BibEntryInfo {
     info
 }
 
+/// Validate BibTeX syntax and extract parsed entry info.
+pub fn validate_bibtex(bibtex: &str) -> Result<BibEntryInfo, String> {
+    let trimmed = bibtex.trim();
+    if trimmed.is_empty() {
+        return Err("BibTeX entry string is empty".to_string());
+    }
+    if !trimmed.contains('@') {
+        return Err("Missing '@' in BibTeX entry".to_string());
+    }
+    let info = extract_bib_entry_info(trimmed);
+    if let Some(ref key) = info.cite_key {
+        if key.is_empty() {
+            return Err("Empty citation key in BibTeX entry".to_string());
+        }
+        Ok(info)
+    } else {
+        Err("Failed to parse citation key from BibTeX entry".to_string())
+    }
+}
+
 fn normalize_title(title: &str) -> String {
     title
         .chars()

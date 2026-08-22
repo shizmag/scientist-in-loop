@@ -136,6 +136,40 @@ impl CallToolResult {
             is_error: Some(true),
         }
     }
+
+    /// Create a tool result encapsulating a structured `McpActionResult`.
+    pub fn action_result(result: sil_core::McpActionResult) -> Self {
+        let is_error = if result.is_error() || result.is_blocked() {
+            Some(true)
+        } else {
+            None
+        };
+        let text = serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string());
+        Self {
+            content: vec![Content::Text { text }],
+            is_error,
+        }
+    }
+
+    /// Create an error action result directly from error code and summary.
+    pub fn action_error(
+        operation_id: impl Into<String>,
+        error_code: sil_core::McpErrorCode,
+        summary: impl Into<String>,
+    ) -> Self {
+        Self::action_result(sil_core::McpActionResult::error(
+            operation_id,
+            error_code,
+            summary,
+        ))
+    }
+
+    /// Parse an `McpActionResult` from the first text content item if available.
+    pub fn as_action_result(&self) -> Option<sil_core::McpActionResult> {
+        self.content.first().and_then(|c| match c {
+            Content::Text { text } => serde_json::from_str(text).ok(),
+        })
+    }
 }
 
 /// Individual content block in MCP tool results.
@@ -252,5 +286,26 @@ mod tests {
         assert!(ser_text.contains(r#""type":"text""#));
         assert!(ser_text.contains("hello world"));
         assert!(!ser_text.contains("isError"));
+
+        let action_succ =
+            CallToolResult::action_result(sil_core::McpActionResult::success("op1", "ok"));
+        assert_eq!(action_succ.is_error, None);
+        let parsed_succ = action_succ.as_action_result().unwrap();
+        assert_eq!(parsed_succ.operation_id, "op1");
+        assert_eq!(parsed_succ.status, sil_core::McpActionStatus::Success);
+
+        let action_err = CallToolResult::action_error(
+            "op2",
+            sil_core::McpErrorCode::InvalidInput,
+            "bad argument",
+        );
+        assert_eq!(action_err.is_error, Some(true));
+        let parsed_err = action_err.as_action_result().unwrap();
+        assert_eq!(parsed_err.operation_id, "op2");
+        assert_eq!(
+            parsed_err.error_code,
+            Some(sil_core::McpErrorCode::InvalidInput)
+        );
+        assert_eq!(parsed_err.status, sil_core::McpActionStatus::Failed);
     }
 }
