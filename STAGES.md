@@ -122,3 +122,14 @@ unsupported host hooks, no universal venue ranking, no bundled official venue
 templates, host/toolchain-dependent compilation, and no external experiment
 runner or symlink manager. See the verification report for the tested claims.
 
+## Stage 16 — Agent State Model & MCP Action Contract (Wave 08-22) ✅
+
+Plan: `docs/plan-08-22/pr-plan.md`. ADR: `docs/adr/ADR-021-agent-state-mcp-contract.md`.
+
+- **Agent State Model**: Versioned, deterministic `AgentState` (`sil.dev/agent-state/v1`) with stable hashing, canonical project-relative path normalization, automated secret scrubbing (`redact_secrets`), and lifecycle classification (`Ready`, `NeedsInput`, `Blocked`, `Degraded`).
+- **Surface Parity**: Structured JSON context support across CLI (`sil context --json`, `--compact`, `--envelope`) and MCP (`sil_context`), guaranteeing cross-surface state and fact parity.
+- **Declarative Skill Routing**: Migrated first-party skill packs (`SYSTEM.md`, `paper.md`, `agent-code.md`, `review.md`, `visualize-article`) to declarative YAML frontmatter (`triggers`, `required_capabilities`, `inputs`, `outputs`, `permissions`, `verification`) with deterministic scoring, capability checks against `HostCapabilities`, and reason codes.
+- **Structured MCP Result Envelope**: Standardized all 6 MCP workflow tools to return `McpActionResult` (`sil.dev/mcp-result/v1`) with closed `McpErrorCode` taxonomy, precondition checks, durable postcondition verification, `dry_run` support for mutations, and `next_actions` guidance.
+- **Cross-Surface Verification Suite**: Dedicated verification fixture and parity suite in `crates/sil/tests/e2e_pr_v_parity.rs` proving byte-equivalent stable state snapshots, mutation replay, and error classification across surfaces.
+
+

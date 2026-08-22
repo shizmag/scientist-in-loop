@@ -14,3 +14,4 @@ scratch/
 *.db-wal
 *.db-shm
 .sil/jobs.json
+.serena/
