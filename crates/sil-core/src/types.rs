@@ -66,10 +66,11 @@ impl FromStr for LatexEngine {
 }
 
 /// Which paper artifact is being addressed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PaperKind {
     /// Working draft (`paper_draft.tex`).
+    #[default]
     Draft,
     /// Cleaned final manuscript (`paper.tex`).
     Final,

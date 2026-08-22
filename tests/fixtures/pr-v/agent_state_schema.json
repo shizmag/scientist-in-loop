@@ -1,0 +1,130 @@
+{
+  "schema_version": "sil.dev/agent-state/v1",
+  "state": "ready",
+  "project": {
+    "title": "Offline Verification Fixture",
+    "stage": "draft",
+    "paper_kind": "draft",
+    "latex_engine": "tectonic",
+    "template": "standard",
+    "relative_root": "."
+  },
+  "inputs": {
+    "config_fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "structure_fingerprint": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+    "draft_fingerprint": "sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+    "bib_fingerprint": "sha256:3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+    "files_present": [
+      "config.yaml",
+      "paper_draft.tex",
+      "references.bib",
+      "skill.lock",
+      "template.lock"
+    ],
+    "sources_count": 0,
+    "parsed_sources_count": 0,
+    "skill_lock_present": true,
+    "template_lock_present": true
+  },
+  "health": {
+    "word_count": 32,
+    "missing_citations_count": 0,
+    "unreferenced_labels_count": 0,
+    "todo_ideas_count": 0,
+    "total_bib_keys_count": 1,
+    "cited_bib_keys_count": 1,
+    "has_errors": false,
+    "warning_count": 0,
+    "error_count": 0
+  },
+  "structure": {
+    "title": "Offline Verification Fixture",
+    "total_sections": 2,
+    "completed_sections": 0,
+    "in_progress_sections": 2,
+    "planned_sections": 0,
+    "completion_percent": 50,
+    "sections": [
+      {
+        "id": "sec.intro",
+        "title": "Introduction",
+        "level": 1,
+        "completion": "draft"
+      },
+      {
+        "id": "sec.methods",
+        "title": "Methods",
+        "level": 1,
+        "completion": "outline"
+      }
+    ]
+  },
+  "literature": {
+    "total_sources": 1,
+    "parsed_sources": 1,
+    "unparsed_sources": 0,
+    "total_bib_keys": 1,
+    "cited_bib_keys": 1,
+    "unmentioned_bib_keys": 0,
+    "recent_candidates_count": 0
+  },
+  "skills": {
+    "active_skill_ids": [
+      "SYSTEM",
+      "paper"
+    ],
+    "selected_skills": [
+      {
+        "id": "SYSTEM",
+        "version": "1.0.0",
+        "status": "selected",
+        "reason": "Mandatory system instructions"
+      },
+      {
+        "id": "paper",
+        "version": "1.0.0",
+        "status": "selected",
+        "reason": "Draft stage manuscript active"
+      }
+    ],
+    "registry_version": "1.0.0"
+  },
+  "capabilities": {
+    "latex_available": true,
+    "parser_available": true,
+    "git_available": true,
+    "online_search_available": false,
+    "llm_provider_available": false,
+    "supported_actions": [
+      "check",
+      "compile",
+      "upsert_bib",
+      "parse_source"
+    ]
+  },
+  "jobs": {
+    "pending_jobs_count": 0,
+    "running_jobs_count": 0,
+    "failed_jobs_count": 0,
+    "workspace_lock": {
+      "locked": false,
+      "stale": false
+    }
+  },
+  "actions": [
+    {
+      "id": "check",
+      "description": "Run deterministic manuscript checks",
+      "reason": "Verify manuscript consistency and bibliography",
+      "safe": true,
+      "mutating": false
+    },
+    {
+      "id": "compile",
+      "description": "Compile paper_draft.tex to PDF",
+      "reason": "Validate LaTeX typesetting and citations",
+      "safe": true,
+      "mutating": false
+    }
+  ]
+}

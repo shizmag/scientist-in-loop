@@ -22,12 +22,16 @@ mod types;
 /// Global/local settings and cache.
 pub mod settings;
 
+/// Agent state contract and deterministic context types (PR-A).
+pub mod agent;
 /// Crash-safe atomic file writing.
 pub mod atomic;
 /// Journal publication digest entries.
 pub mod digest;
 /// Manuscript health check diagnostic tools.
 pub mod health;
+/// MCP action result envelope and error taxonomy (PR-C).
+pub mod mcp;
 /// Project TODO and idea tracking blocks.
 pub mod todo;
 /// Undo journal for tracking and reverting file mutations.
@@ -36,6 +40,18 @@ pub mod undo;
 pub mod venue;
 /// Advisory workspace lock for agent/TUI coordination.
 pub mod workspace_lock;
+
+pub use agent::{
+    AGENT_STATE_SCHEMA_VERSION, AgentContextEnvelope, AgentExecutionMetadata, AgentFinding,
+    AgentState, AgentStateKind, AgentStateReport, AvailableAction, CapabilitySummary,
+    HealthSummary, InputSnapshot, JobSummary, LiteratureSummary, LockSummary, ProjectIdentity,
+    SectionSummaryItem, SelectedSkillItem, SkillSelectionSummary, SkillStatus, StructureSummary,
+    WorkItemSummary, normalize_path, redact_secrets, sanitize_agent_state,
+};
+pub use mcp::{
+    CommitProposalSummary, MCP_ACTION_SCHEMA_VERSION, McpActionResult, McpActionStatus,
+    McpErrorCode, NextAction, PreconditionResult, VerificationResult,
+};
 
 pub use atomic::{write_atomic, write_atomic_str};
 pub use bib::{
