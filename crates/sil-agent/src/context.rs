@@ -69,19 +69,17 @@ pub fn build_agent_state(input: &ContextInput<'_>) -> Result<AgentState, Context
             .get("project")
             .and_then(|p| p.get("stage"))
             .and_then(|s| s.as_str())
+            && let Ok(st) = serde_yaml::from_str(s)
         {
-            if let Ok(st) = serde_yaml::from_str(s) {
-                config_stage = st;
-            }
+            config_stage = st;
         }
         if let Some(e) = val
             .get("latex")
             .and_then(|l| l.get("engine"))
             .and_then(|e| e.as_str())
+            .and_then(|e| serde_yaml::from_str(e).ok())
         {
-            if let Ok(eng) = serde_yaml::from_str(e) {
-                latex_engine = eng;
-            }
+            latex_engine = e;
         }
         if let Some(tpl) = val
             .get("latex")
@@ -271,30 +269,30 @@ pub fn build_agent_state(input: &ContextInput<'_>) -> Result<AgentState, Context
 
     // 5. Work items
     let mut work_items = Vec::new();
-    if draft_path.is_file() {
-        if let Ok(tex) = fs::read_to_string(draft_path.as_str()) {
-            let idea_blocks = sil_latex::parse_idea_blocks(&tex);
-            for (idx, idea) in idea_blocks.into_iter().enumerate() {
-                let kind = if idea
-                    .content
-                    .trim_start()
-                    .to_ascii_lowercase()
-                    .starts_with("idea")
-                {
-                    "idea".to_string()
-                } else {
-                    "todo".to_string()
-                };
-                work_items.push(WorkItemSummary {
-                    id: format!("todo.{}", idx + 1),
-                    kind,
-                    section_id: idea.section_id,
-                    line_start: Some(idea.line_start),
-                    line_end: Some(idea.line_end),
-                    content: idea.content,
-                    resolved: false,
-                });
-            }
+    if draft_path.is_file()
+        && let Ok(tex) = fs::read_to_string(draft_path.as_str())
+    {
+        let idea_blocks = sil_latex::parse_idea_blocks(&tex);
+        for (idx, idea) in idea_blocks.into_iter().enumerate() {
+            let kind = if idea
+                .content
+                .trim_start()
+                .to_ascii_lowercase()
+                .starts_with("idea")
+            {
+                "idea".to_string()
+            } else {
+                "todo".to_string()
+            };
+            work_items.push(WorkItemSummary {
+                id: format!("todo.{}", idx + 1),
+                kind,
+                section_id: idea.section_id,
+                line_start: Some(idea.line_start),
+                line_end: Some(idea.line_end),
+                content: idea.content,
+                resolved: false,
+            });
         }
     }
 
@@ -448,9 +446,8 @@ pub fn build_agent_state(input: &ContextInput<'_>) -> Result<AgentState, Context
         .as_ref()
         .map(|l| l.locked && !l.stale)
         .unwrap_or(false)
+        || health.has_errors
     {
-        AgentStateKind::Blocked
-    } else if health.has_errors {
         AgentStateKind::Blocked
     } else if !draft_path.is_file() {
         AgentStateKind::NeedsInput

@@ -79,15 +79,15 @@ impl SkillDefinition {
             id: "SYSTEM".into(),
             name: "system".into(),
             version: "1.0.0".into(),
-            title: "System Rules & Instructions".into(),
+            title: "System Grounding Rules".into(),
             description:
                 "Mandatory system instructions and core operating rules for all agent tasks.".into(),
             path: "agent/skills/SYSTEM.md".into(),
-            triggers: Vec::new(),
+            triggers: vec!["system".into()],
             required_capabilities: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            permissions: vec!["read:workspace".into()],
+            permissions: Vec::new(),
             verification: None,
             conflicts: Vec::new(),
         }
@@ -99,25 +99,34 @@ impl SkillDefinition {
             id: "paper".into(),
             name: "paper".into(),
             version: "1.0.0".into(),
-            title: "Paper Writing & LaTeX Editing".into(),
+            title: "Manuscript Drafting and Structure".into(),
             description:
                 "LaTeX manuscript drafting, subsection writing, and structure.yaml updates.".into(),
             path: "agent/skills/paper.md".into(),
             triggers: vec![
+                "paper".into(),
+                "draft".into(),
+                "latex".into(),
+                "structure".into(),
+                "tex".into(),
+                "write".into(),
+                "section".into(),
+                "abstract".into(),
+                "introduction".into(),
                 "structure.yaml".into(),
                 "paper_draft.tex".into(),
                 "paper.tex".into(),
-                "section".into(),
                 "completion".into(),
                 "manuscript".into(),
-                "write".into(),
-                "draft".into(),
             ],
             required_capabilities: vec!["tectonic".into()],
-            inputs: vec!["structure.yaml".into(), "paper_draft.tex".into()],
+            inputs: vec!["paper_draft.tex".into(), "structure.yaml".into()],
             outputs: vec!["paper_draft.tex".into(), "structure.yaml".into()],
-            permissions: vec!["read:manuscript".into(), "write:manuscript".into()],
-            verification: Some("check".into()),
+            permissions: vec![
+                "write:paper_draft.tex".into(),
+                "write:structure.yaml".into(),
+            ],
+            verification: Some("sil build".into()),
             conflicts: Vec::new(),
         }
     }
@@ -128,24 +137,27 @@ impl SkillDefinition {
             id: "agent-code".into(),
             name: "agent-code".into(),
             version: "1.0.0".into(),
-            title: "Agent Code & Reproducibility".into(),
+            title: "Agent Reproducibility and Code".into(),
             description:
                 "Agent scripts, parser development, and reproducibility pipeline under agent/."
                     .into(),
             path: "agent/skills/agent-code.md".into(),
             triggers: vec![
+                "agent-code".into(),
+                "agent".into(),
+                "python".into(),
+                "script".into(),
+                "parser".into(),
+                "reproducibility".into(),
                 "agent/".into(),
                 "agent\\".into(),
-                "script".into(),
                 "reproducib".into(),
-                "agent-code".into(),
-                "parser".into(),
             ],
             required_capabilities: vec!["python".into(), "git".into()],
             inputs: vec!["agent/".into()],
             outputs: vec!["agent/".into()],
-            permissions: vec!["read:agent".into(), "write:agent".into(), "process".into()],
-            verification: Some("test".into()),
+            permissions: vec!["write:agent/".into()],
+            verification: Some("python -m pytest".into()),
             conflicts: Vec::new(),
         }
     }
@@ -156,13 +168,15 @@ impl SkillDefinition {
             id: "review".into(),
             name: "review".into(),
             version: "1.0.0".into(),
-            title: "Manuscript Review & Quality Estimate".into(),
+            title: "Quality Gate and L0 Estimate".into(),
             description: "Manuscript estimation, peer-review critique, and editorial scoring."
                 .into(),
             path: "agent/skills/review.md".into(),
             triggers: vec![
                 "review".into(),
                 "estimate".into(),
+                "rubric".into(),
+                "quality".into(),
                 "critique".into(),
                 "peer review".into(),
                 "referee".into(),
@@ -170,9 +184,9 @@ impl SkillDefinition {
             ],
             required_capabilities: Vec::new(),
             inputs: vec!["paper_draft.tex".into(), "structure.yaml".into()],
-            outputs: vec!["review_report.md".into()],
-            permissions: vec!["read:manuscript".into()],
-            verification: Some("verify_review".into()),
+            outputs: vec![".sil/reviews/".into()],
+            permissions: vec!["write:.sil/reviews/".into()],
+            verification: Some("sil estimate".into()),
             conflicts: Vec::new(),
         }
     }
@@ -225,18 +239,18 @@ impl SkillDefinition {
     /// Parse declarative skill metadata from markdown frontmatter or contents.
     pub fn parse_from_markdown(content: &str, default_id: &str) -> Result<Self, ContextError> {
         let trimmed = content.trim_start();
-        if trimmed.starts_with("---") {
-            if let Some(end_idx) = trimmed[3..].find("\n---") {
-                let yaml_str = &trimmed[3..3 + end_idx];
-                if let Ok(mut def) = serde_yaml::from_str::<SkillDefinition>(yaml_str) {
-                    if def.id.is_empty() {
-                        def.id = default_id.to_string();
-                    }
-                    if def.path.is_empty() {
-                        def.path = format!("agent/skills/{default_id}.md");
-                    }
-                    return Ok(def);
+        if let Some(stripped) = trimmed.strip_prefix("---")
+            && let Some(end_idx) = stripped.find("\n---")
+        {
+            let yaml_str = &stripped[..end_idx];
+            if let Ok(mut def) = serde_yaml::from_str::<SkillDefinition>(yaml_str) {
+                if def.id.is_empty() {
+                    def.id = default_id.to_string();
                 }
+                if def.path.is_empty() {
+                    def.path = format!("agent/skills/{default_id}.md");
+                }
+                return Ok(def);
             }
         }
 
@@ -354,15 +368,15 @@ impl SkillRouter {
         if let Ok(list) = registry.list() {
             let mut loaded_manifest_ids = BTreeSet::new();
             for item in list {
-                if loaded_manifest_ids.insert((item.id.clone(), item.version.clone())) {
-                    if let Ok(manifest) = registry.show(&item.id) {
-                        let base = registry
-                            .managed_dir()
-                            .join(item.id.replace('/', "__"))
-                            .join(&item.version);
-                        for def in manifest.to_skill_definitions(Some(&base)) {
-                            self.register(def);
-                        }
+                if loaded_manifest_ids.insert((item.id.clone(), item.version.clone()))
+                    && let Ok(manifest) = registry.show(&item.id)
+                {
+                    let base = registry
+                        .managed_dir()
+                        .join(item.id.replace('/', "__"))
+                        .join(&item.version);
+                    for def in manifest.to_skill_definitions(Some(&base)) {
+                        self.register(def);
                     }
                 }
             }
@@ -684,15 +698,15 @@ impl SkillRouter {
         }
 
         // 4. Special rule: if `review` is selected, also ensure `paper` is selected if available
-        if selected_id_set.contains("review") && !selected_id_set.contains("paper") {
-            if let Some(paper_item) = selected_skills.iter_mut().find(|s| s.id == "paper") {
-                if paper_item.status == SkillStatus::Available {
-                    paper_item.status = SkillStatus::Selected;
-                    paper_item.reason = Some("Draft stage manuscript active".into());
-                    selected_id_set.insert("paper".to_string());
-                    active_skill_ids.push("paper".to_string());
-                }
-            }
+        if selected_id_set.contains("review")
+            && !selected_id_set.contains("paper")
+            && let Some(paper_item) = selected_skills.iter_mut().find(|s| s.id == "paper")
+            && paper_item.status == SkillStatus::Available
+        {
+            paper_item.status = SkillStatus::Selected;
+            paper_item.reason = Some("Draft stage manuscript active".into());
+            selected_id_set.insert("paper".to_string());
+            active_skill_ids.push("paper".to_string());
         }
 
         // 5. Update SkillSelection boolean flags
@@ -1242,5 +1256,111 @@ Instructions for proving theorems.
         assert!(!selection.agent_code);
         assert!(summary.active_skill_ids.contains(&"SYSTEM".to_string()));
         assert!(summary.active_skill_ids.contains(&"paper".to_string()));
+    }
+
+    #[test]
+    fn test_first_party_skill_templates_declarative_frontmatter() {
+        let system_md = include_str!("../../../templates/agent/skills/SYSTEM.md");
+        let system_def = SkillDefinition::parse_from_markdown(system_md, "SYSTEM").unwrap();
+        assert_eq!(system_def.id, "SYSTEM");
+        assert_eq!(system_def.version, "1.0.0");
+        assert_eq!(system_def.title, "System Grounding Rules");
+        assert_eq!(system_def.triggers, vec!["system"]);
+        assert!(system_def.required_capabilities.is_empty());
+        assert!(system_def.inputs.is_empty());
+        assert!(system_def.outputs.is_empty());
+        assert!(system_def.permissions.is_empty());
+        assert_eq!(system_def.verification, None);
+
+        let paper_md = include_str!("../../../templates/agent/skills/paper.md");
+        let paper_def = SkillDefinition::parse_from_markdown(paper_md, "paper").unwrap();
+        assert_eq!(paper_def.id, "paper");
+        assert_eq!(paper_def.version, "1.0.0");
+        assert_eq!(paper_def.title, "Manuscript Drafting and Structure");
+        assert_eq!(
+            paper_def.triggers,
+            vec![
+                "paper",
+                "draft",
+                "latex",
+                "structure",
+                "tex",
+                "write",
+                "section",
+                "abstract",
+                "introduction"
+            ]
+        );
+        assert_eq!(paper_def.required_capabilities, vec!["tectonic"]);
+        assert_eq!(paper_def.inputs, vec!["paper_draft.tex", "structure.yaml"]);
+        assert_eq!(paper_def.outputs, vec!["paper_draft.tex", "structure.yaml"]);
+        assert_eq!(
+            paper_def.permissions,
+            vec!["write:paper_draft.tex", "write:structure.yaml"]
+        );
+        assert_eq!(paper_def.verification.as_deref(), Some("sil build"));
+
+        let agent_code_md = include_str!("../../../templates/agent/skills/agent-code.md");
+        let agent_code_def =
+            SkillDefinition::parse_from_markdown(agent_code_md, "agent-code").unwrap();
+        assert_eq!(agent_code_def.id, "agent-code");
+        assert_eq!(agent_code_def.version, "1.0.0");
+        assert_eq!(agent_code_def.title, "Agent Reproducibility and Code");
+        assert_eq!(
+            agent_code_def.triggers,
+            vec![
+                "agent-code",
+                "agent",
+                "python",
+                "script",
+                "parser",
+                "reproducibility"
+            ]
+        );
+        assert_eq!(agent_code_def.required_capabilities, vec!["python", "git"]);
+        assert_eq!(agent_code_def.inputs, vec!["agent/"]);
+        assert_eq!(agent_code_def.outputs, vec!["agent/"]);
+        assert_eq!(agent_code_def.permissions, vec!["write:agent/"]);
+        assert_eq!(
+            agent_code_def.verification.as_deref(),
+            Some("python -m pytest")
+        );
+
+        let review_md = include_str!("../../../templates/agent/skills/review.md");
+        let review_def = SkillDefinition::parse_from_markdown(review_md, "review").unwrap();
+        assert_eq!(review_def.id, "review");
+        assert_eq!(review_def.version, "1.0.0");
+        assert_eq!(review_def.title, "Quality Gate and L0 Estimate");
+        assert_eq!(
+            review_def.triggers,
+            vec!["review", "estimate", "rubric", "quality", "critique"]
+        );
+        assert!(review_def.required_capabilities.is_empty());
+        assert_eq!(review_def.inputs, vec!["paper_draft.tex", "structure.yaml"]);
+        assert_eq!(review_def.outputs, vec![".sil/reviews/"]);
+        assert_eq!(review_def.permissions, vec!["write:.sil/reviews/"]);
+        assert_eq!(review_def.verification.as_deref(), Some("sil estimate"));
+
+        let visualize_md = include_str!("../packs/visualize-article/SKILL.md");
+        let visualize_def =
+            SkillDefinition::parse_from_markdown(visualize_md, "visualize-article").unwrap();
+        assert_eq!(visualize_def.id, "visualize-article");
+        assert_eq!(visualize_def.version, "1.0.0");
+        assert_eq!(visualize_def.title, "Visualize Article");
+        assert_eq!(
+            visualize_def.required_capabilities,
+            vec!["network", "resources"]
+        );
+        assert_eq!(visualize_def.inputs, vec!["paper_draft.tex"]);
+        assert_eq!(visualize_def.outputs, vec!["figures/"]);
+        assert_eq!(
+            visualize_def.permissions,
+            vec![
+                "read:manuscript",
+                "read:figures",
+                "network:external_image_provider"
+            ]
+        );
+        assert_eq!(visualize_def.verification.as_deref(), Some("check_figures"));
     }
 }

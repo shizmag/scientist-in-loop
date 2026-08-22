@@ -1,3 +1,23 @@
+---
+id: review
+version: 1.0.0
+title: Quality Gate and L0 Estimate
+triggers:
+  - review
+  - estimate
+  - rubric
+  - quality
+  - critique
+required_capabilities: []
+inputs:
+  - paper_draft.tex
+  - structure.yaml
+outputs:
+  - .sil/reviews/
+permissions:
+  - "write:.sil/reviews/"
+verification: "sil estimate"
+---
 # Manuscript estimate & multi-perspective review (sil)
 
 You are reviewing a **sil**-managed scientific manuscript. This skill teaches a multi-perspective estimate process. It is **inspired by** [Academic Research Skills `academic-paper-reviewer`](https://github.com/Imbad0202/academic-research-skills) (CC-BY-NC 4.0) but is a **sil-native** implementation — do not copy external agent files.
@@ -54,14 +74,26 @@ Prefer emitting JSON matching sil’s estimate schema (`schema_version: 1`) plus
 - Context: `sil project context --skill review.md --paper`  
 - Health: `sil project doctor` / manuscript audit signals  
 
-## Workflow
+## Workflow: Inspect -> Propose -> Modify -> Verify
 
-1. Run `sil paper estimate --mode full --json` for L0 baseline.  
-2. Load this skill + draft sections (`.sil/draft_sections/` or `sil paper split`).  
-3. Run L1 panel; adjudicate DA CRITICAL.  
-4. Write refined report under `.sil/reviews/` (or ask user to re-run with agent-written JSON).  
-5. Optionally file roadmap as `.sil/improvement/suggestion_n`.  
-6. Propose commit with `Sci-Action: estimate-paper` — human commits.
+### 1. Inspect
+- Run `sil paper estimate --mode full --json` for baseline L0 heuristic scores and findings.
+- Load this skill + draft sections (`.sil/draft_sections/` or `sil paper split`).
+- Inspect manuscript structure (`.sil/structure.yaml`), bibliography (`references.bib`), and health indicators (`sil doctor`).
+
+### 2. Propose (L1 Panel Evaluation)
+- Run independent L1 personas (Journal-Fit, Methodology, Domain, Perspective, Devil's Advocate).
+- Synthesize findings: identify consensus strengths, weaknesses, and adjudicate all Devil's Advocate CRITICAL gaps.
+- Formulate prioritized revision roadmap and advisory decision.
+
+### 3. Modify
+- Write refined review report and JSON under `.sil/reviews/review_<timestamp>/`.
+- Optionally file actionable roadmap items as `.sil/improvement/suggestion_n`.
+- Never edit `paper_draft.tex` or `paper.tex` during the review workflow.
+
+### 4. Verify
+- Run verification command: `sil estimate` (or `sil check`) to ensure the report package and scores conform to schema.
+- Propose commit with `Sci-Action: estimate-paper` for human review.
 
 ## Attribution
 

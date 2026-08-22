@@ -2,9 +2,34 @@ api_version: sil.dev/skill/v1
 kind: SkillPack
 metadata:
   id: scientist-in-loop/visualize-article
+  name: visualize-article
   version: 1.0.0
+  title: Visualize Article & Architecture Diagrams
+  description: Figure and diagram design guidelines for article architectures and visualization.
   license: MIT
   license_evidence: https://spdx.org/licenses/MIT.html
+  triggers:
+    - figure
+    - figures
+    - visualiz
+    - visualize
+    - visualise
+    - visualization
+    - diagram
+    - architecture
+    - pipeline
+  required_capabilities:
+    - network
+    - resources
+  inputs:
+    - paper_draft.tex
+  outputs:
+    - figures/
+  permissions:
+    - "read:manuscript"
+    - "read:figures"
+    - "network:external_image_provider"
+  verification: check_figures
   external_data_flow:
     destination: external_image_provider
     data_classes: [manuscript, figures]
@@ -19,9 +44,17 @@ compatibility:
   hosts: []
 entrypoints:
   - id: visualize-article
+    name: visualize-article
     type: skill
     path: SKILL.md
-    triggers: [figure, figures, visualization, visualise, visualize, diagram, pipeline, architecture]
+    title: Visualize Article
+    description: Generate detailed English prompts for academic figures.
+    triggers: [figure, figures, visualiz, visualize, visualise, visualization, diagram, architecture, pipeline]
+    required_capabilities: [network, resources]
+    inputs: [paper_draft.tex]
+    outputs: [figures/]
+    permissions: ["read:manuscript", "read:figures", "network:external_image_provider"]
+    verification: check_figures
     resources: [NOTICE]
     host_requirements: [resources]
 capabilities:
@@ -31,6 +64,6 @@ capabilities:
   process: false
 files:
   - path: SKILL.md
-    sha256: 9c1bdba0a9c8ca3d5840def697d688c0e4b6ed541ba7c92044be2491e8a03d9f
+    sha256: e7663b5e170764c283dd456dbaa32d48ca9c326ba46326d2627f8e3ec5973ac9
   - path: NOTICE
     sha256: bb6e374809549d36efe93dbacefede58ae86c94575cb0479ba875cfe1b5d4c6e

@@ -1,3 +1,15 @@
+---
+id: SYSTEM
+version: 1.0.0
+title: System Grounding Rules
+triggers:
+  - system
+required_capabilities: []
+inputs: []
+outputs: []
+permissions: []
+verification: null
+---
 # SYSTEM RULES FOR THIS PROJECT
 
 You are working inside a `sil`-managed scientific project.
@@ -43,4 +55,3 @@ Use `sil context` to obtain a fresh, structured view of the project state.
   ```
 - Use `sil todo` or `sil context` to inspect active idea/TODO blocks parsed into SQLite memory.
 - When an idea/TODO item is completed in prose, remove or update the `# -- X -- #` block.
-

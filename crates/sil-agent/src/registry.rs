@@ -255,9 +255,9 @@ impl HostCapabilities {
             "latexmk" => self.tools.contains("latexmk"),
             "marker" => self.tools.contains("marker"),
             other => {
-                if !self.host.is_empty() && self.host.eq_ignore_ascii_case(other) {
-                    true
-                } else if self.tools.contains(other) {
+                if (!self.host.is_empty() && self.host.eq_ignore_ascii_case(other))
+                    || self.tools.contains(other)
+                {
                     true
                 } else if let Some(r) = other.strip_prefix("read:") {
                     self.read.contains(r)
